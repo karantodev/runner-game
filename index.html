@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Orchid Quest — Endless Runner</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="app">
+    <section id="stage" aria-label="Orchid Quest stage">
+      <canvas id="game" width="1536" height="864" aria-label="Orchid Quest game canvas"></canvas>
+
+      <button id="pause" class="hud-box icon-button" title="Pause" aria-label="Pause game">
+        <img src="./assets/ui/buttons/pause_button.png" class="hud-button-img" alt="Pause">
+      </button>
+
+      <section id="score-box" class="hud-box" aria-label="Orchid score">
+        <img src="./assets/ui/icons/flower_currency_icon.png" class="hud-flower-icon" alt="">
+        <span id="score">0</span>
+      </section>
+
+      <section id="hearts-box" class="hud-box" aria-label="Lives">
+        <span id="hearts">❤❤❤</span>
+      </section>
+
+      <section id="distance-box" class="hud-box" aria-label="Distance run">
+        <span class="hud-label">DIST</span><span id="distance">0m</span>
+      </section>
+
+      <section id="tier-box" class="hud-box" aria-label="Score tier and best score">
+        <span id="tier">Tier: Start</span>
+        <span class="best-label">BEST <b id="best-score">0</b></span>
+      </section>
+
+      <section id="powerups-box" class="hud-box" aria-label="Active power-ups">
+        <span id="powerups"><span class="muted">No power-up</span></span>
+      </section>
+
+      <section id="ability" class="hud-box" aria-label="Jump ability">
+        <span>JUMP</span><span class="bar" id="jumpbar"></span>
+      </section>
+
+      <section id="overlay" class="overlay on" aria-live="polite">
+        <div class="card">
+          <h1 id="title">Orchid Quest</h1>
+          <p id="sub">Collect Orchids, jump over vines, and survive in the Identity Garden.</p>
+          <button id="start-button">Start Run</button>
+        </div>
+      </section>
+
+      <p id="hint">Keyboard: ← → / A D move · SPACE jump · R restart · ESC pause · Gamepad + touch supported</p>
+    </section>
+  </main>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
