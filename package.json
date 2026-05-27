@@ -1,0 +1,16 @@
+{
+  "name": "orchid-quest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node build.js",
+    "preview": "node build.js && node server.mjs",
+    "check": "node build.js --check",
+    "test:smoke": "playwright test tests/smoke.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}
