@@ -26,11 +26,27 @@ import { EffectsRenderer } from '../render/renderers/EffectsRenderer.js';
  * Layer composition lives in the constructor — change order there.
  */
 export class RenderSystem {
-  constructor(canvas, assets, projection) {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {import('../core/AssetManager.js').AssetManager} assets
+   * @param {import('../world/Projection.js').Projection} projection
+   * @param {{ pixelRatio?: number }} [options]
+   */
+  constructor(canvas, assets, projection, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.assets = assets;
     this.projection = projection;
+    this.pixelRatio = Math.max(1, options.pixelRatio ?? 1);
+
+    // Resize the backing store to logical * pixelRatio. The projection
+    // and renderers keep operating in logical units; setTransform() in
+    // render() handles the scale conversion.
+    if (this.pixelRatio !== 1) {
+      canvas.width = projection.width * this.pixelRatio;
+      canvas.height = projection.height * this.pixelRatio;
+    }
+
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
     this.gradients = new GradientCache(this.ctx, projection);
@@ -42,6 +58,7 @@ export class RenderSystem {
       sprites: this.sprites,
       paint: this.paint,
       gradients: this.gradients,
+      pixelRatio: this.pixelRatio,
     };
 
     this.pipeline = new RenderPipeline([
@@ -58,9 +75,13 @@ export class RenderSystem {
 
   render(world) {
     const ctx = this.ctx;
+    const dpr = this.pixelRatio;
     const shake = cameraShakeOffset(world);
-    ctx.setTransform(1, 0, 0, 1, shake.x, shake.y);
-    ctx.clearRect(-shake.x, -shake.y, this.canvas.width, this.canvas.height);
+    // Bake DPR into the transform so every downstream renderer keeps
+    // working in logical (1536×864) coordinates. clearRect needs the
+    // logical size, since the transform applies to it too.
+    ctx.setTransform(dpr, 0, 0, dpr, shake.x * dpr, shake.y * dpr);
+    ctx.clearRect(-shake.x, -shake.y, this.projection.width, this.projection.height);
 
     this.pipeline.render(world);
 
@@ -70,7 +91,10 @@ export class RenderSystem {
   resizeToViewport(padding = 0) {
     const maxWidth = window.innerWidth - padding;
     const maxHeight = window.innerHeight - padding;
-    const ratio = this.canvas.width / this.canvas.height;
+    // Aspect ratio is always logical projection's, regardless of dpr
+    // (canvas pixel-buffer may be dpr-scaled but we want CSS box to
+    // match the game's intended 1536:864 frame).
+    const ratio = this.projection.width / this.projection.height;
     let width = maxWidth;
     let height = width / ratio;
     if (height > maxHeight) {

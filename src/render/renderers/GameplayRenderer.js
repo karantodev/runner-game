@@ -110,7 +110,7 @@ export class GameplayRenderer {
     if (assetType === 'small_center_mushroom' || box.type === 'mushroom') {
       if (!this.sprites.draw('mushroomSmallRed', p.sx, p.sy, 140 * p.scale)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
     }
-    if (assetType === 'stone_obstacle' || box.type === 'stone') this.paint.stone(p.sx, p.sy, p.scale);
+    // (the legacy `stone` type has no sprite + no paint backend; intentionally a no-op now)
   }
 
   #vine(distance, scrollOffset, warning = false) {

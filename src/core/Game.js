@@ -3,6 +3,7 @@ import { EventBus } from './EventBus.js';
 import { AssetManager } from './AssetManager.js';
 import { InputManager } from './InputManager.js';
 import { GameLoop } from './GameLoop.js';
+import { Leaderboard } from './Leaderboard.js';
 import { Projection } from '../world/Projection.js';
 import { World } from '../world/World.js';
 import { RenderSystem } from '../systems/RenderSystem.js';
@@ -23,8 +24,17 @@ export class Game {
     this.assets = new AssetManager();
     this.input = new InputManager(canvas);
     this.projection = new Projection(this.config.projection, this.config.canvas);
-    this.world = new World(this.config, this.projection, this.eventBus, { seed: options.seed });
-    this.renderer = new RenderSystem(canvas, this.assets, this.projection);
+    this.leaderboard = new Leaderboard(
+      this.config.gameplay.leaderboardKey,
+      this.config.gameplay.leaderboardCapacity,
+    );
+    this.world = new World(this.config, this.projection, this.eventBus, {
+      seed: options.seed,
+      leaderboard: this.leaderboard,
+    });
+    this.renderer = new RenderSystem(canvas, this.assets, this.projection, {
+      pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
+    });
     this.hud = new HudSystem(this.eventBus, this.world);
     this.loop = new GameLoop({
       update: (delta) => this.#update(delta),

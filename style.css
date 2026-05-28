@@ -125,6 +125,57 @@ canvas {
 }
 .card button:hover { background: #38a847; }
 
+/* ── Leaderboard panel inside the death-overlay card ─────────────────────── */
+.leaderboard-prompt {
+  margin: 10px 0 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f4f7fb;
+  text-align: center;
+}
+.leaderboard-prompt p { margin: 0 0 8px; color: #1f2937; font-weight: 600; }
+.leaderboard-prompt input {
+  width: 70%;
+  padding: 8px 10px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font: 600 14px system-ui, sans-serif;
+  margin-right: 6px;
+}
+.leaderboard-prompt button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2f8f3b;
+  color: #fff;
+  font: 700 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+.leaderboard-prompt button:hover { background: #38a847; }
+.leaderboard-list {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+  text-align: left;
+  font: 13px ui-monospace, "SF Mono", Menlo, monospace;
+  color: #1f2937;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.leaderboard-list li {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 10px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #eef1f5;
+}
+.leaderboard-list li:nth-child(1) { background: #fff8d8; font-weight: 800; }
+.leaderboard-list li:nth-child(2) { background: #f3eef9; font-weight: 700; }
+.leaderboard-list li:nth-child(3) { background: #fbf2e7; font-weight: 600; }
+.leaderboard-list .lb-rank { color: #6b7280; }
+.leaderboard-list .lb-name { color: #111827; overflow: hidden; text-overflow: ellipsis; }
+.leaderboard-list .lb-score { color: #2f6f30; }
+
 #hint {
   display: none;
 }

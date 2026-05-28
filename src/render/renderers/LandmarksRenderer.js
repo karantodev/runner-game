@@ -1,5 +1,5 @@
 import { PARALLAX } from '../constants.js';
-import { parallaxOffset, roadTopHalfWidth } from '../helpers.js';
+import { drawScrollingTile, parallaxOffset, roadTopHalfWidth } from '../helpers.js';
 
 /**
  * Distant treeline + castle + forest + meadow + the haze stack that ties
@@ -75,10 +75,21 @@ export class LandmarksRenderer {
     ctx.fillStyle = this.gradients.gradients.depthHaze;
     ctx.fillRect(0, p.roadVanishY + 40, width, 70);
 
-    if (!this.#drawSpriteFullWidth('backgroundForestFar', -34 + castleOffset * 0.2, p.roadVanishY + 88, width + 68, 0.82)) {
+    // Forest + meadow now honestly scroll with the road so they look
+    // like they're parallaxing past the camera. Castle stays at its
+    // sin-drift anchor (it's a focal landmark, not a tiling background).
+    const forestImg = this.assets.get('backgroundForestFar');
+    if (forestImg?.naturalWidth) {
+      const tileW = width + 68;
+      const tileH = tileW * (forestImg.naturalHeight / forestImg.naturalWidth);
+      drawScrollingTile(ctx, forestImg, -34, p.roadVanishY + 88, tileW, tileH, world.scrollOffset * 0.22, 0.82);
+    } else {
       this.#drawSpriteRect('backgroundForestTreeline', -34, p.roadVanishY + 82, width + 68, 130, 0.68);
     }
-    this.#drawSpriteRect('backgroundMeadowRolling', -24, p.roadVanishY + 122, width + 48, 76, 0.60);
+    const meadowImg = this.assets.get('backgroundMeadowRolling');
+    if (meadowImg?.naturalWidth) {
+      drawScrollingTile(ctx, meadowImg, -24, p.roadVanishY + 122, width + 48, 76, world.scrollOffset * 0.32, 0.60);
+    }
   }
 
   #drawSpriteRect(key, x, y, width, height, alpha = 1) {
