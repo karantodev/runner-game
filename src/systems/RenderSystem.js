@@ -1,5 +1,6 @@
 import { SpriteRenderer } from '../render/SpriteRenderer.js';
 import { PixelPainter } from '../render/PixelPainter.js';
+import { GradientCache } from '../render/GradientCache.js';
 import {
   FOREGROUND_FRAME_SCENERY,
   LANE_BANDS,
@@ -40,6 +41,7 @@ export class RenderSystem {
     this.projection = projection;
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
+    this.gradients = new GradientCache(this.ctx, projection);
   }
 
   render(world) {
@@ -126,17 +128,18 @@ export class RenderSystem {
   }
 
   #roadTopHalfWidth() {
-    return Math.max(this.projection.width * 0.036, this.#roadBaseHalfWidth() * 0.118);
+    return Math.max(this.projection.width * 0.022, this.#roadBaseHalfWidth() * 0.068);
   }
 
   #roadBaseHalfWidth() {
-    return this.projection.roadBaseHalfWidth * 1.12;
+    return this.projection.roadBaseHalfWidth * 0.92;
   }
 
   #sky(world) {
     const ctx = this.ctx;
     const { width, height, horizonY } = this.projection;
-    const skyH = Math.max(horizonY + 210, height * 0.66);
+    const g = this.gradients.gradients;
+    const skyH = g.skyH;
 
     const skyImg = this.assets.get('backgroundSkyGradient');
     if (skyImg?.naturalWidth) {
@@ -145,19 +148,13 @@ export class RenderSystem {
       ctx.drawImage(skyImg, 0, 0, width, skyH);
       ctx.restore();
     } else {
-      const gradient = ctx.createLinearGradient(0, 0, 0, height * 0.56);
-      gradient.addColorStop(0, '#0c79e2');
-      gradient.addColorStop(0.42, '#37a8f2');
-      gradient.addColorStop(0.78, '#a6e0ff');
-      gradient.addColorStop(1, '#daf7ff');
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = g.sky;
       ctx.fillRect(0, 0, width, skyH);
     }
+    ctx.fillStyle = g.skyDepth;
+    ctx.fillRect(0, 0, width, skyH);
 
-    const haze = ctx.createLinearGradient(0, horizonY - 12, 0, horizonY + 164);
-    haze.addColorStop(0, 'rgba(255,255,255,0)');
-    haze.addColorStop(1, 'rgba(255,245,220,0.22)');
-    ctx.fillStyle = haze;
+    ctx.fillStyle = g.haze;
     ctx.fillRect(0, horizonY - 12, width, 176);
 
     if (!this.sprites.draw('backgroundSun', width * 0.28, height * 0.172, height * 0.082, 'center')) {
@@ -218,7 +215,7 @@ export class RenderSystem {
     const topHalf = this.#roadTopHalfWidth();
 
     ctx.save();
-    ctx.globalAlpha = 0.68;
+    ctx.globalAlpha = 0.80;
     ctx.fillStyle = '#3f8f44';
     ctx.beginPath();
     ctx.moveTo(0, p.roadVanishY + 78);
@@ -236,7 +233,7 @@ export class RenderSystem {
 
     ctx.save();
     ctx.globalAlpha = 0.88;
-    const castleDrawn = this.sprites.draw('backgroundCastle', castleX, gateY + 18, width * 0.10, 'bottom');
+    const castleDrawn = this.sprites.draw('backgroundCastle', castleX, gateY + 6, width * 0.076, 'bottom');
     ctx.restore();
     if (!castleDrawn) {
       const flagWave = world.config.gameFeel.ambientMotion ? Math.sin(world.timeAlive * 0.09) : 0;
@@ -244,14 +241,11 @@ export class RenderSystem {
     }
 
     ctx.save();
-    const roadJoin = ctx.createLinearGradient(0, p.roadVanishY - 4, 0, gateY + 34);
-    roadJoin.addColorStop(0, 'rgba(198,236,146,0.12)');
-    roadJoin.addColorStop(1, 'rgba(108,178,78,0.46)');
-    ctx.fillStyle = roadJoin;
+    ctx.fillStyle = this.gradients.gradients.roadJoin;
     ctx.beginPath();
     ctx.moveTo(castleX - topHalf * 0.42, p.roadVanishY - 4);
-    ctx.lineTo(castleX - 38, gateY + 16);
-    ctx.lineTo(castleX + 38, gateY + 16);
+    ctx.lineTo(castleX - 26, gateY + 16);
+    ctx.lineTo(castleX + 26, gateY + 16);
     ctx.lineTo(castleX + topHalf * 0.42, p.roadVanishY - 4);
     ctx.closePath();
     ctx.fill();
@@ -259,24 +253,23 @@ export class RenderSystem {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(castleX - topHalf * 0.38, p.roadVanishY - 2);
-    ctx.lineTo(castleX - 38, gateY + 14);
+    ctx.lineTo(castleX - 26, gateY + 14);
     ctx.moveTo(castleX + topHalf * 0.38, p.roadVanishY - 2);
-    ctx.lineTo(castleX + 38, gateY + 14);
+    ctx.lineTo(castleX + 26, gateY + 14);
     ctx.stroke();
     ctx.restore();
 
-    const haze = ctx.createLinearGradient(0, p.roadVanishY - 90, 0, p.roadVanishY + 120);
-    haze.addColorStop(0, 'rgba(170,230,255,0.34)');
-    haze.addColorStop(0.52, 'rgba(255,255,255,0.22)');
-    haze.addColorStop(1, 'rgba(255,255,255,0.00)');
-    ctx.fillStyle = haze;
+    ctx.fillStyle = this.gradients.gradients.distantHaze;
     ctx.fillRect(0, p.roadVanishY - 90, width, 210);
 
+    ctx.fillStyle = this.gradients.gradients.depthHaze;
+    ctx.fillRect(0, p.roadVanishY + 40, width, 70);
+
     // Prefer new high-quality forest sprite; fall back to legacy treeline.
-    if (!this.#drawSpriteFullWidth('backgroundForestFar', -34 + castleOffset * 0.2, p.roadVanishY + 88, width + 68, 0.68)) {
-      this.#drawSpriteRect('backgroundForestTreeline', -34, p.roadVanishY + 82, width + 68, 130, 0.55);
+    if (!this.#drawSpriteFullWidth('backgroundForestFar', -34 + castleOffset * 0.2, p.roadVanishY + 88, width + 68, 0.82)) {
+      this.#drawSpriteRect('backgroundForestTreeline', -34, p.roadVanishY + 82, width + 68, 130, 0.68);
     }
-    this.#drawSpriteRect('backgroundMeadowRolling', -24, p.roadVanishY + 122, width + 48, 76, 0.42);
+    this.#drawSpriteRect('backgroundMeadowRolling', -24, p.roadVanishY + 122, width + 48, 76, 0.60);
   }
 
   #mainGround(world) {
@@ -385,13 +378,9 @@ export class RenderSystem {
   #ground() {
     const ctx = this.ctx;
     const { width, height } = this.projection;
-    const startY = this.projection.roadVanishY + 62;
+    const startY = this.gradients.gradients.groundStartY;
 
-    const gradient = ctx.createLinearGradient(0, startY, 0, height);
-    gradient.addColorStop(0, '#83c34f');
-    gradient.addColorStop(0.38, '#58a53d');
-    gradient.addColorStop(1, '#2d712f');
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = this.gradients.gradients.ground;
     ctx.fillRect(0, startY, width, height - startY);
 
     ctx.save();
@@ -422,11 +411,7 @@ export class RenderSystem {
     const baseHalf = this.#roadBaseHalfWidth();
     const topHalf = this.#roadTopHalfWidth();
 
-    const roadGradient = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    roadGradient.addColorStop(0, '#96dc64');
-    roadGradient.addColorStop(0.42, '#6cba47');
-    roadGradient.addColorStop(1, '#3f8f34');
-    ctx.fillStyle = roadGradient;
+    ctx.fillStyle = this.gradients.gradients.road;
     ctx.beginPath();
     ctx.moveTo(vpX - topHalf, vpY);
     ctx.lineTo(vpX + topHalf, vpY);
@@ -521,6 +506,20 @@ export class RenderSystem {
           ctx.fill();
         }
       }
+
+      // Tiny scrolling grass blades at the inner road-shoulder edge
+      for (let d = -offset * 0.7; d < far * 0.75; d += period * 0.58) {
+        if (d < 0) continue;
+        const ep = p.project(side * laneOuter, d);
+        if (ep.scale < 0.10) continue;
+        const h = Math.max(1, Math.round(ep.scale * 9));
+        const w = Math.max(1, Math.round(ep.scale * 2.5));
+        const a = Math.min(0.46, 0.12 + 0.40 * ep.scale);
+        ctx.fillStyle = `rgba(48,168,40,${a})`;
+        ctx.fillRect(ep.sx - (side < 0 ? w : 0), ep.sy - h, w, h);
+        ctx.fillStyle = `rgba(72,208,56,${a * 0.6})`;
+        ctx.fillRect(ep.sx + side * w, ep.sy - Math.max(1, Math.round(h * 0.55)), Math.max(1, w - 1), Math.max(1, Math.round(h * 0.55)));
+      }
     }
 
     ctx.save();
@@ -612,11 +611,8 @@ export class RenderSystem {
     const vpX = p.width / 2;
     const vpY = p.roadVanishY;
     const baseHalf = this.#roadBaseHalfWidth();
-    const edge = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    edge.addColorStop(0, 'rgba(220,248,120,0.14)');
-    edge.addColorStop(1, 'rgba(222,248,110,0.78)');
     ctx.save();
-    ctx.strokeStyle = edge;
+    ctx.strokeStyle = this.gradients.gradients.roadEdge;
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(vpX - baseHalf, p.groundY);
@@ -645,18 +641,14 @@ export class RenderSystem {
     const p = this.projection;
     const vpX = p.width / 2;
     const baseHalf = this.#roadBaseHalfWidth();
-    const y0 = p.groundY - 96;
+    const y0 = this.gradients.gradients.foregroundY0;
     const y1 = p.height;
 
     ctx.save();
     for (const side of [-1, 1]) {
       const edgeX = vpX + side * baseHalf;
       const outerX = side < 0 ? 0 : p.width;
-      const grad = ctx.createLinearGradient(0, y0, 0, y1);
-      grad.addColorStop(0, 'rgba(58,150,46,0.00)');
-      grad.addColorStop(0.45, 'rgba(37,126,38,0.32)');
-      grad.addColorStop(1, 'rgba(20,86,33,0.72)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = this.gradients.gradients.foregroundSide;
       ctx.beginPath();
       ctx.moveTo(edgeX, y0);
       ctx.lineTo(outerX, y0 + 48);
@@ -682,6 +674,19 @@ export class RenderSystem {
           ctx.fillStyle = 'rgba(98,188,78,0.58)';
           ctx.fillRect(x + bend, y + 8, 2, 10);
         }
+      }
+
+      // Sprite-based flora anchors on near shoulder, just outside road edge
+      const FLORA = [
+        { xOff: 22, yOff: 24, sz: 74, key: 'grassTuftSmall' },
+        { xOff: 62, yOff: 14, sz: 62, key: 'yellowFlowerSmall' },
+        { xOff: 104, yOff: 20, sz: 78, key: 'grassTuftLarge' },
+        { xOff: 152, yOff: 12, sz: 66, key: 'purpleFlowerCluster' },
+        { xOff: 200, yOff: 18, sz: 70, key: 'grassTuftSmall' },
+      ];
+      for (const f of FLORA) {
+        const fx = side < 0 ? edgeX - f.xOff : edgeX + f.xOff;
+        if (fx > 0 && fx < p.width) this.sprites.draw(f.key, fx, p.groundY - f.yOff, f.sz);
       }
     }
 
@@ -721,7 +726,7 @@ export class RenderSystem {
     const p = this.projection.project(item.lane, item.distance);
     const yOffset = item.high ? -86 : -40;
     const wobble = Math.sin(item.t) * 4 * p.scale;
-    const x = p.sx;
+    const x = p.sx + (item.laneJitter ?? 0) * this.projection.laneWidth;
     const y = p.sy + yOffset * p.scale + wobble;
     const pop = world.config.gameFeel.ambientMotion ? 1 + Math.sin(item.t * 2.1) * 0.05 : 1;
     const assetType = item.assetType ?? item.type;
@@ -744,7 +749,8 @@ export class RenderSystem {
     }
 
     const flowerKey = p.scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
-    if (!this.sprites.draw(flowerKey, x, y, 72 * p.scale * pop)) this.paint.flower(x, y, p.scale * 1.65 * pop);
+    const szMod = 1 + (item.laneJitter ?? 0) * 0.5;  // ±8% size variation
+    if (!this.sprites.draw(flowerKey, x, y, 72 * p.scale * pop * szMod)) this.paint.flower(x, y, p.scale * 1.65 * pop);
   }
 
   #powerGlow(x, y, scale, color) {
@@ -790,11 +796,43 @@ export class RenderSystem {
     const p1 = p.project(-p.roadHalfLaneUnits + 0.1, distance);
     const p2 = p.project(p.roadHalfLaneUnits - 0.1, distance);
     const scale = p1.scale;
-    const baseY = p1.sy - 8 * scale;
     const vineCx = (p1.sx + p2.sx) / 2;
-    const vineW = (p2.sx - p1.sx) + 60 * scale;
-    if (!this.sprites.draw('vineBarrierFull', vineCx, p1.sy, vineW, 'bottom')) {
+    const vineW = (p2.sx - p1.sx) + 90 * scale;
+
+    // Shadow bar grounding the vine regardless of sprite load.
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = '#1a4a20';
+    ctx.fillRect(vineCx - vineW / 2, p1.sy - 6 * scale, vineW, 8 * scale);
+    ctx.restore();
+
+    const drewSprite = this.sprites.draw('vineBarrierFull', vineCx, p1.sy, vineW, 'bottom');
+    if (!drewSprite) {
       this.sprites.draw('vineCoiled', vineCx, p1.sy + 4 * scale, 220 * scale, 'bottom');
+      const baseY = p1.sy - 8 * scale;
+      ctx.strokeStyle = '#2f7d3a';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(3, 16 * scale);
+      ctx.beginPath();
+      const segments = 14;
+      for (let i = 0; i <= segments; i += 1) {
+        const t = i / segments;
+        const x = p1.sx + (p2.sx - p1.sx) * t;
+        const y = baseY - Math.sin(t * Math.PI * 3 + scrollOffset * 0.05) * 8 * scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = '#5fbf52';
+      for (let i = 2; i < segments; i += 3) {
+        const t = i / segments;
+        const x = p1.sx + (p2.sx - p1.sx) * t;
+        const y = baseY - Math.sin(t * Math.PI * 3 + scrollOffset * 0.05) * 8 * scale;
+        ctx.beginPath();
+        ctx.ellipse(x, y - 8 * scale, 8 * scale, 5 * scale, t * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     if (warning) {
@@ -806,30 +844,6 @@ export class RenderSystem {
       ctx.lineTo(p2.sx, p2.sy - 20 * scale);
       ctx.stroke();
       ctx.restore();
-    }
-
-    ctx.strokeStyle = '#2f7d3a';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = Math.max(2, 12 * scale);
-    ctx.beginPath();
-    const segments = 14;
-    for (let i = 0; i <= segments; i += 1) {
-      const t = i / segments;
-      const x = p1.sx + (p2.sx - p1.sx) * t;
-      const y = baseY - Math.sin(t * Math.PI * 3 + scrollOffset * 0.05) * 8 * scale;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    ctx.fillStyle = '#5fbf52';
-    for (let i = 2; i < segments; i += 3) {
-      const t = i / segments;
-      const x = p1.sx + (p2.sx - p1.sx) * t;
-      const y = baseY - Math.sin(t * Math.PI * 3 + scrollOffset * 0.05) * 8 * scale;
-      ctx.beginPath();
-      ctx.ellipse(x, y - 8 * scale, 8 * scale, 5 * scale, t * 2, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
 
@@ -846,6 +860,10 @@ export class RenderSystem {
     const farFade = Math.max(0.62, Math.min(1, p.scale * 3.1));
     let alpha = nearFade * farFade;
     if (item.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.74;
+    // Extra fade for shoulder items approaching the player — prevents close-range clipping reads.
+    if (item.laneBand === LANE_BANDS.SHOULDER && item.distance < 16) {
+      alpha *= Math.max(0, item.distance / 16);
+    }
     if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale)) {
       // Fade intruders to near-invisible — close items disappear completely, distant ones stay subtle.
       alpha = Math.min(alpha, (item.distance / 20) * 0.22);
@@ -907,7 +925,7 @@ export class RenderSystem {
       if (!this.sprites.draw('treeRoundSprite', x, y, 280 * scale)) this.paint.tree(x, y, scale, v);
     }
     if (assetType === 'mushroom_red_big' || assetType === 'mushroom') {
-      const key = variant === 'red' ? 'mushroomRedBig' : 'mushroomPurple';
+      const key = variant === 'red' ? 'mushroomRed' : 'mushroomPurple';
       if (!this.sprites.draw(key, x, y, 180 * scale)) this.paint.mushroom(x, y, scale, variant);
     }
     if (assetType === 'purple_flower_single' || assetType === 'flowerbush') {
@@ -956,15 +974,16 @@ export class RenderSystem {
   }
 
   #player(world) {
-    const blink = world.invulnerabilityFrames > 0 && Math.floor(world.invulnerabilityFrames / 6) % 2 === 0;
-    if (blink) return;
+    const invulnAlpha = world.invulnerabilityFrames > 0
+      ? (Math.floor(world.invulnerabilityFrames / 6) % 2 === 0 ? 0.28 : 1)
+      : 1;
 
     const renderLanes = world.getPlayerRenderLanes();
     for (const laneX of renderLanes) {
       if (Math.abs(laneX - world.player.laneX) < 0.01) continue;
-      this.#playerBody(world, laneX, 0.42, true);
+      this.#playerBody(world, laneX, 0.42 * invulnAlpha, true);
     }
-    this.#playerBody(world, world.player.laneX, 1, false);
+    this.#playerBody(world, world.player.laneX, invulnAlpha, false);
   }
 
   #playerBody(world, renderLaneX, alpha = 1, isClone = false) {
@@ -977,10 +996,10 @@ export class RenderSystem {
     const run = player.runFrame;
     const onGround = !player.isJumping;
     const tilt = (player.targetLane - player.laneX) * 0.10 + player.laneTilt * 0.05;
-    const stretch = 1 + player.jumpStretch * 0.07 - player.landSquash * 0.08;
-    const squash = 1 - player.jumpStretch * 0.05 + player.landSquash * 0.12;
+    const stretch = 1 + player.jumpStretch * 0.07 - player.landSquash * 0.03;
+    const squash = 1 - player.jumpStretch * 0.05 + player.landSquash * 0.07;
 
-    const bodyScale = (p.height / 720) * 1.16;
+    const bodyScale = (p.height / 720) * 1.23;
 
     // Try sprite first — draw outside the canvas transform stack so squash/stretch apply separately
     // runFrame advances at speed*0.7/tick; divide by 3.15 to target ~12 FPS at base speed (10–14 FPS range)

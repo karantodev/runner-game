@@ -35,11 +35,8 @@ export class Game {
   async boot() {
     this.renderer.resizeToViewport(this.config.canvas.viewportPadding);
     window.addEventListener('resize', () => this.renderer.resizeToViewport(this.config.canvas.viewportPadding));
-    window.addEventListener('keydown', (event) => {
-      if (event.repeat) return;
-      if (event.code !== 'Escape' && event.code !== 'KeyP') return;
-      if (this.world.state === 'playing') this.world.pause();
-      else if (this.world.state === 'paused') this.world.resume();
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.world.state === 'playing') this.world.pause();
     });
 
     this.hud.bindStart(() => {
@@ -68,7 +65,7 @@ export class Game {
     }
 
     this.debug.freezeUpdates = true;
-    this.hud.render();
+    this.hud.tick();
     this.renderer.render(this.world);
   }
 
@@ -79,11 +76,11 @@ export class Game {
 
   #update(delta) {
     if (this.debug.freezeUpdates) {
-      this.hud.render();
+      this.hud.tick();
       return;
     }
     this.world.update(this.input, delta);
-    this.hud.render();
+    this.hud.tick();
   }
 
   #render() {

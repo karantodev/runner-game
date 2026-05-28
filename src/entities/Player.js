@@ -1,4 +1,5 @@
 import { clamp, damp } from '../utils/math.js';
+import { spawnParticle } from './Particle.js';
 
 export class Player {
   constructor(config) {
@@ -33,7 +34,7 @@ export class Player {
 
     if (particles) {
       for (let i = 0; i < 10; i++) {
-        particles.push({
+        particles.push(spawnParticle({
           x: centerX + this.laneX * laneWidth,
           y: groundY + 4,
           vx: (Math.random() - 0.5) * 6,
@@ -41,7 +42,7 @@ export class Player {
           life: 24,
           radius: 3 + Math.random() * 3,
           color: 'rgba(200,170,120,0.8)',
-        });
+        }));
       }
     }
     return true;
@@ -71,7 +72,7 @@ export class Player {
         landed = true;
         if (particles) {
           for (let i = 0; i < 10; i++) {
-            particles.push({
+            particles.push(spawnParticle({
               x: centerX + this.laneX * laneWidth + (Math.random() - 0.5) * 30,
               y: groundY,
               vx: (Math.random() - 0.5) * 4,
@@ -79,7 +80,7 @@ export class Player {
               life: 18,
               radius: 2 + Math.random() * 2,
               color: 'rgba(200,170,120,0.7)',
-            });
+            }));
           }
         }
       }
