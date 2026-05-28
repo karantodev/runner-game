@@ -20,12 +20,17 @@ const FIXED_DT = 1.0;                // one frame-unit per update call
 const MAX_CATCHUP_STEPS = 5;         // burn at most 5 ticks of backlog per RAF
 const RESYNC_THRESHOLD_MS = 250;     // gap larger than this → drop the backlog
 
+/**
+ * @typedef {{ update: (delta: number) => void, render: () => void }} LoopHooks
+ */
+
 export class GameLoop {
   #lastTime = 0;
   #accumulator = 0;
   #rafId = 0;
   #running = false;
 
+  /** @param {LoopHooks} hooks */
   constructor({ update, render }) {
     this.update = update;
     this.render = render;

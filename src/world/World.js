@@ -1,4 +1,5 @@
 import { clamp } from '../utils/math.js';
+import { Rng } from '../utils/rng.js';
 import { EntityRegistry } from '../ecs/EntityRegistry.js';
 import { createPlayer } from '../ecs/factories.js';
 import { MovementSystem } from '../systems/MovementSystem.js';
@@ -28,18 +29,44 @@ import { PowerUpSystem } from '../systems/PowerUpSystem.js';
  *
  * Pure shell — no spawning, no physics, no scoring logic lives here.
  * All of that has moved into purpose-built systems.
+ *
+ * @typedef {'menu' | 'playing' | 'paused' | 'dead'} WorldState
+ *
+ * @property {WorldState} state
+ * @property {number} score
+ * @property {number} lives
+ * @property {number} speed
+ * @property {number} baseSpeed
+ * @property {number} distanceRun       — world units travelled, scaled to "m"
+ * @property {number} timeAlive         — frames since the run started
+ * @property {number} scrollOffset      — running sum of speed*delta, for VFX
+ * @property {number} cameraShake       — current shake amplitude
+ * @property {number} cameraImpulseTime — frames since the most recent shake
+ * @property {number} bestScore         — persisted best across sessions
+ * @property {number} currentTier
+ * @property {import('../ecs/EntityRegistry.js').EntityRegistry} registry
+ * @property {import('../utils/rng.js').Rng} rng
+ * @property {import('../ecs/Entity.js').Entity | null} player
+ * @property {import('../core/InputManager.js').InputManager | null} input
  */
 export class World {
-  constructor(config, projection, eventBus) {
+  /**
+   * @param {object} config
+   * @param {import('./Projection.js').Projection} projection
+   * @param {import('../core/EventBus.js').EventBus} eventBus
+   * @param {{ seed?: number | string }} [options]
+   */
+  constructor(config, projection, eventBus, options = {}) {
     this.config = config;
     this.projection = projection;
     this.eventBus = eventBus;
     this.registry = new EntityRegistry();
+    this.rng = new Rng(options.seed);
 
     // Subsystems with their own state (timers, snapshots, etc.).
     this.powerUpSystem = new PowerUpSystem(config, eventBus);
-    this.spawnSystem = new SpawnSystem(config, projection);
-    this.decorationSystem = new DecorationSystem(config, projection);
+    this.spawnSystem = new SpawnSystem(config, projection, this.rng);
+    this.decorationSystem = new DecorationSystem(config, projection, this.rng);
     this.collisionSystem = new CollisionSystem(config, eventBus);
     this.gameStateSystem = new GameStateSystem(config, eventBus);
     this.effectsSystem = new EffectsSystem(config, eventBus, projection);

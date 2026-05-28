@@ -1,7 +1,17 @@
 /**
+ * Unified keyboard + touch + gamepad input.
+ *
  * Edge-triggered actions are counted (not boolean), so that two rapid taps
- * within one frame are consumed as two distinct lane-switches instead of one.
- * Held actions stay as booleans.
+ * within one frame are consumed as two distinct lane-switches instead of
+ * one. Held actions stay as booleans.
+ *
+ * Public API:
+ *   - consume(name)  — decrement edge counter, returns true if fired
+ *   - isHeld(name)   — current state of a held action
+ *   - pollGamepad()  — call once per frame to update gamepad-derived state
+ *
+ * @typedef {'moveLeft' | 'moveRight' | 'jump' | 'crouchDown' | 'restart' | 'pause' | 'start'} EdgeAction
+ * @typedef {'jumpHeld' | 'crouchHeld'} HeldAction
  */
 const EDGE_ACTIONS = ['moveLeft', 'moveRight', 'jump', 'crouchDown', 'restart', 'pause', 'start'];
 const HELD_ACTIONS = ['jumpHeld', 'crouchHeld'];
@@ -26,7 +36,10 @@ export class InputManager {
     this.#bindFocus();
   }
 
-  /** Decrement and report whether an edge-action fired this frame. */
+  /**
+   * Decrement and report whether an edge-action fired this frame.
+   * @param {EdgeAction} actionName
+   */
   consume(actionName) {
     if (this.#edge[actionName] > 0) {
       this.#edge[actionName] -= 1;
@@ -35,6 +48,7 @@ export class InputManager {
     return false;
   }
 
+  /** @param {HeldAction} actionName */
   isHeld(actionName) {
     return Boolean(this.#held[actionName]);
   }

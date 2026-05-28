@@ -8,7 +8,9 @@
     "build": "node build.js",
     "preview": "node build.js && node server.mjs",
     "check": "node build.js --check",
-    "test:smoke": "playwright test tests/smoke.spec.js"
+    "test:smoke": "playwright test tests/smoke.spec.js",
+    "test:runtime": "playwright test tests/ecs-runtime.spec.js",
+    "test": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"

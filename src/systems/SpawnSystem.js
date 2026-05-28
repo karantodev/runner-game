@@ -1,17 +1,23 @@
 import { createCollectible, createObstacle } from '../ecs/factories.js';
-import { chance, randRange, randomChoice } from '../utils/math.js';
 import { DifficultyDirector } from './spawn/DifficultyDirector.js';
 import { PatternLibrary } from './spawn/PatternLibrary.js';
 import { PathValidator } from './spawn/PathValidator.js';
 
 const SPAWN_LOG_CAPACITY = 24;
+const LANE_TRIPLET = Object.freeze([-1, 0, 1]);
 
 export class SpawnSystem {
-  constructor(config, projection) {
+  /**
+   * @param {object} config
+   * @param {import('../world/Projection.js').Projection} projection
+   * @param {import('../utils/rng.js').Rng} rng — shared world RNG
+   */
+  constructor(config, projection, rng) {
     this.config = config;
     this.projection = projection;
-    this.director = new DifficultyDirector();
-    this.library = new PatternLibrary();
+    this.rng = rng;
+    this.director = new DifficultyDirector(rng);
+    this.library = new PatternLibrary(rng);
     this.validator = new PathValidator();
     this.spawnLog = []; // ring-buffer exposed to the debug API
     this.reset();
@@ -20,8 +26,8 @@ export class SpawnSystem {
   reset() {
     this.nextPattern = 44;
     this.nextOrchid = 22;
-    this.nextLife = randRange(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
-    this.nextPowerUp = randRange(
+    this.nextLife = this.rng.range(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
+    this.nextPowerUp = this.rng.range(
       this.config.spawn.powerUpMinDistance * 0.55,
       this.config.spawn.powerUpMaxDistance * 0.75,
     );
@@ -79,27 +85,27 @@ export class SpawnSystem {
   }
 
   #tickLife(world) {
-    const lane = randomChoice([-1, 0, 1]);
+    const lane = this.rng.choice(LANE_TRIPLET);
     createCollectible(world.registry, {
       type: 'life',
       lane,
       distance: this.projection.maxDistance + 8,
-      high: chance(0.20),
+      high: this.rng.chance(0.20),
     });
     this.nextPattern = Math.max(this.nextPattern, 32);
-    this.nextLife = randRange(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
+    this.nextLife = this.rng.range(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
   }
 
   #tickPowerUp(world) {
-    const isPowerTree = chance(0.52);
-    const lane = randomChoice([-1, 0, 1]);
+    const isPowerTree = this.rng.chance(0.52);
+    const lane = this.rng.choice(LANE_TRIPLET);
     createCollectible(world.registry, {
       type: isPowerTree ? 'power-tree' : 'power-mushroom',
       lane,
       distance: this.projection.maxDistance + 12,
     });
     this.nextPattern = Math.max(this.nextPattern, 40);
-    this.nextPowerUp = randRange(this.config.spawn.powerUpMinDistance, this.config.spawn.powerUpMaxDistance);
+    this.nextPowerUp = this.rng.range(this.config.spawn.powerUpMinDistance, this.config.spawn.powerUpMaxDistance);
   }
 
   #spawnPattern(world, pattern, baseDistance) {
@@ -128,9 +134,9 @@ export class SpawnSystem {
   // ── Orchid-only filler patterns ──────────────────────────────────────────────
 
   #spawnOrchidPattern(world, baseDistance) {
-    const roll = Math.random();
+    const roll = this.rng.next();
     if (roll < 0.55) {
-      this.#spawnOrchidLine(world, baseDistance, randomChoice([-1, 0, 1]));
+      this.#spawnOrchidLine(world, baseDistance, this.rng.choice(LANE_TRIPLET));
     } else if (roll < 0.80) {
       this.#spawnOrchidZigZag(world, baseDistance);
     } else {
@@ -139,8 +145,8 @@ export class SpawnSystem {
   }
 
   #spawnOrchidLine(world, baseDistance, lane) {
-    const count = 3 + Math.floor(Math.random() * 2);
-    const high = chance(0.26);
+    const count = this.rng.integer(3, 4);
+    const high = this.rng.chance(0.26);
     for (let i = 0; i < count; i++) {
       createCollectible(world.registry, {
         type: 'flower',
@@ -152,7 +158,7 @@ export class SpawnSystem {
   }
 
   #spawnOrchidZigZag(world, baseDistance) {
-    const lanes = chance(0.5) ? [-1, 0, 1, 0, -1] : [1, 0, -1, 0, 1];
+    const lanes = this.rng.chance(0.5) ? [-1, 0, 1, 0, -1] : [1, 0, -1, 0, 1];
     lanes.forEach((lane, i) => {
       createCollectible(world.registry, {
         type: 'flower',
@@ -163,9 +169,9 @@ export class SpawnSystem {
   }
 
   #spawnOrchidWide(world, baseDistance) {
-    const rows = 1 + Math.floor(Math.random() * 2);
+    const rows = this.rng.integer(1, 2);
     for (let row = 0; row < rows; row++) {
-      for (const lane of [-1, 0, 1]) {
+      for (const lane of LANE_TRIPLET) {
         createCollectible(world.registry, {
           type: 'flower',
           lane,

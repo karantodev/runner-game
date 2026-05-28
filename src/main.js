@@ -11,11 +11,22 @@ const autostart = debugEnabled && (params.get('autostart') === '1' || params.get
 const freezeFrame = debugEnabled && params.get('debugFreeze') !== '0';
 const captureSteps = debugEnabled ? Math.max(0, Number(params.get('debugSteps') || 12) || 12) : 0;
 
+// ?seed=NN or ?seed=any-string → deterministic gameplay run. Useful for
+// reproducing spawn sequences when investigating a specific bug. Without
+// it, every session gets a fresh random seed.
+const seedParam = params.get('seed');
+const seed = seedParam === null
+  ? undefined
+  : /^[0-9]+$/.test(seedParam)
+    ? Number(seedParam) >>> 0
+    : seedParam;
+
 const canvas = document.getElementById('game');
 const game = new Game(canvas, {
   autostart,
   freezeFrame,
   captureSteps,
+  seed,
 });
 
 const debugState = {
