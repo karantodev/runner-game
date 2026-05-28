@@ -23,7 +23,7 @@ export class Game {
     this.assets = new AssetManager();
     this.input = new InputManager(canvas);
     this.projection = new Projection(this.config.projection, this.config.canvas);
-    this.world = new World(this.config, this.projection, this.eventBus);
+    this.world = new World(this.config, this.projection, this.eventBus, { seed: options.seed });
     this.renderer = new RenderSystem(canvas, this.assets, this.projection);
     this.hud = new HudSystem(this.eventBus, this.world);
     this.loop = new GameLoop({

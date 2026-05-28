@@ -66,6 +66,10 @@ export const Hitbox = (type, lane = 0, allLanes = false) => ({
 
 // ── Collectibles ─────────────────────────────────────────────────────────────
 
+// Note: `t` (bobbing phase) and `laneJitter` (±8% horizontal wobble) are
+// purely cosmetic — they don't affect spawn placement, collision, or
+// score. We use Math.random() here on purpose so the seedable world RNG
+// stays untouched by visual jitter.
 export const CollectibleData = (type, high = false) => ({
   type,
   high,

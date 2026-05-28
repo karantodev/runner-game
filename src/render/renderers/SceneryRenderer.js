@@ -1,11 +1,7 @@
 import { AMBIENT_MOTES, LAYERS, PARALLAX } from '../constants.js';
 import { parallaxOffset, roadBaseHalfWidth } from '../helpers.js';
-import {
-  FOREGROUND_FRAME_SCENERY,
-  LANE_BANDS,
-  MIDGROUND_SCENERY,
-  SCENE_ZONES,
-} from '../../config/sceneSchema.js';
+import { LANE_BANDS, SCENE_ZONES } from '../../config/sceneSchema.js';
+import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
 import { getSceneryDraw } from './scenery/sceneryDispatch.js';
 
 /**

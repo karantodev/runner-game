@@ -1,6 +1,6 @@
 import { createScenery } from '../ecs/factories.js';
-import { chance, randRange, randomChoice } from '../utils/math.js';
-import { LANE_BANDS, SIDE_DECORATION_PREFABS, zoneForSide } from '../config/sceneSchema.js';
+import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
+import { SIDE_DECORATION_PREFABS } from '../config/sceneSchema.data.js';
 
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
@@ -32,9 +32,15 @@ function assetTypeToSceneryType(assetType) {
 }
 
 export class DecorationSystem {
-  constructor(config, projection) {
+  /**
+   * @param {object} config
+   * @param {import('../world/Projection.js').Projection} projection
+   * @param {import('../utils/rng.js').Rng} rng
+   */
+  constructor(config, projection, rng) {
     this.config = config;
     this.projection = projection;
+    this.rng = rng;
     this.weightedChunks = this.#buildWeightedChunks();
     this.reset();
   }
@@ -48,8 +54,8 @@ export class DecorationSystem {
   prepopulate(world) {
     const start = this.config.spawn.decorStartDistance;
     for (let distance = start; distance < this.projection.maxDistance + 24; distance += this.config.spawn.sideDecorSpacing) {
-      this.#spawnSideChunk(world, -1, distance + randRange(-0.7, 0.7));
-      this.#spawnSideChunk(world, 1, distance + 3.4 + randRange(-0.7, 0.7));
+      this.#spawnSideChunk(world, -1, distance + this.rng.range(-0.7, 0.7));
+      this.#spawnSideChunk(world, 1, distance + 3.4 + this.rng.range(-0.7, 0.7));
     }
   }
 
@@ -59,11 +65,11 @@ export class DecorationSystem {
     this.nextRight -= world.speed * delta;
 
     if (this.nextLeft <= 0) {
-      this.#spawnSideChunk(world, -1, this.projection.maxDistance + randRange(0, 8));
+      this.#spawnSideChunk(world, -1, this.projection.maxDistance + this.rng.range(0, 8));
       this.nextLeft = this.#nextSpacing();
     }
     if (this.nextRight <= 0) {
-      this.#spawnSideChunk(world, 1, this.projection.maxDistance + randRange(0, 8));
+      this.#spawnSideChunk(world, 1, this.projection.maxDistance + this.rng.range(0, 8));
       this.nextRight = this.#nextSpacing();
     }
   }
@@ -74,8 +80,8 @@ export class DecorationSystem {
 
     for (const item of chunk.items) {
       const mirroredLane = side * item.lane;
-      const jitter = randRange(-0.028, 0.028);
-      const scaleJitter = randRange(0.96, 1.05);
+      const jitter = this.rng.range(-0.028, 0.028);
+      const scaleJitter = this.rng.range(0.96, 1.05);
       const variant = this.#resolveVariant(item.variant, item.assetType);
       const zone = zoneForSide(side, item.laneBand ?? LANE_BANDS.SHOULDER);
       createScenery(world.registry, {
@@ -94,19 +100,19 @@ export class DecorationSystem {
   }
 
   #nextSpacing() {
-    return this.config.spawn.sideDecorSpacing + randRange(-this.config.spawn.sideDecorJitter, this.config.spawn.sideDecorJitter);
+    return this.config.spawn.sideDecorSpacing + this.rng.range(-this.config.spawn.sideDecorJitter, this.config.spawn.sideDecorJitter);
   }
 
   #resolveVariant(variant, type) {
     if (variant !== undefined) return variant;
-    if (type === 'mushroom_red_big') return chance(0.55) ? 'red' : 'purple';
-    return Math.floor(Math.random() * 4);
+    if (type === 'mushroom_red_big') return this.rng.chance(0.55) ? 'red' : 'purple';
+    return this.rng.integer(0, 3);
   }
 
   #pickChunk(side) {
-    let chunk = randomChoice(this.weightedChunks);
+    let chunk = this.rng.choice(this.weightedChunks);
     const last = this.lastChunk[String(side)];
-    for (let i = 0; i < 4 && chunk.id === last; i++) chunk = randomChoice(this.weightedChunks);
+    for (let i = 0; i < 4 && chunk.id === last; i++) chunk = this.rng.choice(this.weightedChunks);
     return chunk;
   }
 
