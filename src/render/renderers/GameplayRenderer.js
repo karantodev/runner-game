@@ -12,17 +12,22 @@ export class GameplayRenderer {
     this.assets = assets;
     this.sprites = sprites;
     this.paint = paint;
+    // Reused per-frame so we don't allocate an Array + N wrapper objects
+    // for every render call. Entities themselves carry `kind` + `distance`
+    // already, so we can push refs directly.
+    this._renderQueue = [];
   }
 
   render(world) {
-    const items = [];
-    for (const obstacle of world.obstacles) items.push({ kind: 'obstacle', distance: obstacle.distance, ref: obstacle });
-    for (const collectible of world.collectibles) items.push({ kind: 'collectible', distance: collectible.distance, ref: collectible });
-    items.sort((a, b) => b.distance - a.distance);
+    const queue = this._renderQueue;
+    queue.length = 0;
+    for (const obstacle of world.obstacles) queue.push(obstacle);
+    for (const collectible of world.collectibles) queue.push(collectible);
+    queue.sort(distanceFarToNear);
 
-    for (const item of items) {
-      if (item.kind === 'obstacle') this.#obstacle(item.ref, world.scrollOffset, world);
-      if (item.kind === 'collectible' && !item.ref.collected) this.#collectible(item.ref, world);
+    for (const item of queue) {
+      if (item.kind === 'obstacle') this.#obstacle(item, world.scrollOffset, world);
+      else if (item.kind === 'collectible' && !item.collected) this.#collectible(item, world);
     }
   }
 
@@ -275,4 +280,8 @@ export class GameplayRenderer {
     ctx.stroke();
     ctx.restore();
   }
+}
+
+function distanceFarToNear(a, b) {
+  return b.distance - a.distance;
 }

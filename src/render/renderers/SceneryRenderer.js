@@ -6,6 +6,7 @@ import {
   MIDGROUND_SCENERY,
   SCENE_ZONES,
 } from '../../config/sceneSchema.js';
+import { getSceneryDraw } from './scenery/sceneryDispatch.js';
 
 /**
  * All non-gameplay world geometry: the static midground/foreground prefab
@@ -21,20 +22,27 @@ export class SceneryRenderer {
     this.assets = assets;
     this.sprites = sprites;
     this.paint = paint;
+    this._drawDeps = { sprites, paint };
+    this._structural = [];
+    this._organic = [];
   }
 
   render(world) {
     this.#midgroundTerraces(world);
     this.#foregroundGarden(world.scrollOffset, world);
 
-    const structural = [];
-    const organic = [];
+    // Reuse the two scratch arrays — clearing length to 0 keeps the same
+    // backing storage and avoids the per-frame allocation of two new arrays.
+    const structural = this._structural;
+    const organic = this._organic;
+    structural.length = 0;
+    organic.length = 0;
     for (const item of world.scenery) {
       if (this.#isStructural(item)) structural.push(item);
       else organic.push(item);
     }
-    structural.sort((a, b) => b.distance - a.distance);
-    organic.sort((a, b) => b.distance - a.distance);
+    structural.sort(distanceFarToNear);
+    organic.sort(distanceFarToNear);
     for (const item of structural) this.#scenery(item, world, LAYERS.FOREGROUND_DECOR);
     for (const item of organic) this.#scenery(item, world, LAYERS.FOREGROUND_DECOR);
 
@@ -186,10 +194,11 @@ export class SceneryRenderer {
     ctx.restore();
   }
 
-  // ── Asset-type dispatch (long if/else chain — Strategy Map comes in 3b) ─────
+  // ── Asset-type dispatch (Strategy Map — sceneryDispatch.js) ───────────────
 
   #drawSceneryType(assetType, x, y, scale, variant, alpha = 1, mirrored = false) {
-    const v = variant ?? 0;
+    const draw = getSceneryDraw(assetType);
+    if (!draw) return;
     this.ctx.save();
     this.ctx.globalAlpha = alpha;
     if (mirrored) {
@@ -197,86 +206,11 @@ export class SceneryRenderer {
       this.ctx.scale(-1, 1);
       this.ctx.translate(-x, 0);
     }
-
-    // ── Structural wall elements ──────────────────────────────────────────────
-    if (assetType === 'grass_dirt_block' || assetType === 'grass_dirt_step' || assetType === 'terrainBlock') {
-      const blockKeys = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
-      const key = blockKeys[v % 4];
-      if (!this.sprites.draw(key, x, y, 185 * scale)) this.paint.terrainBlock(x, y, scale, v);
-    }
-    if (assetType === 'grass_dirt_wall' || assetType === 'grassWall') {
-      const key = v % 2 === 0 ? 'purpleWallLow' : 'purpleWallStairs';
-      if (!this.sprites.draw(key, x, y, 200 * scale)) this.paint.grassWall(x, y, scale, v % 2);
-    }
-    if (assetType === 'purple_brick_single' || assetType === 'blockStack') {
-      if (!this.sprites.draw('purpleBrick01', x, y, 110 * scale)) this.paint.wallBlock(x, y, scale, v === 2 ? 3 : 1, 1);
-    }
-    if (assetType === 'floating_platform' || assetType === 'platform') {
-      if (!this.sprites.draw('purplePlatformRow04', x, y, 290 * scale)) this.paint.platform(x, y, scale, v % 2);
-    }
-    if (assetType === 'question_block' || assetType === 'questionBlock') {
-      if (!this.sprites.draw('questionBlockSprite', x, y - 62 * scale, 90 * scale)) this.paint.questionBlock(x, y - 62 * scale, scale);
-    }
-    if (assetType === 'green_pipe' || assetType === 'pipe') {
-      if (!this.sprites.draw('pipeGreenSprite', x, y, 130 * scale)) this.paint.pipe(x, y, scale);
-    }
-    if (assetType === 'fence_wood_short' || assetType === 'fence') {
-      if (!this.sprites.draw('fenceWoodSprite', x, y, 220 * scale)) this.paint.fence(x, y, scale);
-    }
-    if (assetType === 'hanging_platform_vines' || assetType === 'hangingPlatform') {
-      this.sprites.draw('hangingPlatformVines', x, y, 280 * scale);
-    }
-
-    // ── Large organic / flora ─────────────────────────────────────────────────
-    if (assetType === 'tree_round' || assetType === 'tree') {
-      if (!this.sprites.draw('treeRoundSprite', x, y, 280 * scale)) this.paint.tree(x, y, scale, v);
-    }
-    if (assetType === 'mushroom_red_big' || assetType === 'mushroom') {
-      const key = variant === 'red' ? 'mushroomRed' : 'mushroomPurple';
-      if (!this.sprites.draw(key, x, y, 180 * scale)) this.paint.mushroom(x, y, scale, variant);
-    }
-    if (assetType === 'purple_flower_single' || assetType === 'flowerbush') {
-      if (!this.sprites.draw('bushWithFlowers', x, y, 160 * scale)) this.paint.flowerBush(x, y, scale);
-    }
-    if (assetType === 'bush_large' || assetType === 'bushLarge') {
-      this.sprites.draw('bushLarge', x, y, 240 * scale);
-    }
-    if (assetType === 'bush_large_with_purple_flowers' || assetType === 'bushLargeFlower') {
-      this.sprites.draw('bushLargeFlower', x, y, 240 * scale);
-    }
-
-    // ── Small organic / ground cover ──────────────────────────────────────────
-    if (assetType === 'yellow_flower_small' || assetType === 'smallFlower') {
-      const key = v % 2 === 0 ? 'yellowFlowerSmall' : 'purpleFlowerCluster';
-      if (!this.sprites.draw(key, x, y, 80 * scale)) this.paint.smallFlower(x, y, scale);
-    }
-    if (assetType === 'sprout_soil' || assetType === 'sprout') {
-      if (!this.sprites.draw('sproutSoil', x, y, 75 * scale)) this.paint.sprout(x, y, scale);
-    }
-    if (assetType === 'wheat_tuft' || assetType === 'wheat') this.paint.wheat(x, y, scale);
-    if (assetType === 'mushroom_blue_big' || assetType === 'mushroomBlue') {
-      this.sprites.draw('mushroomBlue', x, y, 170 * scale);
-    }
-    if (assetType === 'leaf_clump_small' || assetType === 'leafClusterLow') {
-      this.sprites.draw('leafClusterLow', x, y, 190 * scale);
-    }
-    if (assetType === 'leaf_clump_round' || assetType === 'leafClusterCompact') {
-      if (!this.sprites.draw('leafClumpRound', x, y, 150 * scale)) this.sprites.draw('leafClusterCompact', x, y, 150 * scale);
-    }
-    if (assetType === 'grass_tuft' || assetType === 'grass_tuft_small' || assetType === 'grassTuft') {
-      const key = v % 2 === 0 ? 'grassTuftSmall' : 'grassTuftLarge';
-      if (!this.sprites.draw(key, x, y, 130 * scale)) this.sprites.draw('grassTuft', x, y, 130 * scale);
-    }
-    if (assetType === 'grass_tuft_large') {
-      if (!this.sprites.draw('grassTuftLarge', x, y, 150 * scale)) this.sprites.draw('grassTuft', x, y, 130 * scale);
-    }
-    if (assetType === 'dry_grass_obstacle' || assetType === 'dryGrass') {
-      this.sprites.draw('dryGrass', x, y, 150 * scale);
-    }
-    if (assetType === 'bush_with_purple_flowers') {
-      if (!this.sprites.draw('bushWithFlowers', x, y, 160 * scale)) this.paint.flowerBush(x, y, scale);
-    }
-
+    draw(this._drawDeps, x, y, scale, variant);
     this.ctx.restore();
   }
+}
+
+function distanceFarToNear(a, b) {
+  return b.distance - a.distance;
 }
