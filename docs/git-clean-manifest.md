@@ -1,38 +1,42 @@
 # Git Clean Manifest
 
-This manifest lists the files that belong in the repository and identifies local/generated artifacts that should stay out of git.
+What belongs in the repository and what stays out.
 
 ## Keep
 
-| Path | Type | Keep | Notes |
-| --- | --- | --- | --- |
-| `src/` | runtime | yes | Source of truth for the game. |
-| `assets/` | runtime | yes | Game art and UI assets. |
-| `index.html` | runtime | yes | Root entry page. |
-| `dev.html` | dev | yes | Module-entry template used by `build.js` and smoke coverage. |
-| `style.css` | runtime | yes | Game styling. |
-| `README.md` | docs | yes | Project overview and workflow. |
-| `playwright.config.js` | test | yes | Smoke-test runner config. |
-| `build.js` | dev | yes | Root/dev template sync and stale-bundle guard. |
-| `server.mjs` | dev | yes | Official local preview and gated debug capture server. |
-| `tests/smoke.spec.js` | test | yes | Current useful smoke coverage. |
-| `docs/CHANGELOG.md` | docs | yes | Consolidated project history and accepted baseline. |
-| `docs/visual-qa.md` | QA | yes | Accepted visual/debug verification workflow. |
-| `docs/git-clean-manifest.md` | docs | yes | This manifest. |
+| Path | Type | Notes |
+|---|---|---|
+| `src/` | runtime | Single source of truth for game code. |
+| `assets/` | runtime | All sprites + UI art. ~105 PNG/SVG files. |
+| `index.html` | runtime | Root entry. Generated from `dev.html` by `npm run build`; do not hand-edit. |
+| `dev.html` | dev | Module-entry template. Edit here, then `npm run build`. |
+| `style.css` | runtime | HUD + overlay + touch controls + leaderboard styling. |
+| `README.md` | docs | Project overview, scripts, URL params, architecture. |
+| `playwright.config.js` | test | Playwright runner config. |
+| `build.js` | dev | `dev.html → index.html` sync + freshness check. |
+| `server.mjs` | dev | Local preview server + gated debug capture endpoint. |
+| `package.json` / `package-lock.json` | npm | Dependencies + scripts. |
+| `tests/smoke.spec.js` | test | 2 specs — page boots, no console errors. |
+| `tests/ecs-runtime.spec.js` | test | 5 specs — input, touch buttons, jump buffer, leaderboard CRUD, seed determinism. |
+| `docs/CHANGELOG.md` | docs | Phase-by-phase project history. |
+| `docs/visual-qa.md` | docs | Visual QA flow + URL params. |
+| `docs/git-clean-manifest.md` | docs | This file. |
 
-## Ignore
+## Ignored
 
-| Path | Ignore | Notes |
-| --- | --- | --- |
-| `node_modules/` | yes | Installed dependencies. |
-| `test-results/` | yes | Generated Playwright output. |
-| `playwright-report/` | yes | Generated Playwright HTML output. |
-| `tmp/` | yes | Local debug capture output. |
-| `.DS_Store` | yes | macOS Finder metadata. |
+Listed in `.gitignore`:
 
-## Removed legacy items
+- `node_modules/` — npm install output.
+- `test-results/` — playwright per-run artifacts.
+- `playwright-report/` — playwright HTML report.
+- `tmp/` — local debug capture output (`tmp/debug-captures/*.png`).
+- `.DS_Store` — macOS Finder metadata.
 
-| Path | Removed | Notes |
-| --- | --- | --- |
-| `target-frame.dev.html` | yes | Old reference utility, not runtime product flow. |
-| `tests/screenshot.spec.js` | yes | Local screenshot generation workflow, not required for maintained smoke coverage. |
+## Health check
+
+```bash
+git status                # working tree should be clean
+git ls-files | grep -iE "\.ds_store|test-results|playwright-report|tmp/|node_modules"
+                          # should print nothing
+npm run check             # index.html aligned with dev.html
+```
