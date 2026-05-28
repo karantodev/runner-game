@@ -12,12 +12,11 @@
       <canvas id="game" width="1536" height="864" aria-label="Orchid Quest game canvas"></canvas>
 
       <button id="pause" class="hud-box icon-button" title="Pause" aria-label="Pause game">
-        <img src="./assets/ui/buttons/pause_button.png" class="hud-button-img" alt="Pause">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
       </button>
 
       <section id="score-box" class="hud-box" aria-label="Orchid score">
-        <img src="./assets/ui/icons/flower_currency_icon.png" class="hud-flower-icon" alt="">
-        <span id="score">0</span>
+        <img src="./assets/ui/icons/flower_currency_icon.png" class="hud-flower-icon" alt=""><span id="score">0</span>
       </section>
 
       <section id="hearts-box" class="hud-box" aria-label="Lives">
@@ -38,7 +37,8 @@
       </section>
 
       <section id="ability" class="hud-box" aria-label="Jump ability">
-        <span>JUMP</span><span class="bar" id="jumpbar"></span>
+        <img src="./assets/ui/tools/shovel_full.png" class="tool-icon" alt="">
+        <span class="bar" id="jumpbar"></span>
       </section>
 
       <section id="overlay" class="overlay on" aria-live="polite">

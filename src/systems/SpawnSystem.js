@@ -83,8 +83,9 @@ export class SpawnSystem {
     this.#spawnPattern(world, pattern, this.projection.maxDistance);
     this.#logSpawn(pattern, diff, world);
 
-    // Push orchid timer forward so it doesn't stack flowers on top of this pattern.
-    this.nextOrchid = Math.max(this.nextOrchid, 20);
+    // Push orchid timer forward; extra gap after vine patterns so obstacle vs reward reads clearly.
+    const hasVine = pattern.items.some(i => i.kind === 'obstacle' && i.type === 'vine');
+    this.nextOrchid = Math.max(this.nextOrchid, hasVine ? 68 : 30);
     this.nextPattern = diff.patternSpacing;
   }
 
@@ -161,14 +162,14 @@ export class SpawnSystem {
   }
 
   #spawnOrchidLine(world, baseDistance, lane) {
-    const count = 4 + Math.floor(Math.random() * 4);
+    const count = 3 + Math.floor(Math.random() * 2);
     const high  = chance(0.26);
     for (let i = 0; i < count; i++) {
       world.collectibles.push(new Collectible({
         type: 'flower',
         zone: zoneForMainLane(lane),
         lane,
-        distance: baseDistance + i * 7,
+        distance: baseDistance + i * 9,
         high,
       }));
     }
@@ -181,20 +182,20 @@ export class SpawnSystem {
         type: 'flower',
         zone: zoneForMainLane(lane),
         lane,
-        distance: baseDistance + i * 7,
+        distance: baseDistance + i * 10,
       }));
     });
   }
 
   #spawnOrchidWide(world, baseDistance) {
-    const rows = 2 + Math.floor(Math.random() * 2);
+    const rows = 1 + Math.floor(Math.random() * 2);
     for (let row = 0; row < rows; row++) {
       for (const lane of [-1, 0, 1]) {
         world.collectibles.push(new Collectible({
           type: 'flower',
           zone: zoneForMainLane(lane),
           lane,
-          distance: baseDistance + row * 9,
+          distance: baseDistance + row * 12,
         }));
       }
     }

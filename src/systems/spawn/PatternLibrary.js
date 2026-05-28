@@ -68,15 +68,16 @@ const PATTERNS = [
 
   {
     // Vine — first exposure. Wide recovery + triple reward teaches the jump.
+    // Flowers pushed to offset 55+ so they don't visually merge with the vine at distance.
     id: 'd1-vine-easy',
     difficulty: 1,
     weight: 2,
     items: [
       { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
-      { kind: 'flower', lane: -1, offset: 42 },
-      { kind: 'flower', lane: 0,  offset: 42 },
-      { kind: 'flower', lane: 1,  offset: 42 },
-      { kind: 'flower', lane: 0,  offset: 51 },
+      { kind: 'flower', lane: -1, offset: 56 },
+      { kind: 'flower', lane: 0,  offset: 56 },
+      { kind: 'flower', lane: 1,  offset: 56 },
+      { kind: 'flower', lane: 0,  offset: 65 },
     ],
   },
 
@@ -115,16 +116,17 @@ const PATTERNS = [
 
   {
     // Vine + single obstacle 52 units later: player lands with 18+ frames to dodge.
+    // Flowers at 52+ so they read as post-vine reward, not vine decoration.
     id: 'd2-vine-obstacle',
     difficulty: 2,
     weight: 2,
     items: [
       { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
-      { kind: 'flower', lane: 0,  offset: 38 },
-      { kind: 'flower', lane: 1,  offset: 38 },
-      { kind: 'obstacle', lane: -1, type: 'wall', offset: 52 },
-      { kind: 'flower', lane: 0,  offset: 66 },
-      { kind: 'flower', lane: 1,  offset: 66 },
+      { kind: 'flower', lane: 0,  offset: 52 },
+      { kind: 'flower', lane: 1,  offset: 52 },
+      { kind: 'obstacle', lane: -1, type: 'wall', offset: 64 },
+      { kind: 'flower', lane: 0,  offset: 78 },
+      { kind: 'flower', lane: 1,  offset: 78 },
     ],
   },
 
