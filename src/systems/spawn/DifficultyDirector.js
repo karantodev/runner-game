@@ -23,7 +23,7 @@ export class DifficultyDirector {
   }
 
   #orchidSpacing(level) {
-    const specs = [[22, 14], [20, 12], [17, 10], [14, 8]];
+    const specs = [[30, 18], [27, 16], [23, 12], [19, 10]];
     const [base, jitter] = specs[level - 1];
     return base + Math.random() * jitter;
   }

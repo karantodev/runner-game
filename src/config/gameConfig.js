@@ -8,8 +8,8 @@ export const GAME_CONFIG = Object.freeze({
   },
 
   projection: {
-    horizonRatio: 0.355,
-    roadVanishOffsetRatio: 0.062,
+    horizonRatio: 0.33,
+    roadVanishOffsetRatio: 0.068,
     groundRatio: 0.975,
     focal: 68,
     laneWidth: 214,

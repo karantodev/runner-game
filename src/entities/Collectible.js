@@ -15,6 +15,7 @@ export class Collectible {
     this.high = high;
     this.collected = false;
     this.t = Math.random() * Math.PI * 2;
+    this.laneJitter = type === 'flower' ? (Math.random() - 0.5) * 0.16 : 0;
   }
 
   update(delta, speed) {
