@@ -1,125 +1,139 @@
-# Orchid Quest — Endless Runner
+# Orchid Quest
 
-Collect orchids, jump over vines, avoid hazards, pick up power-ups.
+Endless-runner with three lanes, jumps, ducks, and procedurally generated obstacle patterns.
+Vanilla ES modules, no build step, runs in any modern browser.
 
----
-
-## Source of truth
-
-`src/` is the single source of truth. `dev.html` is the template for both dev and root loads. `npm run build` syncs `index.html` to the same module-entry template, so do not hand-edit `index.html`.
-
----
-
-## Development workflow
-
-### Dev server — ES modules, instant reload on save
+## Quick start
 
 ```bash
-npm run dev
+npm install
+npm run dev          # http://localhost:8080/dev.html
 ```
 
-Open:
+Keyboard: `← →` / `A D` move · `Space` / `↑` jump · `↓` / `S` crouch · `R` restart · `Esc` / `P` pause
+Gamepad and touch (swipe + on-screen buttons on mobile) also supported.
 
-```
-http://localhost:8080/dev.html
-```
+## URL parameters
 
-The dev build uses native ES modules via `<script type="module">`. No build step needed. Reload the browser after editing `src/`.
+| Param | Effect |
+|---|---|
+| `?seed=12345` or `?seed=any-string` | Deterministic spawn sequence (great for repro) |
+| `?hidpi=1` | Render at `window.devicePixelRatio` (crisper on Retina, heavier on mobile) |
+| `?touch=1` | Force the on-screen touch pad on desktop |
+| `?debug=1` | Debug panel + Performance HUD (FPS, entity counts) |
+| `?autostart=1` | Skip the menu and start a debug run immediately |
+| `?debugSteps=N` | Number of update ticks to advance when `debug=1` and `debugFreeze=1` |
 
-### Production build
+`debug=1` and `autostart=1` require `gameConfig.debug.allowLocalTools` and a localhost host.
+
+## Scripts
 
 ```bash
-npm run build
+npm run dev              # local server with hot reload (just reload the tab)
+npm run build            # sync index.html to dev.html (no bundling)
+npm run check            # CI gate — fails if index.html is stale
+npm run preview          # build, then serve at /
+npm run test:smoke       # 2 playwright specs — page loads, no console errors
+npm run test:runtime     # 5 playwright specs — input, leaderboard, seed determinism
+npm test                 # both spec files
 ```
 
-Syncs `index.html` from `dev.html` and preserves the module entry:
-
-```html
-<script type="module" src="./src/main.js"></script>
-```
-
-This build step must not regenerate an inline bundle.
-
-### Production preview
-
-```bash
-npm run preview
-```
-
-Builds and then serves. Open:
+## Architecture
 
 ```
-http://localhost:8080/
+src/
+  config/                game data + scene enums
+    gameConfig.js          single source of truth for tunables
+    sceneSchema.js         enums + helpers
+    sceneSchema.data.js    static scenery prefab tables
+  core/                  bootstrap + cross-cutting infra
+    Game.js                composition root
+    GameLoop.js            fixed-timestep accumulator (60Hz)
+    EventBus.js            pub/sub
+    InputManager.js        keyboard + touch + gamepad (edge-counter API)
+    TouchControls.js       binds DOM buttons → InputManager
+    AssetManager.js        Image preload + lookup
+    Leaderboard.js         localStorage top-N
+    PerformanceHUD.js      ?debug=1 overlay (FPS, entity counts)
+  ecs/                   entity-component-system
+    Entity.js              { id, alive, components }
+    EntityRegistry.js      create / destroy / query
+    components.js          pure data factories
+    factories.js           createPlayer / createObstacle / …
+    playerActions.js       pure functions over player components
+  systems/               per-frame logic + event responders
+    PlayerInputSystem.js   input → actions, sets jump/crouch buffers
+    PlayerPhysicsSystem.js lane damp + jump physics + buffer retry
+    MovementSystem.js      scroll all entities with Position+Scrollable
+    SpawnSystem.js         pattern + orchid + life + power-up timing
+    DecorationSystem.js    side-scenery chunks
+    CollisionSystem.js     emits flower:/life:/power:/hazard: events
+    PowerUpSystem.js       speed-burst / split-clones timers
+    ParticleSystem.js      VFX motion + lifetime
+    ScorePopupSystem.js    +1 popups
+    CleanupSystem.js       single registry.compact() per tick
+    GameStateSystem.js     score/lives/distance/tier from events
+    EffectsSystem.js       event-driven particle / popup spawning
+    RenderSystem.js        thin composition root for the render pipeline
+    HudSystem.js           DOM HUD (dirty-checked)
+    spawn/
+      DifficultyDirector.js  score+time → level + spacing
+      PatternLibrary.js      weighted pick from patterns.data
+      PathValidator.js       solvability simulation
+      PatternTests.js        35 self-checks + 10k stress spawns
+      patterns.data.js       21 patterns + split-bonus + safe-fallback
+  render/                rendering pipeline (no game logic)
+    RenderPipeline.js       fixed back-to-front composer
+    GradientCache.js        prebuilt CanvasGradient cache
+    SpriteRenderer.js       single drawImage helper
+    PixelPainter.js         keyed sprite facade
+    constants.js            LAYERS, PARALLAX, AMBIENT_MOTES
+    helpers.js              parallax, road geometry, tile scroll, shake
+    renderers/
+      SkyRenderer.js          sky + sun + haze
+      BackgroundRenderer.js   clouds + 3 mountain layers (tile-scroll)
+      LandmarksRenderer.js    castle + forest + meadow (tile-scroll)
+      RoadRenderer.js         offscreen-baked statics + dynamic bands
+      SceneryRenderer.js      midground + foreground + dynamic
+      GameplayRenderer.js     obstacles + collectibles + warning pulse
+      PlayerRenderer.js       player + clones (purple wash overlay)
+      EffectsRenderer.js      particles + popups + hit flash
+      scenery/
+        sceneryDispatch.js    Map<assetType, drawFn>
+  utils/
+    math.js                clamp, lerp, damp
+    pool.js                ObjectPool + compactInPlace
+    rng.js                 sfc32 PRNG with string-seed support
+  world/
+    Projection.js          pseudo-3D world→screen mapping
+    World.js               registry + system pipeline + scalars
+  main.js                  URL param parsing + boot
 ```
 
-### Freshness check (CI gate)
+## Adding content
 
-```bash
-npm run check
-```
+### A new obstacle
+1. Drop the PNG in `assets/obstacles/<category>/`.
+2. Add the key + path to `gameConfig.assets`.
+3. Add the gameplay `type` to `factories.OBSTACLE_DEFAULT_ASSET` (if needed).
+4. Wire the visual in `render/renderers/GameplayRenderer.js#obstacleEntity`.
+5. Update `CollisionSystem.#hitObstacles` if it needs special clear rules
+   (vine = jump, overhang = crouch, anything else = hazard).
+6. Extend `PathValidator.#simulate` if the new type changes solvability.
+7. Use it in `systems/spawn/patterns.data.js`.
 
-Exits 1 if `index.html` is out of sync with `dev.html`, if the module entry is missing, or if inline bundled source reappears. Run in CI before deployment.
+### A new pattern
+Append to `systems/spawn/patterns.data.js`. Run `npm run test:runtime` —
+`runPatternTests` validates every pattern + 10 000 simulated spawns.
 
-**If this fails:** run `npm run build` and commit the updated `index.html`.
+### A new scenery type
+Register a draw function in `render/renderers/scenery/sceneryDispatch.js`.
 
----
+## Tests
 
-## Browser smoke tests
-
-Requires Playwright (installed as a dev dependency).
-
-```bash
-npm run test:smoke
-```
-
-This starts the local server automatically, runs Chromium headless, and verifies:
-- dev.html loads without JS errors
-- production / loads without JS errors
-- Canvas is present with non-zero dimensions
-- Keyboard input (arrows, space, ESC, R) doesn't cause errors
-- Game starts, pauses, and restarts correctly
-- production `/` still uses `./src/main.js`
-- production `/` does not contain inline bundled renderer source
-
-Re-run after any refactor or build system change. Takes ~10 seconds.
-
----
-
-## Adding a new module to `src/`
-
-1. Create the file in `src/` (e.g. `src/systems/MySystem.js`).
-2. Use `export class` or `export function` / `export const` for all public symbols.
-3. Import it from the files that use it with normal ES module syntax.
-4. Make sure the module is reachable from the runtime entry chain rooted at `src/main.js`.
-5. Run `npm run build` to sync `index.html` from `dev.html`.
-6. Run `npm run check` to verify the root page stayed on the module-entry template.
-
----
-
-## Adding a new asset
-
-1. Place the image in the appropriate `assets/` subdirectory.
-2. Add a new entry to the `assets` section of `src/config/gameConfig.js`:
-   ```js
-   myAssetKey: './assets/<subdir>/<filename>.png',
-   ```
-3. Use `this.assets.get('myAssetKey')` in rendering code (via `SpriteRenderer` or directly).
-4. The asset manager logs a warning to the console if any asset fails to load — check the browser console after adding a new asset to confirm it resolves.
-5. All assets have procedural fallbacks in `PixelPainter.js`; the game works without them but looks better with them.
-
----
-
-## Visual review
-
-Use the accepted QA flow documented in:
-
-```
-docs/visual-qa.md
-```
-
-That document covers:
-
-1. local preview
-2. debug-run capture
-3. runtime error checks
-4. visual pass/fail criteria
+- `tests/smoke.spec.js` — page boot, no JS errors, root build stays on module entry.
+- `tests/ecs-runtime.spec.js` — full input sweep, touch buttons, jump
+  buffer, leaderboard CRUD, seed determinism.
+- `src/systems/spawn/PatternTests.js` — 35 self-checks + a 10k pattern
+  stress run across difficulty tiers (call from the debug API or
+  `node -e "import('./src/systems/spawn/PatternTests.js').then(m=>console.log(m.runPatternTests().summary))"`).
