@@ -21,6 +21,7 @@ export class World {
     this.clouds = this.#makeClouds();
     this.state = 'menu';
     this._occupiedLanes = [];
+    this._renderLanes = [];
     this.reset();
   }
 
@@ -301,13 +302,27 @@ export class World {
     return out;
   }
 
+  /**
+   * Returns the lane positions to render the player + clones at. Reuses a
+   * scratch array so we don't allocate per call. Dedup tolerates float
+   * jitter via an epsilon — no Set / toFixed needed.
+   */
   getPlayerRenderLanes() {
-    if (!this.powerUpSystem.isSplitClonesActive()) return [this.player.laneX];
-    return [...new Set([
-      clamp(this.player.laneX - 1, this.config.player.minLane, this.config.player.maxLane),
-      this.player.laneX,
-      clamp(this.player.laneX + 1, this.config.player.minLane, this.config.player.maxLane),
-    ].map((lane) => Number(lane.toFixed(3))))];
+    const out = this._renderLanes;
+    out.length = 0;
+    const center = this.player.laneX;
+    if (!this.powerUpSystem.isSplitClonesActive()) {
+      out.push(center);
+      return out;
+    }
+    const minLane = this.config.player.minLane;
+    const maxLane = this.config.player.maxLane;
+    const left = clamp(center - 1, minLane, maxLane);
+    const right = clamp(center + 1, minLane, maxLane);
+    out.push(center);
+    if (Math.abs(left - center) > 0.001) out.push(left);
+    if (Math.abs(right - center) > 0.001 && Math.abs(right - left) > 0.001) out.push(right);
+    return out;
   }
 
   #updateTier() {

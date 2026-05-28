@@ -1,11 +1,11 @@
 import { roadBaseHalfWidth, roadTopHalfWidth } from '../helpers.js';
 
 /**
- * Painted ground + perspective road (trapezoid, scrolling stripe bands,
- * shoulder strips, dashed lane lines, edge highlights).
- *
- * Phase 3a keeps the implementation 1:1 with the original RenderSystem
- * methods. Phase 3b will move the static portion onto an offscreen canvas.
+ * Painted ground + perspective road. Static elements (ground gradient,
+ * road trapezoid, painted highlights, edge gradient lines) are baked
+ * into an offscreen layer once and blitted with a single drawImage per
+ * frame; dynamic elements (98 scroll-driven perspective bands, the
+ * scrolling shoulder + lane-dash strips) stay procedural in the hot path.
  */
 export class RoadRenderer {
   constructor({ ctx, projection, assets, gradients }) {
@@ -13,15 +13,40 @@ export class RoadRenderer {
     this.projection = projection;
     this.assets = assets;
     this.gradients = gradients;
+    this._staticLayer = this.#buildStaticLayer();
   }
 
   render(world) {
-    this.#ground();
-    this.#road(world.scrollOffset);
+    // Single blit replaces ~50 ground / trapezoid / edge ops per frame.
+    this.ctx.drawImage(this._staticLayer, 0, 0);
+    this.#roadBands(world.scrollOffset);
+    this.#roadShoulders(world.scrollOffset);
+    this.#laneDashes(world.scrollOffset);
   }
 
-  #ground() {
-    const ctx = this.ctx;
+  /**
+   * Bake the ground + road trapezoid + road edges to an offscreen canvas.
+   * Caller invalidates via rebuildStaticLayer() if the projection changes.
+   */
+  #buildStaticLayer() {
+    const p = this.projection;
+    const layer = document.createElement('canvas');
+    layer.width = p.width;
+    layer.height = p.height;
+    const c = layer.getContext('2d');
+    this.#paintGround(c);
+    this.#paintRoadTrapezoid(c);
+    this.#paintRoadEdges(c);
+    return layer;
+  }
+
+  rebuildStaticLayer() {
+    this._staticLayer = this.#buildStaticLayer();
+  }
+
+  // ── Static elements (baked into the offscreen layer) ────────────────────────
+
+  #paintGround(ctx) {
     const { width, height } = this.projection;
     const startY = this.gradients.gradients.groundStartY;
 
@@ -48,8 +73,7 @@ export class RoadRenderer {
     ctx.restore();
   }
 
-  #road(scrollOffset) {
-    const ctx = this.ctx;
+  #paintRoadTrapezoid(ctx) {
     const p = this.projection;
     const vpX = p.width / 2;
     const vpY = p.roadVanishY;
@@ -65,9 +89,64 @@ export class RoadRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Perspective-correct scrolling stripe surface — no image dependency.
+    // Light vanishing-point highlight strip baked alongside the trapezoid.
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = '#e8ffb8';
+    ctx.beginPath();
+    ctx.moveTo(vpX - topHalf, vpY + 3);
+    ctx.lineTo(vpX + topHalf, vpY + 3);
+    ctx.lineTo(vpX + topHalf * 2.0, vpY + 30);
+    ctx.lineTo(vpX - topHalf * 2.0, vpY + 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  #paintRoadEdges(ctx) {
+    const p = this.projection;
+    const vpX = p.width / 2;
+    const vpY = p.roadVanishY;
+    const baseHalf = roadBaseHalfWidth(p);
+    const topHalf = roadTopHalfWidth(p);
+
+    ctx.save();
+    ctx.strokeStyle = this.gradients.gradients.roadEdge;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(vpX - baseHalf, p.groundY);
+    ctx.lineTo(vpX - topHalf, vpY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(vpX + baseHalf, p.groundY);
+    ctx.lineTo(vpX + topHalf, vpY);
+    ctx.stroke();
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = '#194f24';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(vpX - baseHalf - 8, p.groundY);
+    ctx.lineTo(vpX - topHalf - 4, vpY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(vpX + baseHalf + 8, p.groundY);
+    ctx.lineTo(vpX + topHalf + 4, vpY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Dynamic elements (per-frame, scrolling) ─────────────────────────────────
+
+  #roadBands(scrollOffset) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const vpX = p.width / 2;
+    const vpY = p.roadVanishY;
+    const baseHalf = roadBaseHalfWidth(p);
+    const topHalf = roadTopHalfWidth(p);
     const numBands = 98;
-    const STRIPE_PERIOD = 6.2; // world units per full stripe repeat
+    const STRIPE_PERIOD = 6.2;
+
     for (let i = 0; i < numBands; i += 1) {
       const s1 = Math.max(0.010, i / numBands);
       const s2 = Math.max(0.010, (i + 1) / numBands);
@@ -102,13 +181,9 @@ export class RoadRenderer {
         }
       }
     }
-
-    this.#roadShoulders(scrollOffset, topHalf);
-    this.#laneDashes(scrollOffset);
-    this.#roadEdges(topHalf);
   }
 
-  #roadShoulders(scrollOffset, topHalf) {
+  #roadShoulders(scrollOffset) {
     const ctx = this.ctx;
     const p = this.projection;
     const laneOuter = p.roadHalfLaneUnits + 0.04;
@@ -160,18 +235,6 @@ export class RoadRenderer {
         ctx.fillRect(ep.sx + side * w, ep.sy - Math.max(1, Math.round(h * 0.55)), Math.max(1, w - 1), Math.max(1, Math.round(h * 0.55)));
       }
     }
-
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = '#e8ffb8';
-    ctx.beginPath();
-    ctx.moveTo(p.width / 2 - topHalf * 1.0, p.roadVanishY + 3);
-    ctx.lineTo(p.width / 2 + topHalf * 1.0, p.roadVanishY + 3);
-    ctx.lineTo(p.width / 2 + topHalf * 2.0, p.roadVanishY + 30);
-    ctx.lineTo(p.width / 2 - topHalf * 2.0, p.roadVanishY + 30);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
   }
 
   #laneDashes(scrollOffset) {
@@ -238,36 +301,5 @@ export class RoadRenderer {
     ctx.drawImage(image, minX, minY, width, height);
     ctx.restore();
     return true;
-  }
-
-  #roadEdges(topHalf) {
-    const ctx = this.ctx;
-    const p = this.projection;
-    const vpX = p.width / 2;
-    const vpY = p.roadVanishY;
-    const baseHalf = roadBaseHalfWidth(p);
-    ctx.save();
-    ctx.strokeStyle = this.gradients.gradients.roadEdge;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(vpX - baseHalf, p.groundY);
-    ctx.lineTo(vpX - topHalf, vpY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(vpX + baseHalf, p.groundY);
-    ctx.lineTo(vpX + topHalf, vpY);
-    ctx.stroke();
-    ctx.globalAlpha = 0.22;
-    ctx.strokeStyle = '#194f24';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(vpX - baseHalf - 8, p.groundY);
-    ctx.lineTo(vpX - topHalf - 4, vpY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(vpX + baseHalf + 8, p.groundY);
-    ctx.lineTo(vpX + topHalf + 4, vpY);
-    ctx.stroke();
-    ctx.restore();
   }
 }
