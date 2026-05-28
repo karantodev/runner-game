@@ -29,6 +29,8 @@ export const ASSET_TYPES = Object.freeze({
   speed_tree_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   power_mushroom_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   vine_barrier: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '2-3 lanes' },
+  low_branch_overhang: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '3 lanes (overhead)' },
+  spider_web_overhang: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '3 lanes (overhead)' },
   spiky_bush_obstacle: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   dry_grass_obstacle: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   small_center_mushroom: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },

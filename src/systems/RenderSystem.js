@@ -777,6 +777,11 @@ export class RenderSystem {
       return;
     }
 
+    if (item.type === 'overhang') {
+      this.#overhang(item.distance, assetType, item.warning, world.timeAlive);
+      return;
+    }
+
     const p = this.projection.project(item.lane, item.distance);
     if (item.warning) this.#warningPulse(p.sx, p.sy - 58 * p.scale, p.scale, world.timeAlive);
     if (assetType === 'spiky_bush_obstacle' || item.type === 'bush') this.paint.bush(p.sx, p.sy, p.scale);
@@ -845,6 +850,117 @@ export class RenderSystem {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  #overhang(distance, assetType, warning, timeAlive) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const p1 = p.project(-p.roadHalfLaneUnits + 0.1, distance);
+    const p2 = p.project(p.roadHalfLaneUnits - 0.1, distance);
+    const scale = p1.scale;
+    const cx = (p1.sx + p2.sx) / 2;
+    const roadW = (p2.sx - p1.sx) + 110 * scale;
+
+    // Overhead bar — hangs from above the road, leaving a gap below for the
+    // crouching player. Anchor TOP, so the asset's transparent lower zone
+    // sits exactly above ground level.
+    const key = assetType === 'spider_web_overhang' ? 'spiderWebOverhang' : 'lowBranchOverhang';
+    const image = this.assets.get(key);
+
+    const headroom = 132 * scale;  // distance from ground up to the top of the gap
+    const overhangTopY = p1.sy - headroom - 110 * scale;
+
+    // Cast shadow under the overhang so it reads as overhead even before art loads.
+    ctx.save();
+    ctx.globalAlpha = 0.26;
+    ctx.fillStyle = '#1a4a20';
+    ctx.beginPath();
+    ctx.ellipse(cx, p1.sy - 4 * scale, roadW * 0.42, 7 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (image?.naturalWidth) {
+      const aspect = image.naturalHeight / image.naturalWidth;
+      const drawW = roadW;
+      const drawH = drawW * aspect;
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
+      ctx.restore();
+    } else {
+      this.#paintOverhangFallback(cx, overhangTopY, roadW, scale, assetType);
+    }
+
+    if (warning) {
+      const pulse = 0.5 + 0.5 * Math.sin(timeAlive * 0.32);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,220,120,${0.28 + pulse * 0.14})`;
+      ctx.lineWidth = Math.max(2, 9 * scale);
+      ctx.setLineDash([12 * scale, 8 * scale]);
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, overhangTopY + headroom + 16 * scale);
+      ctx.lineTo(p2.sx, overhangTopY + headroom + 16 * scale);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  #paintOverhangFallback(cx, topY, width, scale, assetType) {
+    const ctx = this.ctx;
+    const trunkH = 26 * scale;
+    const leafH = 88 * scale;
+
+    if (assetType === 'spider_web_overhang') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(240,244,255,0.78)';
+      ctx.lineWidth = Math.max(1, 2 * scale);
+      const cy = topY + leafH * 0.5;
+      const halfW = width * 0.5;
+      // Radial strands.
+      for (let i = 0; i < 8; i += 1) {
+        const angle = (i / 8) * Math.PI + 0.1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * halfW, cy + Math.sin(angle) * leafH * 0.4);
+        ctx.stroke();
+      }
+      // Concentric rings.
+      for (let r = 1; r <= 3; r += 1) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, halfW * (r / 3), leafH * 0.4 * (r / 3), 0, Math.PI, 0);
+        ctx.stroke();
+      }
+      // Tiny spider in the middle.
+      ctx.fillStyle = '#3a2454';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 4 * scale, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // Default: chunky branch with leaves.
+    ctx.save();
+    ctx.fillStyle = '#6e4a26';
+    ctx.fillRect(cx - width / 2, topY + leafH * 0.4, width, trunkH);
+    ctx.fillStyle = '#2e8b2e';
+    const leafCount = 12;
+    for (let i = 0; i < leafCount; i += 1) {
+      const t = i / (leafCount - 1);
+      const x = cx - width / 2 + t * width;
+      ctx.beginPath();
+      ctx.arc(x, topY + leafH * (0.3 + (i % 2) * 0.18), 28 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#48a948';
+    for (let i = 0; i < leafCount; i += 2) {
+      const t = i / (leafCount - 1);
+      const x = cx - width / 2 + t * width;
+      ctx.beginPath();
+      ctx.arc(x - 6 * scale, topY + leafH * 0.22, 16 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   #scenery(item, world, layer) {
@@ -1003,17 +1119,24 @@ export class RenderSystem {
 
     // Try sprite first — draw outside the canvas transform stack so squash/stretch apply separately
     // runFrame advances at speed*0.7/tick; divide by 3.15 to target ~12 FPS at base speed (10–14 FPS range)
-    const frameIndex = Math.floor(Math.abs(player.runFrame) / 3.15) % 8;
-    const runKey = `playerFarmerRun${String(frameIndex + 1).padStart(2, '0')}`;
-    const spriteImg = (this.assets.get(runKey) ?? this.assets.get('playerFarmerRun01'));
+    const crouching = player.isCrouching;
+    const frameCount = crouching ? 4 : 8;
+    const frameIndex = Math.floor(Math.abs(player.runFrame) / 3.15) % frameCount;
+    const spriteKeyPrefix = crouching ? 'playerFarmerCrouch' : 'playerFarmerRun';
+    const fallbackKey = crouching ? 'playerFarmerCrouch01' : 'playerFarmerRun01';
+    const runKey = `${spriteKeyPrefix}${String(frameIndex + 1).padStart(2, '0')}`;
+    const spriteImg = (this.assets.get(runKey) ?? this.assets.get(fallbackKey));
     // Always derive proportions from frame 01 so all frames render at the same size.
-    const refFrame = this.assets.get('playerFarmerRun01') ?? spriteImg;
+    const refFrame = this.assets.get(fallbackKey) ?? spriteImg;
     if (spriteImg?.naturalWidth && !isClone) {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(x, y);
       ctx.rotate(tilt);
-      ctx.scale(squash, stretch);
+      // Crouch-only Y squash so the silhouette unmistakably reads as ducking
+      // (source art is only mildly lower than the standing run).
+      const crouchSquashY = crouching ? world.config.player.crouch.spriteYScale : 1;
+      ctx.scale(squash, stretch * crouchSquashY);
       const spriteW = 118 * bodyScale;
       const spriteH = spriteW * (refFrame.naturalHeight / refFrame.naturalWidth);
       ctx.drawImage(spriteImg, -spriteW / 2, -spriteH, spriteW, spriteH);
