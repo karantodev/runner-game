@@ -3,8 +3,8 @@
  * within one frame are consumed as two distinct lane-switches instead of one.
  * Held actions stay as booleans.
  */
-const EDGE_ACTIONS = ['moveLeft', 'moveRight', 'jump', 'restart', 'pause', 'start'];
-const HELD_ACTIONS = ['jumpHeld'];
+const EDGE_ACTIONS = ['moveLeft', 'moveRight', 'jump', 'crouchDown', 'restart', 'pause', 'start'];
+const HELD_ACTIONS = ['jumpHeld', 'crouchHeld'];
 
 export class InputManager {
   /** @type {Record<string, number>} edge-action counters */
@@ -56,6 +56,14 @@ export class InputManager {
     this.#setButtonEdge('jump', jumpPressed);
     this.#setButtonEdge('start', jumpPressed);
     this.#held.jumpHeld = jumpPressed;
+
+    // D-pad-down (button 13) or right-stick / left-stick down. We do NOT
+    // re-use button 0 — that's jump.
+    const yAxis = pad.axes[1] ?? 0;
+    const crouchPressed = Boolean(pad.buttons[13]?.pressed) || yAxis > 0.55;
+    this.#setButtonEdge('crouchDown', crouchPressed);
+    this.#held.crouchHeld = crouchPressed;
+
     this.#setButtonEdge('pause', Boolean(pad.buttons[9]?.pressed));
     this.#setButtonEdge('restart', Boolean(pad.buttons[8]?.pressed));
   }
@@ -88,6 +96,12 @@ export class InputManager {
           this.#edge.start += 1;
           this.#held.jumpHeld = true;
           break;
+        case 'ArrowDown':
+        case 'KeyS':
+          event.preventDefault();
+          this.#edge.crouchDown += 1;
+          this.#held.crouchHeld = true;
+          break;
         case 'KeyR':
           this.#edge.restart += 1;
           break;
@@ -102,6 +116,9 @@ export class InputManager {
     window.addEventListener('keyup', (event) => {
       if (event.code === 'ArrowUp' || event.code === 'KeyW' || event.code === 'Space') {
         this.#held.jumpHeld = false;
+      }
+      if (event.code === 'ArrowDown' || event.code === 'KeyS') {
+        this.#held.crouchHeld = false;
       }
     });
   }
@@ -136,6 +153,10 @@ export class InputManager {
         } else if (-dy > 34) {
           this.#edge.jump += 1;
           this.#edge.start += 1;
+        } else if (dy > 34) {
+          // Swipe down → crouch. crouchHeld stays false; Player's min-hold
+          // logic keeps the duck visible for the tap-window.
+          this.#edge.crouchDown += 1;
         } else if (Math.abs(dx) < 24 && Math.abs(dy) < 24) {
           this.#edge.jump += 1;
           this.#edge.start += 1;
@@ -156,6 +177,7 @@ export class InputManager {
     // so jumpHeld would remain true after returning.
     const releaseHeld = () => {
       this.#held.jumpHeld = false;
+      this.#held.crouchHeld = false;
       this.#touchStart = null;
       this.#activeTouchId = null;
     };

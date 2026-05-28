@@ -30,6 +30,7 @@ test.describe('production build (/)', () => {
     await expect(page.locator('#game')).toBeVisible();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Space');
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Escape');
     await page.keyboard.press('KeyR');
 

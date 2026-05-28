@@ -25,6 +25,18 @@ export const GAME_CONFIG = Object.freeze({
     jumpVelocity: -16.5,
     jumpHoldBoost: -0.8,
     maxJumpHoldFrames: 10,
+    crouch: {
+      // Tap-to-crouch minimum dwell (frames). Holding ↓/S keeps you crouched
+      // past this; releasing earlier still keeps the crouch until this expires
+      // so swipe-down on touch produces a usable duck.
+      minHoldFrames: 26,
+      // Visual squash (Y scale) applied to the crouch sprite so the silhouette
+      // unmistakably reads as ducking — the source art is only mildly lower.
+      spriteYScale: 0.78,
+      // Pre-emptive crouch window in frames: a tap up to this many frames
+      // before the overhang arrives still counts (input buffering).
+      bufferFrames: 7,
+    },
   },
 
   gameplay: {
@@ -156,6 +168,10 @@ export const GAME_CONFIG = Object.freeze({
     bushWithFlowers: './assets/decor_small/bushes/bush_with_purple_flowers.png',
     sproutSoil: './assets/decor_small/plants/sprout_soil.png',
 
+    // Overhead obstacles — player must crouch to pass under these
+    lowBranchOverhang: './assets/obstacles/overhangs/low_branch_overhang.png',
+    spiderWebOverhang: './assets/obstacles/overhangs/spider_web_overhang.png',
+
     // Player sprite (8-frame run cycle)
     playerFarmerRun01: './assets/player/farmer_run/player_farmer_run_01.png',
     playerFarmerRun02: './assets/player/farmer_run/player_farmer_run_02.png',
@@ -165,6 +181,12 @@ export const GAME_CONFIG = Object.freeze({
     playerFarmerRun06: './assets/player/farmer_run/player_farmer_run_06.png',
     playerFarmerRun07: './assets/player/farmer_run/player_farmer_run_07.png',
     playerFarmerRun08: './assets/player/farmer_run/player_farmer_run_08.png',
+
+    // Player sprite (4-frame crouch-run cycle)
+    playerFarmerCrouch01: './assets/player/farmer_crouch/player_farmer_crouch_01.png',
+    playerFarmerCrouch02: './assets/player/farmer_crouch/player_farmer_crouch_02.png',
+    playerFarmerCrouch03: './assets/player/farmer_crouch/player_farmer_crouch_03.png',
+    playerFarmerCrouch04: './assets/player/farmer_crouch/player_farmer_crouch_04.png',
 
     // UI — buttons
     uiPauseButton: './assets/ui/buttons/pause_button.png',

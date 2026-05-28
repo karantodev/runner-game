@@ -110,6 +110,10 @@ export class World {
       if (jumped) this.addCameraImpulse(1.8);
     }
 
+    if (input.consume('crouchDown')) {
+      if (this.player.crouch()) this.addCameraImpulse(0.9);
+    }
+
     this.timeAlive += delta;
     this.invulnerabilityFrames = Math.max(0, this.invulnerabilityFrames - delta);
     this.cameraShake *= 0.84;
@@ -130,6 +134,7 @@ export class World {
       delta,
       speed: this.speed,
       jumpHeld: input.isHeld('jumpHeld'),
+      crouchHeld: input.isHeld('crouchHeld'),
       particles: this.config.gameFeel.particles ? this.particles : null,
       groundY: this.projection.groundY,
       laneWidth: this.projection.laneWidth,
@@ -157,7 +162,7 @@ export class World {
   }
 
   applyHazardPenalty(type) {
-    const scorePenaltyTypes = new Set(['mushroom', 'bush', 'wheat']);
+    const scorePenaltyTypes = new Set(['mushroom', 'bush', 'wheat', 'overhang']);
     if (!scorePenaltyTypes.has(type)) return;
     this.addScore(-this.config.gameplay.hazardScorePenalty);
   }

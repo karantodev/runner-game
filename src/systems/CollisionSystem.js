@@ -71,6 +71,12 @@ export class CollisionSystem {
         world.addClearParticles();
         continue;
       }
+      if (obstacle.type === 'overhang' && player.isCrouching) {
+        // Ducked under successfully — celebratory clear.
+        obstacle.hit = true;
+        world.addClearParticles();
+        continue;
+      }
 
       obstacle.hit = true;
       world.applyHazardPenalty(obstacle.type);

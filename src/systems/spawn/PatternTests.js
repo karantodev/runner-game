@@ -25,6 +25,39 @@ const VINE_AIRBORNE_CLEAR = {
   ],
 };
 
+// A solo overhang must be solvable by crouching.
+const OVERHANG_SOLO = {
+  id: '_test_overhang_solo',
+  difficulty: 0,
+  items: [
+    { kind: 'obstacle', type: 'overhang', offset: 0 },
+  ],
+};
+
+// Overhang immediately followed by a vine — duck under, stand up, then jump.
+// The vine arrives well after the crouch expires (24 units), so this must
+// stay solvable.
+const OVERHANG_THEN_VINE = {
+  id: '_test_overhang_then_vine',
+  difficulty: 0,
+  items: [
+    { kind: 'obstacle', type: 'overhang', offset: 0 },
+    { kind: 'obstacle', allLanes: true, type: 'vine', offset: 30 },
+  ],
+};
+
+// Pathologically tight: overhang immediately followed by a vine 6 units later.
+// The player is locked in the crouch (24-unit dwell) when the vine arrives,
+// cannot jump in time, so this MUST be rejected.
+const OVERHANG_THEN_VINE_IMPOSSIBLE = {
+  id: '_test_overhang_vine_impossible',
+  difficulty: 0,
+  items: [
+    { kind: 'obstacle', type: 'overhang', offset: 0 },
+    { kind: 'obstacle', allLanes: true, type: 'vine', offset: 6 },
+  ],
+};
+
 // ── Simulated game worlds for speed-tier tests ───────────────────────────────
 
 const SPEED_TIERS = [
@@ -77,6 +110,29 @@ export function runPatternTests() {
   } else {
     results.failed++;
     results.failures.push({ test: 'vine-airborne-clear fixture', reason: 'validator incorrectly rejected a pattern where player clears mid-air obstacle' });
+  }
+
+  // ── 3b. Crouch-related fixtures ────────────────────────────────────────────
+
+  if (validator.isSolvable(OVERHANG_SOLO)) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'overhang-solo fixture', reason: 'validator rejected a pattern solvable by ducking' });
+  }
+
+  if (validator.isSolvable(OVERHANG_THEN_VINE)) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'overhang-then-vine fixture', reason: 'validator rejected duck-then-jump path with sufficient spacing' });
+  }
+
+  if (!validator.isSolvable(OVERHANG_THEN_VINE_IMPOSSIBLE)) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'overhang→vine-too-tight fixture', reason: 'validator failed to reject crouch-locked-into-vine pattern' });
   }
 
   // ── 4. Speed-tier stress test (10,000 total spawns) ───────────────────────

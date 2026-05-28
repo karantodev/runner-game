@@ -152,7 +152,7 @@ export class HudSystem {
     if (state === 'menu') {
       this.#show(
         'Orchid Quest',
-        'Collect Orchids, jump over vines, and avoid harmful greens. Tree gives a speed burst. Purple mushroom splits you into clones.',
+        'Collect Orchids, jump over vines (SPACE / ↑), duck under hanging branches (↓ / S), and avoid harmful greens. Tree gives a speed burst. Purple mushroom splits you into clones.',
         'Start Run',
       );
     }

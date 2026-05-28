@@ -5,6 +5,9 @@
 // Each pattern must satisfy PathValidator rules:
 //   - No simultaneous 3-lane ground block (window = 13 units)
 //   - No ground obstacle within 36 units after a vine
+//   - Overhangs (overhead barriers) require the player to crouch; they cannot
+//     be jumped over and the duck lock-out runs for ~24 world units, so any
+//     vine that follows an overhang must sit at least 25 units later.
 
 const PATTERNS = [
 
@@ -159,6 +162,21 @@ const PATTERNS = [
     ],
   },
 
+  {
+    // First overhang exposure — wide buffer before/after, teaches the duck.
+    // Flowers at 52+ so they read as post-duck reward, not overhang decoration.
+    id: 'd2-overhang-easy',
+    difficulty: 2,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', type: 'overhang', assetType: 'low_branch_overhang', offset: 0 },
+      { kind: 'flower', lane: -1, offset: 52 },
+      { kind: 'flower', lane: 0,  offset: 52 },
+      { kind: 'flower', lane: 1,  offset: 52 },
+      { kind: 'flower', lane: 0,  offset: 62 },
+    ],
+  },
+
   // ── Difficulty 3: skilled — reaction, planning, tight vines ─────────────────
 
   {
@@ -222,6 +240,37 @@ const PATTERNS = [
     ],
   },
 
+  {
+    // Vine → overhang combo. Land from the vine (≤34u airborne), then duck.
+    // Overhang at 48 → player has been on ground ~14 units → plenty of time
+    // to tap crouch.
+    id: 'd3-vine-then-overhang',
+    difficulty: 3,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
+      { kind: 'flower', lane: 0,  offset: 38 },
+      { kind: 'obstacle', type: 'overhang', assetType: 'spider_web_overhang', offset: 48 },
+      { kind: 'flower', lane: -1, offset: 78 },
+      { kind: 'flower', lane: 1,  offset: 78 },
+    ],
+  },
+
+  {
+    // Overhang → vine. Crouch lock-out runs ~24u, vine at 30 — barely
+    // enough to stand and jump. Solvable but demands quick recovery.
+    id: 'd3-overhang-then-vine',
+    difficulty: 3,
+    weight: 2,
+    items: [
+      { kind: 'flower', lane: 0,  offset: 0  },
+      { kind: 'obstacle', type: 'overhang', assetType: 'low_branch_overhang', offset: 16 },
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 48 },
+      { kind: 'flower', lane: 0,  offset: 84 },
+      { kind: 'flower', lane: -1, offset: 84 },
+    ],
+  },
+
   // ── Difficulty 4: expert — minimal spacing, three-wave, vine combos ──────────
 
   {
@@ -273,6 +322,39 @@ const PATTERNS = [
       // Reward on final safe lane
       { kind: 'flower', lane: -1, offset: 52 },
       { kind: 'flower', lane: -1, offset: 60 },
+      { kind: 'flower', lane: -1, offset: 68 },
+    ],
+  },
+
+  {
+    // Vine → overhang → vine. Expert duck-jump-duck-jump rhythm.
+    // Spacing: vine(0), land~31, overhang(46), crouch expires ~70, vine(78).
+    id: 'd4-vine-overhang-vine',
+    difficulty: 4,
+    weight: 1,
+    items: [
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
+      { kind: 'flower', lane: 0,  offset: 38 },
+      { kind: 'obstacle', type: 'overhang', assetType: 'spider_web_overhang', offset: 46 },
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 78 },
+      { kind: 'flower', lane: -1, offset: 112 },
+      { kind: 'flower', lane: 0,  offset: 112 },
+      { kind: 'flower', lane: 1,  offset: 112 },
+    ],
+  },
+
+  {
+    // Overhang followed by single-lane block: duck under, then read the
+    // lane block (well after crouch lock-out expires).
+    id: 'd4-overhang-then-lane-block',
+    difficulty: 4,
+    weight: 1,
+    items: [
+      { kind: 'obstacle', type: 'overhang', assetType: 'low_branch_overhang', offset: 0 },
+      { kind: 'flower', lane: 0, offset: 30 },
+      { kind: 'obstacle', lane: 0, type: 'wall', offset: 44 },
+      { kind: 'flower', lane: -1, offset: 60 },
+      { kind: 'flower', lane: 1,  offset: 60 },
       { kind: 'flower', lane: -1, offset: 68 },
     ],
   },

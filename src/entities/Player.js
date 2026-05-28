@@ -19,6 +19,8 @@ export class Player {
     this.laneTilt = 0;
     this.jumpStretch = 0;
     this.landSquash = 0;
+    this.isCrouching = false;
+    this.crouchHoldFrames = 0;
   }
 
   moveLane(direction) {
@@ -27,6 +29,13 @@ export class Player {
 
   jump(particles, groundY, laneWidth, centerX) {
     if (this.isJumping) return false;
+    // Jumping cancels a crouch — but only after the minimum dwell, otherwise
+    // an accidental Up tap right after Down would let the player escape an
+    // overhang frame instead of taking the duck.
+    if (this.isCrouching) {
+      if (this.crouchHoldFrames < this.config.crouch.minHoldFrames) return false;
+      this.standUp();
+    }
     this.vy = this.config.jumpVelocity;
     this.isJumping = true;
     this.jumpHoldFrames = 0;
@@ -48,7 +57,24 @@ export class Player {
     return true;
   }
 
-  update({ delta, speed, jumpHeld, particles, groundY, laneWidth, centerX }) {
+  /**
+   * Try to start crouching. Refused while airborne (you cannot duck mid-jump).
+   * Returns true if the crouch state was newly entered.
+   */
+  crouch() {
+    if (this.isJumping) return false;
+    if (this.isCrouching) return false;
+    this.isCrouching = true;
+    this.crouchHoldFrames = 0;
+    return true;
+  }
+
+  standUp() {
+    this.isCrouching = false;
+    this.crouchHoldFrames = 0;
+  }
+
+  update({ delta, speed, jumpHeld, crouchHeld, particles, groundY, laneWidth, centerX }) {
     let landed = false;
     const previousLaneX = this.laneX;
     this.laneX = damp(this.laneX, this.targetLane, 10.5 * this.config.laneLerp, delta);
@@ -83,6 +109,15 @@ export class Player {
             }));
           }
         }
+      }
+    }
+
+    if (this.isCrouching) {
+      this.crouchHoldFrames += delta;
+      // Stand up only after the minimum dwell has elapsed AND the input is
+      // no longer held — keeps swipe-down (no hold) usable on touch.
+      if (!crouchHeld && this.crouchHoldFrames >= this.config.crouch.minHoldFrames) {
+        this.standUp();
       }
     }
 
