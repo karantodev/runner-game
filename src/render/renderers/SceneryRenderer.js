@@ -32,19 +32,19 @@ export class SceneryRenderer {
     this.#foregroundGarden(world.scrollOffset, world);
 
     // Reuse the two scratch arrays — clearing length to 0 keeps the same
-    // backing storage and avoids the per-frame allocation of two new arrays.
+    // backing storage and avoids per-frame allocation of two new arrays.
     const structural = this._structural;
     const organic = this._organic;
     structural.length = 0;
     organic.length = 0;
-    for (const item of world.scenery) {
-      if (this.#isStructural(item)) structural.push(item);
-      else organic.push(item);
+    for (const e of world.registry.query('ScenicData', 'Position', 'Sprite')) {
+      if (this.#isStructural(e)) structural.push(e);
+      else organic.push(e);
     }
-    structural.sort(distanceFarToNear);
-    organic.sort(distanceFarToNear);
-    for (const item of structural) this.#scenery(item, world, LAYERS.FOREGROUND_DECOR);
-    for (const item of organic) this.#scenery(item, world, LAYERS.FOREGROUND_DECOR);
+    structural.sort(byDistanceComponent);
+    organic.sort(byDistanceComponent);
+    for (const e of structural) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
+    for (const e of organic) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
 
     this.#foregroundFrame(world);
   }
@@ -69,36 +69,38 @@ export class SceneryRenderer {
 
   // ── Dynamic per-side scenery ────────────────────────────────────────────────
 
-  #isStructural(s) {
-    return s.laneBand === LANE_BANDS.STRUCTURE
-      || s.zone === SCENE_ZONES.STRUCTURE_LEFT
-      || s.zone === SCENE_ZONES.STRUCTURE_RIGHT;
+  #isStructural(entity) {
+    const scenic = entity.components.ScenicData;
+    return scenic.laneBand === LANE_BANDS.STRUCTURE
+      || scenic.zone === SCENE_ZONES.STRUCTURE_LEFT
+      || scenic.zone === SCENE_ZONES.STRUCTURE_RIGHT;
   }
 
-  #scenery(item, world, layer) {
-    if (item.distance < -5.5) return;
-    const p = this.#projectWithParallax(item.lane, item.distance, world, layer);
-    const scale = p.scale * item.visualScale;
-    const y = p.sy + item.yOffset * scale;
+  #sceneryEntity(entity, world, layer) {
+    const pos = entity.components.Position;
+    const sprite = entity.components.Sprite;
+    const scenic = entity.components.ScenicData;
+    if (pos.distance < -5.5) return;
+    const p = this.#projectWithParallax(pos.lane, pos.distance, world, layer);
+    const scale = p.scale * sprite.visualScale;
+    const y = p.sy + sprite.yOffset * scale;
 
-    const isStructural = this.#isStructural(item);
-    const nearFade = isStructural ? 1 : Math.max(0, Math.min(1, (item.distance + 5.5) / 12));
+    const isStructural = this.#isStructural(entity);
+    const nearFade = isStructural ? 1 : Math.max(0, Math.min(1, (pos.distance + 5.5) / 12));
     const farFade = Math.max(0.62, Math.min(1, p.scale * 3.1));
     let alpha = nearFade * farFade;
-    if (item.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.74;
-    // Extra fade for shoulder items approaching the player — prevents close-range clipping reads.
-    if (item.laneBand === LANE_BANDS.SHOULDER && item.distance < 16) {
-      alpha *= Math.max(0, item.distance / 16);
+    if (scenic.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.74;
+    if (scenic.laneBand === LANE_BANDS.SHOULDER && pos.distance < 16) {
+      alpha *= Math.max(0, pos.distance / 16);
     }
     if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale)) {
-      // Fade intruders to near-invisible — close items disappear completely, distant ones stay subtle.
-      alpha = Math.min(alpha, (item.distance / 20) * 0.22);
+      alpha = Math.min(alpha, (pos.distance / 20) * 0.22);
     }
-    if (item.distance < 10 && (item.assetType === 'tree_round' || item.assetType === 'purple_flower_single' || item.assetType === 'mushroom_red_big')) alpha *= 0.82;
+    if (pos.distance < 10 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.82;
     if (alpha <= 0.03) return;
 
-    const mirrored = isStructural && item.lane > 0;
-    this.#drawSceneryType(item.assetType ?? item.type, p.sx, y, scale, item.variant, alpha, mirrored);
+    const mirrored = isStructural && pos.lane > 0;
+    this.#drawSceneryType(sprite.assetType ?? sprite.type, p.sx, y, scale, sprite.variant, alpha, mirrored);
   }
 
   #intrudesOnGameplayCorridor(x, scale) {
@@ -211,6 +213,6 @@ export class SceneryRenderer {
   }
 }
 
-function distanceFarToNear(a, b) {
-  return b.distance - a.distance;
+function byDistanceComponent(a, b) {
+  return b.components.Position.distance - a.components.Position.distance;
 }

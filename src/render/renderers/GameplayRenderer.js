@@ -21,46 +21,49 @@ export class GameplayRenderer {
   render(world) {
     const queue = this._renderQueue;
     queue.length = 0;
-    for (const obstacle of world.obstacles) queue.push(obstacle);
-    for (const collectible of world.collectibles) queue.push(collectible);
-    queue.sort(distanceFarToNear);
+    for (const e of world.registry.query('Position', 'Sprite', 'Hitbox')) queue.push(e);
+    for (const e of world.registry.query('Position', 'Sprite', 'CollectibleData')) queue.push(e);
+    queue.sort(byDistanceComponent);
 
-    for (const item of queue) {
-      if (item.kind === 'obstacle') this.#obstacle(item, world.scrollOffset, world);
-      else if (item.kind === 'collectible' && !item.collected) this.#collectible(item, world);
+    for (const e of queue) {
+      if ('Hitbox' in e.components) this.#obstacleEntity(e, world.scrollOffset, world);
+      else if (!e.components.CollectibleData.collected) this.#collectibleEntity(e, world);
     }
   }
 
   // ── Collectibles ────────────────────────────────────────────────────────────
 
-  #collectible(item, world) {
-    const p = this.projection.project(item.lane, item.distance);
-    const yOffset = item.high ? -86 : -40;
-    const wobble = Math.sin(item.t) * 4 * p.scale;
-    const x = p.sx + (item.laneJitter ?? 0) * this.projection.laneWidth;
+  #collectibleEntity(entity, world) {
+    const pos = entity.components.Position;
+    const sprite = entity.components.Sprite;
+    const data = entity.components.CollectibleData;
+    const p = this.projection.project(pos.lane, pos.distance);
+    const yOffset = data.high ? -86 : -40;
+    const wobble = Math.sin(data.t) * 4 * p.scale;
+    const x = p.sx + data.laneJitter * this.projection.laneWidth;
     const y = p.sy + yOffset * p.scale + wobble;
-    const pop = world.config.gameFeel.ambientMotion ? 1 + Math.sin(item.t * 2.1) * 0.05 : 1;
-    const assetType = item.assetType ?? item.type;
+    const pop = world.config.gameFeel.ambientMotion ? 1 + Math.sin(data.t * 2.1) * 0.05 : 1;
+    const assetType = sprite.assetType ?? sprite.type;
 
-    if (assetType === 'heart_full' || item.type === 'life') {
+    if (assetType === 'heart_full' || data.type === 'life') {
       this.paint.heart(x, y, p.scale * 1.35 * pop);
       return;
     }
 
-    if (assetType === 'speed_tree_pickup' || item.type === 'power-tree') {
+    if (assetType === 'speed_tree_pickup' || data.type === 'power-tree') {
       this.#powerGlow(x, y - 22 * p.scale, p.scale * pop, '#72ff66');
       this.paint.tree(x, y + 28 * p.scale, p.scale * 0.64 * pop);
       return;
     }
 
-    if (assetType === 'power_mushroom_pickup' || item.type === 'power-mushroom') {
+    if (assetType === 'power_mushroom_pickup' || data.type === 'power-mushroom') {
       this.#powerGlow(x, y - 22 * p.scale, p.scale * pop, '#ad72ff');
       this.paint.mushroom(x, y + 18 * p.scale, p.scale * 0.82 * pop, 'purple');
       return;
     }
 
     const flowerKey = p.scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
-    const szMod = 1 + (item.laneJitter ?? 0) * 0.5;  // ±8% size variation
+    const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
     if (!this.sprites.draw(flowerKey, x, y, 72 * p.scale * pop * szMod)) this.paint.flower(x, y, p.scale * 1.65 * pop);
   }
 
@@ -83,29 +86,31 @@ export class GameplayRenderer {
 
   // ── Obstacles ───────────────────────────────────────────────────────────────
 
-  #obstacle(item, scrollOffset, world) {
-    const assetType = item.assetType ?? item.type;
-    if (assetType === 'vine_barrier' || item.type === 'vine') {
-      this.#vine(item.distance, scrollOffset, item.warning);
+  #obstacleEntity(entity, scrollOffset, world) {
+    const pos = entity.components.Position;
+    const sprite = entity.components.Sprite;
+    const box = entity.components.Hitbox;
+    const assetType = sprite.assetType ?? sprite.type;
+    if (assetType === 'vine_barrier' || box.type === 'vine') {
+      this.#vine(pos.distance, scrollOffset, box.warning);
+      return;
+    }
+    if (box.type === 'overhang') {
+      this.#overhang(pos.distance, assetType, box.warning, world.timeAlive);
       return;
     }
 
-    if (item.type === 'overhang') {
-      this.#overhang(item.distance, assetType, item.warning, world.timeAlive);
-      return;
-    }
-
-    const p = this.projection.project(item.lane, item.distance);
-    if (item.warning) this.#warningPulse(p.sx, p.sy - 58 * p.scale, p.scale, world.timeAlive);
-    if (assetType === 'spiky_bush_obstacle' || item.type === 'bush') this.paint.bush(p.sx, p.sy, p.scale);
-    if (assetType === 'dry_grass_obstacle' || item.type === 'wheat') {
+    const p = this.projection.project(pos.lane, pos.distance);
+    if (box.warning) this.#warningPulse(p.sx, p.sy - 58 * p.scale, p.scale, world.timeAlive);
+    if (assetType === 'spiky_bush_obstacle' || box.type === 'bush') this.paint.bush(p.sx, p.sy, p.scale);
+    if (assetType === 'dry_grass_obstacle' || box.type === 'wheat') {
       if (!this.sprites.draw('dryGrassObstacle', p.sx, p.sy, 130 * p.scale)) this.paint.wheat(p.sx, p.sy, p.scale);
     }
-    if (assetType === 'purple_brick_single' || item.type === 'wall') this.paint.wallBlock(p.sx, p.sy, p.scale, 1, item.variant === 2 ? 2 : 1);
-    if (assetType === 'small_center_mushroom' || item.type === 'mushroom') {
-      if (!this.sprites.draw('mushroomSmallRed', p.sx, p.sy, 140 * p.scale)) this.paint.mushroom(p.sx, p.sy, p.scale, item.variant);
+    if (assetType === 'purple_brick_single' || box.type === 'wall') this.paint.wallBlock(p.sx, p.sy, p.scale, 1, sprite.variant === 2 ? 2 : 1);
+    if (assetType === 'small_center_mushroom' || box.type === 'mushroom') {
+      if (!this.sprites.draw('mushroomSmallRed', p.sx, p.sy, 140 * p.scale)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
     }
-    if (assetType === 'stone_obstacle' || item.type === 'stone') this.paint.stone(p.sx, p.sy, p.scale);
+    if (assetType === 'stone_obstacle' || box.type === 'stone') this.paint.stone(p.sx, p.sy, p.scale);
   }
 
   #vine(distance, scrollOffset, warning = false) {
@@ -282,6 +287,6 @@ export class GameplayRenderer {
   }
 }
 
-function distanceFarToNear(a, b) {
-  return b.distance - a.distance;
+function byDistanceComponent(a, b) {
+  return b.components.Position.distance - a.components.Position.distance;
 }

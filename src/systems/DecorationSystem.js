@@ -1,4 +1,4 @@
-import { Scenery } from '../entities/Scenery.js';
+import { createScenery } from '../ecs/factories.js';
 import { chance, randRange, randomChoice } from '../utils/math.js';
 import { LANE_BANDS, SIDE_DECORATION_PREFABS, zoneForSide } from '../config/sceneSchema.js';
 
@@ -48,27 +48,27 @@ export class DecorationSystem {
   prepopulate(world) {
     const start = this.config.spawn.decorStartDistance;
     for (let distance = start; distance < this.projection.maxDistance + 24; distance += this.config.spawn.sideDecorSpacing) {
-      this.spawnSideChunk(world, -1, distance + randRange(-0.7, 0.7));
-      this.spawnSideChunk(world, 1, distance + 3.4 + randRange(-0.7, 0.7));
+      this.#spawnSideChunk(world, -1, distance + randRange(-0.7, 0.7));
+      this.#spawnSideChunk(world, 1, distance + 3.4 + randRange(-0.7, 0.7));
     }
   }
 
   update(world, delta) {
+    if (world.state !== 'playing') return;
     this.nextLeft -= world.speed * delta;
     this.nextRight -= world.speed * delta;
 
     if (this.nextLeft <= 0) {
-      this.spawnSideChunk(world, -1, this.projection.maxDistance + randRange(0, 8));
+      this.#spawnSideChunk(world, -1, this.projection.maxDistance + randRange(0, 8));
       this.nextLeft = this.#nextSpacing();
     }
-
     if (this.nextRight <= 0) {
-      this.spawnSideChunk(world, 1, this.projection.maxDistance + randRange(0, 8));
+      this.#spawnSideChunk(world, 1, this.projection.maxDistance + randRange(0, 8));
       this.nextRight = this.#nextSpacing();
     }
   }
 
-  spawnSideChunk(world, side, distance) {
+  #spawnSideChunk(world, side, distance) {
     const chunk = this.#pickChunk(side);
     this.lastChunk[String(side)] = chunk.id;
 
@@ -78,18 +78,18 @@ export class DecorationSystem {
       const scaleJitter = randRange(0.96, 1.05);
       const variant = this.#resolveVariant(item.variant, item.assetType);
       const zone = zoneForSide(side, item.laneBand ?? LANE_BANDS.SHOULDER);
-      world.scenery.push(new Scenery({
+      createScenery(world.registry, {
         type: assetTypeToSceneryType(item.assetType),
         assetType: item.assetType,
-        zone,
         laneBand: item.laneBand ?? LANE_BANDS.SHOULDER,
+        zone,
         lane: mirroredLane + side * jitter,
         distance: distance + item.dist,
         variant,
         scale: item.scale * scaleJitter,
         yOffset: item.yOffset ?? 0,
         chunkId: chunk.id,
-      }));
+      });
     }
   }
 
