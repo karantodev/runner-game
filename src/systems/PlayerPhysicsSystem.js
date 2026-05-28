@@ -1,5 +1,5 @@
 import { damp } from '../utils/math.js';
-import { standUp } from '../ecs/playerActions.js';
+import * as PlayerActions from '../ecs/playerActions.js';
 
 /**
  * Per-frame player physics: lane interpolation, jump physics with hold-
@@ -53,7 +53,31 @@ export class PlayerPhysicsSystem {
       crouch.crouchHoldFrames += delta;
       const crouchHeld = input.isHeld('crouchHeld');
       if (!crouchHeld && crouch.crouchHoldFrames >= cfg.crouch.minHoldFrames) {
-        standUp(player);
+        PlayerActions.standUp(player);
+      }
+    }
+
+    // ── Input buffers ──────────────────────────────────────────────────────
+    // Decrement first, then try to flush. Buffer survives one frame after
+    // a successful flush only because the counter is set to 0 explicitly.
+    const intent = player.components.PlayerIntent;
+    if (intent.jumpBuffer > 0) {
+      intent.jumpBuffer -= delta;
+      if (intent.jumpBuffer > 0 && PlayerActions.jump(player, cfg)) {
+        intent.jumpBuffer = 0;
+        this.eventBus.emit('camera:shake', 1.8);
+        this.eventBus.emit('player:jumped', null);
+      } else if (intent.jumpBuffer <= 0) {
+        intent.jumpBuffer = 0;
+      }
+    }
+    if (intent.crouchBuffer > 0) {
+      intent.crouchBuffer -= delta;
+      if (intent.crouchBuffer > 0 && PlayerActions.crouch(player)) {
+        intent.crouchBuffer = 0;
+        this.eventBus.emit('camera:shake', 0.9);
+      } else if (intent.crouchBuffer <= 0) {
+        intent.crouchBuffer = 0;
       }
     }
 

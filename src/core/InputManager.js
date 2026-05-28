@@ -53,6 +53,28 @@ export class InputManager {
     return Boolean(this.#held[actionName]);
   }
 
+  /**
+   * Public hook for external UI (touch buttons, gamepad shims, debug
+   * triggers) to fire an edge action. No-op for unknown action names so
+   * callers don't have to validate.
+   *
+   * @param {EdgeAction} actionName
+   */
+  triggerEdge(actionName) {
+    if (actionName in this.#edge) this.#edge[actionName] += 1;
+  }
+
+  /**
+   * Public hook for external UI to set a held action. Same no-op
+   * tolerance for unknown action names.
+   *
+   * @param {HeldAction} actionName
+   * @param {boolean} value
+   */
+  setHeld(actionName, value) {
+    if (actionName in this.#held) this.#held[actionName] = Boolean(value);
+  }
+
   pollGamepad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = Array.from(pads).find(Boolean);
