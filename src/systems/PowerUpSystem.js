@@ -33,6 +33,8 @@ export class PowerUpSystem {
       this.eventBus.emit('powerUpActivated', { type, label: 'Split Clones' });
     }
 
+    // Used by EffectsSystem for the activation burst.
+    this.eventBus.emit('powerup:activated', { type });
     this.eventBus.emit('powerUpsChanged', this.snapshot());
   }
 

@@ -108,8 +108,9 @@ export class HudSystem {
   }
 
   #renderJumpBar() {
-    const filled = this.world.player.isJumping
-      ? Math.max(0, JUMP_BAR_SEGMENTS - Math.floor(this.world.player.jumpHoldFrames / 2))
+    const vert = this.world.player?.components.VerticalState;
+    const filled = vert?.isJumping
+      ? Math.max(0, JUMP_BAR_SEGMENTS - Math.floor(vert.jumpHoldFrames / 2))
       : JUMP_BAR_SEGMENTS;
     if (filled === this._last.jumpbarFilled) return;
     this._last.jumpbarFilled = filled;

@@ -168,13 +168,20 @@ function createDebugApi() {
       game.resumeDebugRun();
     },
     getState() {
+      const r = game.world.registry;
+      let obstacles = 0;
+      let collectibles = 0;
+      let scenery = 0;
+      for (const _ of r.query('Hitbox')) obstacles += 1;
+      for (const _ of r.query('CollectibleData')) collectibles += 1;
+      for (const _ of r.query('ScenicData')) scenery += 1;
       return {
         worldState: game.world.state,
         distanceRun: game.world.distanceRun,
         score: game.world.score,
-        obstacles: game.world.obstacles.length,
-        collectibles: game.world.collectibles.length,
-        scenery: game.world.scenery.length,
+        obstacles,
+        collectibles,
+        scenery,
         lastCapture: debugState.lastCapture,
         errors: debugState.errors,
       };

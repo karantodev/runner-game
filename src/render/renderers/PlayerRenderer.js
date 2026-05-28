@@ -11,37 +11,45 @@ export class PlayerRenderer {
   }
 
   render(world) {
-    const invulnAlpha = world.invulnerabilityFrames > 0
-      ? (Math.floor(world.invulnerabilityFrames / 6) % 2 === 0 ? 0.28 : 1)
+    if (!world.player) return;
+    const health = world.player.components.Health;
+    const lane = world.player.components.LaneState;
+    const invulnAlpha = health.invulnerabilityFrames > 0
+      ? (Math.floor(health.invulnerabilityFrames / 6) % 2 === 0 ? 0.28 : 1)
       : 1;
 
     const renderLanes = world.getPlayerRenderLanes();
     for (const laneX of renderLanes) {
-      if (Math.abs(laneX - world.player.laneX) < 0.01) continue;
+      if (Math.abs(laneX - lane.laneX) < 0.01) continue;
       this.#playerBody(world, laneX, 0.42 * invulnAlpha, true);
     }
-    this.#playerBody(world, world.player.laneX, invulnAlpha, false);
+    this.#playerBody(world, lane.laneX, invulnAlpha, false);
   }
 
   #playerBody(world, renderLaneX, alpha = 1, isClone = false) {
     const ctx = this.ctx;
     const p = this.projection;
     const player = world.player;
+    const lane = player.components.LaneState;
+    const vert = player.components.VerticalState;
+    const crouchState = player.components.CrouchState;
+    const anim = player.components.AnimState;
+
     const x = p.width / 2 + renderLaneX * p.laneWidth;
-    const idleBob = !player.isJumping ? Math.sin(player.idleTime * 0.10) * 2.4 : 0;
-    const y = p.groundY + player.y + idleBob;
-    const run = player.runFrame;
-    const onGround = !player.isJumping;
-    const tilt = (player.targetLane - player.laneX) * 0.10 + player.laneTilt * 0.05;
-    const stretch = 1 + player.jumpStretch * 0.07 - player.landSquash * 0.03;
-    const squash = 1 - player.jumpStretch * 0.05 + player.landSquash * 0.07;
+    const idleBob = !vert.isJumping ? Math.sin(anim.idleTime * 0.10) * 2.4 : 0;
+    const y = p.groundY + vert.y + idleBob;
+    const run = anim.runFrame;
+    const onGround = !vert.isJumping;
+    const tilt = (lane.targetLane - lane.laneX) * 0.10 + lane.laneTilt * 0.05;
+    const stretch = 1 + vert.jumpStretch * 0.07 - vert.landSquash * 0.03;
+    const squash = 1 - vert.jumpStretch * 0.05 + vert.landSquash * 0.07;
 
     const bodyScale = (p.height / 720) * 1.23;
 
     // runFrame advances at speed*0.7/tick; divide by 3.15 to target ~12 FPS at base speed
-    const crouching = player.isCrouching;
+    const crouching = crouchState.isCrouching;
     const frameCount = crouching ? 4 : 8;
-    const frameIndex = Math.floor(Math.abs(player.runFrame) / 3.15) % frameCount;
+    const frameIndex = Math.floor(Math.abs(run) / 3.15) % frameCount;
     const spriteKeyPrefix = crouching ? 'playerFarmerCrouch' : 'playerFarmerRun';
     const fallbackKey = crouching ? 'playerFarmerCrouch01' : 'playerFarmerRun01';
     const runKey = `${spriteKeyPrefix}${String(frameIndex + 1).padStart(2, '0')}`;
@@ -78,12 +86,12 @@ export class PlayerRenderer {
       ctx.restore();
     }
 
-    const airT = -player.y / 100;
+    const airT = -vert.y / 100;
     ctx.save();
     ctx.rotate(-tilt);
     ctx.fillStyle = `rgba(0,0,0,${0.35 * (1 - Math.min(0.7, airT))})`;
     ctx.beginPath();
-    ctx.ellipse(0, -player.y + 4, 36 - airT * 10, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -vert.y + 4, 36 - airT * 10, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
