@@ -54,7 +54,7 @@ export class World {
    * @param {object} config
    * @param {import('./Projection.js').Projection} projection
    * @param {import('../core/EventBus.js').EventBus} eventBus
-   * @param {{ seed?: number | string }} [options]
+   * @param {{ seed?: number | string, leaderboard?: import('../core/Leaderboard.js').Leaderboard }} [options]
    */
   constructor(config, projection, eventBus, options = {}) {
     this.config = config;
@@ -62,6 +62,9 @@ export class World {
     this.eventBus = eventBus;
     this.registry = new EntityRegistry();
     this.rng = new Rng(options.seed);
+    this.leaderboard = options.leaderboard ?? null;
+    /** Set to the rank (1..N) of the most recent run if it placed on the board. */
+    this.lastRunRank = 0;
 
     // Subsystems with their own state (timers, snapshots, etc.).
     this.powerUpSystem = new PowerUpSystem(config, eventBus);
@@ -112,6 +115,7 @@ export class World {
     this.cameraShake = 0;
     this.cameraImpulseTime = 0;
     this.scrollOffset = 0;
+    this.lastRunRank = 0;
 
     this.registry.clear();
     this.player = createPlayer(this.registry, this.config);
@@ -224,14 +228,25 @@ export class World {
     return out;
   }
 
-  /** Persist best-score. Called by GameStateSystem on player death. */
+  /**
+   * Persist best-score + leaderboard submission. Called by GameStateSystem
+   * on player death. lastRunRank ends up populated if the run made the
+   * top-N (HudSystem reads it to decide whether to prompt for a name).
+   */
   saveBestScore() {
-    if (this.score <= this.bestScore) return;
-    this.bestScore = this.score;
-    try {
-      window.localStorage.setItem(this.config.gameplay.localStorageBestKey, String(this.bestScore));
-    } catch {
-      // localStorage can be unavailable in some embedded/file contexts.
+    if (this.score > this.bestScore) {
+      this.bestScore = this.score;
+      try {
+        window.localStorage.setItem(this.config.gameplay.localStorageBestKey, String(this.bestScore));
+      } catch {
+        // localStorage can be unavailable in some embedded/file contexts.
+      }
+    }
+    this.lastRunRank = 0;
+    if (this.leaderboard && this.leaderboard.qualifies(this.score)) {
+      // The HUD's death-state prompt will call leaderboard.submit() with a
+      // name; we only stash whether it qualified so the HUD knows to ask.
+      this.lastRunRank = -1; // sentinel for "qualified, awaiting name"
     }
   }
 

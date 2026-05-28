@@ -36,6 +36,44 @@ export function roadTopHalfWidth(projection) {
 }
 
 /**
+ * Honest horizontal scroll with wrap-around. Drops the source sprite at
+ * `(x0 - scroll, y)` and tiles it sideways enough times to fully cover
+ * `[x0, x0 + width)`. This replaces the previous sin-drift "parallax"
+ * for layers that genuinely benefit from looking like they're moving
+ * past the camera (mountains, treelines).
+ *
+ * Caller controls the tile width by setting `width`. The image is
+ * stretched to `width × height` per tile.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLImageElement | HTMLCanvasElement} image
+ * @param {number} x0
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {number} scroll — total pixels of leftward shift (0 = un-scrolled)
+ * @param {number} [alpha]
+ */
+export function drawScrollingTile(ctx, image, x0, y, width, height, scroll, alpha = 1) {
+  if (!image || !image.naturalWidth) return false;
+  if (width <= 0 || height <= 0) return false;
+  // Normalize scroll into [0, width) so the leftmost tile is at x0 - off.
+  const off = ((scroll % width) + width) % width;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = false;
+  // First tile (may stick out to the left of x0); enough copies to
+  // reach x0 + width on the right.
+  let x = x0 - off;
+  while (x < x0 + width) {
+    ctx.drawImage(image, x, y, width, height);
+    x += width;
+  }
+  ctx.restore();
+  return true;
+}
+
+/**
  * Translate camera shake to a {x, y} offset (zero when shake is calm).
  * Pure function — no canvas calls.
  *

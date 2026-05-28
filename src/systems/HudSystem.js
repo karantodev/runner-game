@@ -1,3 +1,12 @@
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 const HEART_ICON_FULL = './assets/ui/icons/heart_full.png';
 const HEART_ICON_EMPTY = './assets/ui/icons/heart_empty.png';
 const ENERGY_ICON_FULL = './assets/ui/icons/energy_segment_full.png';
@@ -165,10 +174,73 @@ export class HudSystem {
     if (state === 'dead') {
       this.#show(
         'Run Complete',
-        `All lives are gone.<br>Orchids collected: <b>${this.world.score}</b><br>Distance: <b>${Math.floor(this.world.distanceRun)}m</b><br>${this.#tierLabel()}<br>Best: <b>${this.world.bestScore}</b><br><br>Click <b>Run again</b> to restart.`,
+        this.#deathBody(),
         'Run again',
       );
+      this.#wireLeaderboardSubmit();
     }
+  }
+
+  /**
+   * Build the death-screen body. If the run qualified for the leaderboard,
+   * embed a name prompt; either way, render the current top-N list.
+   */
+  #deathBody() {
+    const w = this.world;
+    const lb = w.leaderboard;
+    const qualified = lb && w.lastRunRank === -1;
+    const summary = `
+      Orchids collected: <b>${w.score}</b><br>
+      Distance: <b>${Math.floor(w.distanceRun)}m</b><br>
+      ${this.#tierLabel()}<br>
+      Best: <b>${w.bestScore}</b>
+    `;
+    const prompt = qualified
+      ? `
+        <div class="leaderboard-prompt">
+          <p>You made the top ${lb.capacity}! Enter a name:</p>
+          <input id="leaderboard-name" type="text" maxlength="16" placeholder="Your name" autocomplete="off">
+          <button id="leaderboard-submit" type="button">Save score</button>
+        </div>
+      `
+      : '';
+    const list = lb ? this.#leaderboardListHtml(lb.list()) : '';
+    return `${summary}<br>${prompt}${list}<br>Click <b>Run again</b> to restart.`;
+  }
+
+  #leaderboardListHtml(entries) {
+    if (!entries.length) return '';
+    const rows = entries.map((e, i) => `
+      <li><span class="lb-rank">${i + 1}.</span><span class="lb-name">${escapeHtml(e.name)}</span><b class="lb-score">${e.score}</b></li>
+    `).join('');
+    return `<ol class="leaderboard-list">${rows}</ol>`;
+  }
+
+  /**
+   * If the death-overlay rendered a leaderboard-prompt, hook the input +
+   * submit button up to Leaderboard.submit() and re-render the list in place.
+   */
+  #wireLeaderboardSubmit() {
+    const input = document.getElementById('leaderboard-name');
+    const submit = document.getElementById('leaderboard-submit');
+    if (!input || !submit) return;
+    const handler = () => {
+      const w = this.world;
+      const lb = w.leaderboard;
+      if (!lb) return;
+      const rank = lb.submit({
+        name: input.value,
+        score: w.score,
+        distance: Math.floor(w.distanceRun),
+      });
+      w.lastRunRank = rank;
+      // Re-render death body so the prompt disappears and the list reflects
+      // the new entry.
+      this.#show('Run Complete', this.#deathBody(), 'Run again');
+    };
+    submit.addEventListener('click', handler);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handler(); });
+    input.focus();
   }
 
   #show(title, sub, button) {

@@ -23,12 +23,18 @@ const seed = seedParam === null
     ? Number(seedParam) >>> 0
     : seedParam;
 
+// ?hidpi=1 promotes the canvas backing store to window.devicePixelRatio.
+// Off by default (pixel-art look + lower mobile fill). On = crisp Retina.
+const hiDpi = params.get('hidpi') === '1';
+const pixelRatio = hiDpi ? (window.devicePixelRatio ?? 1) : GAME_CONFIG.canvas.pixelRatio;
+
 const canvas = document.getElementById('game');
 const game = new Game(canvas, {
   autostart,
   freezeFrame,
   captureSteps,
   seed,
+  pixelRatio,
 });
 
 new TouchControls(game.input);

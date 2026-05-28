@@ -8,17 +8,20 @@ import { roadBaseHalfWidth, roadTopHalfWidth } from '../helpers.js';
  * scrolling shoulder + lane-dash strips) stay procedural in the hot path.
  */
 export class RoadRenderer {
-  constructor({ ctx, projection, assets, gradients }) {
+  constructor({ ctx, projection, assets, gradients, pixelRatio = 1 }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.gradients = gradients;
+    this.pixelRatio = pixelRatio;
     this._staticLayer = this.#buildStaticLayer();
   }
 
   render(world) {
     // Single blit replaces ~50 ground / trapezoid / edge ops per frame.
-    this.ctx.drawImage(this._staticLayer, 0, 0);
+    // Source canvas is dpr-scaled; we draw it into the LOGICAL dimensions
+    // since our parent ctx transform already applies dpr.
+    this.ctx.drawImage(this._staticLayer, 0, 0, this.projection.width, this.projection.height);
     this.#roadBands(world.scrollOffset);
     this.#roadShoulders(world.scrollOffset);
     this.#laneDashes(world.scrollOffset);
@@ -26,14 +29,18 @@ export class RoadRenderer {
 
   /**
    * Bake the ground + road trapezoid + road edges to an offscreen canvas.
-   * Caller invalidates via rebuildStaticLayer() if the projection changes.
+   * Sized to logical*dpr so blit-back stays crisp on Hi-DPI. Caller
+   * invalidates via rebuildStaticLayer() if the projection changes.
    */
   #buildStaticLayer() {
     const p = this.projection;
+    const dpr = this.pixelRatio;
     const layer = document.createElement('canvas');
-    layer.width = p.width;
-    layer.height = p.height;
+    layer.width = p.width * dpr;
+    layer.height = p.height * dpr;
     const c = layer.getContext('2d');
+    // Paint in logical units; setTransform scales them up to the dpr buffer.
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.#paintGround(c);
     this.#paintRoadTrapezoid(c);
     this.#paintRoadEdges(c);

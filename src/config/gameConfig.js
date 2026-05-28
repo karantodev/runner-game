@@ -5,6 +5,12 @@ export const GAME_CONFIG = Object.freeze({
     width: 1536,
     height: 864,
     viewportPadding: 0,
+    // Backing-store pixel-ratio multiplier. Default `1` keeps the
+    // pixel-art aesthetic on mobile (matches CSS image-rendering: pixelated)
+    // AND avoids 4-9× fill on Retina/Hi-DPI screens. Set to `auto` (or
+    // pass `?hidpi=1` on the URL) to render at full window.devicePixelRatio
+    // — crisper on desktop, much heavier on mobile.
+    pixelRatio: 1,
   },
 
   projection: {
@@ -53,6 +59,8 @@ export const GAME_CONFIG = Object.freeze({
     scoreTiers: [50, 100, 150],
     hazardScorePenalty: 5,
     localStorageBestKey: 'orchidQuest.bestScore.v1',
+    leaderboardKey: 'orchidQuest.leaderboard.v1',
+    leaderboardCapacity: 10,
   },
 
   gameFeel: {

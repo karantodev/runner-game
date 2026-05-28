@@ -72,6 +72,47 @@ test('jump buffer — tap mid-air still fires on landing', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
+  await page.goto('/dev.html');
+  // Drive the Leaderboard module directly via a dynamic import; we don't
+  // need to play through a death-state to exercise the CRUD surface.
+  const result = await page.evaluate(async () => {
+    const m = await import('/src/core/Leaderboard.js');
+    const KEY = '__lbtest__' + Math.random();
+    const lb = new m.Leaderboard(KEY, 3);
+    const ranks = [];
+    ranks.push(lb.submit({ name: 'a', score: 10, distance: 100, ts: 1 }));
+    ranks.push(lb.submit({ name: 'b', score: 20, distance: 200, ts: 2 }));
+    ranks.push(lb.submit({ name: 'c', score: 15, distance: 150, ts: 3 }));
+    const qualifies4 = lb.qualifies(5);     // below floor, shouldn't qualify
+    ranks.push(lb.submit({ name: 'd', score: 5, distance: 50, ts: 4 })); // → 0
+    const qualifies5 = lb.qualifies(25);    // above top, should qualify
+    ranks.push(lb.submit({ name: 'e', score: 25, distance: 250, ts: 5 }));
+    const list = lb.list();
+    // Reload from a fresh instance to confirm persistence.
+    const lb2 = new m.Leaderboard(KEY, 3);
+    const persisted = lb2.list();
+    lb2.clear();
+    window.localStorage.removeItem(KEY);
+    return { ranks, qualifies4, qualifies5, list, persisted };
+  });
+  // Ranks of the 3 valid submits should be (1, 1, 2/3 depending on sort) — the
+  // important guarantees are: empty board accepts everything, below-floor
+  // rejects with 0, above-top accepts and lands at rank 1.
+  expect(result.qualifies4).toBe(false);
+  expect(result.qualifies5).toBe(true);
+  expect(result.ranks[3]).toBe(0);          // 'd' (score 5) rejected
+  expect(result.ranks[4]).toBe(1);          // 'e' (score 25) → rank 1
+  // Capacity respected.
+  expect(result.list).toHaveLength(3);
+  expect(result.persisted).toHaveLength(3);
+  // Top entry is 'e' (highest score).
+  expect(result.list[0].name).toBe('e');
+  expect(result.list[0].score).toBe(25);
+  // Persistence round-trip preserves order + scores.
+  expect(result.persisted.map((e) => e.score)).toEqual([25, 20, 15]);
+});
+
 test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   // Two independent debug runs with the same seed should yield identical
   // spawn-system traces (pattern ids in order).
