@@ -24,16 +24,27 @@ export class PlayerInputSystem {
     if (input.consume('moveLeft')) PlayerActions.moveLane(player, -1, cfg);
     if (input.consume('moveRight')) PlayerActions.moveLane(player, 1, cfg);
 
+    const intent = player.components.PlayerIntent;
+
     if (input.consume('jump')) {
       if (PlayerActions.jump(player, cfg)) {
+        intent.jumpBuffer = 0;
         this.eventBus.emit('camera:shake', 1.8);
         this.eventBus.emit('player:jumped', null);
+      } else {
+        // Refused (airborne, or crouch-locked) — buffer the intent so it
+        // fires the moment the gate opens (land + crouch dwell expires).
+        intent.jumpBuffer = cfg.jumpBufferFrames;
       }
     }
 
     if (input.consume('crouchDown')) {
       if (PlayerActions.crouch(player)) {
+        intent.crouchBuffer = 0;
         this.eventBus.emit('camera:shake', 0.9);
+      } else {
+        // Crouch refused mid-jump — buffer for the landing.
+        intent.crouchBuffer = cfg.crouchBufferFrames;
       }
     }
   }

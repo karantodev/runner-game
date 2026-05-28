@@ -8,6 +8,7 @@ import {
   Lifetime,
   ParticleData,
   ParticleTag,
+  PlayerIntent,
   PlayerTag,
   Position,
   ScenicData,
@@ -48,6 +49,7 @@ export function createPlayer(registry, config) {
     .add('VerticalState', VerticalState())
     .add('CrouchState', CrouchState())
     .add('AnimState', AnimState())
+    .add('PlayerIntent', PlayerIntent())
     .add('Health', Health(config.gameplay.startLives));
 }
 

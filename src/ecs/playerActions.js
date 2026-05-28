@@ -81,6 +81,9 @@ export function resetPlayer(player) {
   });
   Object.assign(player.components.CrouchState, { isCrouching: false, crouchHoldFrames: 0 });
   Object.assign(player.components.AnimState, { runFrame: 0, idleTime: 0 });
+  if (player.components.PlayerIntent) {
+    Object.assign(player.components.PlayerIntent, { jumpBuffer: 0, crouchBuffer: 0 });
+  }
   const health = player.components.Health;
   health.invulnerabilityFrames = 0;
   health.hitFlash = 0;

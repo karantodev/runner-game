@@ -1,5 +1,7 @@
 import { Game } from './core/Game.js';
 import { GAME_CONFIG } from './config/gameConfig.js';
+import { TouchControls } from './core/TouchControls.js';
+import { PerformanceHUD } from './core/PerformanceHUD.js';
 import { runPatternTests } from './systems/spawn/PatternTests.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -28,6 +30,11 @@ const game = new Game(canvas, {
   captureSteps,
   seed,
 });
+
+new TouchControls(game.input);
+// `?touch=1` forces the on-screen pad to appear on desktop — handy for
+// testing the touch layout without a phone.
+if (params.get('touch') === '1') document.body.classList.add('force-touch');
 
 const debugState = {
   enabled: debugEnabled,
@@ -214,6 +221,7 @@ if (debugEnabled) {
   const debugApi = createDebugApi();
   window.__ORCHID_DEBUG__ = debugApi;
   installDebugPanel(debugApi);
+  new PerformanceHUD(game);
 
   window.addEventListener('keydown', (event) => {
     if (event.code !== 'F8') return;

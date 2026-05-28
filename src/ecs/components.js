@@ -48,6 +48,16 @@ export const AnimState = () => ({
   idleTime: 0,
 });
 
+/**
+ * Pending player intent — used for jump / crouch input buffering.
+ * Each buffer is a frame countdown: when > 0 and the corresponding
+ * action becomes possible, it fires and the counter resets to 0.
+ */
+export const PlayerIntent = () => ({
+  jumpBuffer: 0,
+  crouchBuffer: 0,
+});
+
 export const Health = (startLives) => ({
   lives: startLives,
   invulnerabilityFrames: 0,

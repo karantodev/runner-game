@@ -25,6 +25,12 @@ export const GAME_CONFIG = Object.freeze({
     jumpVelocity: -16.5,
     jumpHoldBoost: -0.8,
     maxJumpHoldFrames: 10,
+    // Input-buffer windows (frames at 60Hz). A tapped action that can't fire
+    // immediately (e.g. jump while airborne) stays queued for this many
+    // frames; the moment the gate opens (player lands / crouch dwell elapses),
+    // the queued action fires automatically. Standard runner game-feel.
+    jumpBufferFrames: 6,    // ~100 ms
+    crouchBufferFrames: 6,
     crouch: {
       // Tap-to-crouch minimum dwell (frames). Holding ↓/S keeps you crouched
       // past this; releasing earlier still keeps the crouch until this expires
@@ -33,9 +39,6 @@ export const GAME_CONFIG = Object.freeze({
       // Visual squash (Y scale) applied to the crouch sprite so the silhouette
       // unmistakably reads as ducking — the source art is only mildly lower.
       spriteYScale: 0.78,
-      // Pre-emptive crouch window in frames: a tap up to this many frames
-      // before the overhang arrives still counts (input buffering).
-      bufferFrames: 7,
     },
   },
 

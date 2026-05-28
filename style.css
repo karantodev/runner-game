@@ -129,6 +129,61 @@ canvas {
   display: none;
 }
 
+/* ── Touch on-screen controls ────────────────────────────────────────────── */
+/*
+ * Hidden by default — shown only on touch devices via the @media query below.
+ * Use `?touch=1` to force-show them on desktop for testing.
+ */
+#touch-controls {
+  display: none;
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 10;
+  padding: 18px 22px 24px;
+  pointer-events: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#touch-controls .touch-pad {
+  display: flex;
+  gap: 14px;
+  pointer-events: auto;
+}
+#touch-controls .touch-pad--right {
+  gap: 18px;
+}
+#touch-controls button {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(12, 24, 36, 0.62);
+  color: #f5fbff;
+  font: 700 28px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 60ms ease, background 60ms ease;
+}
+#touch-controls button.is-active {
+  transform: scale(0.92);
+  background: rgba(76, 168, 76, 0.78);
+}
+#touch-controls .touch-pad--right button[data-action="jump"] {
+  background: rgba(46, 139, 46, 0.72);
+}
+#touch-controls .touch-pad--right button[data-action="jump"].is-active {
+  background: rgba(82, 196, 82, 0.92);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  #touch-controls { display: flex; }
+}
+body.force-touch #touch-controls { display: flex; }
+
 @media (max-width: 760px) {
   #hint { display: none; }
   #pause { top: 12px; left: 12px; }
@@ -138,4 +193,6 @@ canvas {
   #tier-box { display: none; }
   #powerups-box { bottom: 100px; left: 12px; min-width: 132px; font-size: 11px; padding: 8px 10px; }
   #ability { bottom: 12px; left: 12px; padding: 10px 12px 12px; min-width: 68px; }
+  #touch-controls { padding: 12px 14px 18px; }
+  #touch-controls button { width: 64px; height: 64px; font-size: 24px; }
 }
