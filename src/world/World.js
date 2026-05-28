@@ -1,10 +1,11 @@
 import { Player } from '../entities/Player.js';
-import { updateParticles } from '../entities/Particle.js';
+import { spawnParticle, updateParticles } from '../entities/Particle.js';
 import { SpawnSystem } from '../systems/SpawnSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { DecorationSystem } from '../systems/DecorationSystem.js';
 import { PowerUpSystem } from '../systems/PowerUpSystem.js';
 import { clamp } from '../utils/math.js';
+import { compactInPlace } from '../utils/pool.js';
 
 export class World {
   constructor(config, projection, eventBus) {
@@ -19,6 +20,7 @@ export class World {
     this.bestScore = this.#readBestScore();
     this.clouds = this.#makeClouds();
     this.state = 'menu';
+    this._occupiedLanes = [];
     this.reset();
   }
 
@@ -144,7 +146,7 @@ export class World {
     this.collisionSystem.update(this);
     this.#cleanup();
     this.#updateClouds(delta);
-    this.particles = updateParticles(this.particles, delta);
+    updateParticles(this.particles, delta);
     this.#updateScorePopups(delta);
   }
 
@@ -170,7 +172,7 @@ export class World {
 
     if (this.config.gameFeel.particles) {
       for (let i = 0; i < 20; i++) {
-        this.particles.push({
+        this.particles.push(spawnParticle({
           x: this.projection.width / 2 + this.player.laneX * this.projection.laneWidth,
           y: this.projection.groundY - 80,
           vx: (Math.random() - 0.5) * 10,
@@ -178,7 +180,7 @@ export class World {
           life: 30,
           radius: 3 + Math.random() * 3,
           color: 'rgba(255,80,80,0.90)',
-        });
+        }));
       }
     }
 
@@ -195,7 +197,7 @@ export class World {
     const color = type === 'speed-burst' ? 'rgba(90,255,100,0.95)' : 'rgba(170,90,255,0.95)';
     if (this.config.gameFeel.particles) {
       for (let i = 0; i < 24; i++) {
-        this.particles.push({
+        this.particles.push(spawnParticle({
           x: this.projection.width / 2 + this.player.laneX * this.projection.laneWidth + (Math.random() - 0.5) * 80,
           y: this.projection.groundY - 100 + (Math.random() - 0.5) * 60,
           vx: (Math.random() - 0.5) * 5,
@@ -203,7 +205,7 @@ export class World {
           life: 32,
           radius: 2 + Math.random() * 3,
           color,
-        });
+        }));
       }
     }
   }
@@ -219,7 +221,7 @@ export class World {
     if (this.config.gameFeel.particles) {
       const burst = type === 'flower' ? 12 : 18;
       for (let i = 0; i < burst; i++) {
-        this.particles.push({
+        this.particles.push(spawnParticle({
           x: this.projection.width / 2 + lane * this.projection.laneWidth,
           y,
           vx: (Math.random() - 0.5) * (type === 'flower' ? 5.5 : 7),
@@ -227,7 +229,7 @@ export class World {
           life: 22 + Math.random() * 10,
           radius: 2 + Math.random() * (type === 'flower' ? 2.4 : 3.2),
           color,
-        });
+        }));
       }
     }
     if (this.config.gameFeel.scorePopups) {
@@ -240,7 +242,7 @@ export class World {
   addClearParticles() {
     if (!this.config.gameFeel.particles) return;
     for (let i = 0; i < 8; i++) {
-      this.particles.push({
+      this.particles.push(spawnParticle({
         x: this.projection.width / 2 + this.player.laneX * this.projection.laneWidth + (Math.random() - 0.5) * 60,
         y: this.projection.groundY - 50,
         vx: (Math.random() - 0.5) * 3,
@@ -248,7 +250,7 @@ export class World {
         life: 20,
         radius: 2 + Math.random() * 2,
         color: 'rgba(255,230,120,0.90)',
-      });
+      }));
     }
   }
 
@@ -273,13 +275,25 @@ export class World {
     });
   }
 
+  /**
+   * Returns the lanes currently occupied by the player (and clones, if split
+   * is active). Mutates `_occupiedLanes` in place so callers get a stable
+   * reused array — no allocation per call, callers must not retain or mutate.
+   */
   getOccupiedLanes() {
-    const center = Math.round(this.player.targetLane);
-    const lanes = [center];
+    const minLane = this.config.player.minLane;
+    const maxLane = this.config.player.maxLane;
+    const center = clamp(Math.round(this.player.targetLane), minLane, maxLane);
+    const out = this._occupiedLanes;
+    out.length = 0;
+    out.push(center);
     if (this.powerUpSystem.isSplitClonesActive()) {
-      lanes.push(center - 1, center + 1);
+      const left = clamp(center - 1, minLane, maxLane);
+      const right = clamp(center + 1, minLane, maxLane);
+      if (left !== center) out.push(left);
+      if (right !== center && right !== left) out.push(right);
     }
-    return [...new Set(lanes.map((lane) => clamp(lane, this.config.player.minLane, this.config.player.maxLane)))];
+    return out;
   }
 
   getPlayerRenderLanes() {
@@ -302,7 +316,7 @@ export class World {
 
   #updatePassive(delta) {
     this.#updateClouds(delta);
-    this.particles = updateParticles(this.particles, delta);
+    updateParticles(this.particles, delta);
     this.#updateScorePopups(delta);
   }
 
@@ -316,12 +330,13 @@ export class World {
   }
 
   #cleanup() {
-    // Remove passed gameplay items quickly so oversized near-camera sprites
-    // do not stay visible long enough to be clipped by the canvas edges.
-    this.obstacles = this.obstacles.filter((item) => item.distance > -4);
-    this.collectibles = this.collectibles.filter((item) => item.distance > -4 && !item.collected);
-    this.scenery = this.scenery.filter((item) => item.distance > this.config.spawn.sideDecorNearCullDistance);
-    this.scorePopups = this.scorePopups.filter((item) => item.life > 0);
+    // Remove passed gameplay items in place so we don't allocate four new
+    // arrays every frame (this used to be the largest GC source).
+    const sceneryCull = this.config.spawn.sideDecorNearCullDistance;
+    compactInPlace(this.obstacles, (item) => item.distance > -4);
+    compactInPlace(this.collectibles, (item) => item.distance > -4 && !item.collected);
+    compactInPlace(this.scenery, (item) => item.distance > sceneryCull);
+    compactInPlace(this.scorePopups, (item) => item.life > 0);
   }
 
   #updateScorePopups(delta) {
