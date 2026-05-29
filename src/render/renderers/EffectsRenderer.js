@@ -41,13 +41,19 @@ export class EffectsRenderer {
 
   render(world) {
     const ctx = this.ctx;
+    // v3.8.30 — when ON, every full-screen overlay below (power-up
+    // vignette, synergy rainbow, dying chromatic + REPLAY pill, combo
+    // pulse vignette, hit-flash full-screen) is skipped. Per-particle,
+    // score-popup, and the multiplier ×N badge above the player still
+    // render — they don't obscure the farmer for pose QA.
+    const noFx = world.config.debug?.disableFullScreenEffects === true;
 
     // Active-power-up vignette: tinted radial edges that pulse slowly.
     // Burst (green) and split-clones (purple) stack alpha-wise — both can
     // be active at the same time.
     const burstActive = world.powerUpSystem.isSpeedBurstActive();
     const splitActive = world.powerUpSystem.isSplitClonesActive();
-    if (burstActive || splitActive) {
+    if (!noFx && (burstActive || splitActive)) {
       const pulse = 0.65 + 0.35 * Math.sin(world.timeAlive * 0.11);
       if (burstActive) {
         ctx.globalAlpha = pulse;
@@ -66,7 +72,7 @@ export class EffectsRenderer {
     // overlay a rainbow shimmer at the screen edges. 3+ punches the
     // intensity further. Pure visual feedback for "you're in the zone".
     const activeCount = this.#countActivePowerUps(world);
-    if (activeCount >= 2) {
+    if (!noFx && activeCount >= 2) {
       const intensity = activeCount >= 3 ? 0.45 : 0.22;
       const pulse = 0.55 + 0.45 * Math.sin(world.timeAlive * 0.14);
       ctx.save();
@@ -127,7 +133,7 @@ export class EffectsRenderer {
     // during the slow-mo death moment. Reads from world.dyingFrames as
     // the timing source; alpha decays as the timer drains so the effect
     // is at its boldest right after the fatal hit.
-    if (world.state === 'dying') {
+    if (!noFx && world.state === 'dying') {
       const total = world.config.gameplay.dyingFrames || 1;
       const t = Math.max(0, Math.min(1, world.dyingFrames / total));
       const W = this.projection.width;
@@ -219,18 +225,23 @@ export class EffectsRenderer {
 
       // Golden vignette via radial gradient — uses the existing splitVignette
       // pattern as a tinted overlay; cheap because no per-frame allocation.
-      ctx.save();
-      ctx.globalAlpha = a * 0.35;
-      ctx.fillStyle = '#ffd54a';
-      // Soft inner cut-out (player area stays clear, edges glow).
-      const cx = this.projection.width / 2;
-      const cy = this.projection.height * 0.55;
-      const grad = ctx.createRadialGradient(cx, cy, this.projection.width * 0.18, cx, cy, this.projection.width * 0.6);
-      grad.addColorStop(0, 'rgba(255,213,74,0)');
-      grad.addColorStop(1, 'rgba(255,213,74,0.85)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, this.projection.width, this.projection.height);
-      ctx.restore();
+      // v3.8.30 — gated by `noFx`; the ×N badge below the gate still
+      // shows so QA can verify the multiplier popup without the fullscreen
+      // sheen washing out the rest of the frame.
+      if (!noFx) {
+        ctx.save();
+        ctx.globalAlpha = a * 0.35;
+        ctx.fillStyle = '#ffd54a';
+        // Soft inner cut-out (player area stays clear, edges glow).
+        const cx = this.projection.width / 2;
+        const cy = this.projection.height * 0.55;
+        const grad = ctx.createRadialGradient(cx, cy, this.projection.width * 0.18, cx, cy, this.projection.width * 0.6);
+        grad.addColorStop(0, 'rgba(255,213,74,0)');
+        grad.addColorStop(1, 'rgba(255,213,74,0.85)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, this.projection.width, this.projection.height);
+        ctx.restore();
+      }
 
       // v3.8.25 — ×N badge moved from screen center (was at height*0.42,
       // covering the castle / road-to-castle axis) to a small popup
@@ -266,7 +277,7 @@ export class EffectsRenderer {
     // by alpha decay); falls back to a flat colour fill if the overlay
     // isn't loaded.
     const flash = world.player?.components.Health.hitFlash ?? 0;
-    if (flash > 0) {
+    if (!noFx && flash > 0) {
       const flashIdx = Math.min(3, Math.floor((1 - flash) * 4));
       const flashImg = this.assets?.get(`hitFlash0${flashIdx + 1}`);
       if (flashImg?.naturalWidth) {

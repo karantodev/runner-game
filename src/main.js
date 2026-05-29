@@ -421,18 +421,47 @@ if (debugEnabled) {
  * the on-screen QA panel.
  */
 function installPlayerStatesMode(game, debugApi) {
-  // Mode flags toggled from the QA panel.
+  // Mode flags toggled from the QA panel. The visual flags
+  // (spriteLabMode, disableFullScreenEffects) live in GAME_CONFIG.debug
+  // because they're read by the render pipeline; we mirror them here
+  // only for initial defaults.
   const modes = {
     poseBaselineLock: false,  // force y = 0 across all states (visual QA on common ground line)
-    hidePerfHud: false,
-    hideOrchidPanel: false,
+    hidePerfHud: true,        // v3.8.30 — hidden by default in QA mode
+    hideOrchidPanel: true,    // v3.8.30 — hidden by default in QA mode
   };
+
+  // v3.8.30 — hide perf HUD + Orchid debug panel on install so the QA
+  // screenshots are clean by default; the QA panel toggles flip them
+  // back on for the rare case the user wants both visible at once.
+  requestAnimationFrame(() => {
+    const perf = document.getElementById('perf-hud');
+    if (perf) perf.style.display = 'none';
+    const orchid = document.getElementById('debug-panel');
+    if (orchid) orchid.style.display = 'none';
+  });
 
   const applyPreset = (stateId) => {
     const state = PLAYER_DEBUG_STATE_BY_ID.get(stateId);
     if (!state || !game.world?.player) return;
     const w = game.world;
     const p = w.player;
+    // v3.8.30 — Overlay-group states (Death, Replay) need the full-screen
+    // overlay to render. Warn (don't auto-toggle) when Sprite Lab is on
+    // because Sprite Lab bypasses the EffectsRenderer entirely — the
+    // overlay won't be visible. User flips Sprite Lab off to see it.
+    if (state.group === 'Overlay' && GAME_CONFIG.debug.spriteLabMode) {
+      console.warn(
+        `[debugPlayerStates] state '${stateId}' is an Overlay state. ` +
+        'Sprite Lab Mode bypasses overlays — disable Sprite Lab in the QA panel to view it.',
+      );
+    }
+    if (state.group === 'Overlay' && GAME_CONFIG.debug.disableFullScreenEffects) {
+      console.warn(
+        `[debugPlayerStates] state '${stateId}' is an Overlay state. ` +
+        '"Disable full-screen effects" is on — disable it in the QA panel to view the overlay.',
+      );
+    }
     w.state = state.worldState;
     if (state.worldState === 'dying') w.dyingFrames = w.config.gameplay.dyingFrames;
     // Centre player in middle lane, zero scroll for a stable backdrop.
@@ -496,15 +525,46 @@ function installPlayerStatesMode(game, debugApi) {
   debugApi.applyPlayerState = applyPreset;
   debugApi.getPlayerDebugStates = () => PLAYER_DEBUG_STATES.map((s) => ({ ...s }));
   debugApi.setPoseBaselineLock = (v) => { modes.poseBaselineLock = !!v; };
-  debugApi.capturePlayerStates = async ({ debugOverlay = true, download = false, group = 'all' } = {}) => {
+
+  // v3.8.30 — mode helpers. `mode` controls the SCENE (lab vs in-scene);
+  // `debugOverlay` controls the technical boxes on the player. Both are
+  // orthogonal — four valid combinations:
+  //   { mode: 'lab',   debugOverlay: true  } — clean bg + cyan/magenta boxes
+  //   { mode: 'lab',   debugOverlay: false } — clean bg, no boxes
+  //   { mode: 'scene', debugOverlay: true  } — gameplay + boxes
+  //   { mode: 'scene', debugOverlay: false } — pure gameplay frame
+  //   { mode: 'auto' }                       — leave toggles as-is
+  const setSceneMode = (mode) => {
+    if (mode === 'lab') {
+      Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
+        { value: true, writable: false, configurable: true });
+      Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
+        { value: true, writable: false, configurable: true });
+    } else if (mode === 'scene') {
+      Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
+        { value: false, writable: false, configurable: true });
+      Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
+        { value: false, writable: false, configurable: true });
+    }
+  };
+
+  debugApi.capturePlayerStates = async ({
+    debugOverlay = true, download = false, group = 'all', mode = 'auto',
+  } = {}) => {
     const targets = group === 'all'
       ? PLAYER_DEBUG_STATES
       : PLAYER_DEBUG_STATES.filter((s) => s.group === group);
     const canvas = document.getElementById('game');
     const prevShowPlayer = GAME_CONFIG.debug.showPlayer;
+    const prevLab = GAME_CONFIG.debug.spriteLabMode;
+    const prevFx = GAME_CONFIG.debug.disableFullScreenEffects;
     if (!debugOverlay) {
-      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: false, writable: false, configurable: true });
+      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer',
+        { value: false, writable: false, configurable: true });
     }
+    setSceneMode(mode);
+    const modeSlug = mode === 'lab' ? 'lab' : mode === 'scene' ? 'scene' : 'auto';
+    const overlaySlug = debugOverlay ? 'technical' : 'clean';
     const results = {};
     for (const state of targets) {
       applyPreset(state.id);
@@ -514,26 +574,34 @@ function installPlayerStatesMode(game, debugApi) {
       if (download) {
         const a = document.createElement('a');
         a.href = dataURL;
-        a.download = `player_state_${state.id}${debugOverlay ? '_debug' : '_clean'}.png`;
+        a.download = `player_state_${state.id}_${modeSlug}_${overlaySlug}.png`;
         a.click();
       }
     }
     if (!debugOverlay) {
-      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: prevShowPlayer, writable: false, configurable: true });
+      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer',
+        { value: prevShowPlayer, writable: false, configurable: true });
     }
+    Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
+      { value: prevLab, writable: false, configurable: true });
+    Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
+      { value: prevFx, writable: false, configurable: true });
     applyPreset('run');
     return results;
   };
 
   /**
-   * v3.8.28 / v3.8.29 — capturePlayerStatesContactSheet({ debugOverlay, columns, download, group }):
-   * Composites every state in `group` into one PNG grid. Default `columns`
-   * is auto-derived from the state count (4 for all, 3 otherwise).
+   * v3.8.28 / v3.8.29 / v3.8.30 — capturePlayerStatesContactSheet.
+   *   `mode`        : 'lab' (sprite lab) | 'scene' (in-game) | 'auto' (use current toggles)
+   *   `debugOverlay`: true → cyan/magenta/red player boxes
+   *   `group`       : 'all' | 'Run' | 'Jump' | ...
+   *   `columns`     : grid columns (auto-derived from state count)
+   * Composites every state in `group` into one PNG grid.
    */
   debugApi.capturePlayerStatesContactSheet = async ({
-    debugOverlay = true, columns, cols, download = true, group = 'all',
+    debugOverlay = true, columns, cols, download = true, group = 'all', mode = 'auto',
   } = {}) => {
-    const shots = await debugApi.capturePlayerStates({ debugOverlay, download: false, group });
+    const shots = await debugApi.capturePlayerStates({ debugOverlay, download: false, group, mode });
     const states = Object.keys(shots);
     const colCount = columns ?? cols ?? (states.length > 9 ? 4 : 3);
     const rows = Math.ceil(states.length / colCount);
@@ -568,9 +636,11 @@ function installPlayerStatesMode(game, debugApi) {
     const dataURL = sheet.toDataURL('image/png');
     if (download) {
       const groupSlug = group === 'all' ? '' : `_${group.toLowerCase()}`;
+      const modeSlug = mode === 'lab' ? '_lab' : mode === 'scene' ? '_scene' : '';
+      const overlaySlug = debugOverlay ? '_technical' : '_clean';
       const a = document.createElement('a');
       a.href = dataURL;
-      a.download = `player_states_contact_sheet${groupSlug}${debugOverlay ? '_debug' : '_clean'}.png`;
+      a.download = `player_states_contact_sheet${groupSlug}${modeSlug}${overlaySlug}.png`;
       a.click();
     }
     return dataURL;
@@ -580,10 +650,11 @@ function installPlayerStatesMode(game, debugApi) {
 
   console.info(
     '[debugPlayerStates] on-screen panel available top-right.\n' +
+    '  Modes: Sprite Lab (isolated player) + Disable FX (no full-screen fades).\n' +
     '  Keyboard 1-9 still maps to run / jump (×3) / duck / hit / invuln / death / replay.\n' +
     '  Captures via console:\n' +
-    "    __ORCHID_DEBUG__.capturePlayerStates({ debugOverlay: false, download: true, group: 'Run' })\n" +
-    "    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ debugOverlay: false, group: 'Jump' })",
+    "    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ mode: 'lab',   debugOverlay: false, group: 'Run' })\n" +
+    "    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ mode: 'scene', debugOverlay: true,  group: 'all' })",
   );
 }
 
@@ -673,9 +744,22 @@ function installPlayerStateQAPanel(debugApi, modes, applyPreset) {
   };
 
   panel.appendChild(makeToggle(
+    'Sprite Lab Mode (isolate player)',
+    () => GAME_CONFIG.debug.spriteLabMode,
+    (v) => Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
+      { value: !!v, writable: false, configurable: true }),
+  ));
+  panel.appendChild(makeToggle(
+    'Disable full-screen FX (hit/death/fade)',
+    () => GAME_CONFIG.debug.disableFullScreenEffects,
+    (v) => Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
+      { value: !!v, writable: false, configurable: true }),
+  ));
+  panel.appendChild(makeToggle(
     'Technical overlay (cyan/magenta/red)',
     () => GAME_CONFIG.debug.showPlayer,
-    (v) => Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: !!v, writable: false, configurable: true }),
+    (v) => Object.defineProperty(GAME_CONFIG.debug, 'showPlayer',
+      { value: !!v, writable: false, configurable: true }),
   ));
   panel.appendChild(makeToggle(
     'Pose baseline lock (jump y → 0)',
@@ -704,49 +788,83 @@ function installPlayerStateQAPanel(debugApi, modes, applyPreset) {
     },
   ));
 
-  // CAPTURE BUTTONS
+  // v3.8.30 — 2× PREVIEW INSET. Live re-crop of the canvas region around
+  // the player, scaled 2×. Even in In-Scene mode with overlays, the user
+  // can see the farmer cleanly here (because the crop targets the
+  // player's body rect). In Sprite Lab Mode it's the same scene as the
+  // main canvas, just zoomed.
+  const previewLabel = document.createElement('div');
+  previewLabel.textContent = '2× Player Preview';
+  Object.assign(previewLabel.style, labelStyle);
+  panel.appendChild(previewLabel);
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.width = 300;
+  previewCanvas.height = 400;
+  Object.assign(previewCanvas.style, {
+    display: 'block', width: '100%', height: 'auto',
+    borderRadius: '6px', background: '#0d1422',
+    imageRendering: 'pixelated', marginBottom: '4px',
+  });
+  panel.appendChild(previewCanvas);
+  const previewCtx = previewCanvas.getContext('2d');
+  previewCtx.imageSmoothingEnabled = false;
+  const updatePreview = () => {
+    const gameCanvas = document.getElementById('game');
+    if (gameCanvas?.width) {
+      const W = gameCanvas.width;
+      const H = gameCanvas.height;
+      // Source crop: 150 × 200 px centred on the player area. The player
+      // foot baseline sits at ~94% of the canvas height; the body extends
+      // ~220px above it. Anchor the crop so the foot is in the bottom
+      // 15% of the preview frame.
+      const srcW = 150;
+      const srcH = 280;
+      const srcX = W / 2 - srcW / 2;
+      const srcY = Math.max(0, Math.round(H * 0.96 - srcH));
+      previewCtx.fillStyle = '#0d1422';
+      previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+      previewCtx.drawImage(
+        gameCanvas, srcX, srcY, srcW, srcH,
+        0, 0, previewCanvas.width, previewCanvas.height,
+      );
+    }
+    requestAnimationFrame(updatePreview);
+  };
+  requestAnimationFrame(updatePreview);
+
+  // CAPTURE BUTTONS — Sprite Lab and In-Scene rows. The current
+  // "Technical overlay" toggle decides whether the captures include the
+  // cyan/magenta boxes; nothing else does.
   const captureLabel = document.createElement('div');
-  captureLabel.textContent = 'Capture';
+  captureLabel.textContent = 'Sprite Lab Contact Sheets';
   Object.assign(captureLabel.style, labelStyle);
   panel.appendChild(captureLabel);
+  const labRow = document.createElement('div');
+  Object.assign(labRow.style, { display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '4px' });
+  const mkSheetBtn = (label, group, mode) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    Object.assign(btn.style, captureBtnStyle);
+    btn.addEventListener('click', () => {
+      const debugOverlay = GAME_CONFIG.debug.showPlayer;
+      debugApi.capturePlayerStatesContactSheet({ debugOverlay, group, mode });
+    });
+    return btn;
+  };
+  labRow.appendChild(mkSheetBtn('ALL', 'all', 'lab'));
+  for (const group of PLAYER_DEBUG_GROUPS) labRow.appendChild(mkSheetBtn(group, group, 'lab'));
+  panel.appendChild(labRow);
 
-  const captureRow = document.createElement('div');
-  Object.assign(captureRow.style, { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' });
-  const techBtn = document.createElement('button');
-  techBtn.type = 'button';
-  techBtn.textContent = 'Sheet ALL · technical';
-  Object.assign(techBtn.style, captureBtnStyle);
-  techBtn.addEventListener('click', () =>
-    debugApi.capturePlayerStatesContactSheet({ debugOverlay: true, group: 'all' }));
-  captureRow.appendChild(techBtn);
-  const cleanBtn = document.createElement('button');
-  cleanBtn.type = 'button';
-  cleanBtn.textContent = 'Sheet ALL · clean';
-  Object.assign(cleanBtn.style, captureBtnStyle);
-  cleanBtn.addEventListener('click', () =>
-    debugApi.capturePlayerStatesContactSheet({ debugOverlay: false, group: 'all' }));
-  captureRow.appendChild(cleanBtn);
-  panel.appendChild(captureRow);
-
-  for (const group of PLAYER_DEBUG_GROUPS) {
-    const row = document.createElement('div');
-    Object.assign(row.style, { display: 'flex', gap: '4px', marginBottom: '3px' });
-    const t = document.createElement('button');
-    t.type = 'button';
-    t.textContent = `${group} · tech`;
-    Object.assign(t.style, captureBtnStyle);
-    t.addEventListener('click', () =>
-      debugApi.capturePlayerStatesContactSheet({ debugOverlay: true, group }));
-    const c = document.createElement('button');
-    c.type = 'button';
-    c.textContent = `${group} · clean`;
-    Object.assign(c.style, captureBtnStyle);
-    c.addEventListener('click', () =>
-      debugApi.capturePlayerStatesContactSheet({ debugOverlay: false, group }));
-    row.appendChild(t);
-    row.appendChild(c);
-    panel.appendChild(row);
-  }
+  const sceneLabel = document.createElement('div');
+  sceneLabel.textContent = 'In-Scene Contact Sheets';
+  Object.assign(sceneLabel.style, labelStyle);
+  panel.appendChild(sceneLabel);
+  const sceneRow = document.createElement('div');
+  Object.assign(sceneRow.style, { display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '4px' });
+  sceneRow.appendChild(mkSheetBtn('ALL', 'all', 'scene'));
+  for (const group of PLAYER_DEBUG_GROUPS) sceneRow.appendChild(mkSheetBtn(group, group, 'scene'));
+  panel.appendChild(sceneRow);
 
   document.body.appendChild(panel);
 }

@@ -67,6 +67,10 @@ export class RenderSystem {
 
     this.roadRenderer = new RoadRenderer(deps);
     this.effectsRenderer = new EffectsRenderer(deps);
+    // v3.8.30 — playerRenderer is held on the instance so Sprite Lab mode
+    // can call it directly (bypassing the gameplay pipeline) without
+    // duplicating its construction.
+    this.playerRenderer = new PlayerRenderer(deps);
     this.pipeline = new RenderPipeline([
       new SkyRenderer(deps),
       new BackgroundRenderer(deps),
@@ -74,7 +78,7 @@ export class RenderSystem {
       this.roadRenderer,
       new SceneryRenderer(deps),
       new GameplayRenderer(deps),
-      new PlayerRenderer(deps),
+      this.playerRenderer,
       this.effectsRenderer,
     ]);
   }
@@ -107,9 +111,61 @@ export class RenderSystem {
     // used to wrap individual sprite draws.
     ctx.imageSmoothingEnabled = false;
 
-    this.pipeline.render(world);
+    // v3.8.30 — Sprite Lab mode hijacks the frame: neutral background +
+    // ground baseline + ONLY the player renderer. Used for pose / pixel-
+    // scale QA without any scene context (road, decor, effects, HUD
+    // overlays). Toggled from the on-screen QA panel via debug config.
+    if (world.config.debug?.spriteLabMode) {
+      this.#renderSpriteLab(world);
+    } else {
+      this.pipeline.render(world);
+    }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /**
+   * v3.8.30 — neutral scene used by Sprite Lab QA mode. Renders the
+   * player on a flat backdrop with a horizontal baseline at the ground
+   * level so cyan / magenta debug boxes can be compared frame-to-frame
+   * without scene noise.
+   */
+  #renderSpriteLab(world) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    // Neutral background — vertical gradient that keeps the eye on the
+    // player. Avoids pure black (loses sprite contrast on dark hats) and
+    // pure white (loses sprite contrast on light skin).
+    const grad = ctx.createLinearGradient(0, 0, 0, p.height);
+    grad.addColorStop(0, '#1a2638');
+    grad.addColorStop(1, '#0d1422');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, p.width, p.height);
+    // Ground baseline at the player's foot Y.
+    const bottomMargin = world.config.player.bottomMargin ?? 0;
+    const groundY = p.groundY - bottomMargin;
+    ctx.strokeStyle = 'rgba(140, 200, 255, 0.32)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(p.width, groundY);
+    ctx.stroke();
+    // Tick marks every 64 logical units → matches the canonical canvas
+    // width so QA can eyeball "is the farmer one canvas wide".
+    ctx.strokeStyle = 'rgba(140, 200, 255, 0.18)';
+    for (let x = 0; x <= p.width; x += 64) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY - 6);
+      ctx.lineTo(x, groundY + 6);
+      ctx.stroke();
+    }
+    // Label
+    ctx.fillStyle = 'rgba(200, 230, 255, 0.48)';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('SPRITE LAB · baseline · 64u grid', 12, 20);
+    // Player only.
+    this.playerRenderer.render(world);
   }
 
   resizeToViewport(padding = 0) {
