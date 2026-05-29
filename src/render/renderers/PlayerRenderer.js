@@ -80,7 +80,14 @@ function getRenderScale(spriteImg, pixelScale) {
   const ratioW = spriteImg.naturalWidth / CANONICAL_PLAYER.w;
   const ratioH = spriteImg.naturalHeight / CANONICAL_PLAYER.h;
   const ratio = Math.max(ratioW, ratioH);
-  if (ratio > 1.25) return pixelScale / ratio;
+  if (ratio > 1.25) {
+    // Defensive fallback only.
+    // If this branch triggers for a player frame, the asset is INVALID
+    // and must be re-exported on the canonical 64×96 canvas. The label
+    // warning above + auditPlayerFrames() exist precisely so the
+    // designer fix isn't masked by this guard.
+    return pixelScale / ratio;
+  }
   return pixelScale;
 }
 

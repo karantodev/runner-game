@@ -141,6 +141,59 @@ function classifyDeadKey({ key, path: filePath, fileSet, files }) {
   return 'DEPRECATED';
 }
 
+/**
+ * v3.8.32 — Player Frame Validation.
+ * Reads the raw PNG header (no image library; PNG signature + IHDR at
+ * fixed offsets) for every registered key matching the playerFarmer*
+ * family and compares against the canonical 64×96 canvas. Surfaces
+ * designer-side asset bugs (oversized canvas, tight crop) at CI time.
+ */
+const PLAYER_FRAME_RE = /^playerFarmer(Run|Crouch|Jump|Hit|Idle|Death)\d+$/;
+const PLAYER_CANONICAL = { w: 64, h: 96 };
+
+async function readPngDimensions(absPath) {
+  let fh;
+  try {
+    fh = await fs.open(absPath, 'r');
+    const buf = Buffer.alloc(24);
+    await fh.read(buf, 0, 24, 0);
+    // PNG signature: 89 50 4E 47 0D 0A 1A 0A. Width / height are big-
+    // endian uint32 at offsets 16 / 20 inside the IHDR chunk.
+    if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return null;
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  } catch {
+    return null;
+  } finally {
+    if (fh) await fh.close();
+  }
+}
+
+async function validatePlayerFrames(keys) {
+  const rows = [];
+  for (const [key, relPath] of keys.entries()) {
+    if (!PLAYER_FRAME_RE.test(key)) continue;
+    const abs = path.join(ROOT, relPath);
+    const dims = await readPngDimensions(abs);
+    if (!dims) {
+      rows.push({
+        key, path: relPath,
+        sourceW: 0, sourceH: 0,
+        status: 'MISSING',
+        action: 'asset file missing or unreadable',
+      });
+      continue;
+    }
+    const ok = dims.width === PLAYER_CANONICAL.w && dims.height === PLAYER_CANONICAL.h;
+    rows.push({
+      key, path: relPath,
+      sourceW: dims.width, sourceH: dims.height,
+      status: ok ? 'OK' : 'FAIL',
+      action: ok ? '' : `re-export on ${PLAYER_CANONICAL.w}×${PLAYER_CANONICAL.h}`,
+    });
+  }
+  return rows;
+}
+
 function classifyUnregistered({ filePath, sideAware, duplicateGroupsByFile }) {
   const lc = filePath.toLowerCase();
   if (ANIM_STEMS.some((s) => lc.includes(s))) return 'ANIM_PENDING_WIRE';
@@ -161,6 +214,9 @@ async function main() {
 
   const files = await walk(ASSETS_DIR);
   const keys = await parseGameConfigKeys();
+  // v3.8.32 — player-frame dimension validation (independent of the
+  // registered / unregistered classification above).
+  const playerFrames = await validatePlayerFrames(keys);
 
   // USED: files referenced by a key
   const usedFiles = new Set(keys.values());
@@ -218,10 +274,36 @@ async function main() {
     }
     console.log(`  side-aware orphans  ${[...sideAware.values()].filter((e) => !e.left || !e.right).length}`);
     console.log(`  duplicate groups    ${duplicates.length}`);
+
+    // v3.8.32 — Player Frame Validation block.
+    const pfFail = playerFrames.filter((r) => r.status === 'FAIL');
+    const pfMiss = playerFrames.filter((r) => r.status === 'MISSING');
+    const pfOk = playerFrames.length - pfFail.length - pfMiss.length;
+    console.log('\n[audit:check] player frame validation');
+    console.log(`  canonical canvas    ${PLAYER_CANONICAL.w}×${PLAYER_CANONICAL.h}`);
+    console.log(`  total               ${playerFrames.length}`);
+    console.log(`  OK                  ${pfOk}`);
+    console.log(`  FAIL                ${pfFail.length}`);
+    console.log(`  MISSING             ${pfMiss.length}`);
+    if (pfFail.length) {
+      console.log('  failing frames:');
+      for (const r of pfFail) {
+        console.log(`    FAIL ${r.key}: ${r.sourceW}×${r.sourceH}, expected ${PLAYER_CANONICAL.w}×${PLAYER_CANONICAL.h}`);
+      }
+    }
+    if (pfMiss.length) {
+      console.log('  missing frames:');
+      for (const r of pfMiss) {
+        console.log(`    MISSING ${r.key}: ${r.path}`);
+      }
+    }
+
     // Warnings (non-fatal in v1)
     const warnings = [];
     if (unregByKind.get('DESIGNER_OVERDELIVERY')?.length > 5) warnings.push('many DESIGNER_OVERDELIVERY files — review designer STOP list');
     if (deadByKind.get('PATH_MISMATCH')?.length > 0) warnings.push('PATH_MISMATCH dead keys — engine paths need migration');
+    if (pfFail.length) warnings.push(`${pfFail.length} player frame(s) have non-canonical source dimensions — see P0 re-export list`);
+    if (pfMiss.length) warnings.push(`${pfMiss.length} player frame(s) missing from disk`);
     if (warnings.length) {
       console.log('\n[audit:check] warnings:');
       for (const w of warnings) console.log('  ⚠ ' + w);

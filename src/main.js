@@ -526,6 +526,83 @@ function installPlayerStatesMode(game, debugApi) {
   debugApi.getPlayerDebugStates = () => PLAYER_DEBUG_STATES.map((s) => ({ ...s }));
   debugApi.setPoseBaselineLock = (v) => { modes.poseBaselineLock = !!v; };
 
+  // v3.8.32 — Player Frame Audit.
+  // Iterates every registered key matching the playerFarmer* family and
+  // checks its loaded image dims against the canonical 64×96 canvas.
+  // Surfaces designer asset bugs (e.g., 1254×1254 jump frames) as a hard
+  // FAIL the team can quote to the designer without manual inspection.
+  const PLAYER_FRAME_RE = /^playerFarmer(Run|Crouch|Jump|Hit|Idle|Death)\d+$/;
+  const PLAYER_CANONICAL_W = 64;
+  const PLAYER_CANONICAL_H = 96;
+  debugApi.auditPlayerFrames = () => {
+    const manifest = game.config.assets ?? {};
+    const rows = [];
+    for (const [key, p] of Object.entries(manifest)) {
+      if (!PLAYER_FRAME_RE.test(key)) continue;
+      const img = game.assets.get(key);
+      if (!img?.naturalWidth) {
+        rows.push({
+          key, path: p,
+          sourceW: 0, sourceH: 0,
+          expectedW: PLAYER_CANONICAL_W, expectedH: PLAYER_CANONICAL_H,
+          status: 'MISSING',
+          action: 'asset not loaded',
+        });
+        continue;
+      }
+      const ok = img.naturalWidth === PLAYER_CANONICAL_W
+              && img.naturalHeight === PLAYER_CANONICAL_H;
+      rows.push({
+        key, path: p,
+        sourceW: img.naturalWidth, sourceH: img.naturalHeight,
+        expectedW: PLAYER_CANONICAL_W, expectedH: PLAYER_CANONICAL_H,
+        status: ok ? 'OK' : 'FAIL',
+        action: ok ? '' : `re-export on ${PLAYER_CANONICAL_W}×${PLAYER_CANONICAL_H}`,
+      });
+    }
+    const pass = rows.filter((r) => r.status === 'OK').length;
+    const fail = rows.filter((r) => r.status === 'FAIL').length;
+    const miss = rows.filter((r) => r.status === 'MISSING').length;
+    console.info(`[auditPlayerFrames] ${pass} OK · ${fail} FAIL · ${miss} MISSING (of ${rows.length})`);
+    if (fail || miss) {
+      console.table(
+        rows.filter((r) => r.status !== 'OK'),
+        ['key', 'sourceW', 'sourceH', 'status', 'action'],
+      );
+    } else {
+      console.info('[auditPlayerFrames] ✓ all player frames are canonical 64×96');
+    }
+    return rows;
+  };
+
+  debugApi.formatPlayerFrameAudit = (rows) => {
+    const data = rows ?? debugApi.auditPlayerFrames();
+    const lines = [
+      '# Player Frame Audit',
+      '',
+      `Generated ${new Date().toISOString()}`,
+      `Canonical canvas: **${PLAYER_CANONICAL_W}×${PLAYER_CANONICAL_H}** (transparent, foot at canvas bottom, character centred)`,
+      '',
+      '| key | source | status | action |',
+      '|-----|--------|--------|--------|',
+    ];
+    for (const r of data) {
+      const src = r.status === 'MISSING' ? '—' : `${r.sourceW}×${r.sourceH}`;
+      lines.push(`| \`${r.key}\` | ${src} | ${r.status} | ${r.action || '-'} |`);
+    }
+    const fails = data.filter((r) => r.status === 'FAIL');
+    if (fails.length) {
+      lines.push('', `## P0 Re-export List (${fails.length})`);
+      lines.push('Designer: please re-export the following frames on a 64×96 transparent canvas.');
+      lines.push('Foot at canvas bottom, character centred, no per-pose auto-crop.');
+      lines.push('');
+      for (const r of fails) {
+        lines.push(`- \`${r.key}\` → \`${r.path}\` (currently ${r.sourceW}×${r.sourceH})`);
+      }
+    }
+    return lines.join('\n');
+  };
+
   // v3.8.30 / v3.8.31 — capture-time mode application.
   //   mode = 'lab'   → spriteLabMode ON, FX OFF (always)
   //   mode = 'scene' → spriteLabMode OFF; FX gated PER STATE:
@@ -857,6 +934,55 @@ function installPlayerStateQAPanel(debugApi, modes, applyPreset) {
   sceneRow.appendChild(mkSheetBtn('ALL', 'all', 'scene'));
   for (const group of PLAYER_DEBUG_GROUPS) sceneRow.appendChild(mkSheetBtn(group, group, 'scene'));
   panel.appendChild(sceneRow);
+
+  // v3.8.32 — Player Frame Audit section. Audit summary + copy-to-clip
+  // so the failing-frame list can be pasted straight to the designer.
+  const auditLabel = document.createElement('div');
+  auditLabel.textContent = 'Player Frame Audit';
+  Object.assign(auditLabel.style, labelStyle);
+  panel.appendChild(auditLabel);
+  const auditSummary = document.createElement('div');
+  Object.assign(auditSummary.style, {
+    font: '11px monospace', color: '#a8d4ff', marginBottom: '4px',
+    padding: '4px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px',
+  });
+  auditSummary.textContent = 'click Audit to scan loaded player frames';
+  panel.appendChild(auditSummary);
+  const refreshAuditSummary = () => {
+    const rows = debugApi.auditPlayerFrames();
+    const pass = rows.filter((r) => r.status === 'OK').length;
+    const fail = rows.filter((r) => r.status === 'FAIL').length;
+    const miss = rows.filter((r) => r.status === 'MISSING').length;
+    auditSummary.textContent = `${pass} OK · ${fail} FAIL · ${miss} MISSING (of ${rows.length})`;
+    auditSummary.style.color = fail || miss ? '#ffb060' : '#9be8a3';
+    return rows;
+  };
+  const auditRow = document.createElement('div');
+  Object.assign(auditRow.style, { display: 'flex', gap: '4px', marginBottom: '8px' });
+  const runAuditBtn = document.createElement('button');
+  runAuditBtn.type = 'button';
+  runAuditBtn.textContent = 'Audit';
+  Object.assign(runAuditBtn.style, captureBtnStyle);
+  runAuditBtn.addEventListener('click', () => refreshAuditSummary());
+  auditRow.appendChild(runAuditBtn);
+  const copyAuditBtn = document.createElement('button');
+  copyAuditBtn.type = 'button';
+  copyAuditBtn.textContent = 'Copy player frame audit';
+  Object.assign(copyAuditBtn.style, captureBtnStyle);
+  copyAuditBtn.addEventListener('click', async () => {
+    const rows = refreshAuditSummary();
+    const md = debugApi.formatPlayerFrameAudit(rows);
+    try {
+      await navigator.clipboard.writeText(md);
+      copyAuditBtn.textContent = 'Copied ✓';
+      setTimeout(() => { copyAuditBtn.textContent = 'Copy player frame audit'; }, 1500);
+    } catch (err) {
+      console.error('[Copy player frame audit] clipboard failed', err);
+      copyAuditBtn.textContent = 'Copy failed';
+    }
+  });
+  auditRow.appendChild(copyAuditBtn);
+  panel.appendChild(auditRow);
 
   document.body.appendChild(panel);
 }
