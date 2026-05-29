@@ -188,6 +188,13 @@ export const GAME_CONFIG = Object.freeze({
     // sprite so size / anchor / state consistency is verifiable at a
     // glance.
     showPlayer: false,
+    // v3.8.27 — toggled via ?debugPlayerStates=1. Freezes the world,
+    // centres the player, exposes keyboard 1-9 to force RUN / JUMP_*/
+    // DUCK / HIT / INVULNERABLE / DEATH / REPLAY, and adds
+    // __ORCHID_DEBUG__.capturePlayerStates() to grab dataURLs of every
+    // state in one call. Implies showPlayer = true so the overlay
+    // labels are visible. Wired in main.js.
+    showPlayerStates: false,
   },
 
   scene: {

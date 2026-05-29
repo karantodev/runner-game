@@ -124,7 +124,10 @@ test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
 
 test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   // Two independent debug runs with the same seed should yield identical
-  // spawn-system traces (pattern ids in order).
+  // spawn-system traces (pattern ids in order). The test does two cold
+  // page loads + a 1.2 s settle each, so the default 30 s budget runs
+  // tight on slow machines; bump per-test timeout.
+  test.setTimeout(60_000);
   const traceFor = async (url) => {
     await page.goto(url);
     await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
