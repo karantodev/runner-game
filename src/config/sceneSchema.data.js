@@ -508,6 +508,46 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   },
 ]);
 
+/**
+ * v3.8.21 — Deterministic HERO LAYOUT for the first ~150 m of every run.
+ *
+ * The user flagged: weighted-random prefab rotation sometimes lands a
+ * great composition, sometimes a sparse one. Target reference is clearly
+ * authored — fixed foreground anchors, visible question blocks, a
+ * dedicated pipe landmark — not procedural scatter. This list pins
+ * SPECIFIC prefabs at SPECIFIC distances + sides so the opening of every
+ * run reads as a curated scene. Procedural decor still spawns AFTER the
+ * last hero entry (distance > 150) and during gameplay.
+ *
+ * Each entry: { distance, side, prefabId } where prefabId references an
+ * `id` in SIDE_DECORATION_PREFABS. Read by DecorationSystem.prepopulate.
+ *
+ * Layout philosophy:
+ *   12-20  → strong bottom-corner anchors (left first, then right)
+ *   30-40  → mid-near question blocks + brick beats
+ *   55-70  → mid pipe landmark + foreground frame
+ *   85-100 → mid-far depth layers
+ *   120-140 → small far-corridor tail
+ *   > 150  → handed off to weighted random
+ */
+export const HERO_LAYOUT = Object.freeze([
+  // Bottom-corner anchors — these define the foreground framing
+  { distance:  12, side: -1, prefabId: 'hero-layered-corner-brick' },     // LEFT  near anchor
+  { distance:  16, side:  1, prefabId: 'hero-layered-pipe-landmark' },    // RIGHT pipe landmark
+  // Mid-near: arcade beats (question blocks + brick cascade)
+  { distance:  32, side: -1, prefabId: 'hero-layered-platform-qblocks' }, // LEFT  qblocks
+  { distance:  38, side:  1, prefabId: 'hero-layered-brick-cascade' },    // RIGHT brick cascade
+  // Mid: pipe identity again + stronger right anchor
+  { distance:  56, side: -1, prefabId: 'pipe-stairs-flower-bed' },        // LEFT  pipe-stairs
+  { distance:  64, side:  1, prefabId: 'corner-platform-mushroom-frame' },// RIGHT platform-mushroom
+  // Mid-far: more qblocks, vertical landmark
+  { distance:  88, side: -1, prefabId: 'platform-qblock-stack' },         // LEFT  qblocks again
+  { distance:  96, side:  1, prefabId: 'tall-block-stack-vertical' },     // RIGHT vertical landmark
+  // Far corridor tail — smaller density
+  { distance: 122, side: -1, prefabId: 'wall-stack-near' },               // LEFT  small far wall
+  { distance: 132, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT small far brick
+]);
+
 export const MIDGROUND_SCENERY = Object.freeze([
   // ── Left: structures pulled tight to road (lane ≈-2.18…-2.28), trees at lane ≈-3.04…-3.10 ──
   // variant 1=cube01, 2=cube02, 3=column_tall for grass_dirt_block

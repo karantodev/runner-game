@@ -1,6 +1,6 @@
 import { createScenery } from '../ecs/factories.js';
 import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
-import { SIDE_DECORATION_PREFABS } from '../config/sceneSchema.data.js';
+import { HERO_LAYOUT, SIDE_DECORATION_PREFABS } from '../config/sceneSchema.data.js';
 
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
@@ -43,6 +43,8 @@ export class DecorationSystem {
     this.projection = projection;
     this.rng = rng;
     this.weightedChunks = this.#buildWeightedChunks();
+    // v3.8.21 — index prefabs by id for HERO_LAYOUT lookups.
+    this.prefabsById = new Map(SIDE_DECORATION_PREFABS.map((p) => [p.id, p]));
     this.reset();
   }
 
@@ -52,10 +54,46 @@ export class DecorationSystem {
     this.lastChunk = { '-1': null, '1': null };
   }
 
+  /**
+   * v3.8.21 — two-phase prepopulate.
+   *
+   * PHASE 1: HERO_LAYOUT — place specific prefabs at specific distances
+   *          + sides. Deterministic per-run, no RNG noise. The opening
+   *          120-150 m always looks like a curated scene.
+   *
+   * PHASE 2: Procedural variation — weighted random chunks fill the
+   *          stretch FROM after the last hero entry TO the horizon, so
+   *          deeper visible distances still have variety.
+   *
+   * Each side runs its own continuation cursor so hero placements on
+   * different distances per side don't collide.
+   */
   prepopulate(world) {
     const start = this.config.spawn.decorStartDistance;
-    for (let distance = start; distance < this.projection.maxDistance + 24; distance += this.config.spawn.sideDecorSpacing) {
+    const spacing = this.config.spawn.sideDecorSpacing;
+    const maxDist = this.projection.maxDistance + 24;
+
+    // Phase 1 — hero entries, jitterless. Track the furthest distance
+    // we placed per side so the procedural loop continues from there.
+    let lastHeroDistLeft = start - spacing;
+    let lastHeroDistRight = start - spacing;
+    for (const entry of HERO_LAYOUT) {
+      const prefab = this.prefabsById.get(entry.prefabId);
+      if (!prefab) continue;
+      this.#spawnChunk(world, entry.side, entry.distance, prefab);
+      if (entry.side < 0) lastHeroDistLeft  = Math.max(lastHeroDistLeft,  entry.distance);
+      else                 lastHeroDistRight = Math.max(lastHeroDistRight, entry.distance);
+    }
+
+    // Phase 2 — procedural variation past the hero stretch. Step from
+    // the last hero distance + spacing so we don't overlap the hand-
+    // placed clusters.
+    const procStartLeft  = lastHeroDistLeft  + spacing;
+    const procStartRight = lastHeroDistRight + spacing;
+    for (let distance = procStartLeft; distance < maxDist; distance += spacing) {
       this.#spawnSideChunk(world, -1, distance + this.rng.range(-0.7, 0.7));
+    }
+    for (let distance = procStartRight; distance < maxDist; distance += spacing) {
       this.#spawnSideChunk(world, 1, distance + 3.4 + this.rng.range(-0.7, 0.7));
     }
   }
@@ -75,14 +113,24 @@ export class DecorationSystem {
     }
   }
 
+  /** Procedural path: weighted-random chunk + RNG noise. */
   #spawnSideChunk(world, side, distance) {
     const chunk = this.#pickChunk(side);
     this.lastChunk[String(side)] = chunk.id;
+    this.#spawnChunkItems(world, side, distance, chunk, /* useRng */ true);
+  }
 
+  /** Deterministic path: explicit prefab, no RNG noise (used by HERO_LAYOUT). */
+  #spawnChunk(world, side, distance, prefab) {
+    this.lastChunk[String(side)] = prefab.id;
+    this.#spawnChunkItems(world, side, distance, prefab, /* useRng */ false);
+  }
+
+  #spawnChunkItems(world, side, distance, chunk, useRng) {
     for (const item of chunk.items) {
       const mirroredLane = side * item.lane;
-      const jitter = this.rng.range(-0.028, 0.028);
-      const scaleJitter = this.rng.range(0.96, 1.05);
+      const jitter = useRng ? this.rng.range(-0.028, 0.028) : 0;
+      const scaleJitter = useRng ? this.rng.range(0.96, 1.05) : 1;
       const variant = this.#resolveVariant(item.variant, item.assetType);
       const zone = zoneForSide(side, item.laneBand ?? LANE_BANDS.SHOULDER);
       createScenery(world.registry, {
