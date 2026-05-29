@@ -11,7 +11,123 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ---
 
-## 🚦 Delivery Status (v3.8.22 — refreshed)
+## 🔍 Asset audit (v3.8.27 — full inventory)
+
+The repo now has **407 asset files** and **277 registered keys** in `GAME_CONFIG.assets`. Run `node scripts/audit-assets.mjs` to regenerate the full breakdown at `docs/asset-audit-report.md`. Headline numbers as of this refresh:
+
+| Metric | Count | Note |
+|---|---|---|
+| **Files on disk** | 407 | PNG / SVG mix |
+| **Registered keys** | 277 | gameConfig → file mapping |
+| **Unregistered PNGs** | **153** | shipped but no engine wire-up |
+| **Dead keys** | **28** | gameConfig key → file does NOT exist |
+| **Side-aware pairs delivered** | 16 | Golden Rule, both halves shipped |
+| **Side-aware orphans** | 1 | road-kit `lane_divider_center` (cosmetic, ignore) |
+| **Duplicate / near-duplicate groups (≥ 3 files / stem)** | 23 | designer review candidates |
+
+**TL;DR:** designer has been over-delivering in a few categories (sparkles, clouds, dust effects, jump/run anim frames) while the brief's stone-set + planter_pot per-side pairs (priority #1) still aren't shipped.
+
+---
+
+## 🛑 STOP LIST — please don't create any more of these (already enough)
+
+The full inventory in `docs/asset-audit-report.md` shows where designer has shipped multiple variants of the same concept. Until the engine actually wires more of these (i.e. the bottleneck moves), please **don't ship more files in these stems**:
+
+| Category | Stem | Current count | Brief target |
+|---|---|---|---|
+| `player/` | `player_farmer_run` | **12** | 8 (4 extras kept as headroom) |
+| `player/` | `player_farmer_jump` | **16** | 6 (10 extras kept as headroom) |
+| `effects/` | `sparkle` (all sparkle\_*) | **13** | 4 (anim sheet) |
+| `effects/` | `dust_burst` + `dust_puff` + `dust_cloud` + `dust_smoke` | **8 + 4 + 2 + 1 = 15** | 1 anim sheet (`dust_puff_01..04`) |
+| `background/` | `cloud_*` (all sizes) | **6** | 3 (small / medium / large) |
+| `effects/` | `collect_burst_*` | **7** | 8 (one frame missing, but stop drawing new variants) |
+| `decor/` | `grass_tuft_*` | **4** | 2 (small + large) |
+| `obstacles/` | `vine_barrier_*` (full + single + alt) | **8** | 4 + 4 (anim) — already covered |
+| `structures/` | `question_block_*` | **5** | 4 + 1 bonus — already covered |
+
+**Also: no more powerup auras / medallions.** 17 files sit under `powerups/` AND `pickups/aura/`, none wired yet. Holding pattern until pickup polish ships.
+
+**No more `_01` / `_02` suffix duplicates of any sprite the brief specifies a single canonical name for** (§ 4.2 forbids).
+
+---
+
+## 🎯 PRIORITY LIST — what to draw next (in this order)
+
+> Goal: close the structural gaps that are visible in-game NOW.
+
+### P1 — Side-aware pairs to complete the Golden Rule (3 pairs = 6 files)
+
+These are the only side-aware types still using the canvas-flip fallback (broken lighting on right). Engine is **ready** — drop them in canonical paths and they wire instantly.
+
+```
+❌ structures/stone_brick/stone_wall_low_left.png        168 × 56 px
+❌ structures/stone_brick/stone_wall_low_right.png       168 × 56 px
+❌ structures/stone_brick/stone_brick_single_left.png     56 × 56 px
+❌ structures/stone_brick/stone_brick_single_right.png    56 × 56 px
+❌ obstacles/planter_pot/planter_pot_left.png             64 × 80 px
+❌ obstacles/planter_pot/planter_pot_right.png            64 × 80 px
+```
+
+### P2 — Animation sheets (close out the effects flicker)
+
+Single-frame stand-ins are wired and look jerky in motion. These complete the canonical 4 / 4 / 4 / 8-frame anim sheets:
+
+```
+❌ effects/sparkle/sparkle_01..04.png                     16 × 16 px each
+❌ effects/hit_flash/hit_flash_01..04.png                 64 × 36 px each (stretchable to fullscreen)
+❌ effects/lane_swoosh/lane_swoosh_01..04.png             96 × 64 px each
+❌ effects/collect_burst/collect_burst_01..08.png         96 × 96 px each (one shipped, 7 missing)
+❌ collectibles/orchid_gold/orchid_gold_sparkle_01..04    12 × 12 px each
+❌ collectibles/orchid_gold/orchid_gold_collect_01..08    96 × 96 px each
+```
+
+### P3 — Player frame canonical canvas size (critical for visual consistency)
+
+The v3.8.25 fix introduced a FIXED outer visual box per state, but the inner sprite art varies in canvas size between frames (run 64×96, crouch 64×78, jump 64×96, hit 64×96, idle 64×96). For perfect consistency, ALL player frames should be on the same canvas size with TRANSPARENT padding for poses that don't fill it.
+
+```
+✅ Target canvas: 64 × 96 px  (matches run)
+✅ Foot anchor:   bottom-centre pixel (the back foot's lowest pixel)
+✅ Padding:       transparent — crouch leaves ~18 px transparent at top
+✅ Frame count:   per brief § 5.1
+```
+
+Re-export the CROUCH frames (currently 64×78) on a 64×96 canvas with the crouch pose at the bottom. This stops the renderer from needing the magenta inner-box debug check — the cyan outer box AND the magenta inner box will then be identical.
+
+### P4 — Player batch cleanup (Cyrillic / translit folders)
+
+```
+player/farmer_remaining_batch/   ← 5 files, transliterated Russian names
+player/farmer_unfinished_batch/  ← 8 files, Cyrillic-script names
+```
+
+Per § 4.2: rename to canonical English semantic names AND move to canonical paths, OR move both folders to `_source/`. The developer will NOT wire transliterated or Cyrillic-named files.
+
+### P5 — Resolve powerups path
+
+Two locations for the same conceptual asset:
+- `pickups/pickup_magnet|shield|score_x2.png` — canonical (wired)
+- `powerups/*` + `pickups/aura/*` — 9 + 4 = 13 ornamental aura/medallion files (none wired)
+
+Pick: keep `powerups/` (and update brief), move to `pickups/aura/`, or delete the duplicates from `powerups/`. Until this is resolved, all 13 aura files sit unused.
+
+### P6 — Decor large refresh — finish
+
+Started in v3.8.22 wave (`mushroom_red_big`, `tree_round`, new `tree_tall`). Still legacy-style:
+
+```
+❌ decor/large/bushes/*           bush_large, bush_large_flower
+❌ decor/large/fence/fence_corner.png  (already shipped! verify wiring)
+❌ decor/large/trees/tree_round.png + tree_tall.png  ← REFRESH alt-style if a second pass is planned
+```
+
+### P7 — Background midground polish
+
+Shipped + wired (`background/midground/rolling_hills.png`, `treeline_far.png`). If a refresh is desired with the new flat-pixel style, drop replacements at the same path.
+
+---
+
+## 🚦 Delivery Status (v3.8.27 — refreshed)
 
 Legend in the per-asset sections below:
 - ✅ **DELIVERED** — file exists, wired into the dispatcher, visible in game
