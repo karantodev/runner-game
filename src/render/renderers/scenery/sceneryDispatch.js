@@ -50,27 +50,34 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
 // v3.8.18 side-aware mapping — supports per-type override.
+// v3.8.19 — defaults flipped to 'swapped' for the current designer wave
+// after the A/B matrix + clean gameplay comparison.
 //
 // Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
-//   _left.png  → asset placed on the road's LEFT shoulder
+//   _left.png  → asset placed on the road's LEFT shoulder  (placement convention)
 //   _right.png → asset placed on the road's RIGHT shoulder
 //
-// Two layers of control:
-//   1. Per-type table: each side-aware type can be 'normal' or 'swapped'.
-//      Defaults to 'normal'. Lets QA isolate types where the designer
-//      named files by visible-face convention while others used
-//      placement convention (mixed-convention batches).
-//   2. Global `?sideMapping=swapped` URL flag XORs over the whole table.
-//      A type marked 'swapped' + global swap → effectively 'normal' again.
+// HOWEVER — empirical finding from v3.8.19 A/B (clean gameplay screenshots
+// at sideMapping=normal vs swapped): the designer named the current wave
+// of files by VISIBLE-FACE convention, not placement. So:
+//   designer's `_left.png`  → block's LEFT face is the visible one
+//                              (correct for RIGHT-shoulder placement)
+//   designer's `_right.png` → block's RIGHT face is the visible one
+//                              (correct for LEFT-shoulder placement)
+// Hence both grass_dirt_block and floating_platform default to 'swapped'
+// so the engine picks the right file for each shoulder. If a future
+// designer batch ships under the placement convention, flip the relevant
+// entries back to 'normal'.
 //
-// Setters exposed below — wired to URL params in main.js AND to the
-// __ORCHID_DEBUG__ console hook (set per-type live without reload).
+// Two layers of control:
+//   1. Per-type table — each side-aware type is 'normal' or 'swapped'.
+//   2. Global `?sideMapping=swapped` URL flag XORs over the whole table.
 const SIDE_MAPPING_BY_TYPE = new Map([
-  ['grass_dirt_block',   'normal'],
-  ['grass_dirt_step',    'normal'],
-  ['terrainBlock',       'normal'],
-  ['floating_platform',  'normal'],
-  ['platform',           'normal'],
+  ['grass_dirt_block',   'swapped'],
+  ['grass_dirt_step',    'swapped'],
+  ['terrainBlock',       'swapped'],
+  ['floating_platform',  'swapped'],
+  ['platform',           'swapped'],
 ]);
 let globalSwap = false;
 
