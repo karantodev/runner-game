@@ -48,12 +48,37 @@ if (params.get('debugAxis') === '1') {
 if (params.get('debugSides') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showSides', { value: true, writable: false, configurable: true });
 }
-// `?sideMapping=swapped` flips SIDE_KEY_FOR globally so LEFT placement
-// draws the designer's _right.png and vice versa. Used to A/B test
-// whether the designer's left/right naming refers to placement side or
-// visible-face side. Default: normal (placement convention).
-import('./render/renderers/scenery/sceneryDispatch.js').then(({ setSideMappingSwap }) => {
-  if (params.get('sideMapping') === 'swapped') setSideMappingSwap(true);
+// `?sideMapping=...` flips the side-aware variant mapping. Two formats:
+//   ?sideMapping=swapped
+//     → global swap: LEFT placement draws _right, RIGHT draws _left
+//   ?sideMapping=grass_dirt_block:swapped,floating_platform:normal
+//     → per-type overrides (one or more entries)
+// The two formats compose: ?sideMapping=swapped,grass_dirt_block:normal
+//     → global swap XOR per-type so grass_dirt_block stays normal
+//
+// Also exposes setSideMappingForType + getSideMappingForType on
+// window.__ORCHID_DEBUG__ when debug mode is on, for live A/B without
+// reloading.
+import('./render/renderers/scenery/sceneryDispatch.js').then(({
+  setSideMappingSwap, setSideMappingForType, getSideMappingForType,
+}) => {
+  const mapping = params.get('sideMapping');
+  if (mapping) {
+    for (const part of mapping.split(',')) {
+      const piece = part.trim();
+      if (piece === 'swapped' || piece === 'normal') {
+        setSideMappingSwap(piece === 'swapped');
+      } else if (piece.includes(':')) {
+        const [type, mode] = piece.split(':').map(s => s.trim());
+        setSideMappingForType(type, mode);
+      }
+    }
+  }
+  if (window.__ORCHID_DEBUG__) {
+    window.__ORCHID_DEBUG__.setSideMapping = setSideMappingForType;
+    window.__ORCHID_DEBUG__.getSideMapping = getSideMappingForType;
+    window.__ORCHID_DEBUG__.setGlobalSideSwap = setSideMappingSwap;
+  }
 });
 // `?debugSideMatrix=1` replaces gameplay scenery with an isolated
 // test matrix of every side-aware sprite at every left/right variant,
