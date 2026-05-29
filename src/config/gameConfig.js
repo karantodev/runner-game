@@ -466,6 +466,13 @@ export const GAME_CONFIG = Object.freeze({
     grassDirtBlock02:        './assets/terrain/blocks/grass_dirt_block_02.png',
     grassDirtBlockFlower01:  './assets/terrain/blocks/grass_dirt_block_flower_01.png',
     grassDirtBlockFlower02:  './assets/terrain/blocks/grass_dirt_block_flower_02.png',
+    // v3.8.15 — designer-delivered per-side 3/4-view block variants.
+    // Lit consistently with the global sun (upper-right), so the LEFT
+    // variant has its right face lit (facing the road), and the RIGHT
+    // variant has its left face lit. Selecting per side at dispatch
+    // time avoids the canvas mirror-flip that reversed lighting.
+    grassDirtBlockLeft:      './assets/terrain/blocks/grass_dirt_block_left.png',
+    grassDirtBlockRight:     './assets/terrain/blocks/grass_dirt_block_right.png',
     grassDirtPlatformLong2:  './assets/terrain/blocks/grass_dirt_platform_long.png',
     grassDirtStepLeft:       './assets/terrain/blocks/grass_dirt_step_left.png',
     // v3.6 designer-delivered dry bush obstacle (alt path).
@@ -492,6 +499,9 @@ export const GAME_CONFIG = Object.freeze({
     stoneWallLow:         './assets/structures/stone_brick/stone_wall_low.png',
     stoneWallStairs:      './assets/structures/stone_brick/stone_wall_stairs.png',
     platformFloating:     './assets/structures/platforms/platform_floating.png',
+    // v3.8.15 — designer-delivered per-side platform variants.
+    platformFloatingLeft:  './assets/structures/platforms/platform_floating_left.png',
+    platformFloatingRight: './assets/structures/platforms/platform_floating_right.png',
     platformHangingVines: './assets/structures/platforms/platform_hanging_vines.png',
     // v3.6 designer-delivered alternates.
     fenceWebbed:          './assets/structures/fences/wooden_fence_webbed_01.png',
