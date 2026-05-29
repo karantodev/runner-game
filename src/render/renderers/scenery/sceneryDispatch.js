@@ -49,13 +49,31 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
 //   0 = block_01, 1 = block_02, 2 = block_flower_01, 3 = block_flower_02
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
-// v3.8.15 — two-pass dispatch. side ∈ {-1, +1} = first pass; only side-
+// v3.8.16 side-aware mapping audit.
+//
+// Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
+//   _left.png  → asset placed on the road's LEFT shoulder; its
+//                visible (road-facing) face is the block's RIGHT side
+//   _right.png → asset placed on the road's RIGHT shoulder; its
+//                visible (road-facing) face is the block's LEFT side
+//
+// The engine derives side from `mirrored` in SceneryRenderer:
+//   side = mirrored ? 1 : -1   // +1 = right shoulder, -1 = left shoulder
+//
+// If a future designer batch uses the OPPOSITE naming convention
+// ("_left" = the block's left face is visible, regardless of placement),
+// flip SIDE_KEY_FOR to swap the mapping in ONE place:
+//   const SIDE_KEY_FOR = (side) => (side === -1 ? 'Right' : 'Left');
+const SIDE_KEY_FOR = (side) => (side === -1 ? 'Left' : 'Right');
+
+// v3.8.16 — two-pass dispatch. side ∈ {-1, +1} = first pass; only side-
 // variant is attempted. If it draws, return true. Otherwise return false
-// and the renderer calls again with side=undefined to draw the generic
-// (mirror-aware) path.
+// and the renderer falls back per its policy (NO mirror flip for side-
+// aware types — see SceneryRenderer.#drawSceneryType).
 register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, scale, variant, side) => {
-  if (side === -1) return deps.sprites.draw('grassDirtBlockLeft',  x, y, 185 * scale);
-  if (side ===  1) return deps.sprites.draw('grassDirtBlockRight', x, y, 185 * scale);
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`grassDirtBlock${SIDE_KEY_FOR(side)}`, x, y, 185 * scale);
+  }
   const v = variant ?? 0;
   const newKey = NEW_TERRAIN_BLOCK_KEYS[v % 4];
   const legacyKey = TERRAIN_BLOCK_KEYS[v % 4];
@@ -92,8 +110,9 @@ register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, 
 });
 
 register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) => {
-  if (side === -1) return deps.sprites.draw('platformFloatingLeft',  x, y, 290 * scale);
-  if (side ===  1) return deps.sprites.draw('platformFloatingRight', x, y, 290 * scale);
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`platformFloating${SIDE_KEY_FOR(side)}`, x, y, 290 * scale);
+  }
   const v = variant ?? 0;
   tryDraw(deps, ['platformFloating', 'purplePlatformRow04'], x, y, 290 * scale,
     () => deps.paint.platform(x, y, scale, v % 2));

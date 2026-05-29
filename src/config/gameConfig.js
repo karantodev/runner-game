@@ -175,6 +175,10 @@ export const GAME_CONFIG = Object.freeze({
     // alignment: central axis, road vanish dot, door bottom dot,
     // castle base dot, gateY tick.
     showAxis: false,
+    // v3.8.16 — toggled via ?debugSides=1. Draws a label over every
+    // side-aware structural prop showing type, side, dx from road
+    // centre, and whether the per-side variant or a fallback was used.
+    showSides: false,
   },
 
   scene: {

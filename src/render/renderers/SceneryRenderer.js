@@ -79,6 +79,9 @@ export class SceneryRenderer {
   }
 
   render(world) {
+    // v3.8.16 — pull the debug flag once per frame instead of reading
+    // it inside #drawSceneryType (called for every scenery entity).
+    this._showSideLabels = !!world.config.debug?.showSides;
     this.#midgroundTerraces(world);
     // v3.7.5 — #foregroundGarden removed. It painted:
     //   1. a static side-gradient panel on each shoulder (light-green tint)
@@ -316,20 +319,22 @@ export class SceneryRenderer {
     if (!draw) return;
     this.ctx.save();
     this.ctx.globalAlpha = alpha;
-    // v3.8.15 — side-aware dispatch ONLY for types that registered as
-    // such (see SIDE_AWARE_TYPES in sceneryDispatch.js). Other types
-    // get the legacy single-draw + canvas-mirror path so they don't
-    // get rendered twice.
+    const side = mirrored ? 1 : -1;
+    let usedSideVariant = false;
+    let usedFallback = false;
+    // v3.8.16 — side-aware dispatch ONLY for types that registered as
+    // such (see SIDE_AWARE_TYPES in sceneryDispatch.js).
     if (isSideAwareSceneryType(assetType)) {
-      const side = mirrored ? 1 : -1;
-      const drewSideVariant = draw(this._drawDeps, x, y, scale, variant, side);
-      if (!drewSideVariant) {
-        if (mirrored) {
-          this.ctx.translate(x, 0);
-          this.ctx.scale(-1, 1);
-          this.ctx.translate(-x, 0);
-        }
+      usedSideVariant = !!draw(this._drawDeps, x, y, scale, variant, side);
+      if (!usedSideVariant) {
+        // v3.8.16: NO mirror fallback for side-aware types. A canvas
+        // flip would reverse the sun direction on the right side and
+        // mis-orient the road-facing face. Instead draw the generic
+        // billboard WITHOUT flip so the misorientation is visible to
+        // QA, and warn once per asset type so the missing pair is loud.
+        this.#warnMissingSideVariant(assetType, side);
         draw(this._drawDeps, x, y, scale, variant, undefined);
+        usedFallback = true;
       }
     } else {
       if (mirrored) {
@@ -340,6 +345,44 @@ export class SceneryRenderer {
       draw(this._drawDeps, x, y, scale, variant);
     }
     this.ctx.restore();
+    // v3.8.16 debug labels — toggle via ?debugSides=1. Draws a small
+    // overlay near each side-aware prop showing type, side, variant
+    // used, and X position relative to road center.
+    if (this._showSideLabels && isSideAwareSceneryType(assetType)) {
+      this.#drawSideLabel(assetType, x, y, scale, side, usedSideVariant, usedFallback);
+    }
+  }
+
+  /** v3.8.16 — warn-once on missing side-variant. */
+  #warnMissingSideVariant(assetType, side) {
+    if (!this._missingVariantWarned) this._missingVariantWarned = new Set();
+    const key = `${assetType}|${side}`;
+    if (this._missingVariantWarned.has(key)) return;
+    this._missingVariantWarned.add(key);
+    const sideName = side === -1 ? 'left' : 'right';
+    // eslint-disable-next-line no-console
+    console.warn(`[scenery] side-aware "${assetType}" missing ${sideName} variant; drew billboard fallback (lighting may misalign)`);
+  }
+
+  /** v3.8.16 — per-prop debug label. */
+  #drawSideLabel(assetType, x, y, scale, side, usedSideVariant, usedFallback) {
+    const ctx = this.ctx;
+    const w = this.projection.width;
+    const roadCenterX = w / 2;
+    const dx = x - roadCenterX;
+    const status = usedSideVariant ? 'OK' : (usedFallback ? 'FALLBACK' : '?');
+    const color = usedSideVariant ? '#00ff66' : '#ff3030';
+    const labelY = Math.round(y - 120 * scale);
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    const text = `${assetType} | side=${side === -1 ? 'L' : 'R'} | dx=${Math.round(dx)} | ${status}`;
+    const tw = ctx.measureText(text).width;
+    ctx.fillRect(Math.round(x - tw / 2 - 3), labelY - 11, tw + 6, 14);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, Math.round(x), labelY);
+    ctx.restore();
   }
 }
 

@@ -40,10 +40,13 @@ const roadStyle = params.get('roadStyle') === 'tiles' ? 'tiles' : 'procedural';
 // LandmarksRenderer). Mutates the frozen config via a non-throwing
 // shallow override.
 if (params.get('debugAxis') === '1') {
-  // GAME_CONFIG.debug is frozen; clone, override, swap. We mutate the
-  // existing field reference to avoid touching the top-level frozen
-  // GAME_CONFIG object.
   Object.defineProperty(GAME_CONFIG.debug, 'showAxis', { value: true, writable: false, configurable: true });
+}
+// `?debugSides=1` labels every side-aware scenery prop with its
+// detected side, dx from road centre, and variant used (or FALLBACK
+// when the designer's _left/_right pair isn't loaded).
+if (params.get('debugSides') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showSides', { value: true, writable: false, configurable: true });
 }
 
 const canvas = document.getElementById('game');
