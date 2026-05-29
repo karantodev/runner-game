@@ -82,6 +82,14 @@ export class SceneryRenderer {
     // v3.8.16 — pull the debug flag once per frame instead of reading
     // it inside #drawSceneryType (called for every scenery entity).
     this._showSideLabels = !!world.config.debug?.showSides;
+    // v3.8.17 — when the side-matrix debug overlay is on, skip the
+    // dynamic scenery rendering entirely and draw the test grid
+    // instead. Sky / mountains / road / castle still render in their
+    // own renderers — gives context without scenery noise.
+    if (world.config.debug?.showSideMatrix) {
+      this.#drawSideMatrix(world);
+      return;
+    }
     this.#midgroundTerraces(world);
     // v3.7.5 — #foregroundGarden removed. It painted:
     //   1. a static side-gradient panel on each shoulder (light-green tint)
@@ -362,6 +370,88 @@ export class SceneryRenderer {
     const sideName = side === -1 ? 'left' : 'right';
     // eslint-disable-next-line no-console
     console.warn(`[scenery] side-aware "${assetType}" missing ${sideName} variant; drew billboard fallback (lighting may misalign)`);
+  }
+
+  /**
+   * v3.8.17 side-matrix overlay — isolated A/B test grid for side-aware
+   * sprite variants. Enabled via ?debugSideMatrix=1.
+   *
+   * Layout: for each side-aware type, four cells in a row:
+   *   [LEFT-placed, _Left.png]  [LEFT-placed, _Right.png]
+   *   [RIGHT-placed, _Left.png] [RIGHT-placed, _Right.png]
+   *
+   * Sprite content is independent of placement X — the position only
+   * affects WHERE the cell is drawn on screen. QA reads each pair and
+   * picks the variant whose lighting + 3/4-view face the road centre.
+   * The conclusion is then either "normal" or "swapped" — flip
+   * ?sideMapping= accordingly.
+   */
+  #drawSideMatrix(world) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const types = [
+      { key: 'grass_dirt_block', baseKey: 'grassDirtBlock',  size: 185 },
+      { key: 'floating_platform', baseKey: 'platformFloating', size: 290 },
+    ];
+    // Semi-transparent backdrop so labels read against any sky.
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,18,32,0.55)';
+    ctx.fillRect(0, 0, p.width, p.height);
+    // Header
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SIDE-AWARE VARIANT MATRIX  —  pick the variant whose road-facing face is on the road side', p.width / 2, 36);
+    ctx.font = '12px monospace';
+    ctx.fillText('Column 1: drawn at LEFT placement   |   Column 2: drawn at RIGHT placement', p.width / 2, 58);
+    ctx.fillText('Row "_L" = sprites named _left.png   |   Row "_R" = sprites named _right.png', p.width / 2, 76);
+    // Grid: 2 columns × 2 rows per type. Columns span screen halves.
+    const colXLeft  = p.width * 0.28;
+    const colXRight = p.width * 0.72;
+    const rowHGap = 220;
+    let rowY = 200;
+    for (const t of types) {
+      // Type header
+      ctx.fillStyle = '#ffd54a';
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`type: ${t.key}`, 40, rowY - 80);
+      // Cells
+      const cells = [
+        { x: colXLeft,  y: rowY,           variant: 'Left',  placement: 'LEFT'  },
+        { x: colXLeft,  y: rowY + rowHGap, variant: 'Right', placement: 'LEFT'  },
+        { x: colXRight, y: rowY,           variant: 'Left',  placement: 'RIGHT' },
+        { x: colXRight, y: rowY + rowHGap, variant: 'Right', placement: 'RIGHT' },
+      ];
+      for (const c of cells) {
+        const key = `${t.baseKey}${c.variant}`;
+        // Sprite draw
+        const drew = this.sprites.draw(key, c.x, c.y, t.size, 'bottom');
+        // Label
+        ctx.fillStyle = drew ? '#00ff66' : '#ff3030';
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'center';
+        const text = drew ? `${c.placement} placement · _${c.variant.toLowerCase()}` : `${key} (MISSING)`;
+        ctx.fillRect(c.x - 110, c.y + 10, 220, 16);
+        ctx.fillStyle = drew ? '#0a1c1f' : '#440000';
+        ctx.fillStyle = drew ? '#00ff66' : '#ff3030';
+        ctx.fillText(text, c.x, c.y + 22);
+      }
+      // Center vertical line per row pair (visual guide for "which side")
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(p.width / 2, rowY - 100);
+      ctx.lineTo(p.width / 2, rowY + rowHGap + 30);
+      ctx.stroke();
+      rowY += rowHGap * 2 + 60;
+    }
+    // Footer with current mapping mode
+    ctx.fillStyle = '#ffe8a8';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    const mapMode = world.config.debug?.showSides ? '(also: ?debugSides=1 active)' : '';
+    ctx.fillText(`Toggle: ?sideMapping=normal | ?sideMapping=swapped  ${mapMode}`, p.width / 2, p.height - 24);
+    ctx.restore();
   }
 
   /** v3.8.16 — per-prop debug label. */
