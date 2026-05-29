@@ -139,12 +139,15 @@ export class EffectsRenderer {
       const W = this.projection.width;
       const H = this.projection.height;
 
-      // Chromatic vignette — red edges fading toward centre.
+      // v3.8.35 — neutral navy/black dim instead of the heavy red wash.
+      // The red previously fought the death modal's gold/cream palette and
+      // hid the scene that the player just finished. Red identity is now
+      // carried exclusively by the .death-cause accent inside the modal.
       ctx.save();
-      ctx.globalAlpha = 0.45 * t;
+      ctx.globalAlpha = 0.55 * t;
       const dGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.15, W / 2, H / 2, W * 0.7);
       dGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      dGrad.addColorStop(1, 'rgba(180,40,40,0.85)');
+      dGrad.addColorStop(1, 'rgba(6, 12, 24, 0.82)');
       ctx.fillStyle = dGrad;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();

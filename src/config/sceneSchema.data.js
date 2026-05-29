@@ -548,6 +548,15 @@ export const HERO_LAYOUT = Object.freeze([
   // Far corridor tail — smaller density
   { distance: 122, side: -1, prefabId: 'wall-stack-near' },               // LEFT  small far wall
   { distance: 132, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT small far brick
+  // v3.8.35 — extended landmark beats. Previous tail ended at 132 and
+  // weighted-random took over — producing the "many grass blocks +
+  // mushrooms" monotony in the mid-far band. These 4 entries extend
+  // the curated zone to ~190 with explicit purple-brick and
+  // gate-side identity beats before procedural decor kicks in.
+  { distance: 148, side: -1, prefabId: 'brick-corridor-segment' },        // LEFT  mid-far purple brick
+  { distance: 158, side:  1, prefabId: 'pipe-with-flowers' },             // RIGHT pipe landmark continuation
+  { distance: 174, side: -1, prefabId: 'qblock-floating-cluster' },       // LEFT  qblock cluster landmark
+  { distance: 188, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT gate-side brick decoration
 ]);
 
 /**

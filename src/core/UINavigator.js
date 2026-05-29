@@ -158,7 +158,7 @@ export class UINavigator {
 
   /**
    * Horizontal nav: for <select> elements step the value; for buttons in
-   * a horizontal row (.share-row, .menu-buttons) hop to the next button;
+   * a horizontal row (.death-actions, .menu-buttons) hop to the next button;
    * otherwise behave like vertical nav. Keeps single-row UIs (settings
    * select, share buttons) intuitive.
    */

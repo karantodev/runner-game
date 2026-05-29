@@ -828,17 +828,61 @@ button:focus, [tabindex]:focus {
   color: var(--hud-gold);
 }
 
-/* Share buttons row on death screen. */
-.share-row {
+/* v3.8.35 — secondary action row near the top of the death modal.
+ * Replaces the old .share-row layout. RUN AGAIN is still the bottom-of-
+ * card primary CTA; this row holds the optional SAVE SCORE + SHARE +
+ * SCREENSHOT actions visually grouped together. SAVE SCORE is tinted
+ * slightly gold to read as "do this first if you care about the leaderboard"
+ * without competing with the main RUN AGAIN button below. */
+.death-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 16px 0;
+  margin: 14px 0 4px;
   justify-content: center;
 }
-.share-row button {
-  min-width: 140px;
-  padding: 14px 18px;
-  font-size: 12px;
+.death-action {
+  min-width: 120px;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-family: var(--pixel-font);
+  letter-spacing: 1px;
+  background: var(--hud-bg-inner);
+  color: var(--hud-text);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  cursor: pointer;
+}
+.death-action:hover { background: var(--hud-bg); }
+.death-action:disabled { opacity: 0.4; cursor: default; }
+.death-action-save {
+  border-color: var(--hud-gold-dark);
+  color: var(--hud-gold);
+}
+/* v3.8.35 — backward-compat alias for any external CSS / debug that
+ * targeted .share-row; keep the legacy class working in case anyone
+ * inspects the DOM with that selector. */
+.share-row { display: none; }
+
+/* v3.8.35 — "details" section (leaderboard + lifetime stats) is
+ * visually demoted below the action row. Smaller text, dimmer
+ * borders, slightly muted colors so the player who wants to just
+ * RUN AGAIN scans past it without effort. */
+.death-details {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hud-outline);
+  opacity: 0.78;
+}
+.death-details .lifetime-stats {
+  border: 1px solid var(--hud-outline);
+  background: transparent;
+  box-shadow: none;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.death-details .leaderboard-list {
+  font-size: 11px;
 }
 
 /* Daily-challenge badge inline in death body. */
