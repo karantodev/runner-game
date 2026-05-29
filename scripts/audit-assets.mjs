@@ -2,14 +2,25 @@
  * Asset audit script — walks assets/, cross-references with the registered
  * keys in src/config/gameConfig.js, and produces docs/asset-audit-report.md.
  *
- * Categories per file:
+ * Per-file classification:
  *   USED            file path matches a registered key in gameConfig.assets
- *   UNREGISTERED    file exists but no key in gameConfig points at it
- *   DEAD_KEY        gameConfig key points at a file that doesn't exist
+ *   UNREGISTERED    file exists but no key in gameConfig points at it.
+ *                   Sub-classified into:
+ *                     ANIM_PENDING_WIRE     anim sheet frame; brief P2 expected
+ *                     DESIGNER_OVERDELIVERY ≥ N variants of the same stem; STOP list candidate
+ *                     SIDE_PAIR_PENDING     part of a _left/_right pair; needs registration
+ *                     ALT_VARIANT           alt path / fallback; bonus shipment
+ *                     PENDING_REGISTRATION  default — review + wire OR move to _source/
+ *   DEAD_KEY        gameConfig key points at a file that doesn't exist.
+ *                   Sub-classified into:
+ *                     ANIM_PENDING_DESIGNER expected anim frame; brief P2 priority
+ *                     PATH_MISMATCH         file exists at a near-matching path
+ *                     DEPRECATED            legacy key, file removed intentionally
  *   SIDE_PAIR_OK    side-aware file has a complete _left/_right partner
  *   SIDE_ORPHAN     side-aware file is missing its partner
  *
- * Run:    node scripts/audit-assets.mjs
+ * Run:    node scripts/audit-assets.mjs          (full report)
+ *         node scripts/audit-assets.mjs --check  (warning summary, exit 0)
  * Output: docs/asset-audit-report.md
  */
 import fs from 'node:fs/promises';
@@ -108,7 +119,46 @@ function mdEscape(s) {
   return s.replace(/_/g, '\\_').replace(/\*/g, '\\*');
 }
 
+// ── Classification heuristics ─────────────────────────────────────────────────
+
+const ANIM_STEMS = [
+  'sparkle_', 'jump_dust_', 'hit_flash_', 'lane_swoosh_', 'collect_burst_',
+  'orchid_gold_sparkle_', 'orchid_gold_collect_', 'dust_puff_',
+];
+
+function classifyDeadKey({ key, path: filePath, fileSet, files }) {
+  const lc = filePath.toLowerCase();
+  if (ANIM_STEMS.some((s) => lc.includes(s))) return 'ANIM_PENDING_DESIGNER';
+  // Path mismatch heuristic: is there a file whose basename matches?
+  const wantedBase = path.basename(filePath);
+  const wantedStem = wantedBase.replace(/\.png$/, '');
+  for (const f of files) {
+    const fb = path.basename(f).replace(/\.png$/, '');
+    if (fb === wantedStem || fb === `pickup_${wantedStem}` || `pickup_${fb}` === wantedStem) {
+      return 'PATH_MISMATCH';
+    }
+  }
+  return 'DEPRECATED';
+}
+
+function classifyUnregistered({ filePath, sideAware, duplicateGroupsByFile }) {
+  const lc = filePath.toLowerCase();
+  if (ANIM_STEMS.some((s) => lc.includes(s))) return 'ANIM_PENDING_WIRE';
+  // Side-aware partner check
+  const base = filePath.replace(/_left\.png$/i, '').replace(/_right\.png$/i, '');
+  if (base !== filePath) {
+    const e = sideAware.get(base);
+    if (e && e.left && e.right) return 'SIDE_PAIR_PENDING';
+  }
+  if (duplicateGroupsByFile.has(filePath)) return 'DESIGNER_OVERDELIVERY';
+  if (/_alt|_alt\.|_0[1-9]/i.test(filePath)) return 'ALT_VARIANT';
+  return 'PENDING_REGISTRATION';
+}
+
 async function main() {
+  const argv = process.argv.slice(2);
+  const checkMode = argv.includes('--check');
+
   const files = await walk(ASSETS_DIR);
   const keys = await parseGameConfigKeys();
 
@@ -127,6 +177,57 @@ async function main() {
   const buckets = bucketByCategory(files);
   const sideAware = classifySideAware(files);
   const duplicates = detectDuplicates(files, buckets);
+
+  // Index of file → duplicate group (so we can tag overdelivery)
+  const duplicateGroupsByFile = new Map();
+  for (const g of duplicates) {
+    for (const f of g.files) duplicateGroupsByFile.set(f, g.stem);
+  }
+
+  // Classify dead keys + unregistered with sub-categories
+  for (const d of deadKeys) {
+    d.kind = classifyDeadKey({ key: d.key, path: d.path, fileSet, files });
+  }
+  const unregClassified = unregistered.map((filePath) => ({
+    path: filePath,
+    kind: classifyUnregistered({ filePath, sideAware, duplicateGroupsByFile }),
+  }));
+  const unregByKind = new Map();
+  for (const u of unregClassified) {
+    if (!unregByKind.has(u.kind)) unregByKind.set(u.kind, []);
+    unregByKind.get(u.kind).push(u.path);
+  }
+  const deadByKind = new Map();
+  for (const d of deadKeys) {
+    if (!deadByKind.has(d.kind)) deadByKind.set(d.kind, []);
+    deadByKind.get(d.kind).push(d);
+  }
+
+  // --check mode prints a short summary and exits (always 0 in v1)
+  if (checkMode) {
+    console.log('[audit:check] summary');
+    console.log(`  files               ${files.length}`);
+    console.log(`  registered keys     ${keys.size}`);
+    console.log(`  unregistered PNGs   ${unregistered.length}`);
+    for (const [k, list] of [...unregByKind.entries()].sort()) {
+      console.log(`    └─ ${k.padEnd(25)} ${list.length}`);
+    }
+    console.log(`  dead keys           ${deadKeys.length}`);
+    for (const [k, list] of [...deadByKind.entries()].sort()) {
+      console.log(`    └─ ${k.padEnd(25)} ${list.length}`);
+    }
+    console.log(`  side-aware orphans  ${[...sideAware.values()].filter((e) => !e.left || !e.right).length}`);
+    console.log(`  duplicate groups    ${duplicates.length}`);
+    // Warnings (non-fatal in v1)
+    const warnings = [];
+    if (unregByKind.get('DESIGNER_OVERDELIVERY')?.length > 5) warnings.push('many DESIGNER_OVERDELIVERY files — review designer STOP list');
+    if (deadByKind.get('PATH_MISMATCH')?.length > 0) warnings.push('PATH_MISMATCH dead keys — engine paths need migration');
+    if (warnings.length) {
+      console.log('\n[audit:check] warnings:');
+      for (const w of warnings) console.log('  ⚠ ' + w);
+    }
+    return;
+  }
 
   // Totals
   const totals = {
@@ -170,10 +271,15 @@ async function main() {
 
   if (deadKeys.length) {
     md += `## ⚠️ Dead keys (gameConfig key → missing file)\n\n`;
-    md += `These keys ARE registered in \`GAME_CONFIG.assets\` but the file is gone from disk. Either restore the file or remove the key.\n\n`;
-    md += '```\n';
-    for (const { key, path: p } of deadKeys) md += `${key.padEnd(36)} → ${p}\n`;
-    md += '```\n\n';
+    md += `These keys ARE registered in \`GAME_CONFIG.assets\` but the file is gone from disk. Classified per heuristic:\n\n`;
+    md += `- **ANIM_PENDING_DESIGNER** — expected anim sheet frame; brief P2 priority (keep key, ship frame)\n`;
+    md += `- **PATH_MISMATCH** — a file with the same name exists at a different path; engine path needs migration\n`;
+    md += `- **DEPRECATED** — legacy key, no obvious match on disk; safe to remove from \`gameConfig.assets\`\n\n`;
+    md += `| Key | Path | Action |\n|---|---|---|\n`;
+    for (const { key, path: p, kind } of deadKeys.sort((a, b) => a.kind.localeCompare(b.kind))) {
+      md += `| \`${mdEscape(key)}\` | \`${mdEscape(p)}\` | **${kind}** |\n`;
+    }
+    md += `\n`;
   }
 
   if (totals.sideOrphans) {
@@ -202,18 +308,18 @@ async function main() {
 
   if (unregistered.length) {
     md += `## Unregistered PNGs (file exists, no gameConfig key)\n\n`;
-    md += `These PNGs sit in the tree but no \`GAME_CONFIG.assets\` key points at them. Either wire them into the engine (add a key + dispatcher / use), move them to \`_source/\`, or delete.\n\n`;
-    // group by category for readability
-    const byCat = new Map();
-    for (const f of unregistered) {
-      const cat = f.split(path.sep).slice(0, 2).join('/');
-      if (!byCat.has(cat)) byCat.set(cat, []);
-      byCat.get(cat).push(f);
-    }
-    for (const [cat, list] of [...byCat.entries()].sort()) {
-      md += `### \`${mdEscape(cat)}\` (${list.length})\n\n`;
+    md += `Classified per heuristic. Sorted by classification, then by category:\n\n`;
+    md += `- **ANIM_PENDING_WIRE** — anim sheet frame; engine has a wiring slot, registration is the unblocker\n`;
+    md += `- **SIDE_PAIR_PENDING** — half of a delivered \`_left\`/\`_right\` pair; needs gameConfig key + SIDE_AWARE_TYPES entry\n`;
+    md += `- **DESIGNER_OVERDELIVERY** — falls inside a duplicate-group stem; STOP list candidate (see brief)\n`;
+    md += `- **ALT_VARIANT** — alt path / bonus shipment; wire optional\n`;
+    md += `- **PENDING_REGISTRATION** — default; review + wire OR move to \`_source/\`\n\n`;
+    for (const kind of ['ANIM_PENDING_WIRE', 'SIDE_PAIR_PENDING', 'DESIGNER_OVERDELIVERY', 'ALT_VARIANT', 'PENDING_REGISTRATION']) {
+      const list = unregByKind.get(kind) ?? [];
+      if (!list.length) continue;
+      md += `### ${kind} (${list.length})\n\n`;
       md += '```\n';
-      for (const f of list) md += `${f}\n`;
+      for (const f of list.sort()) md += `${f}\n`;
       md += '```\n\n';
     }
   }
