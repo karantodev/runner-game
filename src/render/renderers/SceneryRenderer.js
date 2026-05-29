@@ -38,21 +38,26 @@ function remapLaneForBand(lane, band) {
   const sign = Math.sign(lane) || 1;
   const abs = Math.abs(lane);
   if (band === LANE_BANDS.STRUCTURE) {
-    // v3.8.19 — STRUCTURE band pulled even tighter ([2.18, 2.78] →
-    // [2.12, 2.68]). Combined with the new dense cluster prefabs the
-    // side corridor reads as a continuous wall, not a row of distant
-    // billboards. Innermost blocks now sit ~5 px outside road edge.
+    // v3.8.20 Hero composition pass — STRUCTURE band widened so prefabs
+    // can spread props across THREE x-tiers (inner / mid / outer) in
+    // one composition. Was [2.12, 2.68] which clamped everything to a
+    // narrow band right next to the road. Now [2.05, 2.95] — items at
+    // lane 1.86 → 2.05 (inner, road edge); lane 2.00 → ~2.42 (mid);
+    // lane 2.25 → 2.95 (outer frame, just inside the tree band).
+    // Prefabs distribute items across these lane values to build a
+    // layered corridor instead of two flat lines of decor.
     if (abs < 1.85) return lane;
     const t = Math.min(1, (abs - 1.85) / 0.40);
-    return sign * (2.12 + t * (2.68 - 2.12));
+    return sign * (2.05 + t * (2.95 - 2.05));
   }
   if (band === LANE_BANDS.NATURE) {
-    // v3.8.19 — NATURE pulled in too: [3.00, 3.70] → [2.92, 3.60].
-    // Trees and large foliage sit just behind the structure band,
-    // forming the outer corridor wall.
+    // v3.8.20 — NATURE band pushed slightly outward again: [2.92, 3.60]
+    // → [3.05, 3.80]. Trees no longer overlap the new outer-frame
+    // structures at lane ~2.95; they form a distinct silhouette layer
+    // beyond the outermost decor.
     if (abs < 2.40) return lane;
     const t = Math.min(1, (abs - 2.40) / 0.85);
-    return sign * (2.92 + t * (3.60 - 2.92));
+    return sign * (3.05 + t * (3.80 - 3.05));
   }
   return lane;
 }

@@ -259,6 +259,99 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { assetType: 'sprout_soil',         laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.7, scale: 0.30 },
     ],
   },
+
+  // ── v3.8.20 Hero Composition Pass — LAYERED prefabs ─────────────────────────
+  // The previous "density" pass clustered everything at lane 1.86-1.96, which
+  // after the STRUCTURE remap collapsed to a narrow 5-15 px band right next
+  // to the road edge. Result: corridor felt like two flat lines of decor.
+  //
+  // These four prefabs spread items DELIBERATELY across three lane tiers:
+  //   INNER  (lane 1.86)  → road-edge structures (close to shoulder)
+  //   MID    (lane 2.00)  → mid-depth platforms / pipes / walls
+  //   OUTER  (lane 2.20)  → outer-frame trees, big mushrooms, deep walls
+  // Combined with the v3.8.20 wider remap [2.05, 2.95] the result is a
+  // 3-layer corridor that reads as a small WORLD, not a roadside ribbon.
+
+  {
+    // LAYERED #1 — corner hero with foreground brick + mid platform +
+    // outer tree shadow + cascade of flowers.
+    id: 'hero-layered-corner-brick',
+    weight: 5,
+    items: [
+      // INNER tier (right at road edge)
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.88, variant: 1 },
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.4, scale: 0.86, variant: 0 },
+      // MID tier (longer platform set further out)
+      { assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 1.00 },
+      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 0.54, variant: 'red', yOffset: -130 },
+      // OUTER tier (extra mushroom + fence framing)
+      { assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist: -1.0, scale: 0.86 },
+      // Flower cascade across road-shoulder
+      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.2, scale: 0.48 },
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.46, dist: -1.7, scale: 0.32 },
+    ],
+  },
+  {
+    // LAYERED #2 — mid-depth platform hero with elevated question blocks.
+    // Two question blocks at staggered y (the user wants them VISIBLE);
+    // platform sits at MID tier so they read as floating above the side.
+    id: 'hero-layered-platform-qblocks',
+    weight: 4,
+    items: [
+      // INNER: low brick accent at road edge
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  0.0, scale: 0.78, variant: 0 },
+      // MID: platform with two visible question_blocks on top
+      { assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.96, variant: 1 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 0.86, yOffset: -180 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.80, yOffset: -120 },
+      // OUTER: brick wall + small mushroom on the outer frame
+      { assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.5, scale: 0.94, variant: 1 },
+      { assetType: 'mushroom_blue_big',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  1.5, scale: 0.48, yOffset: -120 },
+      // SHOULDER flowers
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist:  1.4, scale: 0.32 },
+    ],
+  },
+  {
+    // LAYERED #3 — STRONG pipe landmark hero. The pipe is the centerpiece,
+    // surrounded by a built-up cluster: brick base + platform + mushroom
+    // + flowers + outer tree. This is the "single big pipe moment" the
+    // user wants.
+    id: 'hero-layered-pipe-landmark',
+    weight: 4,
+    items: [
+      // INNER: pipe right at road edge
+      { assetType: 'green_pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
+      // MID: brick base + flower bed behind/beside pipe
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: -1.4, scale: 0.84, variant: 0 },
+      { assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist: -0.6, scale: 0.60 },
+      // OUTER: fence + grass tuft frame the landmark
+      { assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist:  1.0, scale: 0.86 },
+      { assetType: 'grass_tuft_large',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.70, dist:  1.6, scale: 0.48 },
+      // SHOULDER flowers
+      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist:  0.8, scale: 0.46 },
+    ],
+  },
+  {
+    // LAYERED #4 — purple brick CASCADE (style anchor). Multiple bricks
+    // staggered across all three tiers reading as a wall going INTO the
+    // depth. Question block over the mid brick. The "purple/brick beat"
+    // the user wants more of.
+    id: 'hero-layered-brick-cascade',
+    weight: 4,
+    items: [
+      // INNER bricks
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.86, variant: 1 },
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.2, scale: 0.84, variant: 0 },
+      // MID brick + question_block on top
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.82, variant: 1 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.72, yOffset: -90 },
+      // OUTER big mushroom landmark
+      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: -1.6, scale: 0.74, variant: 'red' },
+      // SHOULDER flora at base
+      { assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.4, scale: 0.42 },
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.8, scale: 0.30 },
+    ],
+  },
   {
     id: 'fence-flower-row',
     weight: 5,
