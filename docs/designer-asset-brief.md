@@ -8,15 +8,49 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ### ✅ DO THIS NEXT (in this order)
 
+#### 🚨 P0 — Player Frame Re-export (BLOCKS player animation QA sign-off)
+
+Auto-detected by `node scripts/audit-assets.mjs --check` (player frame validation section). 7 frames currently shipped on a **1254 × 1254** canvas instead of the canonical **64 × 96**. Engine has a defensive fit-to-canonical fallback so gameplay doesn't break, but these frames will not pass QA sign-off until they are re-exported:
+
+| Key | Current source | Expected | Path |
+|---|---|---|---|
+| `playerFarmerJump01` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_01.png` |
+| `playerFarmerJump02` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_02.png` |
+| `playerFarmerJump03` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_03.png` |
+| `playerFarmerCrouch01` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_01.png` |
+| `playerFarmerCrouch02` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_02.png` |
+| `playerFarmerCrouch03` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_03.png` |
+| `playerFarmerCrouch04` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_04.png` |
+
+**Required export rules for ALL player frames** (Run / Jump / Crouch / Hit / Idle / Death):
+
+- ✅ **Canvas**: exactly **64 × 96 px**, transparent background
+- ✅ **Foot baseline**: character's feet touch the canvas bottom edge (Y = 96)
+- ✅ **Center axis**: character horizontally centred (X = 32)
+- ✅ **Body pixel scale**: identical across all poses — a run-frame leg is the same number of pixels tall as a jump-frame or crouch-frame leg
+- ✅ **Padding**: transparent — crouch pose leaves ~24 px transparent at the top; jump pose may extend up to the canvas top
+- ❌ **No per-pose auto-crop** (do NOT trim transparent edges per frame — the canvas size must stay constant)
+- ❌ **No 1254 × 1254 canvas** or any other non-canonical size
+- ❌ **No tight-cropped crouch / jump frames**
+
+After re-export, run `node scripts/audit-assets.mjs --check` to confirm 0 FAILs in the player frame validation section, then capture a fresh `Sprite Lab · technical` contact sheet from the QA panel.
+
+#### P1 — Side-aware Golden Rule pairs (6 files)
+
 1. **6 side-aware PNGs** to finish the Golden Rule:
    - `structures/stone_brick/stone_wall_low_left/right.png`     (168 × 56)
    - `structures/stone_brick/stone_brick_single_left/right.png`  (56 × 56)
    - `obstacles/planter_pot/planter_pot_left/right.png`          (64 × 80)
-2. **Re-export player crouch frames on 64 × 96 canvas** (currently 64 × 78 — needs transparent padding so the visual box stays constant across run / jump / duck / hit)
-3. **Anim sheets that aren't shipped yet** (P2):
+
+#### P2 — Anim sheets
+
+2. **Anim sheets that aren't shipped yet**:
    - `sparkle_01..04`, `hit_flash_01..04`, `lane_swoosh_01..04`, `collect_burst_01..08`
    - `orchid_gold_sparkle_01..04`, `orchid_gold_collect_01..08`
-4. **Rename or move** the two player WIP folders that use Cyrillic / transliterated names:
+
+#### P3 — Housekeeping
+
+3. **Rename or move** the two player WIP folders that use Cyrillic / transliterated names:
    - `player/farmer_remaining_batch/` → canonical English names OR move to `_source/`
    - `player/farmer_unfinished_batch/` → same
 
