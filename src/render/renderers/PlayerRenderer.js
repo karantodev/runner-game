@@ -303,6 +303,7 @@ export class PlayerRenderer {
       this.#drawPlayerDebug(world, {
         x, y, visualW, visualH, drawW, drawH, drawLeft, drawTop,
         alpha, runKey, crouching, airborne, justHit, pixelScale,
+        sourceW: spriteImg.naturalWidth, sourceH: spriteImg.naturalHeight,
       });
     }
   }
@@ -361,16 +362,27 @@ export class PlayerRenderer {
     ctx.setLineDash([3, 2]);
     ctx.strokeRect(rx - collisionW / 2, ry - collisionH, collisionW, collisionH);
     ctx.setLineDash([]);
-    // State label
+    // State label — two lines now.
+    //   line 1: state + scale + boxes + sprite key
+    //   line 2: canonical vs source size + ✓ or ⚠ if designer needs to re-export
     const state = justHit ? 'HIT' : airborne ? 'JUMP' : crouching ? 'DUCK' : 'RUN';
-    const text = `${state} | scale=${pixelScale.toFixed(2)} | box=${visualW}×${visualH} | art=${drawW}×${drawH} | ${runKey}`;
+    const { sourceW, sourceH } = info;
+    const canonical = CANONICAL_PLAYER;
+    const sizeMismatch = sourceW !== canonical.w || sourceH !== canonical.h;
+    const sizeBadge = sizeMismatch ? '⚠ re-export on 64×96' : '✓';
+    const line1 = `${state} | scale=${pixelScale.toFixed(2)} | box=${visualW}×${visualH} | art=${drawW}×${drawH} | ${runKey}`;
+    const line2 = `canonical ${canonical.w}×${canonical.h} / source ${sourceW}×${sourceH} ${sizeBadge}`;
     ctx.font = '11px monospace';
-    const tw = ctx.measureText(text).width;
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(rx - tw / 2 - 4, ry - visualH - 18, tw + 8, 14);
+    const tw1 = ctx.measureText(line1).width;
+    const tw2 = ctx.measureText(line2).width;
+    const tw = Math.max(tw1, tw2);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(rx - tw / 2 - 4, ry - visualH - 32, tw + 8, 28);
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText(text, rx, ry - visualH - 8);
+    ctx.fillText(line1, rx, ry - visualH - 22);
+    ctx.fillStyle = sizeMismatch ? '#ffb060' : '#9be8a3';
+    ctx.fillText(line2, rx, ry - visualH - 8);
     ctx.restore();
   }
 }

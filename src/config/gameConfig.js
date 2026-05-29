@@ -195,6 +195,20 @@ export const GAME_CONFIG = Object.freeze({
     // state in one call. Implies showPlayer = true so the overlay
     // labels are visible. Wired in main.js.
     showPlayerStates: false,
+    // v3.8.30 — Sprite Lab mode. When on, RenderSystem skips the entire
+    // gameplay pipeline (sky / background / landmarks / road / scenery /
+    // gameplay / effects) and renders ONLY: neutral background + ground
+    // baseline + player (incl. debug overlay). Isolates the farmer for
+    // pure pixel-scale QA without noisy scene context.
+    // Toggled from the on-screen QA panel.
+    spriteLabMode: false,
+    // v3.8.30 — Disable full-screen effects. When on, EffectsRenderer
+    // skips the power-up vignettes, combo pulse, dying chromatic +
+    // REPLAY pill, hit-flash full-screen overlay. Particles, score
+    // popups, and the multiplier badge above the player still render.
+    // Use for pose QA without losing the farmer to red fade on HIT or
+    // dark vignette on DEATH.
+    disableFullScreenEffects: false,
   },
 
   scene: {
