@@ -573,8 +573,11 @@ export const HERO_LAYOUT = Object.freeze([
 export const HERO_ROAD_CYCLE_LENGTH = 105;
 
 export const HERO_ROAD_SEQUENCE = Object.freeze([
-  // 4-30: warm-up flower route + guiding arc
-  { offsetInCycle:  4, kind: 'flower-line',  lane: 0, count: 5, spacing: 6 },
+  // v3.8.26 — first flower-line slimmed (5 → 3, spacing 6 → 8) so a
+  // hit happening right at cycle start isn't masked by a wall of bright
+  // golden orchids around the player. The route still reads as
+  // line→arc→vine but with breathing room near the player's body.
+  { offsetInCycle:  4, kind: 'flower-line',  lane: 0, count: 3, spacing: 8 },
   { offsetInCycle: 28, kind: 'flower-arc',   fromLane: -1, toLane: 1, count: 4 },
   // 36-50: small jump obstacle + dense reward cluster after
   { offsetInCycle: 36, kind: 'jump-obstacle', lane: -1 },
