@@ -293,8 +293,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   },
   {
     // LAYERED #2 — mid-depth platform hero with elevated question blocks.
-    // Two question blocks at staggered y (the user wants them VISIBLE);
-    // platform sits at MID tier so they read as floating above the side.
+    // v3.8.22 — qblock scales bumped (0.86/0.80 → 1.05/0.96) and yOffset
+    // pushed up (-180/-120 → -215/-150) so they read as clearly visible
+    // arcade beats per the user's request "qblocks выше и крупнее".
     id: 'hero-layered-platform-qblocks',
     weight: 4,
     items: [
@@ -302,8 +303,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  0.0, scale: 0.78, variant: 0 },
       // MID: platform with two visible question_blocks on top
       { assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.96, variant: 1 },
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 0.86, yOffset: -180 },
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.80, yOffset: -120 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 1.05, yOffset: -215 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.96, yOffset: -150 },
       // OUTER: brick wall + small mushroom on the outer frame
       { assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.5, scale: 0.94, variant: 1 },
       { assetType: 'mushroom_blue_big',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  1.5, scale: 0.48, yOffset: -120 },
@@ -344,7 +345,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.2, scale: 0.84, variant: 0 },
       // MID brick + question_block on top
       { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.82, variant: 1 },
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.72, yOffset: -90 },
+      // v3.8.22 — qblock scale 0.72 → 0.92, yOffset -90 → -130 for visibility
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.92, yOffset: -130 },
       // OUTER big mushroom landmark
       { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: -1.6, scale: 0.74, variant: 'red' },
       // SHOULDER flora at base
@@ -546,6 +548,37 @@ export const HERO_LAYOUT = Object.freeze([
   // Far corridor tail — smaller density
   { distance: 122, side: -1, prefabId: 'wall-stack-near' },               // LEFT  small far wall
   { distance: 132, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT small far brick
+]);
+
+/**
+ * v3.8.22 — Deterministic ROAD GAMEPLAY beats for the first ~95 m.
+ *
+ * Parallel to HERO_LAYOUT (side decor): pins flower routes, the big
+ * mid-near vine beat, and a lane-change zigzag to specific distances
+ * so the opening of every run reads as authored gameplay, not random
+ * sprinkle. After the last entry (~88) the road stays clean until
+ * procedural patterns kick in past distance ~130 — gives the player a
+ * visible breathing-room approach to the castle.
+ *
+ * Entry kinds (handled in SpawnSystem.#spawnHeroRoadEntry):
+ *   flower-line       N orchids in one lane spaced evenly
+ *   flower-arc        N orchids transitioning from fromLane → toLane
+ *   flower-zigzag     orchids hopping across the explicit lanes list
+ *   jump-obstacle     single-lane low obstacle (dry_grass) — jump cue
+ *   vine-with-rewards full-lane vine + approach trail + exit reward
+ */
+export const HERO_ROAD_LAYOUT = Object.freeze([
+  // 10-32: warm-up — center flower line then a guiding arc
+  { distance: 10, kind: 'flower-line', lane: 0,  count: 4, spacing: 6 },
+  { distance: 30, kind: 'flower-arc',  fromLane: -1, toLane: 1, count: 4 },
+  // 40-52: small jump obstacle + reward trail
+  { distance: 42, kind: 'jump-obstacle', lane: -1 },
+  { distance: 50, kind: 'flower-line', lane: 0, count: 2, spacing: 5 },
+  // 60-80: the BIG mid-near vine — visible foreground beat the user wants
+  { distance: 64, kind: 'vine-with-rewards', lane: 0 },
+  // 84-92: lane-change zigzag (recovery / lead into the clean approach)
+  { distance: 86, kind: 'flower-zigzag', lanes: [1, 0, -1] },
+  // 92+ → far gate approach stays clean until procedural fires at ~130
 ]);
 
 export const MIDGROUND_SCENERY = Object.freeze([

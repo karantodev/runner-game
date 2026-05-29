@@ -1,4 +1,5 @@
 import { createCollectible, createObstacle } from '../ecs/factories.js';
+import { HERO_ROAD_LAYOUT } from '../config/sceneSchema.data.js';
 import { DifficultyDirector } from './spawn/DifficultyDirector.js';
 import { PatternLibrary } from './spawn/PatternLibrary.js';
 import { PathValidator } from './spawn/PathValidator.js';
@@ -44,10 +45,89 @@ export class SpawnSystem {
     );
   }
 
+  /**
+   * v3.8.22 — Two-phase prepopulate.
+   *
+   * PHASE 1: HERO_ROAD_LAYOUT — pinned flower routes + vine beat at
+   *          specific distances (10-88). Deterministic per-run.
+   * PHASE 2: Set procedural cursors so the first random pattern fires
+   *          AFTER the player passes the hero stretch. The road stays
+   *          visibly cleaner from ~95-120 m — the "clean approach to
+   *          castle" gap the user wants.
+   */
   prepopulate(world) {
-    this.#spawnOrchidLine(world, this.config.spawn.flowerStartDistance, 0);
-    this.#spawnOrchidLine(world, this.config.spawn.flowerStartDistance + 48, 0);
-    this.#spawnPattern(world, this.library.pick(1), this.config.spawn.obstacleStartDistance);
+    for (const entry of HERO_ROAD_LAYOUT) {
+      this.#spawnHeroRoadEntry(world, entry);
+    }
+    // Procedural cursors push out enough that the first random pattern
+    // enters the visible window AFTER the hero vine (at distance 64)
+    // has played out. nextPattern is travel-units-until-spawn; the
+    // spawned pattern lands at maxDistance=420 and takes another ~236
+    // units of travel to slide into the player's view window — so even
+    // a small countdown here puts procedural obstacles well past the
+    // hero scene visually.
+    this.nextPattern = 60;
+    this.nextOrchid  = 90;
+  }
+
+  /** Dispatcher for HERO_ROAD_LAYOUT entries. */
+  #spawnHeroRoadEntry(world, entry) {
+    const dist = entry.distance;
+    switch (entry.kind) {
+      case 'flower-line': {
+        const count = entry.count ?? 3;
+        const spacing = entry.spacing ?? 6;
+        for (let i = 0; i < count; i += 1) {
+          createCollectible(world.registry, {
+            type: 'flower', lane: entry.lane ?? 0,
+            distance: dist + i * spacing, high: false,
+          });
+        }
+        return;
+      }
+      case 'flower-arc': {
+        const count = entry.count ?? 4;
+        const from = entry.fromLane;
+        const to = entry.toLane;
+        for (let i = 0; i < count; i += 1) {
+          const t = i / (count - 1);
+          const lane = from + t * (to - from);
+          createCollectible(world.registry, {
+            type: 'flower', lane,
+            distance: dist + i * 7, high: false,
+          });
+        }
+        return;
+      }
+      case 'flower-zigzag': {
+        entry.lanes.forEach((lane, i) => {
+          createCollectible(world.registry, {
+            type: 'flower', lane,
+            distance: dist + i * 8, high: false,
+          });
+        });
+        return;
+      }
+      case 'jump-obstacle': {
+        createObstacle(world.registry, {
+          type: 'wheat', lane: entry.lane ?? 0,
+          distance: dist,
+        });
+        return;
+      }
+      case 'vine-with-rewards': {
+        const lane = entry.lane ?? 0;
+        createObstacle(world.registry, {
+          type: 'vine', lane, distance: dist,
+          allLanes: true,
+        });
+        this.#spawnRewardApproach(world, dist, lane);
+        this.#spawnRewardExit(world, dist, lane);
+        return;
+      }
+      default:
+        // unknown kind — silently skip
+    }
   }
 
   update(world, delta) {
