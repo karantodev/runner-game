@@ -49,26 +49,50 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
 //   0 = block_01, 1 = block_02, 2 = block_flower_01, 3 = block_flower_02
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
-// v3.8.16/.17 side-aware mapping.
+// v3.8.18 side-aware mapping — supports per-type override.
 //
 // Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
 //   _left.png  → asset placed on the road's LEFT shoulder
 //   _right.png → asset placed on the road's RIGHT shoulder
 //
-// The engine derives side from `mirrored` in SceneryRenderer:
-//   side = mirrored ? 1 : -1   // +1 = right shoulder, -1 = left shoulder
+// Two layers of control:
+//   1. Per-type table: each side-aware type can be 'normal' or 'swapped'.
+//      Defaults to 'normal'. Lets QA isolate types where the designer
+//      named files by visible-face convention while others used
+//      placement convention (mixed-convention batches).
+//   2. Global `?sideMapping=swapped` URL flag XORs over the whole table.
+//      A type marked 'swapped' + global swap → effectively 'normal' again.
 //
-// v3.8.17 — `?sideMapping=swapped` URL flag flips the mapping at boot
-// without touching this file. Lets QA A/B-compare the two interpretations
-// of the designer's naming convention (placement vs visible-face) in
-// clean back-to-back screenshots.
-let swapSideMapping = false;
-export function setSideMappingSwap(swap) { swapSideMapping = !!swap; }
-export function isSideMappingSwapped() { return swapSideMapping; }
-const SIDE_KEY_FOR = (side) =>
-  swapSideMapping
-    ? (side === -1 ? 'Right' : 'Left')
-    : (side === -1 ? 'Left'  : 'Right');
+// Setters exposed below — wired to URL params in main.js AND to the
+// __ORCHID_DEBUG__ console hook (set per-type live without reload).
+const SIDE_MAPPING_BY_TYPE = new Map([
+  ['grass_dirt_block',   'normal'],
+  ['grass_dirt_step',    'normal'],
+  ['terrainBlock',       'normal'],
+  ['floating_platform',  'normal'],
+  ['platform',           'normal'],
+]);
+let globalSwap = false;
+
+export function setSideMappingSwap(swap) { globalSwap = !!swap; }
+export function isSideMappingSwapped() { return globalSwap; }
+export function setSideMappingForType(type, mode) {
+  if (mode !== 'normal' && mode !== 'swapped') return false;
+  SIDE_MAPPING_BY_TYPE.set(type, mode);
+  return true;
+}
+export function getSideMappingForType(type) {
+  return SIDE_MAPPING_BY_TYPE.get(type) ?? 'normal';
+}
+
+/** Per-type SIDE_KEY_FOR. Resolves type's mapping mode + global swap. */
+function SIDE_KEY_FOR(side, type) {
+  const typeMode = SIDE_MAPPING_BY_TYPE.get(type) ?? 'normal';
+  // XOR: type swapped XOR global swap → effective swap
+  const swapped = (typeMode === 'swapped') !== globalSwap;
+  if (swapped) return side === -1 ? 'Right' : 'Left';
+  return side === -1 ? 'Left'  : 'Right';
+}
 
 // v3.8.16 — two-pass dispatch. side ∈ {-1, +1} = first pass; only side-
 // variant is attempted. If it draws, return true. Otherwise return false
@@ -76,7 +100,7 @@ const SIDE_KEY_FOR = (side) =>
 // aware types — see SceneryRenderer.#drawSceneryType).
 register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, scale, variant, side) => {
   if (side === -1 || side === 1) {
-    return deps.sprites.draw(`grassDirtBlock${SIDE_KEY_FOR(side)}`, x, y, 185 * scale);
+    return deps.sprites.draw(`grassDirtBlock${SIDE_KEY_FOR(side, 'grass_dirt_block')}`, x, y, 185 * scale);
   }
   const v = variant ?? 0;
   const newKey = NEW_TERRAIN_BLOCK_KEYS[v % 4];
@@ -115,7 +139,7 @@ register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, 
 
 register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) => {
   if (side === -1 || side === 1) {
-    return deps.sprites.draw(`platformFloating${SIDE_KEY_FOR(side)}`, x, y, 290 * scale);
+    return deps.sprites.draw(`platformFloating${SIDE_KEY_FOR(side, 'floating_platform')}`, x, y, 290 * scale);
   }
   const v = variant ?? 0;
   tryDraw(deps, ['platformFloating', 'purplePlatformRow04'], x, y, 290 * scale,
