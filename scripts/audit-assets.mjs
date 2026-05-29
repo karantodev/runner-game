@@ -19,8 +19,10 @@
  *   SIDE_PAIR_OK    side-aware file has a complete _left/_right partner
  *   SIDE_ORPHAN     side-aware file is missing its partner
  *
- * Run:    node scripts/audit-assets.mjs          (full report)
- *         node scripts/audit-assets.mjs --check  (warning summary, exit 0)
+ * Run:    node scripts/audit-assets.mjs                    (full report)
+ *         node scripts/audit-assets.mjs --check            (warning summary, exit 0)
+ *         node scripts/audit-assets.mjs --check --strict   (exit 1 if any
+ *           player frame is non-canonical or missing; for CI)
  * Output: docs/asset-audit-report.md
  */
 import fs from 'node:fs/promises';
@@ -211,6 +213,10 @@ function classifyUnregistered({ filePath, sideAware, duplicateGroupsByFile }) {
 async function main() {
   const argv = process.argv.slice(2);
   const checkMode = argv.includes('--check');
+  // v3.8.33 — `--strict` upgrades the player frame validation block
+  // from warning-only to a hard fail (exit 1). Intended for CI; local
+  // dev runs `--check` and reads the warnings tail.
+  const strictMode = argv.includes('--strict');
 
   const files = await walk(ASSETS_DIR);
   const keys = await parseGameConfigKeys();
@@ -307,6 +313,16 @@ async function main() {
     if (warnings.length) {
       console.log('\n[audit:check] warnings:');
       for (const w of warnings) console.log('  ⚠ ' + w);
+    }
+    // v3.8.33 — strict-mode regression guard. After the v3.8.32 designer
+    // re-export every registered playerFarmer* frame is canonical 64×96;
+    // strict mode is how we keep it that way in CI.
+    if (strictMode && (pfFail.length > 0 || pfMiss.length > 0)) {
+      console.error(
+        '\n[audit:check] FAIL (strict): '
+        + `${pfFail.length} non-canonical + ${pfMiss.length} missing player frame(s).`,
+      );
+      process.exit(1);
     }
     return;
   }

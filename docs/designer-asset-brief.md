@@ -8,32 +8,32 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ### ✅ DO THIS NEXT (in this order)
 
-#### 🚨 P0 — Player Frame Re-export (BLOCKS player animation QA sign-off)
+#### ✅ P0 — Player Frame Re-export — **DELIVERED & ACCEPTED** (v3.8.33)
 
-Auto-detected by `node scripts/audit-assets.mjs --check` (player frame validation section). 7 frames currently shipped on a **1254 × 1254** canvas instead of the canonical **64 × 96**. Engine has a defensive fit-to-canonical fallback so gameplay doesn't break, but these frames will not pass QA sign-off until they are re-exported:
+Designer delivered all 7 re-exports. `node scripts/audit-assets.mjs --check` reports **OK 26 / FAIL 0 / MISSING 0**. Sprite Lab technical sheet shows every state visible with stable canonical box. Player animation visual QA sign-off **unblocked**.
 
-| Key | Current source | Expected | Path |
+| Key | Status | Source | Path |
 |---|---|---|---|
-| `playerFarmerJump01` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_01.png` |
-| `playerFarmerJump02` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_02.png` |
-| `playerFarmerJump03` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_03.png` |
-| `playerFarmerCrouch01` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_01.png` |
-| `playerFarmerCrouch02` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_02.png` |
-| `playerFarmerCrouch03` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_03.png` |
-| `playerFarmerCrouch04` | 1254 × 1254 | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_04.png` |
+| `playerFarmerJump01` | ✅ accepted | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_01.png` |
+| `playerFarmerJump02` | ✅ accepted | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_02.png` |
+| `playerFarmerJump03` | ✅ accepted | 64 × 96 | `assets/player/farmer_jump/player_farmer_jump_03.png` |
+| `playerFarmerCrouch01` | ✅ accepted | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_01.png` |
+| `playerFarmerCrouch02` | ✅ accepted | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_02.png` |
+| `playerFarmerCrouch03` | ✅ accepted | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_03.png` |
+| `playerFarmerCrouch04` | ✅ accepted | 64 × 96 | `assets/player/farmer_crouch/player_farmer_crouch_04.png` |
+
+The export rules below are now the **enforced standard** for every future player frame batch. CI runs `node scripts/audit-assets.mjs --check --strict` which exits 1 if any registered `playerFarmer*` frame is not exactly 64 × 96. The defensive fit-to-canonical fallback in the renderer is retained as a safety net but must not trigger in practice for accepted frames.
 
 **Required export rules for ALL player frames** (Run / Jump / Crouch / Hit / Idle / Death):
 
 - ✅ **Canvas**: exactly **64 × 96 px**, transparent background
 - ✅ **Foot baseline**: character's feet touch the canvas bottom edge (Y = 96)
 - ✅ **Center axis**: character horizontally centred (X = 32)
-- ✅ **Body pixel scale**: identical across all poses — a run-frame leg is the same number of pixels tall as a jump-frame or crouch-frame leg
+- ✅ **Body pixel scale**: identical across all poses
 - ✅ **Padding**: transparent — crouch pose leaves ~24 px transparent at the top; jump pose may extend up to the canvas top
-- ❌ **No per-pose auto-crop** (do NOT trim transparent edges per frame — the canvas size must stay constant)
+- ❌ **No per-pose auto-crop**
 - ❌ **No 1254 × 1254 canvas** or any other non-canonical size
 - ❌ **No tight-cropped crouch / jump frames**
-
-After re-export, run `node scripts/audit-assets.mjs --check` to confirm 0 FAILs in the player frame validation section, then capture a fresh `Sprite Lab · technical` contact sheet from the QA panel.
 
 #### P1 — Side-aware Golden Rule pairs (6 files)
 
