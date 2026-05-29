@@ -209,6 +209,13 @@ export const GAME_CONFIG = Object.freeze({
     // Use for pose QA without losing the farmer to red fade on HIT or
     // dark vignette on DEATH.
     disableFullScreenEffects: false,
+    // v3.8.37 — Phase 2 placement enforcement. When OFF (default), the
+    // PlacementValidator logs a one-shot console.warn for every
+    // assetType that violates a zone or adjacency rule but the spawn
+    // still happens. When ON, the validator returns false on violation
+    // and the calling system (SpawnSystem / DecorationSystem) skips the
+    // spawn. Toggle via ?enforcePlacement=1.
+    enforcePlacementRules: false,
   },
 
   scene: {

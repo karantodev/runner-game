@@ -1,13 +1,13 @@
 # Asset Semantic Action List
 
-Generated 2026-05-29T22:58:54.864Z.
+Generated 2026-05-29T23:21:03.074Z.
 Phase 1 of the World Asset Semantics + Placement Rules task.
 
 Buckets are *decision surfaces*, not auto-deletes — they tell the team
 what to confirm, fix, or design. Run `node scripts/audit-assets.mjs --check`
 to refresh.
 
-## ✅ KEEP / ACTIVE (53)
+## ✅ KEEP / ACTIVE (57)
 Schema asset types that have a complete entry in `assetSemantics.js`. These
 are the canonical placement assets.
 
@@ -16,7 +16,7 @@ are the canonical placement assets.
 - `bush_with_purple_flowers` — decor · none · zones [side-left, side-right, road-edge, foreground]
 - `castle_far` — landmark · none · zones [background]
 - `cloud_large` — background · none · zones [background]
-- `dry_grass_obstacle` — obstacle · blocking · zones [road]
+- `dry_grass_obstacle` — obstacle · blocking · zones [road, side-left, side-right]
 - `fence_wood_short` — decor · none · zones [side-left, side-right]
 - `floating_platform` — platform · none · zones [side-left, side-right]
 - `forest_far` — background · none · zones [background]
@@ -43,11 +43,15 @@ are the canonical placement assets.
 - `mushroom_red_big` — decor · none · zones [side-left, side-right]
 - `planter_pot` — support · none · zones [side-left, side-right]
 - `player_farmer` — scenery · none · zones [road]
+- `power_double_pickup` — powerup · bonus · zones [road, road-edge]
+- `power_magnet_pickup` — powerup · bonus · zones [road, road-edge]
 - `power_mushroom_pickup` — powerup · bonus · zones [road, road-edge]
+- `power_shield_pickup` — powerup · bonus · zones [road, road-edge]
 - `purple_brick_platform_3` — platform · none · zones [side-left, side-right]
 - `purple_brick_single` — support · none · zones [side-left, side-right]
 - `purple_flower_single` — decor · none · zones [side-left, side-right, road-edge, foreground]
 - `question_block` — landmark · none · zones [side-left, side-right]
+- `rare_orchid_pickup` — pickup · collectible · zones [road, road-edge]
 - `road_lane_tile` — scenery · none · zones [road]
 - `road_perspective_lines` — scenery · none · zones [road]
 - `sky_gradient` — background · none · zones [background]

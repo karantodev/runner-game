@@ -122,6 +122,20 @@ test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
   expect(result.persisted.map((e) => e.score)).toEqual([25, 20, 15]);
 });
 
+test('placement validator — seeded run produces zero rule violations', async ({ page }) => {
+  // v3.8.37 — Phase 2 regression guard. SpawnSystem (hero cycle +
+  // procedural) and DecorationSystem run for ~1.5 s of seeded gameplay;
+  // ASSET_SEMANTICS zone + adjacency rules must not be violated by any
+  // spawn attempt. A non-zero count means a generator started spawning
+  // outside its declared semantic zone or busted a minSpacing rule.
+  await page.goto('/dev.html?debug=1&seed=42');
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
+  await page.waitForTimeout(1500);
+  const violations = await page.evaluate(() => window.__ORCHID_DEBUG__.getState().placementViolations);
+  expect(violations).toBe(0);
+});
+
 test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   // Two independent debug runs with the same seed should yield identical
   // spawn-system traces (pattern ids in order). The test does two cold

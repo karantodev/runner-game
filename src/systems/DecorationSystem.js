@@ -38,10 +38,13 @@ export class DecorationSystem {
    * @param {import('../world/Projection.js').Projection} projection
    * @param {import('../utils/rng.js').Rng} rng
    */
-  constructor(config, projection, rng) {
+  constructor(config, projection, rng, placement = null) {
     this.config = config;
     this.projection = projection;
     this.rng = rng;
+    // v3.8.37 — Phase 2 placement enforcement. Optional so legacy
+    // unit-test paths constructing DecorationSystem standalone don't break.
+    this.placement = placement;
     this.weightedChunks = this.#buildWeightedChunks();
     // v3.8.21 — index prefabs by id for HERO_LAYOUT lookups.
     this.prefabsById = new Map(SIDE_DECORATION_PREFABS.map((p) => [p.id, p]));
@@ -133,6 +136,20 @@ export class DecorationSystem {
       const scaleJitter = useRng ? this.rng.range(0.96, 1.05) : 1;
       const variant = this.#resolveVariant(item.variant, item.assetType);
       const zone = zoneForSide(side, item.laneBand ?? LANE_BANDS.SHOULDER);
+      // v3.8.37 — Phase 2 placement enforcement. Decor items live on
+      // side-left / side-right; the validator maps each item's assetType
+      // against ASSET_SEMANTICS.placementZones. Adjacency tracking is
+      // per-assetType across left+right (so a mushroom cluster on the
+      // right counts toward the global min spacing for that mushroom).
+      const semanticZone = side === -1 ? 'side-left' : 'side-right';
+      if (this.placement
+          && !this.placement.shouldSpawn(item.assetType, {
+            zone: semanticZone,
+            distance: distance + item.dist,
+            side,
+          })) {
+        continue;
+      }
       createScenery(world.registry, {
         type: assetTypeToSceneryType(item.assetType),
         assetType: item.assetType,

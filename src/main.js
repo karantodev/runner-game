@@ -91,6 +91,13 @@ import('./render/renderers/scenery/sceneryDispatch.js').then(({
 if (params.get('debugSideMatrix') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showSideMatrix', { value: true, writable: false, configurable: true });
 }
+// `?enforcePlacement=1` flips the PlacementValidator from warn-mode to
+// strict-mode: any spawn that violates ASSET_SEMANTICS zone or adjacency
+// rules is dropped instead of just warned. Useful for catching
+// regressions in HERO_LAYOUT / HERO_ROAD_SEQUENCE during composition QA.
+if (params.get('enforcePlacement') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'enforcePlacementRules', { value: true, writable: false, configurable: true });
+}
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
 // verify scale stays constant across states.
@@ -313,6 +320,11 @@ function createDebugApi() {
         obstacles,
         collectibles,
         scenery,
+        // v3.8.37 — Phase 2 placement validation counter. 0 means no
+        // spawn attempted by SpawnSystem / DecorationSystem violated a
+        // zone / adjacency rule in this run. Regression-tested by the
+        // 'placement validator' Playwright spec.
+        placementViolations: game.world.placement?.violations ?? 0,
         lastCapture: debugState.lastCapture,
         errors: debugState.errors,
       };

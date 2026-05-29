@@ -1,6 +1,7 @@
 import { clamp } from '../utils/math.js';
 import { Rng } from '../utils/rng.js';
 import { ObjectPool } from '../utils/pool.js';
+import { PlacementValidator } from './PlacementValidator.js';
 import { EntityRegistry } from '../ecs/EntityRegistry.js';
 import { createPlayer } from '../ecs/factories.js';
 import { MovementSystem } from '../systems/MovementSystem.js';
@@ -88,8 +89,11 @@ export class World {
     // biases the difficulty curve. SpawnSystem holds the DifficultyDirector
     // which consults it on every pattern pick.
     this.adaptiveSkill = new AdaptiveSkill(this.playerStats);
-    this.spawnSystem = new SpawnSystem(config, projection, this.rng, this.adaptiveSkill);
-    this.decorationSystem = new DecorationSystem(config, projection, this.rng);
+    // v3.8.37 — Phase 2 placement enforcement. SpawnSystem +
+    // DecorationSystem consult this validator on every spawn attempt.
+    this.placement = new PlacementValidator(config);
+    this.spawnSystem = new SpawnSystem(config, projection, this.rng, this.adaptiveSkill, this.placement);
+    this.decorationSystem = new DecorationSystem(config, projection, this.rng, this.placement);
     this.collisionSystem = new CollisionSystem(config, eventBus);
     this.gameStateSystem = new GameStateSystem(config, eventBus);
     this.effectsSystem = new EffectsSystem(config, eventBus, projection);
@@ -182,6 +186,7 @@ export class World {
     this.decorationSystem.reset();
     this.particleSystem.reset();
     this.popupSystem.reset();
+    this.placement.reset();
     this.projection.focalImpulse = 0;
     for (let i = 0; i < this.playerTrail.length; i += 1) this.playerTrailPool.release(this.playerTrail[i]);
     this.playerTrail.length = 0;
