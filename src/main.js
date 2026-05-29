@@ -330,43 +330,26 @@ function createDebugApi() {
 
 installErrorCollector();
 
-if (debugEnabled) {
-  const debugApi = createDebugApi();
-  window.__ORCHID_DEBUG__ = debugApi;
-  installDebugPanel(debugApi);
-  new PerformanceHUD(game, { pixelRatioChoice });
-
-  window.addEventListener('keydown', (event) => {
-    if (event.code !== 'F8') return;
-    event.preventDefault();
-    debugApi.captureCanvas().catch((error) => {
-      console.error('[Orchid Debug] capture failed', error);
-    });
-  });
-
-  // v3.8.27 — ?debugPlayerStates=1 wiring: keyboard 1-9 forces a state,
-  // world frozen, capturePlayerStates() helper grabs dataURLs.
-  if (GAME_CONFIG.debug.showPlayerStates) {
-    installPlayerStatesMode(game, debugApi);
-  }
-}
-
 /**
  * v3.8.29 — Player Debug State Registry.
  *
+ * Hoisted ABOVE the `if (debugEnabled)` block below: function declarations
+ * are hoisted, but const declarations are NOT, so the registry must be
+ * physically before any code path that reads it. `installPlayerStatesMode`
+ * + `installPlayerStateQAPanel` (further down) both consume this registry
+ * at module-init time when ?debugPlayerStates=1 is set.
+ *
  * Flat array, grouped via the `group` field. The DOM QA panel renders one
- * button per entry; keyboard 1-9 maps to the first nine ids for backward
+ * button per entry; keyboard 1-9 maps to nine common ids for backward
  * compat. Adding a new state = appending one entry here; no renderer
  * change required.
  *
  * Separation of concerns:
  *  • POSE states (Run / Jump / Duck / Hit) — pin the player to a frame
  *    by setting vy, y, isJumping, crouching, invuln, hitFlash, runFrame
- *    on the live components. Effects (idle / invuln blink) belong here
- *    because they live ON the player.
+ *    on the live components.
  *  • OVERLAY states (Death / Replay) — change `world.state` so the
- *    death animation / replay overlay renders. The player pose under
- *    the overlay is whatever the death/replay system draws.
+ *    death animation / replay overlay renders.
  *
  * `runFrame` is optional; setting it pegs a specific animation frame
  * (frame index N → runFrame = N * 3.15, matches the renderer cadence).
@@ -411,9 +394,31 @@ const PLAYER_DEBUG_KEY_MAP = {
   '5': 'duck', '6': 'hit_01', '7': 'invuln_dim', '8': 'death', '9': 'replay',
 };
 
+if (debugEnabled) {
+  const debugApi = createDebugApi();
+  window.__ORCHID_DEBUG__ = debugApi;
+  installDebugPanel(debugApi);
+  new PerformanceHUD(game, { pixelRatioChoice });
+
+  window.addEventListener('keydown', (event) => {
+    if (event.code !== 'F8') return;
+    event.preventDefault();
+    debugApi.captureCanvas().catch((error) => {
+      console.error('[Orchid Debug] capture failed', error);
+    });
+  });
+
+  // v3.8.27 — ?debugPlayerStates=1 wiring: keyboard 1-9 forces a state,
+  // world frozen, capturePlayerStates() helper grabs dataURLs.
+  if (GAME_CONFIG.debug.showPlayerStates) {
+    installPlayerStatesMode(game, debugApi);
+  }
+}
+
 /**
  * v3.8.27 — installs the player-states debug mode on top of the game.
- * v3.8.29 — driven by PLAYER_DEBUG_STATES registry + on-screen QA panel.
+ * v3.8.29 — driven by PLAYER_DEBUG_STATES registry (hoisted above) +
+ * the on-screen QA panel.
  */
 function installPlayerStatesMode(game, debugApi) {
   // Mode flags toggled from the QA panel.
