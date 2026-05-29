@@ -28,12 +28,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// v3.8.36 — Phase 1 semantic registry. Imported (not regex-parsed) so the
+// audit fails loudly if the registry file breaks parse.
+import { ASSET_SEMANTICS } from '../src/config/assetSemantics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const ASSETS_DIR = path.join(ROOT, 'assets');
 const GAME_CONFIG = path.join(ROOT, 'src/config/gameConfig.js');
+const SCENE_SCHEMA = path.join(ROOT, 'src/config/sceneSchema.js');
 const REPORT_OUT = path.join(ROOT, 'docs/asset-audit-report.md');
+const ACTION_LIST_OUT = path.join(ROOT, 'docs/asset-semantic-action-list.md');
 
 /**
  * Walk a directory recursively and return relative file paths from ROOT.
@@ -176,6 +181,43 @@ async function readPngDimensions(absPath) {
   }
 }
 
+/**
+ * v3.8.36 — parse the assetType catalog from sceneSchema.js. Format:
+ *   <name>: { group: '...', zone: ... }
+ * Loose regex; misses are surfaced by the SEMANTIC_ORPHAN check.
+ */
+async function parseSceneAssetTypes() {
+  const src = await fs.readFile(SCENE_SCHEMA, 'utf8');
+  const re = /^\s{2}([a-z][a-z_0-9]*):\s*\{\s*group:/gm;
+  const out = new Set();
+  let m;
+  while ((m = re.exec(src)) !== null) out.add(m[1]);
+  return out;
+}
+
+/**
+ * v3.8.36 — cross-reference scene asset types with the semantic registry.
+ *
+ *   SEMANTIC_OK                       — schema entry + semantic entry
+ *   NEEDS_SEMANTIC_CLASSIFICATION     — used in schema, no semantic entry
+ *   SEMANTIC_ORPHAN                   — semantic entry but not in any schema
+ */
+function semanticAudit(schemaTypes) {
+  const semanticKeys = new Set(Object.keys(ASSET_SEMANTICS));
+  const semanticOk = [];
+  const needsClassification = [];
+  for (const t of schemaTypes) {
+    if (semanticKeys.has(t)) semanticOk.push(t);
+    else needsClassification.push(t);
+  }
+  const orphans = [...semanticKeys].filter((k) => !schemaTypes.has(k));
+  // Group orphans: background entries are intentionally non-schema, so
+  // bucket them separately so they don't read as warnings.
+  const orphanBackground = orphans.filter((k) => ASSET_SEMANTICS[k]?.category === 'background');
+  const orphanReal = orphans.filter((k) => ASSET_SEMANTICS[k]?.category !== 'background');
+  return { semanticOk, needsClassification, orphanBackground, orphanReal };
+}
+
 async function validatePlayerFrames(keys) {
   const rows = [];
   for (const [key, relPath] of keys.entries()) {
@@ -229,6 +271,9 @@ async function main() {
   // v3.8.32 — player-frame dimension validation (independent of the
   // registered / unregistered classification above).
   const playerFrames = await validatePlayerFrames(keys);
+  // v3.8.36 — semantic registry cross-ref.
+  const schemaAssetTypes = await parseSceneAssetTypes();
+  const semanticReport = semanticAudit(schemaAssetTypes);
 
   // USED: files referenced by a key
   const usedFiles = new Set(keys.values());
@@ -310,12 +355,33 @@ async function main() {
       }
     }
 
+    // v3.8.36 — Asset Semantic registry coverage.
+    console.log('\n[audit:check] semantic registry coverage');
+    console.log(`  schema asset types     ${schemaAssetTypes.size}`);
+    console.log(`  SEMANTIC_OK            ${semanticReport.semanticOk.length}`);
+    console.log(`  NEEDS_CLASSIFICATION   ${semanticReport.needsClassification.length}`);
+    console.log(`  SEMANTIC_ORPHAN        ${semanticReport.orphanReal.length}  (real)`);
+    console.log(`  background-only        ${semanticReport.orphanBackground.length}  (intentional)`);
+    if (semanticReport.needsClassification.length) {
+      console.log('  types missing semantic entry:');
+      for (const t of semanticReport.needsClassification) {
+        console.log(`    NEEDS  ${t}`);
+      }
+    }
+    if (semanticReport.orphanReal.length) {
+      console.log('  semantic entries not used by any schema:');
+      for (const t of semanticReport.orphanReal) {
+        console.log(`    ORPHAN ${t}`);
+      }
+    }
+
     // Warnings (non-fatal in v1)
     const warnings = [];
     if (unregByKind.get('DESIGNER_OVERDELIVERY')?.length > 5) warnings.push('many DESIGNER_OVERDELIVERY files — review designer STOP list');
     if (deadByKind.get('PATH_MISMATCH')?.length > 0) warnings.push('PATH_MISMATCH dead keys — engine paths need migration');
     if (pfFail.length) warnings.push(`${pfFail.length} player frame(s) have non-canonical source dimensions — see P0 re-export list`);
     if (pfMiss.length) warnings.push(`${pfMiss.length} player frame(s) missing from disk`);
+    if (semanticReport.needsClassification.length) warnings.push(`${semanticReport.needsClassification.length} schema asset type(s) lack a semantic entry — see assetSemantics.js`);
     if (warnings.length) {
       console.log('\n[audit:check] warnings:');
       for (const w of warnings) console.log('  ⚠ ' + w);
@@ -431,6 +497,148 @@ async function main() {
   await fs.writeFile(REPORT_OUT, md);
   console.log(`[audit] wrote ${path.relative(ROOT, REPORT_OUT)}`);
   console.log(`[audit] ${totals.files} files, ${totals.registeredKeys} keys, ${totals.unregistered} unregistered, ${totals.deadKeys} dead, ${totals.sideOrphans} orphans, ${totals.duplicateGroups} duplicate groups`);
+
+  // v3.8.36 — Asset Semantic Action List. Decision surface for designer
+  // and dev: every asset type goes into one of the buckets per the
+  // Phase-1 brief, plus a registered-key view of overdelivery / pending.
+  const actionMd = buildSemanticActionList({
+    semanticReport,
+    schemaAssetTypes,
+    keys,
+    deadKeys,
+    unregClassified,
+    playerFrames,
+  });
+  await fs.writeFile(ACTION_LIST_OUT, actionMd);
+  console.log(`[audit] wrote ${path.relative(ROOT, ACTION_LIST_OUT)}`);
+}
+
+/**
+ * v3.8.36 — produce docs/asset-semantic-action-list.md.
+ * Buckets follow the Phase-1 deliverable spec; each bucket is a flat
+ * list the designer / dev can scan top-to-bottom.
+ */
+function buildSemanticActionList({
+  semanticReport, schemaAssetTypes, keys, deadKeys, unregClassified, playerFrames,
+}) {
+  const lines = [];
+  lines.push('# Asset Semantic Action List');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push(`Phase 1 of the World Asset Semantics + Placement Rules task.`);
+  lines.push('');
+  lines.push('Buckets are *decision surfaces*, not auto-deletes — they tell the team');
+  lines.push('what to confirm, fix, or design. Run `node scripts/audit-assets.mjs --check`');
+  lines.push('to refresh.');
+  lines.push('');
+
+  // ── KEEP / ACTIVE ────────────────────────────────────────────────────────
+  lines.push(`## ✅ KEEP / ACTIVE (${semanticReport.semanticOk.length})`);
+  lines.push('Schema asset types that have a complete entry in `assetSemantics.js`. These');
+  lines.push('are the canonical placement assets.');
+  lines.push('');
+  for (const t of semanticReport.semanticOk.sort()) {
+    const s = ASSET_SEMANTICS[t];
+    lines.push(`- \`${t}\` — ${s.category} · ${s.gameplayRole} · zones [${s.placementZones.join(', ')}]`);
+  }
+  lines.push('');
+
+  // ── NEEDS SEMANTIC CLASSIFICATION ────────────────────────────────────────
+  lines.push(`## ⚠ NEEDS SEMANTIC CLASSIFICATION (${semanticReport.needsClassification.length})`);
+  lines.push('Used in `sceneSchema.js` but no entry in `assetSemantics.js`. Add an entry');
+  lines.push('to the registry before the placement-rules pass (Phase 2) lands.');
+  lines.push('');
+  for (const t of semanticReport.needsClassification.sort()) {
+    lines.push(`- \`${t}\``);
+  }
+  if (!semanticReport.needsClassification.length) lines.push('- _(none — registry covers every schema type)_');
+  lines.push('');
+
+  // ── SEMANTIC ORPHAN ──────────────────────────────────────────────────────
+  if (semanticReport.orphanReal.length) {
+    lines.push(`## ⚠ SEMANTIC ORPHAN (${semanticReport.orphanReal.length})`);
+    lines.push('Entries in `assetSemantics.js` that no schema references. Either wire');
+    lines.push('them into a prefab / decor map or remove the registry entry.');
+    lines.push('');
+    for (const t of semanticReport.orphanReal.sort()) {
+      lines.push(`- \`${t}\``);
+    }
+    lines.push('');
+  }
+
+  // ── DEPRECATED ───────────────────────────────────────────────────────────
+  const deprecatedKeys = deadKeys.filter((d) => d.kind === 'DEPRECATED');
+  lines.push(`## 🛑 DEPRECATED (${deprecatedKeys.length})`);
+  lines.push('Registered key whose file no longer ships, and the engine has migrated.');
+  lines.push('Safe to remove from `gameConfig.assets` in a follow-up cleanup PR.');
+  lines.push('');
+  for (const d of deprecatedKeys) lines.push(`- \`${d.key}\` → \`${d.path}\``);
+  if (!deprecatedKeys.length) lines.push('- _(none)_');
+  lines.push('');
+
+  // ── MISSING (dead keys waiting on designer) ──────────────────────────────
+  const missingDesign = deadKeys.filter((d) => d.kind === 'ANIM_PENDING_DESIGNER');
+  const pathMismatch = deadKeys.filter((d) => d.kind === 'PATH_MISMATCH');
+  lines.push(`## 🟡 MISSING / NEED DESIGN (${missingDesign.length + pathMismatch.length})`);
+  lines.push('Keys registered in `gameConfig.assets` whose file is not on disk.');
+  lines.push('');
+  if (missingDesign.length) {
+    lines.push(`**Waiting on designer (${missingDesign.length})**`);
+    for (const d of missingDesign) lines.push(`- \`${d.key}\` → expected at \`${d.path}\``);
+    lines.push('');
+  }
+  if (pathMismatch.length) {
+    lines.push(`**Engine path migration (${pathMismatch.length})**`);
+    for (const d of pathMismatch) lines.push(`- \`${d.key}\` → registered path \`${d.path}\` doesn't match disk canonical`);
+    lines.push('');
+  }
+
+  // ── DUPLICATE / OVERDELIVERED ────────────────────────────────────────────
+  const overdelivery = unregClassified.filter((u) => u.kind === 'DESIGNER_OVERDELIVERY');
+  lines.push(`## 🛑 DUPLICATE / OVERDELIVERED (${overdelivery.length})`);
+  lines.push('Files on disk above brief target (STOP list) or duplicates of canonical');
+  lines.push('files. **Do not register**; move new arrivals to `_source/` when they');
+  lines.push('land at non-canonical paths.');
+  lines.push('');
+  for (const u of overdelivery.slice(0, 30)) lines.push(`- ${u.path}`);
+  if (overdelivery.length > 30) lines.push(`- _(${overdelivery.length - 30} more — see asset-audit-report.md)_`);
+  lines.push('');
+
+  // ── NEEDS SIDE PAIR ──────────────────────────────────────────────────────
+  const sidePair = unregClassified.filter((u) => u.kind === 'SIDE_PAIR_PENDING');
+  lines.push(`## 🟡 NEEDS SIDE PAIR / WIRING (${sidePair.length})`);
+  lines.push('`_left.png` / `_right.png` files on disk that are not yet wired into the');
+  lines.push('dispatcher. Phase-2 task: extend `SIDE_AWARE_TYPES` + dispatcher branches.');
+  lines.push('');
+  for (const u of sidePair.slice(0, 30)) lines.push(`- ${u.path}`);
+  if (sidePair.length > 30) lines.push(`- _(${sidePair.length - 30} more)_`);
+  lines.push('');
+
+  // ── UNUSED BUT VALID ─────────────────────────────────────────────────────
+  const altVariant = unregClassified.filter((u) => u.kind === 'ALT_VARIANT');
+  const pendingReg = unregClassified.filter((u) => u.kind === 'PENDING_REGISTRATION');
+  lines.push(`## 🟡 UNUSED BUT VALID (${altVariant.length + pendingReg.length})`);
+  lines.push('Files on disk that are not duplicates / overdelivery — they are real');
+  lines.push('alternates or canonical files waiting on a renderer consumer. Register');
+  lines.push('only when the engine has a use for them (per the intake rules).');
+  lines.push('');
+  lines.push(`- ALT_VARIANT: ${altVariant.length}`);
+  lines.push(`- PENDING_REGISTRATION: ${pendingReg.length}`);
+  lines.push('');
+
+  // ── PLAYER FRAMES ────────────────────────────────────────────────────────
+  const pfFail = playerFrames.filter((r) => r.status === 'FAIL');
+  const pfMiss = playerFrames.filter((r) => r.status === 'MISSING');
+  lines.push(`## 🎬 PLAYER FRAMES (${playerFrames.length})`);
+  lines.push(`Canonical 64×96. OK ${playerFrames.length - pfFail.length - pfMiss.length} · FAIL ${pfFail.length} · MISSING ${pfMiss.length}.`);
+  if (pfFail.length) {
+    lines.push('');
+    lines.push('**FAILING — re-export required**');
+    for (const r of pfFail) lines.push(`- \`${r.key}\` — currently ${r.sourceW}×${r.sourceH}`);
+  }
+  lines.push('');
+
+  return lines.join('\n');
 }
 
 main().catch((err) => {
