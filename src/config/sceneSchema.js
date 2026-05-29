@@ -28,6 +28,12 @@ export const ASSET_TYPES = Object.freeze({
   heart_full: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   speed_tree_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   power_mushroom_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
+  // v3.8.37 — extra power-up + rare-orchid pickups spawned by
+  // SpawnSystem ticks (procedural, not in composition prefabs).
+  power_magnet_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
+  power_shield_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
+  power_double_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
+  rare_orchid_pickup: { group: 'pickups', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   vine_barrier: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '2-3 lanes' },
   low_branch_overhang: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '3 lanes (overhead)' },
   spider_web_overhang: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '3 lanes (overhead)' },

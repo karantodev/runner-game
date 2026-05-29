@@ -7,21 +7,78 @@ import { PathValidator } from './spawn/PathValidator.js';
 const SPAWN_LOG_CAPACITY = 24;
 const LANE_TRIPLET = Object.freeze([-1, 0, 1]);
 
+/**
+ * v3.8.37 — mirrors of factories.js' type→assetType maps. Used by the
+ * placement-validation wrappers below so we can compute the assetType
+ * BEFORE delegating to the factory (the factory does its own resolution
+ * but the validator needs it up front to consult ASSET_SEMANTICS).
+ * Keep in sync with `OBSTACLE_DEFAULT_ASSET` / `COLLECTIBLE_DEFAULT_ASSET`
+ * in src/ecs/factories.js.
+ */
+const OBSTACLE_DEFAULT_ASSET_MIRROR = {
+  vine: 'vine_barrier',
+  bush: 'spiky_bush_obstacle',
+  wheat: 'dry_grass_obstacle',
+  wall: 'purple_brick_single',
+  mushroom: 'small_center_mushroom',
+  stone: 'stone_obstacle',
+  overhang: 'low_branch_overhang',
+};
+const COLLECTIBLE_DEFAULT_ASSET_MIRROR = {
+  life: 'heart_full',
+  'power-tree': 'speed_tree_pickup',
+  'power-mushroom': 'power_mushroom_pickup',
+  'power-magnet': 'power_magnet_pickup',
+  'power-shield': 'power_shield_pickup',
+  'power-double': 'power_double_pickup',
+  'rare-orchid': 'rare_orchid_pickup',
+  flower: 'golden_flower',
+};
+
 export class SpawnSystem {
   /**
    * @param {object} config
    * @param {import('../world/Projection.js').Projection} projection
    * @param {import('../utils/rng.js').Rng} rng — shared world RNG
    */
-  constructor(config, projection, rng, skill = null) {
+  constructor(config, projection, rng, skill = null, placement = null) {
     this.config = config;
     this.projection = projection;
     this.rng = rng;
     this.director = new DifficultyDirector(rng, skill);
     this.library = new PatternLibrary(rng);
     this.validator = new PathValidator();
+    // v3.8.37 — Phase 2 placement enforcement. Optional so legacy
+    // unit-test paths constructing SpawnSystem standalone don't break.
+    this.placement = placement;
     this.spawnLog = []; // ring-buffer exposed to the debug API
     this.reset();
+  }
+
+  /**
+   * v3.8.37 — central validation wrapper. Routes through
+   * world.placement when present; otherwise allows the spawn.
+   */
+  #allowed(assetType, ctx) {
+    if (!this.placement) return true;
+    return this.placement.shouldSpawn(assetType, ctx);
+  }
+
+  /**
+   * v3.8.37 — placement-validated wrappers around the ECS factories.
+   * SpawnSystem callsites use these instead of createObstacle /
+   * createCollectible directly so adjacency + zone rules apply
+   * uniformly to every spawn (hero cycle + procedural ticks).
+   */
+  #spawnObstacle(world, opts) {
+    const assetType = opts.assetType ?? OBSTACLE_DEFAULT_ASSET_MIRROR[opts.type] ?? 'stone_obstacle';
+    if (!this.#allowed(assetType, { zone: 'road', distance: opts.distance })) return null;
+    return createObstacle(world.registry, opts);
+  }
+  #spawnCollectible(world, opts) {
+    const assetType = opts.assetType ?? COLLECTIBLE_DEFAULT_ASSET_MIRROR[opts.type] ?? 'golden_flower';
+    if (!this.#allowed(assetType, { zone: 'road', distance: opts.distance })) return null;
+    return createCollectible(world.registry, opts);
   }
 
   reset() {
@@ -107,7 +164,7 @@ export class SpawnSystem {
         const count = entry.count ?? 3;
         const spacing = entry.spacing ?? 6;
         for (let i = 0; i < count; i += 1) {
-          createCollectible(world.registry, {
+          this.#spawnCollectible(world, {
             type: 'flower', lane: entry.lane ?? 0,
             distance: dist + i * spacing, high: false,
           });
@@ -121,7 +178,7 @@ export class SpawnSystem {
         for (let i = 0; i < count; i += 1) {
           const t = i / (count - 1);
           const lane = from + t * (to - from);
-          createCollectible(world.registry, {
+          this.#spawnCollectible(world, {
             type: 'flower', lane,
             distance: dist + i * 7, high: false,
           });
@@ -130,7 +187,7 @@ export class SpawnSystem {
       }
       case 'flower-zigzag': {
         entry.lanes.forEach((lane, i) => {
-          createCollectible(world.registry, {
+          this.#spawnCollectible(world, {
             type: 'flower', lane,
             distance: dist + i * 8, high: false,
           });
@@ -146,7 +203,7 @@ export class SpawnSystem {
         const lane = entry.lane ?? 0;
         for (let i = 0; i < count; i += 1) {
           const laneJitter = (i % 2 === 0) ? 0 : 0.12;
-          createCollectible(world.registry, {
+          this.#spawnCollectible(world, {
             type: 'flower', lane: lane + laneJitter,
             distance: dist + i * 4, high: false,
           });
@@ -154,7 +211,7 @@ export class SpawnSystem {
         return;
       }
       case 'jump-obstacle': {
-        createObstacle(world.registry, {
+        this.#spawnObstacle(world, {
           type: 'wheat', lane: entry.lane ?? 0,
           distance: dist,
         });
@@ -162,7 +219,7 @@ export class SpawnSystem {
       }
       case 'vine-with-rewards': {
         const lane = entry.lane ?? 0;
-        createObstacle(world.registry, {
+        this.#spawnObstacle(world, {
           type: 'vine', lane, distance: dist,
           allLanes: true,
         });
@@ -258,7 +315,7 @@ export class SpawnSystem {
    */
   #spawnRewardApproach(world, vineDist, lane) {
     [26, 18, 10].forEach((offset) => {
-      createCollectible(world.registry, {
+      this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: vineDist - offset,
@@ -272,7 +329,7 @@ export class SpawnSystem {
    * lane, so the player sees their landing rewarded.
    */
   #spawnRewardExit(world, vineDist, lane) {
-    createCollectible(world.registry, {
+    this.#spawnCollectible(world, {
       type: 'flower',
       lane,
       distance: vineDist + 8,
@@ -288,7 +345,7 @@ export class SpawnSystem {
 
   #tickLife(world) {
     const lane = this.rng.choice(LANE_TRIPLET);
-    createCollectible(world.registry, {
+    this.#spawnCollectible(world, {
       type: 'life',
       lane,
       distance: this.projection.maxDistance + 8,
@@ -316,7 +373,7 @@ export class SpawnSystem {
       if (roll <= 0) { picked = types[i]; break; }
     }
     const lane = this.rng.choice(LANE_TRIPLET);
-    createCollectible(world.registry, {
+    this.#spawnCollectible(world, {
       type: picked,
       lane,
       distance: this.projection.maxDistance + 12,
@@ -332,7 +389,7 @@ export class SpawnSystem {
    */
   #tickRare(world) {
     const lane = this.rng.choice(LANE_TRIPLET);
-    createCollectible(world.registry, {
+    this.#spawnCollectible(world, {
       type: 'rare-orchid',
       lane,
       distance: this.projection.maxDistance + 10,
@@ -349,7 +406,7 @@ export class SpawnSystem {
     for (const item of pattern.items) {
       const distance = baseDistance + item.offset;
       if (item.kind === 'obstacle') {
-        createObstacle(world.registry, {
+        this.#spawnObstacle(world, {
           type: item.type,
           assetType: item.assetType,
           lane: item.lane ?? 0,
@@ -358,7 +415,7 @@ export class SpawnSystem {
           variant: item.variant ?? null,
         });
       } else if (item.kind === 'flower') {
-        createCollectible(world.registry, {
+        this.#spawnCollectible(world, {
           type: 'flower',
           lane: item.lane,
           distance,
@@ -407,7 +464,7 @@ export class SpawnSystem {
     for (let i = 0; i < count; i += 1) {
       const t = i / (count - 1);
       const lane = fromLane + (toLane - fromLane) * t;
-      createCollectible(world.registry, {
+      this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 12,
@@ -427,7 +484,7 @@ export class SpawnSystem {
     const fromLane = LANE_TRIPLET[fromIdx];
     const toLane = LANE_TRIPLET[toIdx];
     [fromLane, fromLane, toLane, toLane].forEach((lane, i) => {
-      createCollectible(world.registry, {
+      this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 13,
@@ -443,7 +500,7 @@ export class SpawnSystem {
     const count = this.rng.integer(2, 3);
     const high = this.rng.chance(0.26);
     for (let i = 0; i < count; i++) {
-      createCollectible(world.registry, {
+      this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 14,
@@ -456,7 +513,7 @@ export class SpawnSystem {
     // v3.8.1 — shorter zigzag (5 → 3 nodes) so it doesn't span half a screen.
     const lanes = this.rng.chance(0.5) ? [-1, 0, 1] : [1, 0, -1];
     lanes.forEach((lane, i) => {
-      createCollectible(world.registry, {
+      this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 10,

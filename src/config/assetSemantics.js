@@ -83,7 +83,11 @@ const DEFAULTS = {
     canStackOnTop: true,
     allowedParents: ['ground', 'grass_dirt_block', 'stone_brick_single', 'planter_pot'],
     allowedChildren: [],
-    adjacencyRules: { minSpacing: 0.2, preferredSpacing: 0.8, maxCluster: 6 },
+    // v3.8.37 — preferredSpacing kept as a hint for future composition
+    // templates; minSpacing NOT enforced for decor because prefabs
+    // legitimately cluster items at the same depth (intentional
+    // designer composition).
+    adjacencyRules: { preferredSpacing: 0.8, maxCluster: 6 },
     laneUsage: 'not-on-road',
     collision: false,
     collectible: false,
@@ -100,7 +104,7 @@ const DEFAULTS = {
     canStackOnTop: false,
     allowedParents: ['ground'],
     allowedChildren: [],
-    adjacencyRules: { minSpacing: 1.5, preferredSpacing: 3.0, maxCluster: 2 },
+    adjacencyRules: { preferredSpacing: 3.0, maxCluster: 2 },
     laneUsage: 'not-on-road',
     collision: false,
     collectible: false,
@@ -117,7 +121,7 @@ const DEFAULTS = {
     canStackOnTop: true,
     allowedParents: ['ground'],
     allowedChildren: ['mushroom_red_big', 'mushroom_blue_big', 'yellow_flower_small', 'purple_flower_single', 'grass_tuft', 'sprout_soil'],
-    adjacencyRules: { minSpacing: 0.4, preferredSpacing: 1.0, maxCluster: 4 },
+    adjacencyRules: { preferredSpacing: 1.0, maxCluster: 4 },
     laneUsage: 'not-on-road',
     collision: false,
     collectible: false,
@@ -151,7 +155,10 @@ const DEFAULTS = {
     canStackOnTop: false,
     allowedParents: ['road', 'air'],
     allowedChildren: [],
-    adjacencyRules: { minSpacing: 0.5, preferredSpacing: 2, maxCluster: 8 },
+    // v3.8.37 — flowers and small pickups intentionally form lines/arcs
+    // at the same world-distance across multiple lanes. minSpacing is
+    // overridden per concrete entry where a rare item needs spacing.
+    adjacencyRules: { preferredSpacing: 2, maxCluster: 8 },
     laneUsage: 'multi-lane',
     collision: false,
     collectible: true,
@@ -195,7 +202,8 @@ export const ASSET_SEMANTICS = Object.freeze({
   }),
   dry_grass_obstacle: make(DEFAULTS.OBSTACLE, {
     key: 'dry_grass_obstacle',
-    notes: 'Single-lane low hazard — jump to clear.',
+    placementZones: ['road', 'side-left', 'side-right'],
+    notes: 'Single-lane low hazard on road. Also used as ambient shoulder decor in a few SIDE_DECORATION_PREFABS; placement zones accept either.',
   }),
   small_center_mushroom: make(DEFAULTS.OBSTACLE, {
     key: 'small_center_mushroom',
@@ -236,13 +244,45 @@ export const ASSET_SEMANTICS = Object.freeze({
     bonusType: 'split-clones',
     adjacencyRules: { minSpacing: 120, preferredSpacing: 240, maxCluster: 1 },
   }),
+  // v3.8.37 — extra power-up types used by factories.js
+  // (COLLECTIBLE_DEFAULT_ASSET). Not yet in sceneSchema's catalog but
+  // spawned at runtime via SpawnSystem.#tickPowerUp.
+  power_magnet_pickup: make(DEFAULTS.PICKUP, {
+    key: 'power_magnet_pickup',
+    category: 'powerup',
+    gameplayRole: 'bonus',
+    bonusType: 'magnet',
+    adjacencyRules: { minSpacing: 120, preferredSpacing: 240, maxCluster: 1 },
+  }),
+  power_shield_pickup: make(DEFAULTS.PICKUP, {
+    key: 'power_shield_pickup',
+    category: 'powerup',
+    gameplayRole: 'bonus',
+    bonusType: 'shield',
+    adjacencyRules: { minSpacing: 120, preferredSpacing: 240, maxCluster: 1 },
+  }),
+  power_double_pickup: make(DEFAULTS.PICKUP, {
+    key: 'power_double_pickup',
+    category: 'powerup',
+    gameplayRole: 'bonus',
+    bonusType: 'score-multiplier',
+    adjacencyRules: { minSpacing: 120, preferredSpacing: 240, maxCluster: 1 },
+  }),
+  rare_orchid_pickup: make(DEFAULTS.PICKUP, {
+    key: 'rare_orchid_pickup',
+    category: 'pickup',
+    gameplayRole: 'collectible',
+    scoreValue: 50,
+    adjacencyRules: { minSpacing: 180, preferredSpacing: 360, maxCluster: 1 },
+    notes: 'Rare blue orchid hunt target.',
+  }),
 
   // ── Structures (side-aware support tiles) ─────────────────────────────────
   grass_dirt_block: make(DEFAULTS.STRUCTURE, {
     key: 'grass_dirt_block',
     category: 'support',
     canStackOnTop: true,
-    adjacencyRules: { minSpacing: 0.3, preferredSpacing: 1.2, maxCluster: 3 },
+    adjacencyRules: { preferredSpacing: 1.2, maxCluster: 3 },
     notes: 'Foundation block — supports flowers / small mushroom / sprout.',
   }),
   grass_dirt_step: make(DEFAULTS.STRUCTURE, {
@@ -265,7 +305,7 @@ export const ASSET_SEMANTICS = Object.freeze({
   grass_dirt_platform_long: make(DEFAULTS.STRUCTURE, {
     key: 'grass_dirt_platform_long',
     category: 'platform',
-    adjacencyRules: { minSpacing: 0.5, maxCluster: 1 },
+    adjacencyRules: { maxCluster: 1 },
   }),
   stone_brick_single: make(DEFAULTS.STRUCTURE, {
     key: 'stone_brick_single',
@@ -338,7 +378,7 @@ export const ASSET_SEMANTICS = Object.freeze({
   tree_round: make(DEFAULTS.LARGE_DECOR, {
     key: 'tree_round',
     placementZones: ['side-left', 'side-right'],
-    adjacencyRules: { minSpacing: 2.5, preferredSpacing: 5.0, maxCluster: 1 },
+    adjacencyRules: { preferredSpacing: 5.0, maxCluster: 1 },
     notes: 'Background-band tree (NATURE zone).',
   }),
   fence_wood_short: make(DEFAULTS.LARGE_DECOR, {
@@ -346,16 +386,16 @@ export const ASSET_SEMANTICS = Object.freeze({
     orientationType: 'side-aware',
     canMirror: true,
     canSupportOthers: false,
-    adjacencyRules: { minSpacing: 0.4, preferredSpacing: 0.8, maxCluster: 6 },
+    adjacencyRules: { preferredSpacing: 0.8, maxCluster: 6 },
     notes: 'Chains naturally — let the cluster fill a fence run.',
   }),
   bush_large: make(DEFAULTS.LARGE_DECOR, {
     key: 'bush_large',
-    adjacencyRules: { minSpacing: 1.0, preferredSpacing: 2.5, maxCluster: 2 },
+    adjacencyRules: { preferredSpacing: 2.5, maxCluster: 2 },
   }),
   bush_large_with_purple_flowers: make(DEFAULTS.LARGE_DECOR, {
     key: 'bush_large_with_purple_flowers',
-    adjacencyRules: { minSpacing: 1.5, preferredSpacing: 3.0, maxCluster: 1 },
+    adjacencyRules: { preferredSpacing: 3.0, maxCluster: 1 },
     notes: 'Higher-impact accent — limit cluster to 1.',
   }),
 
@@ -374,11 +414,11 @@ export const ASSET_SEMANTICS = Object.freeze({
   leaf_clump_small: make(DEFAULTS.TINY_DECOR, { key: 'leaf_clump_small' }),
   leaf_clump_round: make(DEFAULTS.TINY_DECOR, {
     key: 'leaf_clump_round',
-    adjacencyRules: { minSpacing: 0.5, preferredSpacing: 1.5, maxCluster: 2 },
+    adjacencyRules: { preferredSpacing: 1.5, maxCluster: 2 },
   }),
   bush_with_purple_flowers: make(DEFAULTS.TINY_DECOR, {
     key: 'bush_with_purple_flowers',
-    adjacencyRules: { minSpacing: 0.8, preferredSpacing: 2.0, maxCluster: 2 },
+    adjacencyRules: { preferredSpacing: 2.0, maxCluster: 2 },
   }),
 
   // ── Backgrounds (full-layer, no placement rules) ─────────────────────────
