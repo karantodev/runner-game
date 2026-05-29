@@ -210,21 +210,31 @@ export class EffectsRenderer {
       ctx.fillRect(0, 0, this.projection.width, this.projection.height);
       ctx.restore();
 
-      // Center ×N badge — scales-up + fades. Skipped when the trigger
-      // didn't carry a multiplier (e.g. milestone flash reuses the pulse
-      // but draws its own popup text).
+      // v3.8.25 — ×N badge moved from screen center (was at height*0.42,
+      // covering the castle / road-to-castle axis) to a small popup
+      // directly above the player. Font dropped 96-126 → 36-44 px. Fades
+      // UP as it decays so the pickup-reward read is "score+1×N rising
+      // from where you collected it", not "huge label blocking the
+      // horizon".
       if (this.comboPulseMultiplier > 0) {
+        const playerLaneX = world.player?.components.LaneState.laneX ?? 0;
+        const playerY = world.player?.components.VerticalState.y ?? 0;
+        const popX = this.projection.width / 2 + playerLaneX * this.projection.visualLaneWidth;
+        // Anchor: ~240 px above the player's feet, then lifts another
+        // ~80 px as alpha decays so it visually drifts up while fading.
+        const popY = this.projection.groundY + playerY - 240 - (1 - a) * 80;
         ctx.save();
         ctx.globalAlpha = a;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const fontSize = 96 + (1 - a) * 30;
-        ctx.font = `900 ${Math.round(fontSize)}px system-ui, sans-serif`;
+        const fontSize = Math.round(36 + (1 - a) * 8);
+        ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
         ctx.strokeStyle = 'rgba(122, 74, 8, 0.85)';
-        ctx.lineWidth = 8;
-        ctx.strokeText(`×${this.comboPulseMultiplier}`, cx, this.projection.height * 0.42);
+        ctx.lineWidth = 4;
+        const label = `×${this.comboPulseMultiplier}`;
+        ctx.strokeText(label, popX, popY);
         ctx.fillStyle = '#ffd54a';
-        ctx.fillText(`×${this.comboPulseMultiplier}`, cx, this.projection.height * 0.42);
+        ctx.fillText(label, popX, popY);
         ctx.restore();
         ctx.globalAlpha = 1;
       }

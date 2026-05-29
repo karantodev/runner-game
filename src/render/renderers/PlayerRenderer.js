@@ -209,79 +209,96 @@ export class PlayerRenderer {
     // scale on lane-change). The tilt rotation already conveys
     // momentum without distorting the silhouette.
 
+    // v3.8.25 Fixed Visual Box — the OUTER visual frame is constant
+    // across run / jump / duck / hit. We size it from the canonical
+    // RUN sprite's aspect ratio (the tallest pose), so when the crouch
+    // sprite (shorter ART) is drawn inside the box, its top stops
+    // BELOW the box top — the empty space is the visible duck pose,
+    // not a size shrink of the whole character.
+    const canonImg = this.assets.get('playerFarmerRun01') ?? refFrame;
+    const visualW = Math.round(120 * bodyScale);
+    const visualH = Math.round(visualW * (canonImg.naturalHeight / canonImg.naturalWidth));
+    // Sprite is drawn at its NATURAL aspect, anchored at the bottom of
+    // the visual box. Crouch (shorter) → drawn smaller height, but the
+    // outer box stays visualH. Run / jump / hit (taller) → fills the box.
+    const drawW = visualW;
+    const drawH = Math.round(visualW * (spriteImg.naturalHeight / spriteImg.naturalWidth));
+
     ctx.save();
     ctx.globalAlpha = alpha;
-    // v3.8.24 — pixel-snap the player's translate origin so sub-pixel
-    // motion (jump arc, idle bob) doesn't shimmer the silhouette.
     ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate(tilt);
-    // v3.8.24 — crouchSquashY (0.78) REMOVED. Crouch sprite art is
-    // already shorter (78 px vs 96 px run); the extra Y-squash was a
-    // double-duck that made the player visually smaller than just the
-    // pose change.
     ctx.scale(squash, stretch);
-    const spriteW = Math.round(120 * bodyScale);
-    const spriteH = Math.round(spriteW * (refFrame.naturalHeight / refFrame.naturalWidth));
-    ctx.drawImage(spriteImg, -spriteW / 2, -spriteH, spriteW, spriteH);
+    ctx.drawImage(spriteImg, -drawW / 2, -drawH, drawW, drawH);
 
     if (isClone) {
       // Purple wash overlay so split-clones read as duplicates of the player.
       ctx.globalCompositeOperation = 'source-atop';
       ctx.globalAlpha = alpha * 0.55;
       ctx.fillStyle = CLONE_TINT;
-      ctx.fillRect(-spriteW / 2, -spriteH, spriteW, spriteH);
+      ctx.fillRect(-drawW / 2, -drawH, drawW, drawH);
     }
 
     ctx.restore();
 
-    // v3.8.24 — ?debugPlayer=1 overlay. Drawn AFTER the body restore so
-    // labels and boxes sit on top of the sprite. Only fires for the
-    // primary (non-clone) body; clones aren't relevant to consistency QA.
+    // v3.8.25 — debug overlay uses the OUTER visual box (visualW × visualH),
+    // not the inner sprite draw rect. Outer box stays the same size
+    // across all states; sprite art changes inside.
     if (!isClone && world.config.debug?.showPlayer) {
       this.#drawPlayerDebug(world, {
-        x, y, spriteW, spriteH, alpha, prefix, runKey, crouching, airborne, justHit,
+        x, y, visualW, visualH, drawH, alpha, prefix, runKey, crouching, airborne, justHit,
       });
     }
   }
 
-  /** v3.8.24 — visual-bounds + foot-anchor + state debug overlay. */
+  /**
+   * v3.8.25 — visual-bounds (OUTER fixed box) + foot-anchor + sprite-
+   * art bounds (inner) + collision capsule + state label.
+   *
+   * The cyan outer box stays the SAME size across all states. A magenta
+   * inner box shows the actual sprite art bounds (smaller for crouch).
+   * The empty space between cyan and magenta on a crouch frame is the
+   * "duck pose lives inside the box" gap.
+   */
   #drawPlayerDebug(world, info) {
     const ctx = this.ctx;
-    const { x, y, spriteW, spriteH, alpha, prefix, runKey, crouching, airborne, justHit } = info;
+    const { x, y, visualW, visualH, drawH, alpha, runKey, crouching, airborne, justHit } = info;
     const rx = Math.round(x);
     const ry = Math.round(y);
     ctx.save();
-    // Visual bounds (sprite quad in canvas space, ignoring tilt rotation
-    // for clarity — the rotation is small enough that the box is a
-    // useful reference even untilted).
+    // OUTER visual box — constant across states
     ctx.strokeStyle = '#00ffd6';
     ctx.lineWidth = 1;
-    ctx.strokeRect(rx - spriteW / 2, ry - spriteH, spriteW, spriteH);
-    // Feet anchor — bright red dot at (x, y). Must stay stable across
-    // states (run / jump / duck / hit / post-hit). If it drifts, the
-    // foot-anchor design is broken.
+    ctx.strokeRect(rx - visualW / 2, ry - visualH, visualW, visualH);
+    // INNER sprite-art box — shows actual drawn sprite rect (shorter for crouch)
+    if (drawH !== visualH) {
+      ctx.strokeStyle = 'rgba(255,92,214,0.7)';
+      ctx.setLineDash([2, 2]);
+      ctx.strokeRect(rx - visualW / 2, ry - drawH, visualW, drawH);
+      ctx.setLineDash([]);
+    }
+    // Foot anchor — stable red dot
     ctx.fillStyle = '#ff3030';
     ctx.beginPath();
     ctx.arc(rx, ry, 3, 0, Math.PI * 2);
     ctx.fill();
-    // Collision-capsule rectangle (from config). Width matches lane
-    // hit-tolerance; height shrinks when crouching to half.
-    const collisionH = crouching ? spriteH * 0.55 : spriteH * 0.95;
-    const collisionW = spriteW * 0.42;
+    // Collision capsule — yellow dashed, height shrinks ONLY when crouching
+    const collisionH = crouching ? visualH * 0.55 : visualH * 0.95;
+    const collisionW = visualW * 0.42;
     ctx.strokeStyle = 'rgba(255,210,80,0.7)';
     ctx.setLineDash([3, 2]);
     ctx.strokeRect(rx - collisionW / 2, ry - collisionH, collisionW, collisionH);
     ctx.setLineDash([]);
-    // Text label — state + scale + alpha + frame key.
+    // State label
     const state = justHit ? 'HIT' : airborne ? 'JUMP' : crouching ? 'DUCK' : 'RUN';
-    const text = `${state} | a=${alpha.toFixed(2)} | ${runKey}`;
+    const text = `${state} | a=${alpha.toFixed(2)} | box=${visualW}×${visualH} | ${runKey}`;
     ctx.font = '11px monospace';
     const tw = ctx.measureText(text).width;
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(rx - tw / 2 - 4, ry - spriteH - 18, tw + 8, 14);
+    ctx.fillRect(rx - tw / 2 - 4, ry - visualH - 18, tw + 8, 14);
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText(text, rx, ry - spriteH - 8);
+    ctx.fillText(text, rx, ry - visualH - 8);
     ctx.restore();
   }
 }
