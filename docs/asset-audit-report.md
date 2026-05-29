@@ -42,38 +42,42 @@ Source-of-truth: `assets/` tree vs `src/config/gameConfig.js → GAME_CONFIG.ass
 
 ## ⚠️ Dead keys (gameConfig key → missing file)
 
-These keys ARE registered in `GAME_CONFIG.assets` but the file is gone from disk. Either restore the file or remove the key.
+These keys ARE registered in `GAME_CONFIG.assets` but the file is gone from disk. Classified per heuristic:
 
-```
-orchidBlueRare                       → assets/collectibles/orchid_blue_rare/orchid_blue_rare.png
-orchidBlueRareHalo                   → assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png
-orchidGoldSparkle01                  → assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png
-orchidGoldSparkle02                  → assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png
-orchidGoldSparkle03                  → assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png
-orchidGoldSparkle04                  → assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png
-orchidGoldCollect05                  → assets/collectibles/orchid_gold/orchid_gold_collect_05.png
-orchidGoldCollect06                  → assets/collectibles/orchid_gold/orchid_gold_collect_06.png
-orchidGoldCollect07                  → assets/collectibles/orchid_gold/orchid_gold_collect_07.png
-orchidGoldCollect08                  → assets/collectibles/orchid_gold/orchid_gold_collect_08.png
-dustPuff04                           → assets/effects/dust_puff/dust_puff_04.png
-jumpDust01                           → assets/effects/jump_dust/jump_dust_01.png
-jumpDust02                           → assets/effects/jump_dust/jump_dust_02.png
-jumpDust03                           → assets/effects/jump_dust/jump_dust_03.png
-jumpDust04                           → assets/effects/jump_dust/jump_dust_04.png
-hitFlash01                           → assets/effects/hit_flash/hit_flash_01.png
-hitFlash02                           → assets/effects/hit_flash/hit_flash_02.png
-hitFlash03                           → assets/effects/hit_flash/hit_flash_03.png
-hitFlash04                           → assets/effects/hit_flash/hit_flash_04.png
-laneSwoosh03                         → assets/effects/lane_swoosh/lane_swoosh_03.png
-laneSwoosh04                         → assets/effects/lane_swoosh/lane_swoosh_04.png
-collectBurst08                       → assets/effects/collect_burst/collect_burst_08.png
-pickupMagnet                         → assets/pickups/magnet/magnet.png
-pickupShield                         → assets/pickups/shield/shield.png
-pickupScoreX2                        → assets/pickups/score_x2/score_x2.png
-iconComboX2                          → assets/ui/icons/icon_combo_x2.png
-iconComboX3                          → assets/ui/icons/icon_combo_x3.png
-iconComboX5                          → assets/ui/icons/icon_combo_x5.png
-```
+- **ANIM_PENDING_DESIGNER** — expected anim sheet frame; brief P2 priority (keep key, ship frame)
+- **PATH_MISMATCH** — a file with the same name exists at a different path; engine path needs migration
+- **DEPRECATED** — legacy key, no obvious match on disk; safe to remove from `gameConfig.assets`
+
+| Key | Path | Action |
+|---|---|---|
+| `orchidGoldSparkle01` | `assets/collectibles/orchid\_gold/orchid\_gold\_sparkle\_01.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldSparkle02` | `assets/collectibles/orchid\_gold/orchid\_gold\_sparkle\_02.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldSparkle03` | `assets/collectibles/orchid\_gold/orchid\_gold\_sparkle\_03.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldSparkle04` | `assets/collectibles/orchid\_gold/orchid\_gold\_sparkle\_04.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldCollect05` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_05.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldCollect06` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_06.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldCollect07` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_07.png` | **ANIM_PENDING_DESIGNER** |
+| `orchidGoldCollect08` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_08.png` | **ANIM_PENDING_DESIGNER** |
+| `dustPuff04` | `assets/effects/dust\_puff/dust\_puff\_04.png` | **ANIM_PENDING_DESIGNER** |
+| `jumpDust01` | `assets/effects/jump\_dust/jump\_dust\_01.png` | **ANIM_PENDING_DESIGNER** |
+| `jumpDust02` | `assets/effects/jump\_dust/jump\_dust\_02.png` | **ANIM_PENDING_DESIGNER** |
+| `jumpDust03` | `assets/effects/jump\_dust/jump\_dust\_03.png` | **ANIM_PENDING_DESIGNER** |
+| `jumpDust04` | `assets/effects/jump\_dust/jump\_dust\_04.png` | **ANIM_PENDING_DESIGNER** |
+| `hitFlash01` | `assets/effects/hit\_flash/hit\_flash\_01.png` | **ANIM_PENDING_DESIGNER** |
+| `hitFlash02` | `assets/effects/hit\_flash/hit\_flash\_02.png` | **ANIM_PENDING_DESIGNER** |
+| `hitFlash03` | `assets/effects/hit\_flash/hit\_flash\_03.png` | **ANIM_PENDING_DESIGNER** |
+| `hitFlash04` | `assets/effects/hit\_flash/hit\_flash\_04.png` | **ANIM_PENDING_DESIGNER** |
+| `laneSwoosh03` | `assets/effects/lane\_swoosh/lane\_swoosh\_03.png` | **ANIM_PENDING_DESIGNER** |
+| `laneSwoosh04` | `assets/effects/lane\_swoosh/lane\_swoosh\_04.png` | **ANIM_PENDING_DESIGNER** |
+| `collectBurst08` | `assets/effects/collect\_burst/collect\_burst\_08.png` | **ANIM_PENDING_DESIGNER** |
+| `iconComboX2` | `assets/ui/icons/icon\_combo\_x2.png` | **DEPRECATED** |
+| `iconComboX3` | `assets/ui/icons/icon\_combo\_x3.png` | **DEPRECATED** |
+| `iconComboX5` | `assets/ui/icons/icon\_combo\_x5.png` | **DEPRECATED** |
+| `orchidBlueRare` | `assets/collectibles/orchid\_blue\_rare/orchid\_blue\_rare.png` | **PATH_MISMATCH** |
+| `orchidBlueRareHalo` | `assets/collectibles/orchid\_blue\_rare/orchid\_blue\_rare\_halo.png` | **PATH_MISMATCH** |
+| `pickupMagnet` | `assets/pickups/magnet/magnet.png` | **PATH_MISMATCH** |
+| `pickupShield` | `assets/pickups/shield/shield.png` | **PATH_MISMATCH** |
+| `pickupScoreX2` | `assets/pickups/score\_x2/score\_x2.png` | **PATH_MISMATCH** |
 
 ## ⚠️ Side-aware orphans
 
@@ -324,68 +328,17 @@ assets/structures/stone_brick/stone_wall_stairs_right.png
 
 ## Unregistered PNGs (file exists, no gameConfig key)
 
-These PNGs sit in the tree but no `GAME_CONFIG.assets` key points at them. Either wire them into the engine (add a key + dispatcher / use), move them to `_source/`, or delete.
+Classified per heuristic. Sorted by classification, then by category:
 
-### `assets/background` (2)
+- **ANIM_PENDING_WIRE** — anim sheet frame; engine has a wiring slot, registration is the unblocker
+- **SIDE_PAIR_PENDING** — half of a delivered `_left`/`_right` pair; needs gameConfig key + SIDE_AWARE_TYPES entry
+- **DESIGNER_OVERDELIVERY** — falls inside a duplicate-group stem; STOP list candidate (see brief)
+- **ALT_VARIANT** — alt path / bonus shipment; wire optional
+- **PENDING_REGISTRATION** — default; review + wire OR move to `_source/`
 
-```
-assets/background/clouds/clouds.png
-assets/background/mountains/mountains-far.png
-```
-
-### `assets/collectibles` (3)
-
-```
-assets/collectibles/orchid_blue/orchid_blue_rare_halo.png
-assets/collectibles/orchid_blue_rare.png
-assets/collectibles/orchid_gold.png
-```
-
-### `assets/decor` (18)
+### ANIM_PENDING_WIRE (13)
 
 ```
-assets/decor/large/bushes/bush_large.png
-assets/decor/large/bushes/bush_large_flowers.png
-assets/decor/large/fence/fence_corner.png
-assets/decor/large/fence/fence_short.png
-assets/decor/large/fence/fence_wood_short_left.png
-assets/decor/large/fence/fence_wood_short_right.png
-assets/decor/large/mushrooms/mushroom_purple_big.png
-assets/decor/large/mushrooms/mushroom_red_big.png
-assets/decor/large/trees/tree_round.png
-assets/decor/large/trees/tree_tall.png
-assets/decor/small/bushes/bush_small.png
-assets/decor/small/bushes/bush_small_flowers.png
-assets/decor/small/flowers/flower_violet_cluster.png
-assets/decor/small/flowers/flower_yellow_decor.png
-assets/decor/small/grass/grass_tuft_large.png
-assets/decor/small/grass/grass_tuft_small.png
-assets/decor/small/leaves/leaf_clump_round.png
-assets/decor/small/plants/sprout_soil.png
-```
-
-### `assets/effects` (36)
-
-```
-assets/effects/bursts/light_burst_gradient_01.png
-assets/effects/bursts/light_burst_sun_01.png
-assets/effects/dust/dust_burst_01.png
-assets/effects/dust/dust_burst_02.png
-assets/effects/dust/dust_burst_03.png
-assets/effects/dust/dust_burst_04.png
-assets/effects/dust/dust_cloud_01.png
-assets/effects/dust/dust_cloud_02.png
-assets/effects/dust/dust_puffs_01.png
-assets/effects/dust/dust_smoke_01.png
-assets/effects/effect_burst_gold_01.png
-assets/effects/effect_gold_spark_burst.png
-assets/effects/effect_magic_circle_glow_01.png
-assets/effects/effect_small_star_burst.png
-assets/effects/effect_small_star_glint.png
-assets/effects/effect_star_burst_small_01.png
-assets/effects/effect_star_small_01.png
-assets/effects/light/light_streak_01.png
-assets/effects/magic/magic_glow_rainbow_01.png
 assets/effects/magic/sparkle_01.png
 assets/effects/magic/sparkle_02.png
 assets/effects/sparkle/sparkle_05.png
@@ -399,46 +352,39 @@ assets/effects/sparkles/sparkle_small_02.png
 assets/effects/sparkles/sparkle_star_01.png
 assets/effects/sparkles/sparkle_star_02.png
 assets/effects/sparkles/sparkle_star_gold_01.png
-assets/effects/trails/light_streak_01.png
-assets/effects/trails/light_sweep_01.png
-assets/effects/trails/light_trail_motion_01.png
-assets/effects/trails/light_trail_yellow_01.png
 ```
 
-### `assets/obstacles` (3)
+### SIDE_PAIR_PENDING (17)
 
 ```
-assets/obstacles/mushroom_small/mushroom_small_red.png
+assets/decor/large/fence/fence_wood_short_left.png
+assets/decor/large/fence/fence_wood_short_right.png
 assets/obstacles/planter_pot/planter_pot_left.png
 assets/obstacles/planter_pot/planter_pot_right.png
+assets/structures/bricks/purple_brick_single_left.png
+assets/structures/bricks/purple_brick_single_right.png
+assets/structures/platforms/grass_dirt_platform_long_left.png
+assets/structures/platforms/grass_dirt_platform_long_right.png
+assets/structures/platforms/platform_hanging_vines_left.png
+assets/structures/platforms/platform_hanging_vines_right.png
+assets/structures/stone_brick/stone_brick_single_left.png
+assets/structures/stone_brick/stone_brick_single_right.png
+assets/structures/stone_brick/stone_wall_low_left.png
+assets/structures/stone_brick/stone_wall_low_right.png
+assets/structures/stone_brick/stone_wall_stairs_left.png
+assets/structures/stone_brick/stone_wall_stairs_right.png
+assets/terrain/blocks/grass_dirt_step_right.png
 ```
 
-### `assets/pickups` (7)
+### DESIGNER_OVERDELIVERY (20)
 
 ```
-assets/pickups/aura/pickup_magnet_aura.png
-assets/pickups/aura/pickup_medal_x2_gold.png
-assets/pickups/aura/pickup_shield_orchid_aura.png
-assets/pickups/aura/pickup_star_gold_aura.png
-assets/pickups/pickup_magnet.png
-assets/pickups/pickup_score_x2.png
-assets/pickups/pickup_shield.png
-```
-
-### `assets/platforms` (6)
-
-```
-assets/platforms/platform_floating.png
-assets/platforms/platform_grass_small.png
-assets/platforms/platform_grass_small_01.png
-assets/platforms/platform_grass_vines.png
-assets/platforms/platform_grass_vines_01.png
-assets/platforms/platform_hanging_vines.png
-```
-
-### `assets/player` (27)
-
-```
+assets/decor/small/grass/grass_tuft_large.png
+assets/decor/small/grass/grass_tuft_small.png
+assets/effects/dust/dust_burst_01.png
+assets/effects/dust/dust_burst_02.png
+assets/effects/dust/dust_burst_03.png
+assets/effects/dust/dust_burst_04.png
 assets/player/farmer_jump/player_farmer_jump_07.png
 assets/player/farmer_jump/player_farmer_jump_08.png
 assets/player/farmer_jump/player_farmer_jump_09.png
@@ -449,15 +395,94 @@ assets/player/farmer_jump/player_farmer_jump_13.png
 assets/player/farmer_jump/player_farmer_jump_14.png
 assets/player/farmer_jump/player_farmer_jump_15.png
 assets/player/farmer_jump/player_farmer_jump_16.png
+assets/player/farmer_run/player_farmer_run_09.png
+assets/player/farmer_run/player_farmer_run_10.png
+assets/player/farmer_run/player_farmer_run_11.png
+assets/player/farmer_run/player_farmer_run_12.png
+```
+
+### ALT_VARIANT (35)
+
+```
+assets/effects/bursts/light_burst_gradient_01.png
+assets/effects/bursts/light_burst_sun_01.png
+assets/effects/dust/dust_cloud_01.png
+assets/effects/dust/dust_cloud_02.png
+assets/effects/dust/dust_puffs_01.png
+assets/effects/dust/dust_smoke_01.png
+assets/effects/effect_burst_gold_01.png
+assets/effects/effect_magic_circle_glow_01.png
+assets/effects/effect_star_burst_small_01.png
+assets/effects/effect_star_small_01.png
+assets/effects/light/light_streak_01.png
+assets/effects/magic/magic_glow_rainbow_01.png
+assets/effects/trails/light_streak_01.png
+assets/effects/trails/light_sweep_01.png
+assets/effects/trails/light_trail_motion_01.png
+assets/effects/trails/light_trail_yellow_01.png
+assets/platforms/platform_grass_small_01.png
+assets/platforms/platform_grass_vines_01.png
+assets/powerups/magic_circle_glow_01.png
+assets/powerups/magnet_gold_aura_01.png
+assets/powerups/medal_x2_gold_01.png
+assets/powerups/powerup_magnet_01.png
+assets/powerups/powerup_multiplier_x2_medal_01.png
+assets/powerups/powerup_shield_orchid_01.png
+assets/powerups/powerup_star_gold_01.png
+assets/powerups/shield_orchid_glow_01.png
+assets/powerups/star_burst_gold_01.png
+assets/powerups/star_glint_small_01.png
+assets/powerups/star_gold_01.png
+assets/powerups/star_gold_small_01.png
+assets/structures/platforms/platform_grass_patch_01.png
+assets/structures/platforms/platform_grass_small_01.png
+assets/structures/platforms/platform_grass_vines_01.png
+assets/terrain/blocks/grass_block_cube_01.png
+assets/terrain/blocks/grass_block_cube_02.png
+```
+
+### PENDING_REGISTRATION (68)
+
+```
+assets/background/clouds/clouds.png
+assets/background/mountains/mountains-far.png
+assets/collectibles/orchid_blue/orchid_blue_rare_halo.png
+assets/collectibles/orchid_blue_rare.png
+assets/collectibles/orchid_gold.png
+assets/decor/large/bushes/bush_large.png
+assets/decor/large/bushes/bush_large_flowers.png
+assets/decor/large/fence/fence_corner.png
+assets/decor/large/fence/fence_short.png
+assets/decor/large/mushrooms/mushroom_purple_big.png
+assets/decor/large/mushrooms/mushroom_red_big.png
+assets/decor/large/trees/tree_round.png
+assets/decor/large/trees/tree_tall.png
+assets/decor/small/bushes/bush_small.png
+assets/decor/small/bushes/bush_small_flowers.png
+assets/decor/small/flowers/flower_violet_cluster.png
+assets/decor/small/flowers/flower_yellow_decor.png
+assets/decor/small/leaves/leaf_clump_round.png
+assets/decor/small/plants/sprout_soil.png
+assets/effects/effect_gold_spark_burst.png
+assets/effects/effect_small_star_burst.png
+assets/effects/effect_small_star_glint.png
+assets/obstacles/mushroom_small/mushroom_small_red.png
+assets/pickups/aura/pickup_magnet_aura.png
+assets/pickups/aura/pickup_medal_x2_gold.png
+assets/pickups/aura/pickup_shield_orchid_aura.png
+assets/pickups/aura/pickup_star_gold_aura.png
+assets/pickups/pickup_magnet.png
+assets/pickups/pickup_score_x2.png
+assets/pickups/pickup_shield.png
+assets/platforms/platform_floating.png
+assets/platforms/platform_grass_small.png
+assets/platforms/platform_grass_vines.png
+assets/platforms/platform_hanging_vines.png
 assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png
 assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png
 assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png
 assets/player/farmer_remaining_batch/04_begushchiy_s_lopatoy_v_rukakh.png
 assets/player/farmer_remaining_batch/05_fermer_s_lopatoy_v_piksel_arte.png
-assets/player/farmer_run/player_farmer_run_09.png
-assets/player/farmer_run/player_farmer_run_10.png
-assets/player/farmer_run/player_farmer_run_11.png
-assets/player/farmer_run/player_farmer_run_12.png
 assets/player/farmer_unfinished_batch/крючок_для_садоводства_в_стиле_пиксель_арт.png
 assets/player/farmer_unfinished_batch/персонаж_в_прыжке_с_лопатой.png
 assets/player/farmer_unfinished_batch/персонаж_с_лопатой_в_позе_наклона.png
@@ -466,68 +491,18 @@ assets/player/farmer_unfinished_batch/садовод_с_маленькой_л�
 assets/player/farmer_unfinished_batch/фермер_в_движении_с_лопатой.png
 assets/player/farmer_unfinished_batch/фермер_в_наклоне_с_лопатой.png
 assets/player/farmer_unfinished_batch/фермер_в_прыжке_с_лопатой.png
-```
-
-### `assets/powerups` (17)
-
-```
-assets/powerups/magic_circle_glow_01.png
-assets/powerups/magnet_gold_aura_01.png
-assets/powerups/medal_x2_gold_01.png
 assets/powerups/powerup_gold_star.png
 assets/powerups/powerup_magic_circle_glow.png
-assets/powerups/powerup_magnet_01.png
 assets/powerups/powerup_magnet_gold_aura.png
 assets/powerups/powerup_medal_x2_gold.png
-assets/powerups/powerup_multiplier_x2_medal_01.png
 assets/powerups/powerup_orchid_shield_glow.png
-assets/powerups/powerup_shield_orchid_01.png
-assets/powerups/powerup_star_gold_01.png
-assets/powerups/shield_orchid_glow_01.png
-assets/powerups/star_burst_gold_01.png
-assets/powerups/star_glint_small_01.png
-assets/powerups/star_gold_01.png
-assets/powerups/star_gold_small_01.png
-```
-
-### `assets/structures` (19)
-
-```
-assets/structures/bricks/purple_brick_single_left.png
-assets/structures/bricks/purple_brick_single_right.png
 assets/structures/fences/fence_corner.png
 assets/structures/fences/fence_short.png
 assets/structures/greenhouse/greenhouse_far.png
 assets/structures/greenhouse/greenhouse_near.png
-assets/structures/platforms/grass_dirt_platform_long_left.png
-assets/structures/platforms/grass_dirt_platform_long_right.png
-assets/structures/platforms/platform_grass_patch_01.png
-assets/structures/platforms/platform_grass_small_01.png
-assets/structures/platforms/platform_grass_vines_01.png
-assets/structures/platforms/platform_hanging_vines_left.png
-assets/structures/platforms/platform_hanging_vines_right.png
-assets/structures/stone_brick/stone_brick_single_left.png
-assets/structures/stone_brick/stone_brick_single_right.png
-assets/structures/stone_brick/stone_wall_low_left.png
-assets/structures/stone_brick/stone_wall_low_right.png
-assets/structures/stone_brick/stone_wall_stairs_left.png
-assets/structures/stone_brick/stone_wall_stairs_right.png
-```
-
-### `assets/terrain` (6)
-
-```
 assets/terrain/blocks/grass_block_column_tall.png
-assets/terrain/blocks/grass_block_cube_01.png
-assets/terrain/blocks/grass_block_cube_02.png
 assets/terrain/blocks/grass_block_front_rect.png
-assets/terrain/blocks/grass_dirt_step_right.png
 assets/terrain/blocks/stone_block_mossy_cube.png
-```
-
-### `assets/ui` (9)
-
-```
 assets/ui/buttons/button_small_gray.png
 assets/ui/cards/tool_shovel_card.png
 assets/ui/hud/hud_hearts_panel_empty.png

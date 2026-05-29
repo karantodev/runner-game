@@ -2,12 +2,56 @@
 
 Detailed spec for an artist / pixel-art designer for the FULL visual rework of **Orchid Quest** — a browser-based 3-lane endless runner.
 
+---
+
+## 📌 DESIGNER HANDOFF — READ THIS FIRST (1 minute)
+
+### ✅ DO THIS NEXT (in this order)
+
+1. **6 side-aware PNGs** to finish the Golden Rule:
+   - `structures/stone_brick/stone_wall_low_left/right.png`     (168 × 56)
+   - `structures/stone_brick/stone_brick_single_left/right.png`  (56 × 56)
+   - `obstacles/planter_pot/planter_pot_left/right.png`          (64 × 80)
+2. **Re-export player crouch frames on 64 × 96 canvas** (currently 64 × 78 — needs transparent padding so the visual box stays constant across run / jump / duck / hit)
+3. **Anim sheets that aren't shipped yet** (P2):
+   - `sparkle_01..04`, `hit_flash_01..04`, `lane_swoosh_01..04`, `collect_burst_01..08`
+   - `orchid_gold_sparkle_01..04`, `orchid_gold_collect_01..08`
+4. **Rename or move** the two player WIP folders that use Cyrillic / transliterated names:
+   - `player/farmer_remaining_batch/` → canonical English names OR move to `_source/`
+   - `player/farmer_unfinished_batch/` → same
+
+### 🛑 DO NOT MAKE MORE OF THESE (already enough)
+
+| Stem | Current | Brief target |
+|---|---|---|
+| `player_farmer_run` | **12** | 8 (use 4 extras as headroom only) |
+| `player_farmer_jump` | **16** | 6 (10 extras already enough) |
+| `sparkle_*` | **13** | 4 (anim sheet) |
+| `dust_*` (4 stems: burst, puff, cloud, smoke) | **15** | 1 sheet (`dust_puff_01..04`) |
+| `cloud_*` | **6** | 3 (small / medium / large) |
+| powerup auras / medallions (`powerups/*` + `pickups/aura/*`) | **13** | 0 until pickup polish ships |
+| `_01` / `_02` / `_alt` suffix variants of canonical names | many | 0 — § 4.2 forbids |
+
+If a category is on the STOP list, please **ping the developer before drawing more**. The audit script (`node scripts/audit-assets.mjs --check`) prints the live counts.
+
+### 🔒 REQUIRED RULES (any batch will be rejected if these break)
+
+1. **Filenames**: lowercase + underscore, Latin only. No spaces. No Cyrillic. Two-digit frame numbers (`_01`, not `_1`).
+2. **Path matches the brief**: `assets/<category>/<sub>/<name>.png`. Don't create alt-paths like `assets/platforms/` when `assets/structures/platforms/` already exists.
+3. **Side-aware convention** (current wave): `_left.png` = the variant where the block's LEFT face is visible. Engine maps this as `SWAPPED` in `SIDE_MAPPING_BY_TYPE`. If a future batch uses the OPPOSITE convention (`_left` = placement on LEFT shoulder), please **flag it in the delivery notes** so the developer can flip the mapping in one line.
+4. **Light source**: sun upper-right for ALL sprites (§ 1.4). Do NOT mirror-flip a `_left` to make a `_right` — that reverses the sun direction; re-draw with proper lighting.
+5. **Pixel grid**: 1 × 1 px alignment, no AA except on the explicitly-noted alpha assets (halo / sun_glow / hit_flash / spider_web).
+6. **Sizes**: exactly per § 5. No "close enough."
+
+---
+
 **Brief goal:** designer delivers finished PNGs, developer drops them into `assets/` and registers them — NO renames, NO size recalculation, NO manual anchor adjustment. Any deviation from naming/folder spec = rework.
 
 **Cross-documents:**
-- `docs/asset-style-audit.md` — current asset inventory and stylistic gap.
-- `docs/road-kit-brief.md` — separate brief for the 14-file road kit (already delivered).
-- `docs/developer-integration-guide.md` — what the developer does after your delivery.
+- `docs/asset-audit-report.md` — auto-generated inventory (re-run `node scripts/audit-assets.mjs` to refresh)
+- `docs/asset-style-audit.md` — current asset inventory and stylistic gap
+- `docs/road-kit-brief.md` — separate brief for the 14-file road kit (already delivered)
+- `docs/developer-integration-guide.md` — what the developer does after delivery
 
 ---
 

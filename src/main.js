@@ -420,11 +420,25 @@ function installPlayerStatesMode(game, debugApi) {
     applyPreset(presetName);
   });
 
-  // capturePlayerStates({ overlay, download }) — dataURLs per state.
+  /**
+   * v3.8.28 — capturePlayerStates({ debugOverlay, download }):
+   *   debugOverlay: true  — keep cyan/magenta/red player overlay (default; technical QA)
+   *   debugOverlay: false — temporarily disable showPlayer for clean visual QA
+   *   download:     true  — auto-trigger download per state
+   *
+   * Note: DOM-level overlays (PerformanceHUD panel, Orchid debug panel)
+   * sit OUTSIDE the canvas, so canvas.toDataURL never includes them.
+   * Only the in-canvas debug overlay (PlayerRenderer.#drawPlayerDebug)
+   * is gated by the showPlayer flag.
+   */
   debugApi.applyPlayerState = applyPreset;
-  debugApi.capturePlayerStates = async ({ download = false } = {}) => {
+  debugApi.capturePlayerStates = async ({ debugOverlay = true, download = false } = {}) => {
     const states = Object.keys(PRESETS);
     const canvas = document.getElementById('game');
+    const prevShowPlayer = GAME_CONFIG.debug.showPlayer;
+    if (!debugOverlay) {
+      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: false, writable: false, configurable: true });
+    }
     const results = {};
     for (const state of states) {
       applyPreset(state);
@@ -434,15 +448,70 @@ function installPlayerStatesMode(game, debugApi) {
       if (download) {
         const a = document.createElement('a');
         a.href = dataURL;
-        a.download = `player_state_${state}.png`;
+        a.download = `player_state_${state}${debugOverlay ? '_debug' : '_clean'}.png`;
         a.click();
       }
+    }
+    if (!debugOverlay) {
+      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: prevShowPlayer, writable: false, configurable: true });
     }
     applyPreset('run');
     return results;
   };
 
-  console.info('[debugPlayerStates] active. Keys 1-9 switch state. __ORCHID_DEBUG__.capturePlayerStates({ download: true }) to grab all.');
+  /**
+   * v3.8.28 — capturePlayerStatesContactSheet({ debugOverlay, cols, download }):
+   * Composites all 9 state captures into one PNG grid (3 × 3 by default).
+   * Lets QA verify cyan box constancy at a glance.
+   */
+  debugApi.capturePlayerStatesContactSheet = async ({ debugOverlay = true, cols = 3, download = true } = {}) => {
+    const shots = await debugApi.capturePlayerStates({ debugOverlay, download: false });
+    const states = Object.keys(shots);
+    const rows = Math.ceil(states.length / cols);
+    const canvas = document.getElementById('game');
+    const cellW = canvas.width;
+    const cellH = canvas.height;
+    const margin = 12;
+    const labelH = 28;
+    const sheet = document.createElement('canvas');
+    sheet.width = cols * cellW + (cols + 1) * margin;
+    sheet.height = rows * (cellH + labelH) + (rows + 1) * margin;
+    const ctx = sheet.getContext('2d');
+    ctx.fillStyle = '#0a0d14';
+    ctx.fillRect(0, 0, sheet.width, sheet.height);
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < states.length; i += 1) {
+      const state = states[i];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = margin + col * (cellW + margin);
+      const y = margin + row * (cellH + labelH + margin);
+      const img = new Image();
+      img.src = shots[state];
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => { img.onload = r; });
+      ctx.drawImage(img, x, y, cellW, cellH);
+      ctx.font = 'bold 18px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(state.toUpperCase(), x + cellW / 2, y + cellH + 20);
+    }
+    const dataURL = sheet.toDataURL('image/png');
+    if (download) {
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = `player_states_contact_sheet${debugOverlay ? '_debug' : '_clean'}.png`;
+      a.click();
+    }
+    return dataURL;
+  };
+
+  console.info(
+    '[debugPlayerStates] keys 1-9 switch state.\n' +
+    '  Captures:\n' +
+    '    __ORCHID_DEBUG__.capturePlayerStates({ debugOverlay: false, download: true })\n' +
+    '    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ debugOverlay: false })',
+  );
 }
 
 game.boot().catch((error) => {
