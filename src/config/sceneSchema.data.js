@@ -551,34 +551,39 @@ export const HERO_LAYOUT = Object.freeze([
 ]);
 
 /**
- * v3.8.22 — Deterministic ROAD GAMEPLAY beats for the first ~95 m.
+ * v3.8.23 — REPEATING road gameplay rhythm. Previously the road beats
+ * were a one-shot opening layout (HERO_ROAD_LAYOUT); after distance 88
+ * the road went quiet until procedural ticks took over, leaving the
+ * player visibly running on an empty corridor in the mid-window.
  *
- * Parallel to HERO_LAYOUT (side decor): pins flower routes, the big
- * mid-near vine beat, and a lane-change zigzag to specific distances
- * so the opening of every run reads as authored gameplay, not random
- * sprinkle. After the last entry (~88) the road stays clean until
- * procedural patterns kick in past distance ~130 — gives the player a
- * visible breathing-room approach to the castle.
+ * Now: HERO_ROAD_SEQUENCE is a CYCLE TEMPLATE. Entries are offsets
+ * WITHIN a cycle of length HERO_ROAD_CYCLE_LENGTH. SpawnSystem stamps
+ * the cycle at distances 0, CYCLE_LENGTH, 2 × CYCLE_LENGTH, ... so the
+ * visible window always has flower routes, an obstacle beat, and a
+ * reward path regardless of how far the player has run.
  *
- * Entry kinds (handled in SpawnSystem.#spawnHeroRoadEntry):
+ * Entry kinds (SpawnSystem.#spawnHeroRoadEntry):
  *   flower-line       N orchids in one lane spaced evenly
  *   flower-arc        N orchids transitioning from fromLane → toLane
- *   flower-zigzag     orchids hopping across the explicit lanes list
- *   jump-obstacle     single-lane low obstacle (dry_grass) — jump cue
+ *   flower-zigzag     orchids hopping across explicit lanes list
+ *   reward-cluster    N orchids tight at a single lane (post-obstacle)
+ *   jump-obstacle     single-lane low obstacle (dry_grass / wheat)
  *   vine-with-rewards full-lane vine + approach trail + exit reward
  */
-export const HERO_ROAD_LAYOUT = Object.freeze([
-  // 10-32: warm-up — center flower line then a guiding arc
-  { distance: 10, kind: 'flower-line', lane: 0,  count: 4, spacing: 6 },
-  { distance: 30, kind: 'flower-arc',  fromLane: -1, toLane: 1, count: 4 },
-  // 40-52: small jump obstacle + reward trail
-  { distance: 42, kind: 'jump-obstacle', lane: -1 },
-  { distance: 50, kind: 'flower-line', lane: 0, count: 2, spacing: 5 },
-  // 60-80: the BIG mid-near vine — visible foreground beat the user wants
-  { distance: 64, kind: 'vine-with-rewards', lane: 0 },
-  // 84-92: lane-change zigzag (recovery / lead into the clean approach)
-  { distance: 86, kind: 'flower-zigzag', lanes: [1, 0, -1] },
-  // 92+ → far gate approach stays clean until procedural fires at ~130
+export const HERO_ROAD_CYCLE_LENGTH = 105;
+
+export const HERO_ROAD_SEQUENCE = Object.freeze([
+  // 4-30: warm-up flower route + guiding arc
+  { offsetInCycle:  4, kind: 'flower-line',  lane: 0, count: 5, spacing: 6 },
+  { offsetInCycle: 28, kind: 'flower-arc',   fromLane: -1, toLane: 1, count: 4 },
+  // 36-50: small jump obstacle + dense reward cluster after
+  { offsetInCycle: 36, kind: 'jump-obstacle', lane: -1 },
+  { offsetInCycle: 46, kind: 'reward-cluster', lane: 0, count: 4 },
+  // 58-72: the strong mid-near vine + auto approach trail + exit reward
+  { offsetInCycle: 60, kind: 'vine-with-rewards', lane: 0 },
+  // 80-92: lane-change zigzag + final reward cluster
+  { offsetInCycle: 80, kind: 'flower-zigzag', lanes: [1, 0, -1, 0, 1] },
+  { offsetInCycle: 96, kind: 'reward-cluster', lane: 0, count: 4 },
 ]);
 
 export const MIDGROUND_SCENERY = Object.freeze([

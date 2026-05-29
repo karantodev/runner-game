@@ -1,5 +1,5 @@
 import { createCollectible, createObstacle } from '../ecs/factories.js';
-import { HERO_ROAD_LAYOUT } from '../config/sceneSchema.data.js';
+import { HERO_ROAD_CYCLE_LENGTH, HERO_ROAD_SEQUENCE } from '../config/sceneSchema.data.js';
 import { DifficultyDirector } from './spawn/DifficultyDirector.js';
 import { PatternLibrary } from './spawn/PatternLibrary.js';
 import { PathValidator } from './spawn/PathValidator.js';
@@ -43,31 +43,42 @@ export class SpawnSystem {
       this.config.spawn.rareOrchidMinDistance * 0.6,
       this.config.spawn.rareOrchidMaxDistance * 0.6,
     );
+    // v3.8.23 — origin of the NEXT hero-road cycle to stamp. Bumped by
+    // CYCLE_LENGTH every time a cycle goes off-camera so the rhythm is
+    // continuous.
+    this.heroCycleOrigin = 0;
   }
 
   /**
-   * v3.8.22 — Two-phase prepopulate.
+   * v3.8.23 — REPEATING hero road rhythm.
    *
-   * PHASE 1: HERO_ROAD_LAYOUT — pinned flower routes + vine beat at
-   *          specific distances (10-88). Deterministic per-run.
-   * PHASE 2: Set procedural cursors so the first random pattern fires
-   *          AFTER the player passes the hero stretch. The road stays
-   *          visibly cleaner from ~95-120 m — the "clean approach to
-   *          castle" gap the user wants.
+   * Pre-stamps 4 cycles of HERO_ROAD_SEQUENCE so the visible window
+   * (~120 worldspace units) is full from frame 1, and the next cycle
+   * is already past the horizon ready to slide in. Procedural cursors
+   * are pushed out — heroes carry the rhythm; procedural patterns
+   * add ambient noise much later.
    */
   prepopulate(world) {
-    for (const entry of HERO_ROAD_LAYOUT) {
-      this.#spawnHeroRoadEntry(world, entry);
+    const cycles = 4;  // covers projection.maxDistance (~420)
+    for (let i = 0; i < cycles; i += 1) {
+      this.#stampHeroCycle(world, i * HERO_ROAD_CYCLE_LENGTH);
     }
-    // Procedural cursors push out enough that the first random pattern
-    // enters the visible window AFTER the hero vine (at distance 64)
-    // has played out. nextPattern is travel-units-until-spawn; the
-    // spawned pattern lands at maxDistance=420 and takes another ~236
-    // units of travel to slide into the player's view window — so even
-    // a small countdown here puts procedural obstacles well past the
-    // hero scene visually.
+    this.heroCycleOrigin = cycles * HERO_ROAD_CYCLE_LENGTH;
+    // Procedural patterns kept on the legacy cadence (fires ~60 travel
+    // units in) so they add ambient extras between hero beats. Hero
+    // cycle is the BASELINE; procedural is variation.
     this.nextPattern = 60;
-    this.nextOrchid  = 90;
+    this.nextOrchid  = 200;  // orchid duty carried by hero cycles
+  }
+
+  /** Stamp one full HERO_ROAD_SEQUENCE cycle at the given origin distance. */
+  #stampHeroCycle(world, originDistance) {
+    for (const entry of HERO_ROAD_SEQUENCE) {
+      this.#spawnHeroRoadEntry(world, {
+        ...entry,
+        distance: originDistance + entry.offsetInCycle,
+      });
+    }
   }
 
   /** Dispatcher for HERO_ROAD_LAYOUT entries. */
@@ -108,6 +119,22 @@ export class SpawnSystem {
         });
         return;
       }
+      case 'reward-cluster': {
+        // Dense cluster of N orchids spread tight at one lane — the
+        // visible reward after an obstacle. Spread 3 units depth per
+        // orchid + slight lane jitter via lane index parity so it
+        // doesn't read as a perfect column.
+        const count = entry.count ?? 4;
+        const lane = entry.lane ?? 0;
+        for (let i = 0; i < count; i += 1) {
+          const laneJitter = (i % 2 === 0) ? 0 : 0.12;
+          createCollectible(world.registry, {
+            type: 'flower', lane: lane + laneJitter,
+            distance: dist + i * 4, high: false,
+          });
+        }
+        return;
+      }
       case 'jump-obstacle': {
         createObstacle(world.registry, {
           type: 'wheat', lane: entry.lane ?? 0,
@@ -144,6 +171,15 @@ export class SpawnSystem {
     if (this.nextLife <= 0) this.#tickLife(world);
     if (this.nextPowerUp <= 0) this.#tickPowerUp(world);
     if (this.nextRare <= 0) this.#tickRare(world);
+
+    // v3.8.23 — keep the hero cycle ahead of the player. Compare the
+    // next cycle's origin to the player's accumulated scrollOffset
+    // (world progress in distance units). When the player closes in
+    // on it (within maxDistance), stamp a fresh cycle further out.
+    if (this.heroCycleOrigin - world.scrollOffset < this.projection.maxDistance) {
+      this.#stampHeroCycle(world, this.heroCycleOrigin);
+      this.heroCycleOrigin += HERO_ROAD_CYCLE_LENGTH;
+    }
   }
 
   // ── Private ─────────────────────────────────────────────────────────────────
