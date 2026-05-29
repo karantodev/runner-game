@@ -526,27 +526,17 @@ function installPlayerStatesMode(game, debugApi) {
   debugApi.getPlayerDebugStates = () => PLAYER_DEBUG_STATES.map((s) => ({ ...s }));
   debugApi.setPoseBaselineLock = (v) => { modes.poseBaselineLock = !!v; };
 
-  // v3.8.30 — mode helpers. `mode` controls the SCENE (lab vs in-scene);
-  // `debugOverlay` controls the technical boxes on the player. Both are
-  // orthogonal — four valid combinations:
-  //   { mode: 'lab',   debugOverlay: true  } — clean bg + cyan/magenta boxes
-  //   { mode: 'lab',   debugOverlay: false } — clean bg, no boxes
-  //   { mode: 'scene', debugOverlay: true  } — gameplay + boxes
-  //   { mode: 'scene', debugOverlay: false } — pure gameplay frame
-  //   { mode: 'auto' }                       — leave toggles as-is
-  const setSceneMode = (mode) => {
-    if (mode === 'lab') {
-      Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
-        { value: true, writable: false, configurable: true });
-      Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
-        { value: true, writable: false, configurable: true });
-    } else if (mode === 'scene') {
-      Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
-        { value: false, writable: false, configurable: true });
-      Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
-        { value: false, writable: false, configurable: true });
-    }
-  };
+  // v3.8.30 / v3.8.31 — capture-time mode application.
+  //   mode = 'lab'   → spriteLabMode ON, FX OFF (always)
+  //   mode = 'scene' → spriteLabMode OFF; FX gated PER STATE:
+  //                      Pose-group states  → FX OFF (farmer visible)
+  //                      Overlay-group state → FX ON  (overlay visible)
+  //   mode = 'auto'  → no overrides, use current toggle values
+  // `debugOverlay` controls the technical boxes on the player and is
+  // orthogonal to mode.
+  const setFlag = (key, value) =>
+    Object.defineProperty(GAME_CONFIG.debug, key,
+      { value, writable: false, configurable: true });
 
   debugApi.capturePlayerStates = async ({
     debugOverlay = true, download = false, group = 'all', mode = 'auto',
@@ -558,15 +548,22 @@ function installPlayerStatesMode(game, debugApi) {
     const prevShowPlayer = GAME_CONFIG.debug.showPlayer;
     const prevLab = GAME_CONFIG.debug.spriteLabMode;
     const prevFx = GAME_CONFIG.debug.disableFullScreenEffects;
-    if (!debugOverlay) {
-      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer',
-        { value: false, writable: false, configurable: true });
-    }
-    setSceneMode(mode);
+    if (!debugOverlay) setFlag('showPlayer', false);
+    if (mode === 'lab') setFlag('spriteLabMode', true);
+    else if (mode === 'scene') setFlag('spriteLabMode', false);
     const modeSlug = mode === 'lab' ? 'lab' : mode === 'scene' ? 'scene' : 'auto';
     const overlaySlug = debugOverlay ? 'technical' : 'clean';
     const results = {};
     for (const state of targets) {
+      // v3.8.31 — per-state FX gating. Lab is always FX-off. Scene flips
+      // FX based on whether the state's role is "pose" (then hide the
+      // full-screen overlay so the farmer is visible) or "overlay" (then
+      // show it because that's the point of the capture).
+      if (mode === 'lab') {
+        setFlag('disableFullScreenEffects', true);
+      } else if (mode === 'scene') {
+        setFlag('disableFullScreenEffects', state.group !== 'Overlay');
+      }
       applyPreset(state.id);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const dataURL = canvas.toDataURL('image/png');
@@ -578,14 +575,9 @@ function installPlayerStatesMode(game, debugApi) {
         a.click();
       }
     }
-    if (!debugOverlay) {
-      Object.defineProperty(GAME_CONFIG.debug, 'showPlayer',
-        { value: prevShowPlayer, writable: false, configurable: true });
-    }
-    Object.defineProperty(GAME_CONFIG.debug, 'spriteLabMode',
-      { value: prevLab, writable: false, configurable: true });
-    Object.defineProperty(GAME_CONFIG.debug, 'disableFullScreenEffects',
-      { value: prevFx, writable: false, configurable: true });
+    if (!debugOverlay) setFlag('showPlayer', prevShowPlayer);
+    setFlag('spriteLabMode', prevLab);
+    setFlag('disableFullScreenEffects', prevFx);
     applyPreset('run');
     return results;
   };
