@@ -60,10 +60,27 @@ Recent waves shipped a lot of new files, but most of them are:
 
 | Asset | Status |
 |---|---|
-| `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15) |
-| `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15) |
+| `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **uses VISIBLE-FACE convention** (see note below) |
+| `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **uses VISIBLE-FACE convention** |
 | `grass_dirt_step_left.png` | 🟡 PARTIAL — `_left` shipped, `_right` MISSING |
-| All other side-aware types | ❌ PENDING — engine falls back to canvas mirror (lighting reversed on right) |
+| All other side-aware types | ❌ PENDING — engine falls back to a billboard fallback (warning printed) |
+
+### ⚠️ Naming convention finding (v3.8.19)
+
+The A/B comparison (clean gameplay at `?sideMapping=normal` vs `?sideMapping=swapped`) showed the current wave's `_left` / `_right` files are named by **VISIBLE FACE**, not by placement shoulder.
+
+- `_left.png`  → block's LEFT face is the prominent / visible one
+   → correct for placement on the **RIGHT** shoulder (visible face points TOWARD the road)
+- `_right.png` → block's RIGHT face is visible
+   → correct for placement on the **LEFT** shoulder
+
+The engine compensates via `SIDE_MAPPING_BY_TYPE` defaults set to `'swapped'` for the affected types.
+
+**Designer ask for future batches:** please confirm which convention you used. Two clear options:
+1. **PLACEMENT convention** (preferred per brief § 1.4.1) — `<name>_left.png` is the sprite for left-shoulder placement. Then a single LEFT-placed block is reading correctly is enough QA.
+2. **VISIBLE-FACE convention** — `<name>_left.png` is whichever variant has its left face visible. Engine will keep the `'swapped'` mapping for those.
+
+Either is fine as long as it's consistent within a batch.
 
 ### What the engine ACTUALLY needs
 
