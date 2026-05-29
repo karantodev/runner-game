@@ -30,7 +30,7 @@ export class RenderSystem {
    * @param {HTMLCanvasElement} canvas
    * @param {import('../core/AssetManager.js').AssetManager} assets
    * @param {import('../world/Projection.js').Projection} projection
-   * @param {{ pixelRatio?: number }} [options]
+   * @param {{ pixelRatio?: number, roadStyle?: 'procedural' | 'tiles' }} [options]
    */
   constructor(canvas, assets, projection, options = {}) {
     this.canvas = canvas;
@@ -38,6 +38,9 @@ export class RenderSystem {
     this.assets = assets;
     this.projection = projection;
     this.pixelRatio = Math.max(1, options.pixelRatio ?? 1);
+    this.roadStyle = ['procedural', 'tiles', 'kit'].includes(options.roadStyle)
+      ? options.roadStyle
+      : 'procedural';
 
     // Resize the backing store to logical * pixelRatio. The projection
     // and renderers keep operating in logical units; setTransform() in
@@ -59,18 +62,35 @@ export class RenderSystem {
       paint: this.paint,
       gradients: this.gradients,
       pixelRatio: this.pixelRatio,
+      roadStyle: this.roadStyle,
     };
 
+    this.roadRenderer = new RoadRenderer(deps);
+    this.effectsRenderer = new EffectsRenderer(deps);
     this.pipeline = new RenderPipeline([
       new SkyRenderer(deps),
       new BackgroundRenderer(deps),
       new LandmarksRenderer(deps),
-      new RoadRenderer(deps),
+      this.roadRenderer,
       new SceneryRenderer(deps),
       new GameplayRenderer(deps),
       new PlayerRenderer(deps),
-      new EffectsRenderer(deps),
+      this.effectsRenderer,
     ]);
+  }
+
+  /**
+   * Cycle through the three road-rendering modes (procedural → tiles →
+   * kit → procedural). Bound to the `T` key in main.js so the user
+   * can A/B/C-compare live.
+   */
+  toggleRoadStyle() {
+    const order = ['procedural', 'tiles', 'kit'];
+    const next = order[(order.indexOf(this.roadStyle) + 1) % order.length];
+    this.roadStyle = next;
+    this.roadRenderer.roadStyle = next;
+    console.info(`[RenderSystem] roadStyle → ${next}`);
+    return next;
   }
 
   render(world) {
@@ -82,6 +102,10 @@ export class RenderSystem {
     // logical size, since the transform applies to it too.
     ctx.setTransform(dpr, 0, 0, dpr, shake.x * dpr, shake.y * dpr);
     ctx.clearRect(-shake.x, -shake.y, this.projection.width, this.projection.height);
+    // Pixel-art aesthetic: bilinear filtering off for the whole frame.
+    // Setting it once per frame replaces ~80 save/restore pairs that
+    // used to wrap individual sprite draws.
+    ctx.imageSmoothingEnabled = false;
 
     this.pipeline.render(world);
 
@@ -89,8 +113,14 @@ export class RenderSystem {
   }
 
   resizeToViewport(padding = 0) {
-    const maxWidth = window.innerWidth - padding;
-    const maxHeight = window.innerHeight - padding;
+    // Read from the #app element instead of window.innerWidth so that the
+    // safe-area-inset (iPhone notch + console TV overscan margins) is
+    // respected automatically. #app is sized via `inset: env(safe-area-inset-*)`
+    // in style.css; getBoundingClientRect reflects the resulting box.
+    const appEl = document.getElementById('app');
+    const rect = appEl ? appEl.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+    const maxWidth = rect.width - padding;
+    const maxHeight = rect.height - padding;
     // Aspect ratio is always logical projection's, regardless of dpr
     // (canvas pixel-buffer may be dpr-scaled but we want CSS box to
     // match the game's intended 1536:864 frame).

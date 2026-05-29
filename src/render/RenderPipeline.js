@@ -19,7 +19,21 @@ export class RenderPipeline {
 
   render(world) {
     for (let i = 0; i < this.renderers.length; i += 1) {
-      this.renderers[i].render(world);
+      const renderer = this.renderers[i];
+      try {
+        renderer.render(world);
+      } catch (err) {
+        // A single renderer failing must not freeze the whole frame:
+        // background layers should still paint, the player should still
+        // animate, and the player must be able to die / restart. Log
+        // once + suppress further reports from this renderer to keep
+        // the console readable in long sessions.
+        if (!renderer._renderErrLogged) {
+          renderer._renderErrLogged = true;
+          const name = renderer.constructor?.name ?? `renderer[${i}]`;
+          console.error(`[RenderPipeline] ${name}.render() threw — subsequent failures from this renderer suppressed:`, err);
+        }
+      }
     }
   }
 }

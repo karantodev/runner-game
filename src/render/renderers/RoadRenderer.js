@@ -1,20 +1,34 @@
 import { roadBaseHalfWidth, roadTopHalfWidth } from '../helpers.js';
 
 /**
- * Painted ground + perspective road. Static elements (ground gradient,
- * road trapezoid, painted highlights, edge gradient lines) are baked
- * into an offscreen layer once and blitted with a single drawImage per
- * frame; dynamic elements (98 scroll-driven perspective bands, the
- * scrolling shoulder + lane-dash strips) stay procedural in the hot path.
+ * Painted ground + perspective road. The "road" no longer has its own
+ * trapezoid fill — the player runs on the same grass as the surrounding
+ * landscape, with two continuous cream-colored lane dividers defining
+ * the playable lanes (reference: classic pixel-art runner).
+ *
+ * Static elements (ground gradient, side highlights) are baked once into
+ * an offscreen layer and blitted with a single drawImage per frame.
+ * Dynamic elements per frame:
+ *   - scroll-driven perspective grass-row bands (motion feel, subtle)
+ *   - lane dividers (cream solid lines, fade with distance via cached gradient)
+ *   - shoulders (scrolling grass tiles at the road edge)
  */
 export class RoadRenderer {
-  constructor({ ctx, projection, assets, gradients, pixelRatio = 1 }) {
+  constructor({ ctx, projection, assets, gradients, pixelRatio = 1, roadStyle = 'procedural' }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.gradients = gradients;
     this.pixelRatio = pixelRatio;
+    /** Either 'procedural' (fillRect tiles) or 'tiles' (SVG image tiles). */
+    this.roadStyle = roadStyle;
     this._staticLayer = this.#buildStaticLayer();
+    // Deterministic pseudo-random patterns for the procedural texture
+    // passes — built once, scrolled per frame via scrollOffset modulo.
+    // Loop length 420 (= maxDistance) means the pattern repeats every
+    // ~8 seconds at base speed — long enough to not read as obvious.
+    this._noisePoints = buildNoisePattern(120, 0x9e3779b9);
+    this._fringePoints = buildFringePattern(72, 0x85ebca6b);
   }
 
   render(world) {
@@ -22,15 +36,32 @@ export class RoadRenderer {
     // Source canvas is dpr-scaled; we draw it into the LOGICAL dimensions
     // since our parent ctx transform already applies dpr.
     this.ctx.drawImage(this._staticLayer, 0, 0, this.projection.width, this.projection.height);
-    this.#roadBands(world.scrollOffset);
+    if (this.roadStyle === 'kit') {
+      // Kit mode is self-contained — the 14 designer tiles already
+      // include lane bodies, shoulder transitions, dividers, and edge
+      // accents. The other procedural passes (shoulderStrips, grassNoise,
+      // roadShoulders, shoulderFringe, laneDividers) would all
+      // double-draw or visually conflict with the hand-crafted tiles,
+      // so we skip them entirely in kit mode.
+      this.#imageKitGrid(world.scrollOffset);
+      return;
+    }
+    if (this.roadStyle === 'tiles') {
+      this.#imageTileGrid(world.scrollOffset);
+    } else {
+      this.#roadBands(world.scrollOffset);
+    }
+    this.#shoulderStrips();
+    this.#grassNoise(world.scrollOffset);
     this.#roadShoulders(world.scrollOffset);
-    this.#laneDashes(world.scrollOffset);
+    this.#shoulderFringe(world.scrollOffset);
+    this.#laneDividers(world.scrollOffset);
   }
 
   /**
-   * Bake the ground + road trapezoid + road edges to an offscreen canvas.
-   * Sized to logical*dpr so blit-back stays crisp on Hi-DPI. Caller
-   * invalidates via rebuildStaticLayer() if the projection changes.
+   * Bake the ground gradient to an offscreen canvas. Sized to logical*dpr
+   * so blit-back stays crisp on Hi-DPI. Caller invalidates via
+   * rebuildStaticLayer() if the projection changes.
    */
   #buildStaticLayer() {
     const p = this.projection;
@@ -39,11 +70,9 @@ export class RoadRenderer {
     layer.width = p.width * dpr;
     layer.height = p.height * dpr;
     const c = layer.getContext('2d');
-    // Paint in logical units; setTransform scales them up to the dpr buffer.
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.#paintGround(c);
-    this.#paintRoadTrapezoid(c);
-    this.#paintRoadEdges(c);
+    this.#paintPathFill(c);
     return layer;
   }
 
@@ -60,6 +89,8 @@ export class RoadRenderer {
     ctx.fillStyle = this.gradients.gradients.ground;
     ctx.fillRect(0, startY, width, height - startY);
 
+    // Soft darker rolling shapes on either side of the road give the
+    // landscape a touch of depth at the horizon — purely decorative.
     ctx.save();
     ctx.globalAlpha = 0.28;
     ctx.fillStyle = '#317a35';
@@ -80,14 +111,26 @@ export class RoadRenderer {
     ctx.restore();
   }
 
-  #paintRoadTrapezoid(ctx) {
+  /**
+   * Subtle path fill baked into the static layer. Distinguishes the road
+   * trapezoid from the surrounding meadow at LOW contrast — not a
+   * highway-style block, just enough that the eye reads "the path goes
+   * THIS way". Tile-checker + noise + shoulder strips layer on top.
+   */
+  #paintPathFill(ctx) {
     const p = this.projection;
     const vpX = p.width / 2;
     const vpY = p.roadVanishY;
     const baseHalf = roadBaseHalfWidth(p);
     const topHalf = roadTopHalfWidth(p);
 
-    ctx.fillStyle = this.gradients.gradients.road;
+    // Bumped toward the target reference's more saturated kelly-green
+    // path color. Previous tone was too desaturated — the path blended
+    // into the meadow even with all the tile passes on top.
+    const pathFill = ctx.createLinearGradient(0, vpY, 0, p.groundY);
+    pathFill.addColorStop(0, 'rgba(148,212,92,0.30)');
+    pathFill.addColorStop(1, 'rgba(126,196,78,0.66)');
+    ctx.fillStyle = pathFill;
     ctx.beginPath();
     ctx.moveTo(vpX - topHalf, vpY);
     ctx.lineTo(vpX + topHalf, vpY);
@@ -95,97 +138,105 @@ export class RoadRenderer {
     ctx.lineTo(vpX - baseHalf, p.groundY);
     ctx.closePath();
     ctx.fill();
-
-    // Light vanishing-point highlight strip baked alongside the trapezoid.
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = '#e8ffb8';
-    ctx.beginPath();
-    ctx.moveTo(vpX - topHalf, vpY + 3);
-    ctx.lineTo(vpX + topHalf, vpY + 3);
-    ctx.lineTo(vpX + topHalf * 2.0, vpY + 30);
-    ctx.lineTo(vpX - topHalf * 2.0, vpY + 30);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  #paintRoadEdges(ctx) {
-    const p = this.projection;
-    const vpX = p.width / 2;
-    const vpY = p.roadVanishY;
-    const baseHalf = roadBaseHalfWidth(p);
-    const topHalf = roadTopHalfWidth(p);
-
-    ctx.save();
-    ctx.strokeStyle = this.gradients.gradients.roadEdge;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(vpX - baseHalf, p.groundY);
-    ctx.lineTo(vpX - topHalf, vpY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(vpX + baseHalf, p.groundY);
-    ctx.lineTo(vpX + topHalf, vpY);
-    ctx.stroke();
-    ctx.globalAlpha = 0.22;
-    ctx.strokeStyle = '#194f24';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(vpX - baseHalf - 8, p.groundY);
-    ctx.lineTo(vpX - topHalf - 4, vpY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(vpX + baseHalf + 8, p.groundY);
-    ctx.lineTo(vpX + topHalf + 4, vpY);
-    ctx.stroke();
-    ctx.restore();
   }
 
   // ── Dynamic elements (per-frame, scrolling) ─────────────────────────────────
 
+  /**
+   * Perspective tile-grid built from **world-aligned** tiles (NOT screen
+   * bands). Each tile has a stable variant derived from its world (row,
+   * column) coords — so as the road scrolls, individual tiles flow
+   * smoothly toward the camera without flickering through variants.
+   *
+   * The previous screen-band approach computed variant from a
+   * scroll-driven `rowVariant` that cycled 0→1→2 every ~2 world-units —
+   * producing the visible 30Hz "ripple". This version is spatially
+   * coherent: a tile that's "light" stays light its whole life.
+   *
+   * Tiles are 6 world-units deep × 0.2 lane-units wide ≈ square at
+   * gameplay scale. Only the first ~80 world-units are drawn (foreground
+   * emphasis); beyond that the baked path-fill carries the color alone.
+   */
   #roadBands(scrollOffset) {
     const ctx = this.ctx;
     const p = this.projection;
-    const vpX = p.width / 2;
-    const vpY = p.roadVanishY;
-    const baseHalf = roadBaseHalfWidth(p);
-    const topHalf = roadTopHalfWidth(p);
-    const numBands = 98;
-    const STRIPE_PERIOD = 6.2;
+    const ROAD_HALF = p.roadHalfLaneUnits;
+    // v3.8.9 Tier-4 — finer tile grid for the "pixel-art garden path" feel.
+    //   TILE_DEPTH 5 → 3 (40% shorter depth strips)
+    //   TILE_LANE_W 0.18 → 0.11 (39% narrower lateral cells)
+    //   MAX_ROWS 20 → 32 (covers same depth at smaller tile size)
+    // Net: ~2.6× more tiles in the same road area — surface reads as
+    // mottled pixel texture rather than a low-res checker.
+    const TILE_DEPTH = 3;
+    const TILE_LANE_W = 0.11;
+    const FAR_VISIBLE = 84;
+    const MAX_ROWS = 32;
+    const NUM_LATERAL = Math.ceil(ROAD_HALF / TILE_LANE_W);
 
-    for (let i = 0; i < numBands; i += 1) {
-      const s1 = Math.max(0.010, i / numBands);
-      const s2 = Math.max(0.010, (i + 1) / numBands);
-      const d1 = p.focal * (1 - s1) / s1;
-      const halfW1 = topHalf + (baseHalf - topHalf) * s1;
-      const halfW2 = topHalf + (baseHalf - topHalf) * s2;
-      const y1 = vpY + (p.groundY - vpY) * s1;
-      const y2 = vpY + (p.groundY - vpY) * s2;
-      const bandH = Math.max(1, Math.ceil(y2 - y1));
-      const halfW = (halfW1 + halfW2) * 0.5;
-      const tMid = (s1 + s2) * 0.5;
+    const off = ((scrollOffset % TILE_DEPTH) + TILE_DEPTH) % TILE_DEPTH;
+    // World-row offset — stays stable per world-distance so a tile keeps
+    // its (row, col) identity across frames.
+    const rowOffset = Math.floor(scrollOffset / TILE_DEPTH);
 
-      const rawV = (d1 + scrollOffset) % STRIPE_PERIOD;
-      const v = ((rawV % STRIPE_PERIOD) + STRIPE_PERIOD) % STRIPE_PERIOD / STRIPE_PERIOD;
+    for (let dIdx = 0; dIdx < MAX_ROWS; dIdx += 1) {
+      const dNear = dIdx * TILE_DEPTH - off;
+      const dFar  = dNear + TILE_DEPTH;
+      if (dFar <= 0) continue;
+      if (dNear > FAR_VISIBLE) break;
 
-      ctx.fillStyle = v < 0.50
-        ? `rgba(168,244,100,${0.07 + 0.22 * tMid})`
-        : `rgba(32,96,30,${0.04 + 0.12 * tMid})`;
-      ctx.fillRect(vpX - halfW, y1, halfW * 2, bandH);
+      const dN = Math.max(0, dNear);
+      // Depth fade — full at the camera, vanishes by FAR_VISIBLE so the
+      // tile grid emphasises the foreground (reference behaviour).
+      const fadeT = 1 - Math.min(1, dN / FAR_VISIBLE);
+      if (fadeT <= 0.02) continue;
+      const worldRow = rowOffset + dIdx;
+      // Reduced dark-seam alpha — earlier pass had visible but slightly
+      // overbearing contrast. Now the dark variant reads as a soft tile
+      // shadow / seam, not a chessboard.
+      const lightAlpha = 0.080 + 0.160 * fadeT;
+      const mediumAlpha = 0.055 + 0.115 * fadeT;
+      const darkAlpha   = 0.120 + 0.210 * fadeT;
+      const lightFill  = `rgba(196,242,128,${lightAlpha})`;
+      const mediumFill = `rgba(126,194,88,${mediumAlpha})`;
+      const darkFill   = `rgba(38,98,42,${darkAlpha})`;
 
-      if (i > 14) {
-        const cols = 12;
-        for (let c = -cols; c <= cols; c += 1) {
-          if ((c + i) % 3 !== 0) continue;
-          const laneT = c / cols;
-          const x = vpX + laneT * (halfW1 + halfW2) * 0.48;
-          const w = Math.max(1, 9 * s2);
-          const h = Math.max(1, 5 * s2);
-          const alpha = 0.08 + 0.16 * s2;
-          ctx.fillStyle = (c + i) % 2 === 0 ? `rgba(222,246,126,${alpha})` : `rgba(28,102,38,${alpha})`;
-          ctx.fillRect(x - w / 2, (y1 + y2) / 2 - h / 2, w, h);
-        }
+      for (let cIdx = -NUM_LATERAL; cIdx < NUM_LATERAL; cIdx += 1) {
+        let laneL = cIdx * TILE_LANE_W;
+        let laneR = laneL + TILE_LANE_W;
+        if (laneR <= -ROAD_HALF) continue;
+        if (laneL >=  ROAD_HALF) continue;
+        // Clip to the road extent so outer tiles don't bleed into the meadow.
+        if (laneL < -ROAD_HALF) laneL = -ROAD_HALF;
+        if (laneR >  ROAD_HALF) laneR =  ROAD_HALF;
+
+        // v3.8.10 — broke the 3-bucket variant into a 7-bucket
+        // distribution to defeat the visible "checker" reading. Now:
+        //   buckets 0-2 (43%) → light
+        //   buckets 3-5 (43%) → medium
+        //   bucket 6   (14%) → dark
+        // Dark variant is now rare (was ~33%) so the road reads as
+        // mottled-grass, not a chessboard with dark squares.
+        const hash = (((worldRow * 17) ^ (cIdx * 31) ^ (worldRow + cIdx) * 7) & 0xFF) % 7;
+        ctx.fillStyle = hash < 3 ? lightFill
+                       : hash < 6 ? mediumFill
+                       : darkFill;
+        const nl = p.projectVisual(laneL, dN);
+        const nr = p.projectVisual(laneR, dN);
+        const fr = p.projectVisual(laneR, dFar);
+        const fl = p.projectVisual(laneL, dFar);
+        // v3.8.13 flicker fix — pixel-snap the trapezoid vertices.
+        // Sub-pixel projected coords (sx, sy float) caused Canvas2D
+        // antialiasing to render different fractional coverage at the
+        // tile edges between frames, producing the "shimmer / highlight
+        // flicker" the user reported. Rounding to int snaps adjacent
+        // tiles to the same pixel grid so seams stay solid.
+        ctx.beginPath();
+        ctx.moveTo(Math.round(nl.sx), Math.round(nl.sy));
+        ctx.lineTo(Math.round(nr.sx) + 1, Math.round(nr.sy));
+        ctx.lineTo(Math.round(fr.sx) + 1, Math.round(fr.sy) - 1);
+        ctx.lineTo(Math.round(fl.sx), Math.round(fl.sy) - 1);
+        ctx.closePath();
+        ctx.fill();
       }
     }
   }
@@ -203,83 +254,514 @@ export class RoadRenderer {
       const shoulderKey = side < 0 ? 'roadShoulderLeftGrass' : 'roadShoulderRightGrass';
       for (let dStart = -offset; dStart < far; dStart += period) {
         const dEnd = dStart + period * 0.64;
-        const near = p.project(side * shoulderOuter, Math.max(0, dStart));
-        const farP = p.project(side * shoulderOuter, dEnd);
-        const innerNear = p.project(side * laneOuter, Math.max(0, dStart));
-        const innerFar = p.project(side * laneOuter, dEnd);
-        const alpha = 0.18 + 0.40 * near.scale;
+        const near = p.projectVisual(side * shoulderOuter, Math.max(0, dStart));
+        const farP = p.projectVisual(side * shoulderOuter, dEnd);
+        const innerNear = p.projectVisual(side * laneOuter, Math.max(0, dStart));
+        const innerFar = p.projectVisual(side * laneOuter, dEnd);
+        const alpha = 0.14 + 0.32 * near.scale;
         const drewShoulder = this.#drawQuadSprite(
           shoulderKey,
           innerNear.sx, innerNear.sy,
           near.sx, near.sy,
           farP.sx, farP.sy,
           innerFar.sx, innerFar.sy,
-          Math.min(0.92, alpha + 0.12),
+          Math.min(0.82, alpha + 0.10),
         );
         if (!drewShoulder) {
+          // v3.8.13 — pixel-snap shoulder strip vertices.
           ctx.fillStyle = `rgba(206,235,92,${alpha})`;
           ctx.beginPath();
-          ctx.moveTo(innerNear.sx, innerNear.sy);
-          ctx.lineTo(near.sx, near.sy);
-          ctx.lineTo(farP.sx, farP.sy);
-          ctx.lineTo(innerFar.sx, innerFar.sy);
+          ctx.moveTo(Math.round(innerNear.sx), Math.round(innerNear.sy));
+          ctx.lineTo(Math.round(near.sx),      Math.round(near.sy));
+          ctx.lineTo(Math.round(farP.sx),      Math.round(farP.sy));
+          ctx.lineTo(Math.round(innerFar.sx),  Math.round(innerFar.sy));
           ctx.closePath();
           ctx.fill();
         }
-      }
-
-      // Tiny scrolling grass blades at the inner road-shoulder edge
-      for (let d = -offset * 0.7; d < far * 0.75; d += period * 0.58) {
-        if (d < 0) continue;
-        const ep = p.project(side * laneOuter, d);
-        if (ep.scale < 0.10) continue;
-        const h = Math.max(1, Math.round(ep.scale * 9));
-        const w = Math.max(1, Math.round(ep.scale * 2.5));
-        const a = Math.min(0.46, 0.12 + 0.40 * ep.scale);
-        ctx.fillStyle = `rgba(48,168,40,${a})`;
-        ctx.fillRect(ep.sx - (side < 0 ? w : 0), ep.sy - h, w, h);
-        ctx.fillStyle = `rgba(72,208,56,${a * 0.6})`;
-        ctx.fillRect(ep.sx + side * w, ep.sy - Math.max(1, Math.round(h * 0.55)), Math.max(1, w - 1), Math.max(1, Math.round(h * 0.55)));
       }
     }
   }
 
-  #laneDashes(scrollOffset) {
+  /**
+   * Two continuous cream-colored lane dividers between the three lanes.
+   * Each one is a perspective-correct trapezoidal strip — wider near the
+   * camera, tapering toward the vanishing horizon — filled with a cached
+   * vertical gradient that fades the divider out into the distance.
+   *
+   * Replaces the old yellow dashed pattern which (a) didn't match the
+   * pixel-art reference and (b) cost ~30+ trapezoidal fills per frame.
+   */
+  /**
+   * Dashed pixel-segment lane guides between the 3 playable lanes —
+   * NOT continuous highway lines. Each dash is a small perspective-
+   * correct trapezoid filled with the cached yellow-green `dividerFade`
+   * gradient (so alpha auto-fades toward the castle).
+   *
+   * The dashes scroll with the road so they read as worn grass markers,
+   * not as a fixed striped pattern.
+   */
+  #laneDividers(scrollOffset) {
     const ctx = this.ctx;
     const p = this.projection;
-    const far = 1300;
+    const dividerFade = this.gradients.gradients.dividerFade;
+    // v3.8.9 Tier-4 divider polish — was 4.5 px wide / segLen 1.8 / gap 1.4.
+    // User flagged dividers as "schematic / debug-like". Refined:
+    //   width 4.5 → 3.0 (thinner, pixel-clean)
+    //   segLen 1.8 → 1.2 (tighter rhythm)
+    //   segGap 1.4 → 0.9 (shorter gaps, more like worn dashes)
+    //   maxVisibleDistance 88 → 120 (dashes reach further toward castle)
+    //   near-floor 1.5 → 1.0, far-floor 0.3 → 0.18 (preserves pixel-thin
+    //   feel at very near AND very far depths)
+    const widthPx = 3.0;
+    const segLen = 1.2;
+    const segGap = 0.9;
+    const period = segLen + segGap;
+    const maxVisibleDistance = 120;
+    const off = ((scrollOffset % period) + period) % period;
+
+    ctx.save();
+    ctx.fillStyle = dividerFade;
     for (const laneLine of [-0.5, 0.5]) {
-      const dashLength = 7.2;
-      const gapLength = 7.0;
-      const period = dashLength + gapLength;
-      const offset = scrollOffset % period;
-      for (let dStart = -offset; dStart < far; dStart += period) {
-        const dEnd = dStart + dashLength;
-        if (dEnd < 0) continue;
-        const p1 = p.project(laneLine, Math.max(0, dStart));
-        const p2 = p.project(laneLine, dEnd);
-        const w1 = Math.max(0.45, 4.6 * p1.scale);
-        const w2 = Math.max(0.25, 4.6 * p2.scale);
-        const alpha = 0.48 + 0.38 * p1.scale;
-        const drewDivider = this.#drawQuadSprite(
-          'roadDividerYellow',
-          p1.sx - w1, p1.sy,
-          p1.sx + w1, p1.sy,
-          p2.sx + w2, p2.sy,
-          p2.sx - w2, p2.sy,
-          Math.min(0.96, alpha + 0.08),
-        );
-        if (!drewDivider) {
-          ctx.fillStyle = `rgba(236,255,168,${alpha})`;
-          ctx.beginPath();
-          ctx.moveTo(p1.sx - w1, p1.sy);
-          ctx.lineTo(p1.sx + w1, p1.sy);
-          ctx.lineTo(p2.sx + w2, p2.sy);
-          ctx.lineTo(p2.sx - w2, p2.sy);
-          ctx.closePath();
-          ctx.fill();
+      for (let dStart = -off; dStart < maxVisibleDistance; dStart += period) {
+        const start = Math.max(0, dStart);
+        const end = dStart + segLen;
+        if (end <= 0) continue;
+        const near = p.projectVisual(laneLine, start);
+        const farP = p.projectVisual(laneLine, end);
+        const wNear = Math.max(1.0, widthPx * near.scale);
+        const wFar  = Math.max(0.18, widthPx * farP.scale);
+        // v3.8.13 — pixel-snap dash vertices so the divider doesn't
+        // shimmer between frames as scroll advances.
+        const farLx  = Math.round(farP.sx - wFar / 2);
+        const farRx  = Math.round(farP.sx + wFar / 2);
+        const nearLx = Math.round(near.sx - wNear / 2);
+        const nearRx = Math.round(near.sx + wNear / 2);
+        const farY   = Math.round(farP.sy);
+        const nearY  = Math.round(near.sy);
+        ctx.beginPath();
+        ctx.moveTo(farLx,  farY);
+        ctx.lineTo(farRx,  farY);
+        ctx.lineTo(nearRx, nearY);
+        ctx.lineTo(nearLx, nearY);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Image-tile mode using the designer's 7 pixel-art PNGs (128×128) —
+   * world-aligned tiles drawn via drawImage. Replaces the procedural
+   * fillRect checker with hand-crafted grass texture.
+   *
+   * Tile selection logic per (worldRow, cIdx):
+   *   - midLane in shoulder strip (|midLane| > PLAYABLE_HALF) → edge tile
+   *   - midLane crosses a lane divider (±0.5) → path-divider tile
+   *   - rare deterministic accent → flowers tile (~5% of playable cells)
+   *   - otherwise → base v1/v2/v3 cycled by (worldRow + cIdx) % 3
+   *
+   * No clip path — earlier clip+drawImage combo dropped FPS to ~27.
+   * Tile bounds + the shoulder-strip overlay contain visible texture.
+   */
+  #imageTileGrid(scrollOffset) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const baseV1 = this.assets.get('grassTileBaseV1');
+    if (!baseV1?.naturalWidth) {
+      // Designer tiles not loaded — fall back to procedural so the road
+      // doesn't disappear if the PNG fetch ever fails in production.
+      this.#roadBands(scrollOffset);
+      return;
+    }
+    const baseV2     = this.assets.get('grassTileBaseV2') ?? baseV1;
+    const baseV3     = this.assets.get('grassTileBaseV3') ?? baseV1;
+    const edgeLeft   = this.assets.get('grassTileEdgeLeft') ?? baseV1;
+    const edgeRight  = this.assets.get('grassTileEdgeRight') ?? baseV1;
+    const divider    = this.assets.get('grassTilePathDivider') ?? baseV1;
+    const flowers    = this.assets.get('grassTileFlowers') ?? baseV1;
+    const baseTiles = [baseV1, baseV2, baseV3];
+
+    const ROAD_HALF = p.roadHalfLaneUnits;
+    const PLAYABLE_HALF = 1.50;
+    const TILE_DEPTH = 6;
+    // Wider — was 0.35 (75 px at near, squashing the 128-px PNG by
+    // ~40%). 0.55 → ~118 px at near, near-native size so the PNG's
+    // hand-crafted grass detail isn't compressed away.
+    const TILE_LANE_W = 0.55;
+    // Extended dramatically — earlier 84 cut tiles off in the foreground
+    // only, so the road past mid-distance looked like a flat green
+    // panel and the perspective convergence wasn't readable. 220 covers
+    // the whole visible road; the skip-if-too-small check below culls
+    // micro-tiles at the horizon to keep overdraw bounded.
+    const FAR_VISIBLE = 220;
+    const MAX_ROWS = 38;
+    const NUM_LATERAL = Math.ceil(ROAD_HALF / TILE_LANE_W) + 1;
+    const DIVIDER_LANE = 0.5;
+    const DIVIDER_HALF_TOL = TILE_LANE_W * 0.5;
+
+    const off = ((scrollOffset % TILE_DEPTH) + TILE_DEPTH) % TILE_DEPTH;
+    const rowOffset = Math.floor(scrollOffset / TILE_DEPTH);
+
+    ctx.save();
+    for (let dIdx = 0; dIdx < MAX_ROWS; dIdx += 1) {
+      const dNear = dIdx * TILE_DEPTH - off;
+      const dFar  = dNear + TILE_DEPTH;
+      if (dFar <= 0) continue;
+      if (dNear > FAR_VISIBLE) break;
+
+      const dN = Math.max(0, dNear);
+      const fadeT = 1 - Math.min(1, dN / FAR_VISIBLE);
+      if (fadeT <= 0.04) continue;
+      // Bumped — designer PNGs were ~30% transparent on the back rows,
+      // which read as a smooth green wash. Now near-camera tiles draw
+      // at near-full opacity so the hand-crafted pixel grass + flowers
+      // + edge shading actually read.
+      ctx.globalAlpha = 0.78 + 0.22 * fadeT;
+      const worldRow = rowOffset + dIdx;
+
+      for (let cIdx = -NUM_LATERAL; cIdx < NUM_LATERAL; cIdx += 1) {
+        const laneL = cIdx * TILE_LANE_W;
+        const laneR = laneL + TILE_LANE_W;
+        if (laneR <= -ROAD_HALF) continue;
+        if (laneL >=  ROAD_HALF) continue;
+        const midLane = (laneL + laneR) * 0.5;
+
+        // Pick tile variant.
+        let tile;
+        if (midLane < -PLAYABLE_HALF) {
+          tile = edgeLeft;
+        } else if (midLane > PLAYABLE_HALF) {
+          tile = edgeRight;
+        } else if (Math.abs(Math.abs(midLane) - DIVIDER_LANE) < DIVIDER_HALF_TOL) {
+          tile = divider;
+        } else {
+          // Deterministic accent: ~6% of playable cells become flower tile.
+          const accent = ((worldRow * 31 + cIdx * 17) & 0x1F) === 0;
+          if (accent) tile = flowers;
+          // Hash variant — no diagonal correlation.
+          else tile = baseTiles[(((worldRow * 7) ^ (cIdx * 13)) % 3 + 3) % 3];
+        }
+
+        // Clip lane bounds to road extent — outer tiles get a sliver of
+        // the road only, but drawImage stretches the tile to fit that
+        // sliver so the edge tile's dark side stays at the outer edge.
+        const clampL = laneL < -ROAD_HALF ? -ROAD_HALF : laneL;
+        const clampR = laneR >  ROAD_HALF ?  ROAD_HALF : laneR;
+
+        const nL = p.projectVisual(clampL, dN);
+        const nR = p.projectVisual(clampR, dN);
+        const fL = p.projectVisual(clampL, dFar);
+        const fR = p.projectVisual(clampR, dFar);
+        // Round to integer pixels so adjacent tiles share exact edges
+        // (no hairline gaps OR double-rendered seams from subpixel
+        // bias). Each tile slightly OVERLAPS its neighbour by 1px on
+        // the right/bottom so anti-aliasing can't carve gaps either.
+        const xMin = Math.floor(Math.min(nL.sx, fL.sx));
+        const xMax = Math.ceil(Math.max(nR.sx, fR.sx)) + 1;
+        const yTop = Math.floor(Math.min(fL.sy, fR.sy));
+        const yBot = Math.ceil(Math.max(nL.sy, nR.sy)) + 1;
+        const w = xMax - xMin;
+        const h = yBot - yTop;
+        // Skip horizon tiles smaller than ~1 px — invisible result, but
+        // each costs a drawImage call (NUM_LATERAL * deep-rows = many).
+        if (w <= 1.5 || h <= 1.0) continue;
+
+        ctx.drawImage(tile, xMin, yTop, w, h);
+
+        // Dark seam at bottom + right edge — adjacent tiles share these
+        // edges, so the combined seam reads as a tile-grid boundary
+        // (the PNGs themselves don't have visible borders). Only at
+        // close-to-mid distance; far tiles skip to keep horizon clean.
+        if (fadeT > 0.35 && w > 4 && h > 3) {
+          ctx.fillStyle = 'rgba(20,58,28,0.30)';
+          ctx.fillRect(xMin, yBot - 1, w, 1);
+          ctx.fillRect(xMax - 1, yTop, 1, h);
         }
       }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Road-kit mode — third option, uses the 18-tile hand-crafted set
+   * organised by depth zone (foreground / mid / far). Each depth row
+   * picks an appropriate (left, center, right) triplet PLUS a divider
+   * tile between each lane pair, PLUS edge tiles at the road boundary.
+   *
+   * Depth zones (in world-units from camera):
+   *   - 0…25  → foreground tiles (high detail)
+   *   - 25…70 → mid tiles (medium detail)
+   *   - 70…200 → far strip (single horizontal band, low detail)
+   *
+   * Falls back to `#roadBands` if the kit tiles aren't loaded yet — so
+   * the visual doesn't break before the designer's PNGs arrive at the
+   * expected paths in `assets/terrain/road/kit/`.
+   */
+  #imageKitGrid(scrollOffset) {
+    const ctx = this.ctx;
+    const p = this.projection;
+
+    // Check kit availability up-front — if the first foreground center
+    // tile isn't loaded, fall back to procedural so the road stays
+    // visible while the designer hands files in.
+    const fgCenter = this.assets.get('roadKitForegroundCenter');
+    if (!fgCenter?.naturalWidth) {
+      this.#roadBands(scrollOffset);
+      return;
+    }
+
+    // Cache all kit tiles once per frame. v2 spec — 14 tiles.
+    const tiles = {
+      fgLeft:           this.assets.get('roadKitForegroundLeft'),
+      fgCenter:         fgCenter,
+      fgRight:          this.assets.get('roadKitForegroundRight'),
+      midLeft:          this.assets.get('roadKitMidLeft'),
+      midCenter:        this.assets.get('roadKitMidCenter'),
+      midRight:         this.assets.get('roadKitMidRight'),
+      farStrip:         this.assets.get('roadKitFarStrip'),
+      shoulderLeft:     this.assets.get('roadKitShoulderInnerLeft'),
+      shoulderRight:    this.assets.get('roadKitShoulderInnerRight'),
+      dividerLeft:      this.assets.get('roadKitLaneDividerLeftCenter'),
+      dividerRight:     this.assets.get('roadKitLaneDividerCenterRight'),
+      flowerPatch:      this.assets.get('roadKitEdgeFlowerPatch01'),
+      grassPatch:       this.assets.get('roadKitEdgeGrassPatch01'),
+      darkPatch:        this.assets.get('roadKitEdgeDarkPatch01'),
+    };
+
+    const ROAD_HALF = p.roadHalfLaneUnits;
+    const TILE_DEPTH = 5;
+    const FAR_VISIBLE = 200;
+    const MAX_ROWS = 42;
+    const FG_BOUND = 25;
+    const MID_BOUND = 70;
+    // Lane boundaries in lane-units (the 3 playable lanes sit at -1, 0, +1).
+    const LANE_BOUNDS = [-1.5, -0.5, 0.5, 1.5];
+    const SHOULDER_OUTER = ROAD_HALF;
+
+    const off = ((scrollOffset % TILE_DEPTH) + TILE_DEPTH) % TILE_DEPTH;
+    const rowOffset = Math.floor(scrollOffset / TILE_DEPTH);
+
+    ctx.save();
+    for (let dIdx = 0; dIdx < MAX_ROWS; dIdx += 1) {
+      const dNear = dIdx * TILE_DEPTH - off;
+      const dFar  = dNear + TILE_DEPTH;
+      if (dFar <= 0) continue;
+      if (dNear > FAR_VISIBLE) break;
+      const dN = Math.max(0, dNear);
+      const fadeT = 1 - Math.min(1, dN / FAR_VISIBLE);
+      if (fadeT <= 0.04) continue;
+      ctx.globalAlpha = 0.78 + 0.22 * fadeT;
+      const worldRow = rowOffset + dIdx;
+
+      // FAR ZONE — single horizontal strip across the road
+      if (dN >= MID_BOUND) {
+        if (tiles.farStrip?.naturalWidth) {
+          const left = p.projectVisual(-ROAD_HALF, dN);
+          const right = p.projectVisual( ROAD_HALF, dN);
+          const farLeft = p.projectVisual(-ROAD_HALF, dFar);
+          const xMin = Math.floor(Math.min(left.sx, farLeft.sx));
+          const xMax = Math.ceil(right.sx) + 1;
+          const yTop = Math.floor(p.projectVisual(0, dFar).sy);
+          const yBot = Math.ceil(left.sy) + 1;
+          if (xMax - xMin > 2 && yBot - yTop > 1) {
+            ctx.drawImage(tiles.farStrip, xMin, yTop, xMax - xMin, yBot - yTop);
+          }
+        }
+        continue;
+      }
+
+      // FG / MID ZONE — pick the triplet by depth
+      const inFg = dN < FG_BOUND;
+      const tileLeft   = inFg ? tiles.fgLeft   : (tiles.midLeft   ?? tiles.fgLeft);
+      const tileCenter = inFg ? tiles.fgCenter : (tiles.midCenter ?? tiles.fgCenter);
+      const tileRight  = inFg ? tiles.fgRight  : (tiles.midRight  ?? tiles.fgRight);
+
+      // Three playable lane tiles (cover lane -1.5..+1.5)
+      this.#drawKitCell(tileLeft,   -1.5,  -0.5, dN, dFar);
+      this.#drawKitCell(tileCenter, -0.5,   0.5, dN, dFar);
+      this.#drawKitCell(tileRight,   0.5,   1.5, dN, dFar);
+
+      // Shoulder transition tiles (between playable edge and road outer)
+      this.#drawKitCell(tiles.shoulderLeft,  -SHOULDER_OUTER, -1.5, dN, dFar);
+      this.#drawKitCell(tiles.shoulderRight,  1.5,  SHOULDER_OUTER, dN, dFar);
+
+      // Lane dividers — narrow vertical strips on top of lane edges
+      const dividerHalfWidth = 0.06;
+      this.#drawKitCell(tiles.dividerLeft,  -0.5 - dividerHalfWidth, -0.5 + dividerHalfWidth, dN, dFar);
+      this.#drawKitCell(tiles.dividerRight,  0.5 - dividerHalfWidth,  0.5 + dividerHalfWidth, dN, dFar);
+
+      // v3.8.8 Tier-3 — road patch density 22/256 → 36/256 (~14%) so the
+      // near road never reads as a smooth empty surface. Flower/grass
+      // weighted heavier than dark; dark patches scale by distance so
+      // far road still reads light (avoids the "dark blanket" failure).
+      const patchHash = (worldRow * 41) & 0xFF;
+      if (patchHash < 14 && tiles.flowerPatch) {
+        const side = (worldRow & 1) === 0 ? -1 : 1;
+        this.#drawKitCell(tiles.flowerPatch, side * 1.66, side * 1.66 + side * 0.28, dN, dFar);
+      } else if (patchHash < 28 && tiles.grassPatch) {
+        const side = (worldRow & 2) === 0 ? -1 : 1;
+        this.#drawKitCell(tiles.grassPatch, side * 1.62, side * 1.62 + side * 0.30, dN, dFar);
+      } else if (patchHash < 36 && tiles.darkPatch) {
+        const side = (worldRow & 1) === 0 ? 1 : -1;
+        this.#drawKitCell(tiles.darkPatch, side * 1.64, side * 1.64 + side * 0.26, dN, dFar);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Helper: project a lane-range × depth-range world rectangle to its
+   * perspective-correct screen rectangle and drawImage the tile into it.
+   * Integer-rounded + 1px overlap to prevent hairline seams.
+   */
+  #drawKitCell(tile, laneL, laneR, dN, dFar) {
+    if (!tile?.naturalWidth) return;
+    const p = this.projection;
+    const nL = p.projectVisual(laneL, dN);
+    const nR = p.projectVisual(laneR, dN);
+    const fL = p.projectVisual(laneL, dFar);
+    const fR = p.projectVisual(laneR, dFar);
+    const xMin = Math.floor(Math.min(nL.sx, fL.sx));
+    const xMax = Math.ceil(Math.max(nR.sx, fR.sx)) + 1;
+    const yTop = Math.floor(Math.min(fL.sy, fR.sy));
+    const yBot = Math.ceil(Math.max(nL.sy, nR.sy)) + 1;
+    const w = xMax - xMin;
+    const h = yBot - yTop;
+    if (w <= 1.5 || h <= 1.0) return;
+    this.ctx.drawImage(tile, xMin, yTop, w, h);
+  }
+
+  /**
+   * Darker-green tint over the outer shoulder strip zone (between the
+   * playable-lane outer edge ±1.50 and the visual road edge at
+   * ±roadHalfLaneUnits). Visually splits the road into three zones:
+   *   shoulder strip · 3 playable lanes · shoulder strip
+   *
+   * This is the key change that makes the road read as a "corridor with
+   * decorated edges" instead of one flat green surface.
+   */
+  #shoulderStrips() {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const PLAYABLE_HALF = 1.50;
+    if (p.roadHalfLaneUnits <= PLAYABLE_HALF + 0.02) return;
+    const farDist = p.maxDistance * 0.92;
+
+    ctx.save();
+    // Darker green vs the inner playable corridor — the eye now reads
+    // 3 lanes flanked by 2 shoulder strips rather than one flat surface.
+    ctx.fillStyle = 'rgba(32,92,40,0.34)';
+    for (const side of [-1, 1]) {
+      const inN  = p.projectVisual(side * PLAYABLE_HALF, 0);
+      const inF  = p.projectVisual(side * PLAYABLE_HALF, farDist);
+      const outN = p.projectVisual(side * p.roadHalfLaneUnits, 0);
+      const outF = p.projectVisual(side * p.roadHalfLaneUnits, farDist);
+      ctx.beginPath();
+      ctx.moveTo(inF.sx,  inF.sy);
+      ctx.lineTo(outF.sx, outF.sy);
+      ctx.lineTo(outN.sx, outN.sy);
+      ctx.lineTo(inN.sx,  inN.sy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Scrolling tiny grass-pixel noise scattered across the road surface.
+   * Sells the "lived-in garden path" feel — the tile checker alone reads
+   * as too clean. Each point is 1-2 px at base scale, alpha + size shrink
+   * with distance.
+   */
+  #grassNoise(scrollOffset) {
+    const p = this.projection;
+    const ctx = this.ctx;
+    const loop = p.maxDistance;
+    const off = ((scrollOffset % loop) + loop) % loop;
+    const points = this._noisePoints;
+
+    for (let i = 0; i < points.length; i += 1) {
+      const pt = points[i];
+      let d = pt.distance - off;
+      if (d < -1) d += loop;
+      if (d > loop * 0.96) continue;
+
+      const proj = p.projectVisual(pt.lane, d);
+      if (proj.scale < 0.06) continue;
+      const sz = Math.max(1, Math.round(2 * proj.scale));
+      // Foreground gets noticeably stronger texture — far end stays
+      // light so the visual hierarchy still points toward the castle.
+      const alpha = 0.22 + 0.62 * proj.scale;
+      ctx.fillStyle = pt.dark
+        ? `rgba(46,118,40,${alpha * 0.72})`
+        : `rgba(196,238,124,${alpha})`;
+      ctx.fillRect(Math.round(proj.sx - sz / 2), Math.round(proj.sy - sz), sz, sz);
+    }
+  }
+
+  /**
+   * Grass tufts + occasional tiny pixel flowers hugging the road edge
+   * AND filling the shoulder zone between road edge and side structures.
+   * Softens the hard boundary so the lanes blend into the garden.
+   *
+   * Each fringe point has a `shoulderDepth` (0 = at edge, ~0.4 = into
+   * shoulder zone toward structures at ±1.88-1.98) and a `kind`
+   * (grass / yellow flower / purple flower).
+   */
+  #shoulderFringe(scrollOffset) {
+    const p = this.projection;
+    const ctx = this.ctx;
+    const loop = p.maxDistance;
+    const off = ((scrollOffset % loop) + loop) % loop;
+    const points = this._fringePoints;
+
+    const PLAYABLE_HALF = 1.50;
+    const shoulderWidth = Math.max(0.05, p.roadHalfLaneUnits - PLAYABLE_HALF);
+
+    for (let i = 0; i < points.length; i += 1) {
+      const f = points[i];
+      let d = f.distance - off;
+      if (d < -1) d += loop;
+      if (d > loop * 0.96) continue;
+
+      // Position inside the shoulder strip (between playable lane edge
+      // and the outer road edge). shoulderDepth 0..1 maps the full strip.
+      const lane = f.side * (PLAYABLE_HALF + f.shoulderDepth * shoulderWidth);
+      const proj = p.projectVisual(lane, d);
+      if (proj.scale < 0.06) continue;
+      const alpha = 0.22 + 0.52 * proj.scale;
+
+      if (f.kind === 'yellowFlower') {
+        const sz = Math.max(1, Math.round(2.4 * proj.scale));
+        ctx.fillStyle = `rgba(255,216,82,${alpha})`;
+        ctx.fillRect(proj.sx - sz / 2, proj.sy - sz, sz, sz);
+        // Tiny green stem below the flower head.
+        const stemH = Math.max(1, Math.round(2 * proj.scale));
+        ctx.fillStyle = `rgba(58,148,46,${alpha * 0.7})`;
+        ctx.fillRect(proj.sx - 1, proj.sy - stemH, Math.max(1, Math.round(proj.scale)), stemH);
+        continue;
+      }
+
+      if (f.kind === 'purpleFlower') {
+        const sz = Math.max(1, Math.round(2.2 * proj.scale));
+        ctx.fillStyle = `rgba(178,118,222,${alpha})`;
+        ctx.fillRect(proj.sx - sz / 2, proj.sy - sz, sz, sz);
+        const stemH = Math.max(1, Math.round(2 * proj.scale));
+        ctx.fillStyle = `rgba(58,148,46,${alpha * 0.7})`;
+        ctx.fillRect(proj.sx - 1, proj.sy - stemH, Math.max(1, Math.round(proj.scale)), stemH);
+        continue;
+      }
+
+      // Default: grass tuft (vertical stroke + lighter cap).
+      const tuftH = Math.max(1, Math.round(4 * proj.scale));
+      const tuftW = Math.max(1, Math.round(2 * proj.scale));
+      ctx.fillStyle = `rgba(64,164,52,${alpha})`;
+      ctx.fillRect(proj.sx - tuftW / 2, proj.sy - tuftH, tuftW, tuftH);
+      ctx.fillStyle = `rgba(176,232,118,${alpha * 0.62})`;
+      ctx.fillRect(proj.sx - tuftW / 2, proj.sy - tuftH, tuftW, Math.max(1, Math.round(tuftH * 0.4)));
     }
   }
 
@@ -297,7 +779,6 @@ export class RoadRenderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.imageSmoothingEnabled = false;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
@@ -309,4 +790,72 @@ export class RoadRenderer {
     ctx.restore();
     return true;
   }
+}
+
+// ── Procedural pattern builders ──────────────────────────────────────────────
+
+/**
+ * Tiny mulberry32 PRNG — used only for one-shot pattern initialization
+ * so the noise and fringe placements are stable across page reloads
+ * without polluting the seedable world RNG.
+ */
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Build a fixed list of (lane, distance, dark) points spanning the full
+ * draw range. Each point is a tiny grass pixel rendered by #grassNoise.
+ */
+function buildNoisePattern(count, seed) {
+  const rng = mulberry32(seed);
+  const points = new Array(count);
+  // Span the full visual road extent so noise covers both the playable
+  // corridor and the shoulder strips — the shoulder tint pass darkens
+  // those shoulder pixels naturally via the tint overlay.
+  const halfLaneSpan = 1.85;
+  for (let i = 0; i < count; i += 1) {
+    points[i] = {
+      lane: (rng() - 0.5) * (halfLaneSpan * 2),
+      distance: rng() * 420,
+      dark: rng() < 0.42,
+    };
+  }
+  return points;
+}
+
+/**
+ * Build the shoulder fringe pattern. Each point has:
+ *   - side: -1 / +1 (left or right shoulder)
+ *   - shoulderDepth: 0..0.40 — distance OUTWARD from road edge toward
+ *                    side structures. Spreads tufts across the gap.
+ *   - kind: 'grass' / 'yellowFlower' / 'purpleFlower' — varies the
+ *           visual; flowers are kept rare (~7% each) so the dominant
+ *           texture is still grass.
+ *   - distance: 0..420 — world-distance, scrolled per frame.
+ */
+function buildFringePattern(count, seed) {
+  const rng = mulberry32(seed);
+  const points = new Array(count);
+  for (let i = 0; i < count; i += 1) {
+    const kindRoll = rng();
+    points[i] = {
+      side: i % 2 === 0 ? -1 : 1,
+      // 0..1 — fraction of the shoulder-strip width (between playable
+      // edge at ±1.50 and the outer road edge at ±roadHalfLaneUnits).
+      shoulderDepth: rng(),
+      distance: rng() * 420,
+      kind: kindRoll < 0.07 ? 'yellowFlower'
+          : kindRoll < 0.14 ? 'purpleFlower'
+          : 'grass',
+    };
+  }
+  return points;
 }

@@ -3,7 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <title>Orchid Quest — Endless Runner</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -16,7 +22,7 @@
       </button>
 
       <section id="score-box" class="hud-box" aria-label="Orchid score">
-        <img src="./assets/ui/icons/flower_currency_icon.png" class="hud-flower-icon" alt=""><span id="score">0</span>
+        <img src="./assets/ui/icons/flower_currency_icon.png" class="hud-flower-icon" alt=""><span id="score">0</span><span id="combo" class="hud-combo" style="display:none">×1</span>
       </section>
 
       <section id="hearts-box" class="hud-box" aria-label="Lives">
@@ -41,12 +47,65 @@
         <span class="bar" id="jumpbar"></span>
       </section>
 
+      <section id="loading" class="loading on" aria-live="polite">
+        <div class="loading-card">
+          <h1>Orchid Quest</h1>
+          <p id="loading-label">Loading…</p>
+          <div class="loading-bar"><div id="loading-fill" class="loading-fill" style="width:0%"></div></div>
+        </div>
+      </section>
+
       <section id="overlay" class="overlay on" aria-live="polite">
         <div class="card">
           <h1 id="title">Orchid Quest</h1>
           <p id="sub">Collect Orchids, jump over vines, and survive in the Identity Garden.</p>
           <button id="start-button">Start Run</button>
+          <div class="menu-buttons">
+            <button type="button" id="daily-button" class="menu-secondary">Daily Challenge</button>
+            <button type="button" id="settings-button" class="menu-secondary">Settings</button>
+          </div>
         </div>
+      </section>
+
+      <section id="tutorial" class="tutorial" aria-hidden="true">
+        <div class="tutorial-card" data-step="0">
+          <span class="tutorial-icon">←→</span>
+          <span class="tutorial-text">Move between lanes</span>
+        </div>
+      </section>
+
+      <section id="settings-modal" class="settings-modal" aria-hidden="true">
+        <div class="settings-card">
+          <h2>Settings</h2>
+          <ul class="settings-list">
+            <li><label><input type="checkbox" id="settings-sfx"> SFX <span class="muted">(coming soon)</span></label></li>
+            <li><label><input type="checkbox" id="settings-music"> Music <span class="muted">(coming soon)</span></label></li>
+            <li><label><input type="checkbox" id="settings-motion" checked> Camera shake</label></li>
+            <li><label><input type="checkbox" id="settings-particles" checked> Particles</label></li>
+            <li><label>Quality
+              <select id="settings-quality">
+                <option value="auto">Auto</option>
+                <option value="3">Ultra</option>
+                <option value="2">High</option>
+                <option value="1">Mid</option>
+                <option value="0">Low</option>
+              </select>
+            </label></li>
+            <li><label>Language
+              <select id="settings-lang"></select>
+            </label></li>
+            <li class="settings-danger">
+              <button type="button" id="settings-reset-stats">Reset lifetime stats</button>
+              <button type="button" id="settings-reset-leaderboard">Reset leaderboard</button>
+            </li>
+          </ul>
+          <button type="button" id="settings-close" class="menu-secondary">Close</button>
+        </div>
+      </section>
+
+      <section id="achievement-toast" class="achievement-toast" aria-hidden="true">
+        <span class="achievement-trophy">★</span>
+        <span class="achievement-text"></span>
       </section>
 
       <p id="hint">Keyboard: ← → / A D move · SPACE jump · ↓ / S crouch · R restart · ESC pause · Gamepad + touch supported</p>

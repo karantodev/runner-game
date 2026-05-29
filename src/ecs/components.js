@@ -12,9 +12,6 @@
 /** World-space lane + depth used by everything that scrolls toward the player. */
 export const Position = (lane = 0, distance = 0) => ({ lane, distance });
 
-/** Raw screen-space x/y. Used by particles and score popups. */
-export const ScreenPos = (x = 0, y = 0) => ({ x, y });
-
 /** Marks an entity as "moves with the road" — distance decreases by world.speed * delta * factor. */
 export const Scrollable = (factor = 1) => ({ factor });
 
@@ -106,20 +103,7 @@ export const Sprite = (type, assetType, variant = null, visualScale = 1, yOffset
   yOffset,
 });
 
-// ── Particles & popups ───────────────────────────────────────────────────────
-
-export const ParticleData = (vx = 0, vy = 0, radius = 0, color = '#fff', gravity = 0.25) => ({
-  vx, vy, radius, color, gravity,
-});
-
-export const ScorePopupData = (text = '', color = '#fff', vy = 0, scale = 1) => ({
-  text, color, vy, scale,
-});
-
-export const Lifetime = (frames = 1) => ({
-  life: frames,
-  maxLife: frames,
-});
-
-export const ParticleTag = () => ({});
-export const ScorePopupTag = () => ({});
+// Particles & score popups live in their own pool-backed systems
+// (see ParticleSystem / ScorePopupSystem) — they don't go through the
+// component registry, so no Lifetime / ParticleData / ScorePopupData
+// component shapes are needed here.

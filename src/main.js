@@ -1,7 +1,10 @@
 import { Game } from './core/Game.js';
 import { GAME_CONFIG } from './config/gameConfig.js';
 import { TouchControls } from './core/TouchControls.js';
+import { SwipeGestures } from './core/SwipeGestures.js';
 import { PerformanceHUD } from './core/PerformanceHUD.js';
+import { GamepadDebugOverlay } from './core/GamepadDebugOverlay.js';
+import { pickPixelRatio } from './core/PlatformInfo.js';
 import { runPatternTests } from './systems/spawn/PatternTests.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -23,10 +26,25 @@ const seed = seedParam === null
     ? Number(seedParam) >>> 0
     : seedParam;
 
-// ?hidpi=1 promotes the canvas backing store to window.devicePixelRatio.
-// Off by default (pixel-art look + lower mobile fill). On = crisp Retina.
-const hiDpi = params.get('hidpi') === '1';
-const pixelRatio = hiDpi ? (window.devicePixelRatio ?? 1) : GAME_CONFIG.canvas.pixelRatio;
+// DPR selection: default 1 (pixel-art aesthetic + mobile fill rate, see
+// PlatformInfo.pickPixelRatio for the full rationale). `?hidpi=1` opts into
+// Retina up to 2×; `?dpr=N` is an explicit override for testing.
+const pixelRatioChoice = pickPixelRatio(params, GAME_CONFIG.canvas.pixelRatio);
+
+// `?roadStyle=tiles` boots with image-tile road; default is the procedural
+// fillRect tile-grid. Press T at runtime to toggle between the two for
+// quick A/B-comparison.
+const roadStyle = params.get('roadStyle') === 'tiles' ? 'tiles' : 'procedural';
+
+// `?debugAxis=1` enables castle-axis verification markers (drawn by
+// LandmarksRenderer). Mutates the frozen config via a non-throwing
+// shallow override.
+if (params.get('debugAxis') === '1') {
+  // GAME_CONFIG.debug is frozen; clone, override, swap. We mutate the
+  // existing field reference to avoid touching the top-level frozen
+  // GAME_CONFIG object.
+  Object.defineProperty(GAME_CONFIG.debug, 'showAxis', { value: true, writable: false, configurable: true });
+}
 
 const canvas = document.getElementById('game');
 const game = new Game(canvas, {
@@ -34,13 +52,40 @@ const game = new Game(canvas, {
   freezeFrame,
   captureSteps,
   seed,
-  pixelRatio,
+  pixelRatio: pixelRatioChoice.value,
+  roadStyle,
+});
+
+// Live road-style toggle. Available in every build (not gated on debug)
+// so the user can flip between procedural and image tiles to compare.
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'KeyT' || event.repeat) return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const target = event.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+  game.renderer.toggleRoadStyle();
 });
 
 new TouchControls(game.input);
+// Canvas-level swipe gestures: complements the on-screen buttons. Swipes
+// fire jump / crouch / lane-change; a stationary tap fires jump (and
+// start, so a tap dismisses the menu).
+new SwipeGestures(game.input, canvas);
 // `?touch=1` forces the on-screen pad to appear on desktop — handy for
 // testing the touch layout without a phone.
 if (params.get('touch') === '1') document.body.classList.add('force-touch');
+
+// Explicit orientation-change handler. `resize` fires on most modern
+// browsers post-rotation, but iOS Safari sometimes only fires
+// `orientationchange` reliably — adding both is cheap and defensive.
+window.addEventListener('orientationchange', () => {
+  requestAnimationFrame(() => game.renderer.resizeToViewport(game.config.canvas.viewportPadding));
+});
+
+// `?gamepadDebug=1` shows an always-on gamepad inspection overlay. Gated
+// independently of `?debug=1` so you can flip it on inside the PS5 / Xbox /
+// Switch browser without unlocking the rest of the debug API.
+if (params.get('gamepadDebug') === '1') new GamepadDebugOverlay();
 
 const debugState = {
   enabled: debugEnabled,
@@ -186,7 +231,10 @@ function createDebugApi() {
     },
     startDebugRun() {
       if (autostart) game.startDebugRun();
-      else game.world.start();
+      // Skip the 3-2-1-GO countdown for debug/test entry so the simulation
+      // ticks immediately (otherwise the first 200 frames are countdown-only
+      // and spawn / collision tests have nothing to observe).
+      else game.world.start({ skipCountdown: true });
     },
     resumeLiveUpdates() {
       game.resumeDebugRun();
@@ -227,7 +275,7 @@ if (debugEnabled) {
   const debugApi = createDebugApi();
   window.__ORCHID_DEBUG__ = debugApi;
   installDebugPanel(debugApi);
-  new PerformanceHUD(game);
+  new PerformanceHUD(game, { pixelRatioChoice });
 
   window.addEventListener('keydown', (event) => {
     if (event.code !== 'F8') return;

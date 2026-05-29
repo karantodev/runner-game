@@ -12,7 +12,8 @@ export class PlayerInputSystem {
 
   update(world, _delta) {
     const input = world.input;
-    input.pollGamepad();
+    // Note: world.update() calls input.pollGamepad() once at the top of
+    // every frame, so no second poll is needed here.
 
     // Pause / start / restart are consumed by GameStateSystem — we leave
     // them in place. Movement inputs are only meaningful while playing.
@@ -21,8 +22,8 @@ export class PlayerInputSystem {
     if (!player) return;
 
     const cfg = world.config.player;
-    if (input.consume('moveLeft')) PlayerActions.moveLane(player, -1, cfg);
-    if (input.consume('moveRight')) PlayerActions.moveLane(player, 1, cfg);
+    if (input.consume('moveLeft')) this.#tryLaneSwitch(player, -1, cfg);
+    if (input.consume('moveRight')) this.#tryLaneSwitch(player, 1, cfg);
 
     const intent = player.components.PlayerIntent;
 
@@ -46,6 +47,20 @@ export class PlayerInputSystem {
         // Crouch refused mid-jump — buffer for the landing.
         intent.crouchBuffer = cfg.crouchBufferFrames;
       }
+    }
+  }
+
+  /**
+   * Step a lane and emit `player:laneSwitch` iff the targetLane actually
+   * changed. Holding into a wall (already at min/max lane) is a no-op and
+   * must NOT fire the skid-particle effect.
+   */
+  #tryLaneSwitch(player, direction, cfg) {
+    const lane = player.components.LaneState;
+    const before = lane.targetLane;
+    PlayerActions.moveLane(player, direction, cfg);
+    if (lane.targetLane !== before) {
+      this.eventBus.emit('player:laneSwitch', { direction, laneX: lane.laneX });
     }
   }
 }

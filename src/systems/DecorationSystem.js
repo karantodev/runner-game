@@ -14,7 +14,8 @@ function assetTypeToSceneryType(assetType) {
     mushroom_red_big: 'mushroom',
     mushroom_blue_big: 'mushroomBlue',
     dry_grass_obstacle: 'dryGrass',
-    green_pipe: 'pipe',
+    green_pipe: 'planter_pot',  // v3: pipe retired, sceneryDispatch redirects.
+    planter_pot: 'planter_pot',
     leaf_clump_small: 'leafClusterLow',
     leaf_clump_round: 'leafClusterCompact',
     purple_brick_single: 'blockStack',

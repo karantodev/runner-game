@@ -24,7 +24,10 @@ export class EventBus {
 
   /**
    * Fire an event. All registered handlers run synchronously in
-   * subscription order. Thrown handler errors propagate.
+   * subscription order. A thrown error from one handler is logged but
+   * does NOT abort the chain — the remaining handlers still run. This
+   * keeps a buggy listener from cascading into a UI freeze (e.g. a
+   * particle-spawn error stopping score updates from reaching the HUD).
    *
    * @param {string} eventName
    * @param {any} [payload]
@@ -32,6 +35,14 @@ export class EventBus {
   emit(eventName, payload) {
     const handlers = this.#listeners.get(eventName);
     if (!handlers) return;
-    for (const handler of handlers) handler(payload);
+    for (const handler of handlers) {
+      try {
+        handler(payload);
+      } catch (err) {
+        // Surface the failure once per occurrence — never silently swallow.
+        // The console keeps a trace, but the loop continues.
+        console.error(`[EventBus] handler for '${eventName}' threw:`, err);
+      }
+    }
   }
 }

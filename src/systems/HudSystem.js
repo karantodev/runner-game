@@ -1,3 +1,5 @@
+import { t } from '../core/i18n.js';
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll('&', '&amp;')
@@ -6,6 +8,30 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+/** Powerup type → PowerUpSystem snapshot field prefix + config slot. */
+const TYPE_TO_CFG_KEY = Object.freeze({
+  'speed-burst':  'speedBurst',
+  'split-clones': 'splitClones',
+  'magnet':       'magnet',
+  'shield':       'shield',
+  'score-x2':     'scoreX2',
+});
+
+/**
+ * Hazard type → i18n key for the death-screen "You hit …" row.
+ * Translated at render-time via t(). Adding a hazard type = one row
+ * here + one row per language in i18n.js.
+ */
+const HAZARD_I18N = Object.freeze({
+  vine: 'hazard.vine',
+  overhang: 'hazard.overhang',
+  bush: 'hazard.bush',
+  mushroom: 'hazard.mushroom',
+  wheat: 'hazard.wheat',
+  wall: 'hazard.wall',
+  stone: 'hazard.stone',
+});
 
 const HEART_ICON_FULL = './assets/ui/icons/heart_full.png';
 const HEART_ICON_EMPTY = './assets/ui/icons/heart_empty.png';
@@ -39,6 +65,8 @@ export class HudSystem {
       heartsCapacity: -1,
       jumpbarFilled: -1,
       powerupsText: null,
+      comboMultiplier: 1,
+      comboWarning: false,
     };
 
     eventBus.on('scoreChanged', () => { this.#renderScore(); this.#renderTier(); });
@@ -46,7 +74,21 @@ export class HudSystem {
     eventBus.on('tierChanged', () => this.#renderTier());
     eventBus.on('powerUpsChanged', () => this.#renderPowerUps());
     eventBus.on('distanceChanged', () => this.#renderDistance());
+    eventBus.on('comboChanged', (snap) => this.#renderCombo(snap));
     eventBus.on('stateChanged', (state) => this.#state(state));
+    /**
+     * v3.5: re-render the visible overlay when the language changes so
+     * the player sees translated copy immediately. The CustomEvent comes
+     * from i18n.setLang() (decoupled from EventBus on purpose — i18n is
+     * a stand-alone module).
+     */
+    window.addEventListener('i18n:changed', () => {
+      this._last.tier = '';   // force tier re-render to update prefix
+      this.#renderTier();
+      // Re-fire the current state so #show() rebuilds card HTML with
+      // fresh translations. Skip 'playing' since there's no overlay then.
+      if (this.world.state !== 'playing') this.#state(this.world.state);
+    });
 
     this.#renderAll();
   }
@@ -67,6 +109,43 @@ export class HudSystem {
   tick() {
     this.#renderDistance();
     this.#renderJumpBar();
+    this.#updatePowerMeters();
+    this.#updateComboWarning();
+  }
+
+  /**
+   * v3.5 combo decay warning. Per-frame check rather than an event so the
+   * .warning class toggles smoothly as graceFrames crosses the threshold.
+   * Cheap: it's one boolean read + a className diff.
+   */
+  #updateComboWarning() {
+    if (!this._comboEl) return;
+    const warn = this.world.comboSystem?.isWarning?.() ?? false;
+    if (warn === this._last.comboWarning) return;
+    this._last.comboWarning = warn;
+    this._comboEl.classList.toggle('warning', warn);
+  }
+
+  /**
+   * Update only the .powerup-meter-fill widths each tick, leaving the
+   * row DOM alone. Cheap (querySelectorAll on a tiny container) and
+   * keeps the bars draining smoothly without rebuilding HTML.
+   */
+  #updatePowerMeters() {
+    const meters = this.powerups.querySelectorAll('.powerup-row');
+    if (!meters.length) return;
+    const snap = this.world.powerUpSystem.snapshot();
+    const upCfg = this.world.config.powerUps;
+    for (const row of meters) {
+      const type = row.getAttribute('data-type');
+      const cfgKey = TYPE_TO_CFG_KEY[type];
+      if (!cfgKey) continue;
+      const frames = snap[`${cfgKey}Frames`] ?? 0;
+      const dur = upCfg[cfgKey]?.durationFrames ?? 1;
+      const pct = Math.max(0, Math.min(100, (frames / dur) * 100));
+      const fill = row.querySelector('.powerup-meter-fill');
+      if (fill) fill.style.width = `${pct}%`;
+    }
   }
 
   #renderAll() {
@@ -132,25 +211,68 @@ export class HudSystem {
   }
 
   #renderPowerUps() {
-    const text = this.#powerUpText();
-    if (text === this._last.powerupsText) return;
-    this._last.powerupsText = text;
-    this.powerups.innerHTML = text;
-    this.powerupsBox.style.display = text ? '' : 'none';
+    const html = this.#powerUpRowsHtml();
+    if (html === this._last.powerupsText) return;
+    this._last.powerupsText = html;
+    this.powerups.innerHTML = html;
+    this.powerupsBox.style.display = html ? '' : 'none';
+  }
+
+  /**
+   * One row per active power-up: small colour-coded dot + label + draining
+   * meter. Rows are rebuilt on every change; the meter width is updated
+   * each frame in tick() so the bar drains smoothly without re-rendering
+   * the row HTML.
+   */
+  #powerUpRowsHtml() {
+    const snap = this.world.powerUpSystem.snapshot();
+    const rows = [];
+    const upCfg = this.world.config.powerUps;
+    const ROWS = [
+      { type: 'speed-burst',  label: 'Burst',   framesKey: 'speedBurstFrames',  activeKey: 'speedBurstActive',  durationCfg: upCfg.speedBurst.durationFrames },
+      { type: 'split-clones', label: 'Split',   framesKey: 'splitClonesFrames', activeKey: 'splitClonesActive', durationCfg: upCfg.splitClones.durationFrames },
+      { type: 'magnet',       label: 'Magnet',  framesKey: 'magnetFrames',      activeKey: 'magnetActive',      durationCfg: upCfg.magnet.durationFrames },
+      { type: 'shield',       label: 'Shield',  framesKey: 'shieldFrames',      activeKey: 'shieldActive',      durationCfg: upCfg.shield.durationFrames },
+      { type: 'score-x2',     label: '×2',      framesKey: 'scoreX2Frames',     activeKey: 'scoreX2Active',     durationCfg: upCfg.scoreX2.durationFrames },
+    ];
+    for (const row of ROWS) {
+      if (!snap[row.activeKey]) continue;
+      const frames = snap[row.framesKey] ?? 0;
+      const pct = Math.max(0, Math.min(100, Math.floor((frames / row.durationCfg) * 100)));
+      rows.push(`<div class="powerup-row" data-type="${row.type}">
+        <span class="powerup-icon" style="background:currentColor"></span>
+        <span class="powerup-label">${row.label}</span>
+        <span class="powerup-meter"><span class="powerup-meter-fill" style="width:${pct}%"></span></span>
+      </div>`);
+    }
+    return rows.join('');
+  }
+
+  /**
+   * v3.1: combo multiplier shown next to the score. Implemented as a
+   * sibling element (#combo) if present in DOM; falls back to suffixing
+   * the score text if no dedicated slot exists. Hidden when multiplier=1.
+   */
+  #renderCombo(snap) {
+    const mult = snap?.multiplier ?? 1;
+    if (mult === this._last.comboMultiplier) return;
+    this._last.comboMultiplier = mult;
+    // Lazy lookup the first time — keeps the constructor decoupled from
+    // a DOM element that older index.html builds may not have.
+    if (this._comboEl === undefined) this._comboEl = document.getElementById('combo');
+    if (this._comboEl) {
+      if (mult > 1) {
+        this._comboEl.textContent = `×${mult}`;
+        this._comboEl.style.display = '';
+      } else {
+        this._comboEl.style.display = 'none';
+      }
+    }
   }
 
   #tierLabel() {
-    if (this.world.currentTier <= 0) return 'Tier: Start';
-    const threshold = this.world.config.gameplay.scoreTiers[this.world.currentTier - 1];
-    return `Tier ${this.world.currentTier}: ${threshold}+`;
-  }
-
-  #powerUpText() {
-    const snapshot = this.world.powerUpSystem.snapshot();
-    const rows = [];
-    if (snapshot.speedBurstActive) rows.push(`<b>⚡ Burst</b> ${Math.ceil(snapshot.speedBurstFrames / 60)}s`);
-    if (snapshot.splitClonesActive) rows.push(`<b>✦ Split</b> ${Math.ceil(snapshot.splitClonesFrames / 60)}s`);
-    return rows.join('<br>');
+    if (this.world.currentTier <= 0) return t('death.tierStart');
+    return `Tier ${this.world.currentTier}`;
   }
 
   #state(state) {
@@ -161,39 +283,127 @@ export class HudSystem {
 
     if (state === 'menu') {
       this.#show(
-        'Orchid Quest',
-        'Collect Orchids, jump over vines (SPACE / ↑), duck under hanging branches (↓ / S), and avoid harmful greens. Tree gives a speed burst. Purple mushroom splits you into clones.',
-        'Start Run',
+        t('menu.title'),
+        t('menu.intro'),
+        t('menu.start'),
       );
     }
 
     if (state === 'paused') {
-      this.#show('Paused', 'Take a breather. Click resume or press ESC/P.', 'Resume');
+      // v3.4: explicit pause menu actions instead of a single "Start" CTA
+      // that would discard the current run. Continue is the primary +
+      // gets initial focus; Restart asks confirm via inline message;
+      // Quit returns to the main menu.
+      this.#show(
+        t('pause.title'),
+        `<div class="pause-actions">
+           <button type="button" id="pause-restart" class="pixel-btn">${t('pause.restart')}</button>
+           <button type="button" id="pause-settings" class="pixel-btn">${t('pause.settings')}</button>
+           <button type="button" id="pause-quit" class="pixel-btn">${t('pause.quit')}</button>
+         </div>`,
+        t('pause.resume'),
+      );
+      this.#wirePauseButtons();
     }
 
     if (state === 'dead') {
       this.#show(
-        'Run Complete',
+        t('death.title'),
         this.#deathBody(),
-        'Run again',
+        t('death.again'),
       );
       this.#wireLeaderboardSubmit();
+      this.#wireShareButtons();
+    }
+  }
+
+  /**
+   * Bind in-pause actions. Continue is the existing #start-button CTA
+   * (Game's hud.bindStart resumes if state === 'paused'); the other
+   * three are wired here.
+   */
+  #wirePauseButtons() {
+    const restart = document.getElementById('pause-restart');
+    const settings = document.getElementById('pause-settings');
+    const quit = document.getElementById('pause-quit');
+    if (restart) {
+      restart.addEventListener('click', () => {
+        if (!confirm(t('pause.confirmRestart'))) return;
+        this.world.start();
+      });
+    }
+    if (settings) {
+      // SettingsMenu.show() lives on the Game; expose via world hook.
+      settings.addEventListener('click', () => {
+        // Surface the modal directly — the settings button on main menu
+        // already wires this in SettingsMenu.bind().
+        document.getElementById('settings-button')?.click();
+      });
+    }
+    if (quit) {
+      quit.addEventListener('click', () => {
+        // "Quit" puts us back in the menu state so the player can pick
+        // Daily / Settings / a fresh run.
+        this.world.state = 'menu';
+        this.world.eventBus.emit('stateChanged', 'menu');
+      });
+    }
+  }
+
+  /**
+   * Optional dependency: `world.share` is wired by the Game constructor.
+   * Click handlers delegate to ShareSystem and replace the button text
+   * with a transient confirmation so the player sees something happened.
+   */
+  #wireShareButtons() {
+    const w = this.world;
+    if (!w.share) return;
+    const textBtn = document.getElementById('share-text');
+    const shotBtn = document.getElementById('share-screenshot');
+    const run = { score: w.score, distance: w.distanceRun };
+    if (textBtn) {
+      textBtn.addEventListener('click', async () => {
+        const result = await w.share.share(run);
+        const labels = { shared: '✓ Shared', copied: '✓ Copied', failed: 'Failed' };
+        textBtn.textContent = labels[result] ?? '✓ Done';
+      });
+    }
+    if (shotBtn) {
+      shotBtn.addEventListener('click', async () => {
+        shotBtn.textContent = '…capturing';
+        const result = await w.share.screenshot(run);
+        const labels = { shared: '✓ Shared', downloaded: '✓ Downloaded', failed: 'Failed' };
+        shotBtn.textContent = labels[result] ?? '✓ Done';
+      });
     }
   }
 
   /**
    * Build the death-screen body. If the run qualified for the leaderboard,
-   * embed a name prompt; either way, render the current top-N list.
+   * embed a name prompt; either way, render the current top-N list and the
+   * lifetime stats footer.
    */
   #deathBody() {
     const w = this.world;
     const lb = w.leaderboard;
     const qualified = lb && w.lastRunRank === -1;
+    const dailyTag = w.dailyMode ? `<span class="daily-label">DAILY</span>` : '';
+    // v3.4: surface the death cause prominently so the player knows what
+    // hit them — vines / overhangs / dry-grass etc. all have different
+    // responses (jump vs crouch); seeing the cause closes the learning loop.
+    const causeKey = HAZARD_I18N[w.lastHazardType];
+    const causeRow = causeKey
+      ? `<div class="death-cause">${t('death.youHit')} <b>${t(causeKey)}</b></div>`
+      : '';
     const summary = `
-      Orchids collected: <b>${w.score}</b><br>
-      Distance: <b>${Math.floor(w.distanceRun)}m</b><br>
-      ${this.#tierLabel()}<br>
-      Best: <b>${w.bestScore}</b>
+      ${causeRow}
+      <div class="run-summary">
+        ${dailyTag}${t('death.score')}: <b>${w.score}</b><br>
+        ${t('death.distance')}: <b>${Math.floor(w.distanceRun)}m</b><br>
+        ${t('death.orchids')}: <b>${w.orchidsCollectedThisRun}</b>${w.rareOrchidsCollectedThisRun > 0 ? `<span class="hud-rare"> + ${w.rareOrchidsCollectedThisRun} rare</span>` : ''}<br>
+        ${t('death.nearMisses')}: <b>${w.nearMissesThisRun}</b><br>
+        ${this.#tierLabel()} · ${t('death.best')}: <b>${w.bestScore}</b>
+      </div>
     `;
     const prompt = qualified
       ? `
@@ -205,7 +415,40 @@ export class HudSystem {
       `
       : '';
     const list = lb ? this.#leaderboardListHtml(lb.list()) : '';
-    return `${summary}<br>${prompt}${list}<br>Click <b>Run again</b> to restart.`;
+    const stats = this.#lifetimeStatsHtml();
+    const share = `
+      <div class="share-row">
+        <button type="button" id="share-text">${t('death.share')}</button>
+        <button type="button" id="share-screenshot">${t('death.screenshot')}</button>
+      </div>
+    `;
+    // Drop the redundant "Click Run again to restart" hint — the big gold
+    // CTA below already says exactly that. The death body is dense enough.
+    return `${summary}${prompt}${list}${stats}${share}`;
+  }
+
+  /**
+   * v3.1: lifetime totals strip — gives long-time players a "look how far
+   * I've come" surface. Hidden when PlayerStats wasn't wired in.
+   */
+  #lifetimeStatsHtml() {
+    const stats = this.world.playerStats?.snapshot();
+    if (!stats || stats.runCount === 0) return '';
+    const streak = stats.dailyStreak > 1
+      ? `[${t('lifetime.streak', { days: stats.dailyStreak })}]`
+      : '';
+    return `
+      <div class="lifetime-stats">
+        <h4>${t('lifetime.title')}</h4>
+        <ul>
+          <li>${t('lifetime.runs')}: <b>${stats.runCount}</b></li>
+          <li>${t('lifetime.totalOrchids')}: <b>${stats.lifetimeOrchids}</b>${stats.lifetimeRareOrchids > 0 ? ` + ${stats.lifetimeRareOrchids} rare` : ''}</li>
+          <li>${t('lifetime.totalDistance')}: <b>${stats.lifetimeDistance}m</b></li>
+          <li>${t('lifetime.longest')}: <b>${stats.longestRunDistance}m</b></li>
+          ${streak ? `<li>${streak}</li>` : ''}
+        </ul>
+      </div>
+    `;
   }
 
   #leaderboardListHtml(entries) {
