@@ -56,7 +56,7 @@ function remapLaneForBand(lane, band) {
   return lane;
 }
 import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
-import { getSceneryDraw } from './scenery/sceneryDispatch.js';
+import { getSceneryDraw, isSideAwareSceneryType } from './scenery/sceneryDispatch.js';
 
 /**
  * All non-gameplay world geometry: the static midground/foreground prefab
@@ -316,12 +316,29 @@ export class SceneryRenderer {
     if (!draw) return;
     this.ctx.save();
     this.ctx.globalAlpha = alpha;
-    if (mirrored) {
-      this.ctx.translate(x, 0);
-      this.ctx.scale(-1, 1);
-      this.ctx.translate(-x, 0);
+    // v3.8.15 — side-aware dispatch ONLY for types that registered as
+    // such (see SIDE_AWARE_TYPES in sceneryDispatch.js). Other types
+    // get the legacy single-draw + canvas-mirror path so they don't
+    // get rendered twice.
+    if (isSideAwareSceneryType(assetType)) {
+      const side = mirrored ? 1 : -1;
+      const drewSideVariant = draw(this._drawDeps, x, y, scale, variant, side);
+      if (!drewSideVariant) {
+        if (mirrored) {
+          this.ctx.translate(x, 0);
+          this.ctx.scale(-1, 1);
+          this.ctx.translate(-x, 0);
+        }
+        draw(this._drawDeps, x, y, scale, variant, undefined);
+      }
+    } else {
+      if (mirrored) {
+        this.ctx.translate(x, 0);
+        this.ctx.scale(-1, 1);
+        this.ctx.translate(-x, 0);
+      }
+      draw(this._drawDeps, x, y, scale, variant);
     }
-    draw(this._drawDeps, x, y, scale, variant);
     this.ctx.restore();
   }
 }

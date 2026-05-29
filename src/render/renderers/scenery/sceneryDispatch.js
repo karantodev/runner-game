@@ -49,12 +49,19 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
 //   0 = block_01, 1 = block_02, 2 = block_flower_01, 3 = block_flower_02
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
-register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, scale, variant) => {
+// v3.8.15 — two-pass dispatch. side ∈ {-1, +1} = first pass; only side-
+// variant is attempted. If it draws, return true. Otherwise return false
+// and the renderer calls again with side=undefined to draw the generic
+// (mirror-aware) path.
+register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, scale, variant, side) => {
+  if (side === -1) return deps.sprites.draw('grassDirtBlockLeft',  x, y, 185 * scale);
+  if (side ===  1) return deps.sprites.draw('grassDirtBlockRight', x, y, 185 * scale);
   const v = variant ?? 0;
   const newKey = NEW_TERRAIN_BLOCK_KEYS[v % 4];
   const legacyKey = TERRAIN_BLOCK_KEYS[v % 4];
   tryDraw(deps, [newKey, legacyKey], x, y, 185 * scale,
     () => deps.paint.terrainBlock(x, y, scale, v));
+  return false;
 });
 
 // v3.8 — explicit left-facing step. SceneryRenderer auto-mirrors via
@@ -84,10 +91,13 @@ register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, 
     () => deps.paint.wallBlock(x, y, scale, variant === 2 ? 3 : 1, 1));
 });
 
-register(['floating_platform', 'platform'], (deps, x, y, scale, variant) => {
+register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) => {
+  if (side === -1) return deps.sprites.draw('platformFloatingLeft',  x, y, 290 * scale);
+  if (side ===  1) return deps.sprites.draw('platformFloatingRight', x, y, 290 * scale);
   const v = variant ?? 0;
   tryDraw(deps, ['platformFloating', 'purplePlatformRow04'], x, y, 290 * scale,
     () => deps.paint.platform(x, y, scale, v % 2));
+  return false;
 });
 
 register(['question_block', 'questionBlock'], (deps, x, y, scale) => {
@@ -188,4 +198,21 @@ register(['dry_grass_obstacle', 'dryGrass'], (deps, x, y, scale) => {
  */
 export function getSceneryDraw(assetType) {
   return TABLE.get(assetType);
+}
+
+/**
+ * v3.8.15 — assetTypes whose dispatcher knows how to prefer a designer-
+ * shipped LEFT/RIGHT 3/4-view variant before falling back to the generic
+ * billboard. Renderer uses this to decide whether to run the two-pass
+ * dispatch protocol (try side-variant first, then generic) or just do
+ * a single legacy draw + optional canvas mirror.
+ */
+const SIDE_AWARE_TYPES = new Set([
+  'grass_dirt_block', 'grass_dirt_step', 'terrainBlock',
+  'floating_platform', 'platform',
+]);
+
+/** @param {string} assetType */
+export function isSideAwareSceneryType(assetType) {
+  return SIDE_AWARE_TYPES.has(assetType);
 }
