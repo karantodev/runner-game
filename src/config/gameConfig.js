@@ -183,6 +183,11 @@ export const GAME_CONFIG = Object.freeze({
     // scenery with a 4-cell test grid per side-aware type so a QA
     // observer can pick the visually-correct variant per side.
     showSideMatrix: false,
+    // v3.8.24 — toggled via ?debugPlayer=1. Draws the player's visual
+    // bounds, foot anchor, collision capsule, and state label over the
+    // sprite so size / anchor / state consistency is verifiable at a
+    // glance.
+    showPlayer: false,
   },
 
   scene: {
