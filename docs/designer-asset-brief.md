@@ -11,7 +11,7 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ---
 
-## 🚦 Delivery Status (v3.8.15 — refreshed)
+## 🚦 Delivery Status (v3.8.22 — refreshed)
 
 Legend in the per-asset sections below:
 - ✅ **DELIVERED** — file exists, wired into the dispatcher, visible in game
@@ -60,10 +60,14 @@ Recent waves shipped a lot of new files, but most of them are:
 
 | Asset | Status |
 |---|---|
-| `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **uses VISIBLE-FACE convention** (see note below) |
-| `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **uses VISIBLE-FACE convention** |
-| `grass_dirt_step_left.png` | 🟡 PARTIAL — `_left` shipped, `_right` MISSING |
-| All other side-aware types | ❌ PENDING — engine falls back to a billboard fallback (warning printed) |
+| `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **VISIBLE-FACE convention** |
+| `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **VISIBLE-FACE convention** |
+| `grass_dirt_step_left.png` + `grass_dirt_step_right.png` | ✅ DELIVERED (v3.8.22) — orphan partner shipped. Awaiting wiring + convention verification |
+| `fence_wood_short_left.png` + `fence_wood_short_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
+| `purple_brick_single_left.png` + `purple_brick_single_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
+| `grass_dirt_platform_long_left.png` + `grass_dirt_platform_long_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
+| `platform_hanging_vines_left.png` + `platform_hanging_vines_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
+| stone_wall_low / stone_brick_single / stone_wall_stairs / planter_pot pairs | ❌ PENDING — see remaining file list below |
 
 ### ⚠️ Naming convention finding (v3.8.19)
 
@@ -134,32 +138,33 @@ Per § 1.4 light source + § 3 palette, per the size + folder spec.
 ```
 ✅ terrain/blocks/grass_dirt_block_left.png             96 × 96 px
 ✅ terrain/blocks/grass_dirt_block_right.png            96 × 96 px
+✅ terrain/blocks/grass_dirt_step_left.png              96 × 96 px
+✅ terrain/blocks/grass_dirt_step_right.png             96 × 96 px        (v3.8.22)
 ✅ structures/platforms/platform_floating_left.png     192 × 40 px
 ✅ structures/platforms/platform_floating_right.png    192 × 40 px
+✅ structures/platforms/platform_hanging_vines_left.png  160 × 96 px      (v3.8.22)
+✅ structures/platforms/platform_hanging_vines_right.png 160 × 96 px      (v3.8.22)
+✅ structures/platforms/grass_dirt_platform_long_left.png  192 × 40 px    (v3.8.22)
+✅ structures/platforms/grass_dirt_platform_long_right.png 192 × 40 px    (v3.8.22)
+✅ structures/bricks/purple_brick_single_left.png       56 × 56 px        (v3.8.22)
+✅ structures/bricks/purple_brick_single_right.png      56 × 56 px        (v3.8.22)
+✅ decor/large/fence/fence_wood_short_left.png          96 × 80 px        (v3.8.22)
+✅ decor/large/fence/fence_wood_short_right.png         96 × 80 px        (v3.8.22)
 
 ❌ P0  structures/stone_brick/stone_wall_low_left.png      168 × 56 px
 ❌ P0  structures/stone_brick/stone_wall_low_right.png     168 × 56 px
 ❌ P0  structures/stone_brick/stone_brick_single_left.png   56 × 56 px
 ❌ P0  structures/stone_brick/stone_brick_single_right.png  56 × 56 px
-❌ P0  terrain/blocks/grass_dirt_step_right.png            96 × 96 px
-       (the _left.png shipped already; engine needs the paired _right)
 ❌ P0  obstacles/planter_pot/planter_pot_left.png           64 × 80 px
 ❌ P0  obstacles/planter_pot/planter_pot_right.png          64 × 80 px
 
 ❌ P1  structures/stone_brick/stone_wall_stairs_left.png   168 × 112 px
 ❌ P1  structures/stone_brick/stone_wall_stairs_right.png  168 × 112 px
-❌ P1  structures/platforms/platform_hanging_vines_left.png  160 × 96 px
-❌ P1  structures/platforms/platform_hanging_vines_right.png 160 × 96 px
-❌ P1  decor_large/fence/fence_wood_short_left.png          96 × 80 px
-❌ P1  decor_large/fence/fence_wood_short_right.png         96 × 80 px
-
-❌ P2  structures/platforms/grass_dirt_platform_long_left.png  192 × 40 px
-❌ P2  structures/platforms/grass_dirt_platform_long_right.png 192 × 40 px
-❌ P2  structures/bricks/purple_brick_single_left.png        56 × 56 px
-❌ P2  structures/bricks/purple_brick_single_right.png       56 × 56 px
 ```
 
-Total remaining: 18 files (7 pairs P0 + 6 pairs P1 + ... ). All sizes are from § 5 — no guessing.
+Total remaining: 8 files (4 pairs P0 + 1 pair P1). All sizes are from § 5 — no guessing.
+
+Plus to wire ASAP: 5 newly-delivered pairs need engine registration (gameConfig keys + SIDE_AWARE_TYPES list).
 
 **Drawing reminder for every pair:**
 - LEFT variant: 3/4 view, road is on the RIGHT → block's RIGHT face is lit (HIGHLIGHT + LIGHT tones), LEFT face is shadowed (SHADOW + DEEP). Top face brightest along its top-right edge.
@@ -373,29 +378,85 @@ ONLY in /platforms/ root (NOT YET MIGRATED):
 
 The developer will NOT auto-discover files under two paths. Wiring is on hold for `platform_floating` until canonicalised.
 
+---
+
+### v3.8.22 wave deliveries (HUGE Golden Rule wave + canonical fences + decor refresh)
+
+The designer's response to the Golden Rule push: **5 per-side pairs** + **canonical fence kit** + **decor large refresh started**. This wave closes the biggest single batch of priority items in any wave so far.
+
+#### Per-side pairs shipped (5 new pairs = 10 files)
+
+All under the brief's canonical paths:
+- `terrain/blocks/grass_dirt_step_right.png` — orphan partner for the long-standing `_left`. Pair complete
+- `structures/platforms/platform_hanging_vines_left/right.png` — P1 closed
+- `structures/platforms/grass_dirt_platform_long_left/right.png` — P2 closed
+- `structures/bricks/purple_brick_single_left/right.png` — P2 closed
+- `decor/large/fence/fence_wood_short_left/right.png` — fences are side-aware (Golden Rule item, P1 closed)
+
+#### Canonical fences shipped (brief priority #8 closed)
+
+```
+decor/large/fence/fence_short.png    96 × 80 px   ← canonical short fence
+decor/large/fence/fence_corner.png  112 × 80 px   ← canonical corner fence
+```
+
+The earlier `wooden_fence_webbed_01.png` can now be treated as an alt skin, OR retired in favour of these canonical files. Developer call.
+
+#### Decor large refresh STARTED (brief priority #7 partial)
+
+- `decor/large/mushrooms/mushroom_red_big.png` — refreshed (file size jumped 924K → 1.09M, high-detail flat pixel-art per § 1.1)
+- `decor/large/trees/tree_round.png` — refreshed (file size jumped to 1.27M)
+- `decor/large/trees/tree_tall.png` — **NEW** variant for silhouette diversity
+
+Engine paths already point at these files — they hot-swap on next load.
+
+#### Bonus deliveries
+
+- `terrain/blocks/stone_block_mossy_cube.png` — new mossy stone block variant (not in brief, bonus). Good fit for a stone-themed cluster prefab if we want a stone-corridor visual identity
+- `obstacles/mushroom_small/mushroom_small_red.png` — at the canonical path (was previously only under `obstacles/mushrooms/`)
+- `structures/platforms/platform_hanging_vines.png` — billboard version finally moved to canonical path (closes the v3.8.7 path-migration item for this file)
+
+#### Convention verification needed (v3.8.22 wave)
+
+The first two pairs shipped in v3.8.15 (`grass_dirt_block`, `platform_floating`) used the VISIBLE-FACE convention, so the engine has them mapped as `'swapped'` (see § 1.4.1 finding). The new pairs MAY follow the same convention or the placement convention — the developer will check at wiring time using `?debugSideMatrix=1`. Either way it's one Map entry per type in `SIDE_MAPPING_BY_TYPE`.
+
+**Designer ask:** going forward, please flag in the delivery notes which convention each pair uses, so the developer can wire the mapping correctly in one shot:
+- **Placement convention** — `_left.png` is for LEFT-shoulder placement (gives engine mapping `'normal'`)
+- **Visible-face convention** — `_left.png` is whichever variant has its left face visible (gives engine mapping `'swapped'`)
+
 ### What we still need most (priority order)
 
-> v3.8.15 update: per-side dispatcher is LIVE in the engine. The first two pairs (`grass_dirt_block_left/right`, `platform_floating_left/right`) now render with correct sun-upper-right lighting on both sides. **The Golden Rule applies to every remaining side-aware asset** — see the table at the top.
+> v3.8.22 update: HUGE Golden Rule wave shipped — 5 per-side pairs + canonical fences + decor large refresh started. Items #1 (mostly), #2, #7 (started), #8 all closed or partially closed. Remaining list shortened significantly.
 
-1. **🚨 Ship the remaining per-side variants (Golden Rule)** — 18 files listed in the File List above (7 P0 pairs + ...). Each side-aware asset is a PAIR (`_left` + `_right`). Anything shipped as a single billboard for a side-aware type will render with reversed lighting on the right side until its partner lands
-2. **🟡 Ship `grass_dirt_step_right.png`** — the `_left` shipped already without its pair. Engine currently canvas-flips it (lighting reversed). Trivial fix: 1 file
+1. **🚨 Remaining P0 per-side pairs (Golden Rule, 3 pairs)** — only stone-set bricks + planter_pot left to close P0:
+   - `stone_wall_low_left/right.png`        (168 × 56)
+   - `stone_brick_single_left/right.png`     (56 × 56)
+   - `planter_pot_left/right.png`            (64 × 80)
+2. **P1 per-side pair (1 pair)** — `stone_wall_stairs_left/right.png` (168 × 112)
 3. **Resolve v3.8.7 powerups path** — pick Option A (move `powerups/* → pickups/aura/`) or Option B (alt-keys). BLOCKING wiring of the 9 powerup aura/glow sprites
 4. **Rename / move v3.8.6 player batches** — `farmer_remaining_batch/` + `farmer_unfinished_batch/` use Cyrillic and translit names. Pick canonical names OR move to `_source/` so they don't sit in the production tree (BLOCKING wiring)
 5. **Sparkle + hit_flash + lane_swoosh + collect_burst anim sheets** — `sparkle_01..04`, `hit_flash_01..04`, `lane_swoosh_01..04`, `collect_burst_01..08`. Single-frame stand-ins look jerky in-game
 6. **Orchid burst + sparkle anim sheets** — `orchid_gold_sparkle_01..04` (4 frames) + `orchid_gold_collect_01..08` (8 frames)
-7. **Decor large refresh** — trees / large mushrooms in the new flat pixel-art style (legacy illustration-style still rendered)
-8. **Fences — per-side variants** — `wooden_fence_webbed_01.png` shipped as billboard. Per the Golden Rule, fences are side-aware too → ship `fence_wood_short_left.png` + `_right.png`
-9. **Clarify `assets/scenery/`** — empty directory; intent undocumented
+7. **Decor large refresh — finish** — partial done (mushroom_red_big + tree_round + new tree_tall). Bushes / fence-decor / leaf-clumps in `decor_large/` still legacy
+8. **Clarify `assets/scenery/`** — empty directory; intent undocumented
 
 ### What we do NOT need more of (please stop)
 
 To save designer time and avoid duplicate-folder clutter:
 - ❌ **No more `_01` / `_02` suffix duplicates** of already-delivered sprites (§ 4.2 forbids)
 - ❌ **No more billboard-only variants** of side-aware corridor blocks — see Golden Rule. Every wall / brick / platform / pipe / fence / stairs goes in PAIRS
-- ❌ **No more grass-platform billboard alternates** until the LEFT/RIGHT variants are shipped (the 5 billboards already there cover the fallback path)
+- ❌ **No more grass-platform billboard alternates** — current 5 billboards cover the fallback path; per-side pairs shipped now
 - ❌ **No more powerup auras / medallions** until pickup gameplay polish ships (9 shipped, none wired yet)
 - ❌ **No more cloud sizes** (3 shipped, legacy 6-frame pool unused)
 - ❌ **No new Cyrillic / transliterated filenames** — § 4.2 strict
+
+### Developer-side TODO (to actually USE the v3.8.22 wave)
+
+Engine work, not designer asks:
+1. Register 10 new gameConfig.assets keys (5 pairs) — `fenceWoodShortLeft/Right`, `purpleBrickSingleLeft/Right`, `grassDirtPlatformLongLeft/Right`, `platformHangingVinesLeft/Right`, `grassDirtStepRight`
+2. Extend `SIDE_AWARE_TYPES` set in `sceneryDispatch.js` to include: `fence_wood_short`, `purple_brick_single`, `grass_dirt_platform_long`, `hanging_platform_vines`, `grass_dirt_step`
+3. Add dispatcher branches for the new types following the `grass_dirt_block` / `floating_platform` pattern
+4. Verify each new pair via `?debugSideMatrix=1` — pick `normal` vs `swapped` per type, lock in `SIDE_MAPPING_BY_TYPE`
 
 ---
 
