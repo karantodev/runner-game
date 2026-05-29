@@ -11,7 +11,7 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ---
 
-## 🚦 Delivery Status (v3.8.11 — refreshed)
+## 🚦 Delivery Status (v3.8.15 — refreshed)
 
 Legend in the per-asset sections below:
 - ✅ **DELIVERED** — file exists, wired into the dispatcher, visible in game
@@ -20,9 +20,33 @@ Legend in the per-asset sections below:
 
 ---
 
-## 🚨 CRITICAL DELIVERY GAP (v3.8.11) — Perspective-correct side blocks
+## 🚨 GOLDEN RULE — Every side prop = TWO sprites
 
-> **TL;DR — please stop shipping more billboard / `_01`-suffix variants of the same sprites. Start shipping LEFT-facing and RIGHT-facing variants of the corridor blocks.**
+> **Any block / wall / platform / pipe / fence / structure that sits on the road's left OR right shoulder MUST be delivered as TWO files: `_left.png` and `_right.png`.**
+>
+> Engine update (v3.8.15): the dispatcher now actively wires LEFT/RIGHT variants and picks the correct one per side, preserving the global sun-upper-right lighting. The legacy canvas mirror-flip (which reversed the sun direction on the right side and broke the "all blocks lit from one sun" rule) is now a fallback used only when the per-side variant isn't shipped yet.
+>
+> Consequence: a single billboard sprite on a side-aware type is shipped only as half a delivery. The right side will keep looking wrong until the matching variant lands.
+
+### Which asset categories require per-side variants (mandatory)
+
+| Category | Per-side? | Why |
+|---|---|---|
+| **Stone / brick walls** (`stone_wall_low`, `stone_wall_stairs`, `purple_brick_*`) | **YES — left + right** | These have explicit front + side faces; a flip reverses the lighting |
+| **Grass-dirt blocks** (`grass_dirt_block_*`, `grass_dirt_step`) | **YES — left + right** | Top face tilt + sun-lit side direction matter |
+| **Brick platforms / floating platforms** (`platform_floating`, `purple_platform_row_*`) | **YES — left + right** | Same as walls |
+| **Pipes / planters** (`planter_pot`, `green_pipe`) | **YES — left + right** | 3/4-view body has a sun-lit + shadow side |
+| **Hanging platforms** (`hanging_platform_vines`) | **YES — left + right** | Vine drop direction + lighting |
+| **Fences** (`fence_wood_short`, `wooden_fence_webbed_*`) | **YES — left + right** | Plank lighting + cap-end direction |
+| **Stairs / wall-stairs** | **YES — left + right** | Step orientation MUST face the road |
+| **Large mushrooms decorative** (`mushroom_red_big`) | NO — single sprite | Radially symmetric; reading is robust to flips |
+| **Bushes** (`bush_large`, `bush_with_purple_flowers`) | NO — single sprite | Organic / radially symmetric |
+| **Trees** (`tree_round`) | NO — single sprite | Same |
+| **Small flowers / grass tufts / sprouts** | NO — single sprite | Sub-pixel cluster, flip is invisible |
+| **Question blocks** | NO — single sprite | Frontal block, sun on top face, no side bias |
+| **Collectibles / obstacles in lane** | NO — single sprite | They're centered in the lane, not on a shoulder |
+
+**Rule of thumb:** if the sprite has a clearly identifiable "front" face vs "side" face, OR if its lighting would look wrong when horizontally flipped → ship per-side.
 
 ### What we keep getting
 
@@ -31,6 +55,15 @@ Recent waves shipped a lot of new files, but most of them are:
 - Re-skins of the same billboard (frontal, head-on) silhouette
 - Auras / medallions / glow rings for power-ups (nice but not asked)
 - Multiple alt-paths for the same asset (`/platforms/` vs `/structures/platforms/`)
+
+### Per-side variants delivered so far
+
+| Asset | Status |
+|---|---|
+| `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15) |
+| `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15) |
+| `grass_dirt_step_left.png` | 🟡 PARTIAL — `_left` shipped, `_right` MISSING |
+| All other side-aware types | ❌ PENDING — engine falls back to canvas mirror (lighting reversed on right) |
 
 ### What the engine ACTUALLY needs
 
@@ -78,24 +111,43 @@ Once shipped:
 
 ### File list to ship next (priority order)
 
-Per § 1.4 light source + § 3 palette, per the size + folder spec:
+Per § 1.4 light source + § 3 palette, per the size + folder spec.
+✅ = already delivered + wired; ❌ = still missing.
 
 ```
-P0  structures/stone_brick/stone_wall_low_left.png      168 × 56 px
-P0  structures/stone_brick/stone_wall_low_right.png     168 × 56 px
-P0  structures/stone_brick/stone_brick_single_left.png   56 × 56 px
-P0  structures/stone_brick/stone_brick_single_right.png  56 × 56 px
-P0  terrain/blocks/grass_dirt_block_left.png             96 × 96 px
-P0  terrain/blocks/grass_dirt_block_right.png            96 × 96 px
-P1  structures/stone_brick/stone_wall_stairs_left.png   168 × 112 px
-P1  structures/stone_brick/stone_wall_stairs_right.png  168 × 112 px
-P1  obstacles/planter_pot/planter_pot_left.png           64 × 80 px
-P1  obstacles/planter_pot/planter_pot_right.png          64 × 80 px
-P2  structures/platforms/platform_floating_left.png     192 × 40 px
-P2  structures/platforms/platform_floating_right.png    192 × 40 px
+✅ terrain/blocks/grass_dirt_block_left.png             96 × 96 px
+✅ terrain/blocks/grass_dirt_block_right.png            96 × 96 px
+✅ structures/platforms/platform_floating_left.png     192 × 40 px
+✅ structures/platforms/platform_floating_right.png    192 × 40 px
+
+❌ P0  structures/stone_brick/stone_wall_low_left.png      168 × 56 px
+❌ P0  structures/stone_brick/stone_wall_low_right.png     168 × 56 px
+❌ P0  structures/stone_brick/stone_brick_single_left.png   56 × 56 px
+❌ P0  structures/stone_brick/stone_brick_single_right.png  56 × 56 px
+❌ P0  terrain/blocks/grass_dirt_step_right.png            96 × 96 px
+       (the _left.png shipped already; engine needs the paired _right)
+❌ P0  obstacles/planter_pot/planter_pot_left.png           64 × 80 px
+❌ P0  obstacles/planter_pot/planter_pot_right.png          64 × 80 px
+
+❌ P1  structures/stone_brick/stone_wall_stairs_left.png   168 × 112 px
+❌ P1  structures/stone_brick/stone_wall_stairs_right.png  168 × 112 px
+❌ P1  structures/platforms/platform_hanging_vines_left.png  160 × 96 px
+❌ P1  structures/platforms/platform_hanging_vines_right.png 160 × 96 px
+❌ P1  decor_large/fence/fence_wood_short_left.png          96 × 80 px
+❌ P1  decor_large/fence/fence_wood_short_right.png         96 × 80 px
+
+❌ P2  structures/platforms/grass_dirt_platform_long_left.png  192 × 40 px
+❌ P2  structures/platforms/grass_dirt_platform_long_right.png 192 × 40 px
+❌ P2  structures/bricks/purple_brick_single_left.png        56 × 56 px
+❌ P2  structures/bricks/purple_brick_single_right.png       56 × 56 px
 ```
 
-Total: 12 files. All have specific sizes from § 5 — no guessing.
+Total remaining: 18 files (7 pairs P0 + 6 pairs P1 + ... ). All sizes are from § 5 — no guessing.
+
+**Drawing reminder for every pair:**
+- LEFT variant: 3/4 view, road is on the RIGHT → block's RIGHT face is lit (HIGHLIGHT + LIGHT tones), LEFT face is shadowed (SHADOW + DEEP). Top face brightest along its top-right edge.
+- RIGHT variant: road is on the LEFT → block's LEFT face is lit, RIGHT face is shadowed. Top face brightest along its top-LEFT edge.
+- DO NOT just horizontally flip the LEFT to make the RIGHT — that reverses the sun direction. Each side is a fresh draw with a re-rendered lighting pass.
 
 ### Cohesion test before delivery
 
@@ -306,24 +358,24 @@ The developer will NOT auto-discover files under two paths. Wiring is on hold fo
 
 ### What we still need most (priority order)
 
-> v3.8.11 update: composition work in the engine has hit a hard limit. Without per-side oriented blocks (see the 🚨 CRITICAL section above), no further engine tweak can make the corridor read as a real perspective tunnel. Engine-side work is paused on corridor visuals until those ship.
+> v3.8.15 update: per-side dispatcher is LIVE in the engine. The first two pairs (`grass_dirt_block_left/right`, `platform_floating_left/right`) now render with correct sun-upper-right lighting on both sides. **The Golden Rule applies to every remaining side-aware asset** — see the table at the top.
 
-1. **🚨 Perspective-correct LEFT / RIGHT block variants** — see the CRITICAL section above. 12 PNGs in the listed sizes. THIS is the single biggest gap; everything else below is housekeeping by comparison
-2. **Finish v3.8.9 platform migration** — move `platform_floating.png` from `assets/platforms/` to `assets/structures/platforms/`, dedupe bare-name vs `_01` siblings, delete the now-empty `/platforms/` root. BLOCKING wiring of `platform_floating`
+1. **🚨 Ship the remaining per-side variants (Golden Rule)** — 18 files listed in the File List above (7 P0 pairs + ...). Each side-aware asset is a PAIR (`_left` + `_right`). Anything shipped as a single billboard for a side-aware type will render with reversed lighting on the right side until its partner lands
+2. **🟡 Ship `grass_dirt_step_right.png`** — the `_left` shipped already without its pair. Engine currently canvas-flips it (lighting reversed). Trivial fix: 1 file
 3. **Resolve v3.8.7 powerups path** — pick Option A (move `powerups/* → pickups/aura/`) or Option B (alt-keys). BLOCKING wiring of the 9 powerup aura/glow sprites
 4. **Rename / move v3.8.6 player batches** — `farmer_remaining_batch/` + `farmer_unfinished_batch/` use Cyrillic and translit names. Pick canonical names OR move to `_source/` so they don't sit in the production tree (BLOCKING wiring)
 5. **Sparkle + hit_flash + lane_swoosh + collect_burst anim sheets** — `sparkle_01..04`, `hit_flash_01..04`, `lane_swoosh_01..04`, `collect_burst_01..08`. Single-frame stand-ins look jerky in-game
 6. **Orchid burst + sparkle anim sheets** — `orchid_gold_sparkle_01..04` (4 frames) + `orchid_gold_collect_01..08` (8 frames)
 7. **Decor large refresh** — trees / large mushrooms in the new flat pixel-art style (legacy illustration-style still rendered)
-8. **Fences — canonical short + corner** — `wooden_fence_webbed_01.png` shipped but the brief asks for canonical `fence_short.png` + `fence_corner.png` (see § 5.6). Pick: keep webbed as `fence_short` alt OR ship the originals
+8. **Fences — per-side variants** — `wooden_fence_webbed_01.png` shipped as billboard. Per the Golden Rule, fences are side-aware too → ship `fence_wood_short_left.png` + `_right.png`
 9. **Clarify `assets/scenery/`** — empty directory; intent undocumented
 
 ### What we do NOT need more of (please stop)
 
 To save designer time and avoid duplicate-folder clutter:
 - ❌ **No more `_01` / `_02` suffix duplicates** of already-delivered sprites (§ 4.2 forbids)
-- ❌ **No more billboard variants** of corridor blocks — only the LEFT / RIGHT 3/4-view variants from item #1
-- ❌ **No more grass-platform alternates** (5 already shipped: `platform_floating`, `hanging_platform_vines`, `platform_grass_patch_01`, `platform_grass_vines_01`, `grass_dirt_platform_long`)
+- ❌ **No more billboard-only variants** of side-aware corridor blocks — see Golden Rule. Every wall / brick / platform / pipe / fence / stairs goes in PAIRS
+- ❌ **No more grass-platform billboard alternates** until the LEFT/RIGHT variants are shipped (the 5 billboards already there cover the fallback path)
 - ❌ **No more powerup auras / medallions** until pickup gameplay polish ships (9 shipped, none wired yet)
 - ❌ **No more cloud sizes** (3 shipped, legacy 6-frame pool unused)
 - ❌ **No new Cyrillic / transliterated filenames** — § 4.2 strict
@@ -393,6 +445,26 @@ For the far variant of the same mushroom — only Base + Shadow + Outline.
 - Highlight goes on the upper-right face of the object.
 - Shadow on the lower-left face.
 - This rule is MANDATORY for cohesion. If one sprite is lit from the left and another from the right, the scene falls apart.
+
+### 1.4.1. Per-side variants for side-aware structures (GOLDEN RULE)
+
+Any block / wall / platform / pipe / fence / stairs that the engine places on the road's left OR right shoulder MUST be shipped as a **pair of sprites**: `<name>_left.png` and `<name>_right.png`. The two variants are drawn independently — they are NOT just horizontal flips of each other.
+
+**Why.** A horizontal flip of a LEFT variant inverts the lighting (sun-upper-right becomes sun-upper-LEFT on the flipped sprite), which breaks rule § 1.4 across the scene. The engine prefers the matching per-side variant when it's loaded; if a pair is incomplete, the engine falls back to a canvas mirror flip and the right side will look wrong until the partner ships.
+
+**Drawing rule for the pair:**
+- **`_left.png`** — block sits on the road's LEFT shoulder; road is on the RIGHT of the block.
+  - Block's RIGHT face = sun-lit (HIGHLIGHT + LIGHT tones, top brighter than bottom).
+  - Block's LEFT face = shadow (SHADOW + DEEP tones).
+  - TOP face brightest along its top-right edge.
+- **`_right.png`** — block sits on the road's RIGHT shoulder; road is on the LEFT.
+  - Block's LEFT face = sun-lit.
+  - Block's RIGHT face = shadow.
+  - TOP face brightest along its top-left edge.
+
+**Which categories require pairs?** See the "Golden Rule" table near the top of this brief (under 🚦 Delivery Status). Short list: walls, brick blocks, grass-dirt blocks, brick / floating platforms, pipes / planters, hanging platforms, fences, stairs.
+
+**Which don't?** Radially-symmetric organic shapes (mushrooms, bushes, trees, flowers, sprouts) and centred-in-lane objects (question blocks, collectibles, in-lane obstacles).
 
 ### 1.5. Contrast and readability
 - **Gameplay elements (collectible, obstacle)** must contrast with the background in BOTH lightness AND hue. Orchid — golden yellow on green grass. Vine obstacle — warm brown on green grass + warning accent.
