@@ -392,8 +392,11 @@ export class HudSystem {
     // hit them — vines / overhangs / dry-grass etc. all have different
     // responses (jump vs crouch); seeing the cause closes the learning loop.
     const causeKey = HAZARD_I18N[w.lastHazardType];
+    // v3.8.35 — sentence-case hazard + exclamation gives "You hit a vine!"
+    // instead of "You hit a VINE". `death.youHit` template stays neutral so
+    // the same wrapper renders all hazards.
     const causeRow = causeKey
-      ? `<div class="death-cause">${t('death.youHit')} <b>${t(causeKey)}</b></div>`
+      ? `<div class="death-cause">${t('death.youHit')} <b>${t(causeKey)}</b>!</div>`
       : '';
     const summary = `
       ${causeRow}
@@ -405,26 +408,43 @@ export class HudSystem {
         ${this.#tierLabel()} · ${t('death.best')}: <b>${w.bestScore}</b>
       </div>
     `;
+    // v3.8.35 — secondary action row near the top. RUN AGAIN remains the
+    // bottom-of-card primary CTA bound by #show(); these are the
+    // supporting actions (save score if eligible, share, screenshot)
+    // grouped together so the player sees them as one option block
+    // instead of a scattered tail.
+    const saveBtn = qualified
+      ? `<button type="button" id="death-save" class="death-action death-action-save">${t('death.saveScore')}</button>`
+      : '';
+    const actions = `
+      <div class="death-actions">
+        ${saveBtn}
+        <button type="button" id="share-text" class="death-action">${t('death.share')}</button>
+        <button type="button" id="share-screenshot" class="death-action">${t('death.screenshot')}</button>
+      </div>
+    `;
+    // Name prompt only appears when SAVE SCORE is clicked, not unconditionally.
+    // Keeps the modal compact for the common case (not qualified or already
+    // saved). #wireLeaderboardSubmit handles the toggle.
     const prompt = qualified
       ? `
-        <div class="leaderboard-prompt">
-          <p>You made the top ${lb.capacity}! Enter a name:</p>
-          <input id="leaderboard-name" type="text" maxlength="16" placeholder="Your name" autocomplete="off">
-          <button id="leaderboard-submit" type="button">Save score</button>
+        <div class="leaderboard-prompt" id="leaderboard-prompt" hidden>
+          <p>${t('death.topRank', { rank: lb.capacity })}</p>
+          <input id="leaderboard-name" type="text" maxlength="16" placeholder="${t('death.namePlaceholder')}" autocomplete="off">
+          <button id="leaderboard-submit" type="button">${t('death.saveScore')}</button>
         </div>
       `
       : '';
+    // v3.8.35 — leaderboard + lifetime moved to a single "details" section
+    // BELOW the action row, visually de-emphasized via .death-details
+    // styling. The player who wants quick restart sees Run Complete →
+    // stats → actions → RUN AGAIN without scrolling past historic data.
     const list = lb ? this.#leaderboardListHtml(lb.list()) : '';
     const stats = this.#lifetimeStatsHtml();
-    const share = `
-      <div class="share-row">
-        <button type="button" id="share-text">${t('death.share')}</button>
-        <button type="button" id="share-screenshot">${t('death.screenshot')}</button>
-      </div>
-    `;
-    // Drop the redundant "Click Run again to restart" hint — the big gold
-    // CTA below already says exactly that. The death body is dense enough.
-    return `${summary}${prompt}${list}${stats}${share}`;
+    const details = (list || stats)
+      ? `<div class="death-details">${list}${stats}</div>`
+      : '';
+    return `${summary}${actions}${prompt}${details}`;
   }
 
   /**
@@ -460,10 +480,24 @@ export class HudSystem {
   }
 
   /**
-   * If the death-overlay rendered a leaderboard-prompt, hook the input +
-   * submit button up to Leaderboard.submit() and re-render the list in place.
+   * v3.8.35 — leaderboard prompt is now hidden behind a SAVE SCORE button
+   * in the action row. Reveals on click; focuses the name input; submits
+   * via the same handler as Enter. Keeps the modal compact for the
+   * non-qualifying common case and lets fast players RUN AGAIN without
+   * tabbing through an unrelated name field.
    */
   #wireLeaderboardSubmit() {
+    const saveBtn = document.getElementById('death-save');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const prompt = document.getElementById('leaderboard-prompt');
+        if (!prompt) return;
+        prompt.hidden = false;
+        saveBtn.disabled = true;
+        const input = document.getElementById('leaderboard-name');
+        input?.focus();
+      });
+    }
     const input = document.getElementById('leaderboard-name');
     const submit = document.getElementById('leaderboard-submit');
     if (!input || !submit) return;
@@ -479,11 +513,10 @@ export class HudSystem {
       w.lastRunRank = rank;
       // Re-render death body so the prompt disappears and the list reflects
       // the new entry.
-      this.#show('Run Complete', this.#deathBody(), 'Run again');
+      this.#show(t('death.title'), this.#deathBody(), t('death.again'));
     };
     submit.addEventListener('click', handler);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handler(); });
-    input.focus();
   }
 
   #show(title, sub, button) {

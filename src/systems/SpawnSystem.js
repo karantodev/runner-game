@@ -61,7 +61,7 @@ export class SpawnSystem {
   prepopulate(world) {
     const cycles = 4;  // covers projection.maxDistance (~420)
     for (let i = 0; i < cycles; i += 1) {
-      this.#stampHeroCycle(world, i * HERO_ROAD_CYCLE_LENGTH);
+      this.#stampHeroCycle(world, i * HERO_ROAD_CYCLE_LENGTH, i === 0);
     }
     this.heroCycleOrigin = cycles * HERO_ROAD_CYCLE_LENGTH;
     // Procedural patterns kept on the legacy cadence (fires ~60 travel
@@ -71,9 +71,27 @@ export class SpawnSystem {
     this.nextOrchid  = 200;  // orchid duty carried by hero cycles
   }
 
-  /** Stamp one full HERO_ROAD_SEQUENCE cycle at the given origin distance. */
-  #stampHeroCycle(world, originDistance) {
+  /**
+   * Stamp one full HERO_ROAD_SEQUENCE cycle at the given origin distance.
+   *
+   * v3.8.35 — `firstCycle` skips the all-lane vine in the opening cycle
+   * so the player doesn't see four perspective-stacked vines lined up
+   * before their first input. The vine slot is replaced with an extra
+   * flower-line so the rhythm beat isn't lost; vines kick in on cycle 2
+   * (distance ≥ 165) when the player has learnt the controls.
+   */
+  #stampHeroCycle(world, originDistance, firstCycle = false) {
     for (const entry of HERO_ROAD_SEQUENCE) {
+      if (firstCycle && entry.kind === 'vine-with-rewards') {
+        this.#spawnHeroRoadEntry(world, {
+          kind: 'flower-arc',
+          fromLane: -1,
+          toLane: 1,
+          count: 5,
+          distance: originDistance + entry.offsetInCycle,
+        });
+        continue;
+      }
       this.#spawnHeroRoadEntry(world, {
         ...entry,
         distance: originDistance + entry.offsetInCycle,

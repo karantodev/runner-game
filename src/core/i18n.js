@@ -43,6 +43,9 @@ const DICTS = {
     'death.tierStart': 'Tier: Start',
     'death.share': 'SHARE',
     'death.screenshot': 'SCREENSHOT',
+    'death.saveScore': 'SAVE SCORE',
+    'death.topRank': 'You made the top {rank}! Enter a name to save:',
+    'death.namePlaceholder': 'Your name',
 
     'settings.title': 'Settings',
     'settings.sfx': 'SFX',
@@ -68,13 +71,15 @@ const DICTS = {
     'lifetime.longest': 'Longest run',
     'lifetime.streak': '{days}-day streak',
 
-    'hazard.vine': 'a VINE',
-    'hazard.overhang': 'an OVERHANG',
-    'hazard.bush': 'a SPIKY BUSH',
-    'hazard.mushroom': 'a MUSHROOM',
-    'hazard.wheat': 'a DRY GRASS',
-    'hazard.wall': 'a WALL',
-    'hazard.stone': 'a STONE',
+    // v3.8.35 — sentence-case + game-y read. Final string in HudSystem:
+    // "You hit a vine!" instead of the previous shouty "You hit a VINE".
+    'hazard.vine': 'a vine',
+    'hazard.overhang': 'an overhang',
+    'hazard.bush': 'a spiky bush',
+    'hazard.mushroom': 'a mushroom',
+    'hazard.wheat': 'dry grass',
+    'hazard.wall': 'a wall',
+    'hazard.stone': 'a stone',
   },
   es: {
     'menu.title': 'Orchid Quest',
@@ -101,6 +106,9 @@ const DICTS = {
     'death.tierStart': 'Nivel: Inicio',
     'death.share': 'COMPARTIR',
     'death.screenshot': 'CAPTURA',
+    'death.saveScore': 'GUARDAR',
+    'death.topRank': '¡Estás en el top {rank}! Escribe tu nombre:',
+    'death.namePlaceholder': 'Tu nombre',
 
     'settings.title': 'Ajustes',
     'settings.sfx': 'Efectos',
@@ -126,13 +134,13 @@ const DICTS = {
     'lifetime.longest': 'Mejor carrera',
     'lifetime.streak': 'racha de {days} días',
 
-    'hazard.vine': 'una LIANA',
-    'hazard.overhang': 'una RAMA BAJA',
-    'hazard.bush': 'un ARBUSTO ESPINOSO',
-    'hazard.mushroom': 'un CHAMPIÑÓN',
-    'hazard.wheat': 'la HIERBA SECA',
-    'hazard.wall': 'un MURO',
-    'hazard.stone': 'una PIEDRA',
+    'hazard.vine': 'una liana',
+    'hazard.overhang': 'una rama baja',
+    'hazard.bush': 'un arbusto espinoso',
+    'hazard.mushroom': 'un champiñón',
+    'hazard.wheat': 'la hierba seca',
+    'hazard.wall': 'un muro',
+    'hazard.stone': 'una piedra',
   },
 };
 
