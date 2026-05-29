@@ -21,8 +21,12 @@ export class PlayerRenderer {
     if (!world.player) return;
     const health = world.player.components.Health;
     const lane = world.player.components.LaneState;
+    // v3.8.24 Player Visual Consistency Pass — invuln blink alpha floor
+    // raised 0.28 → 0.62 so the hero stays readable against road decor
+    // even in the dim half of the blink cycle. Blink cadence unchanged
+    // (every 6 frames). Floor returns to 1.0 the moment invuln ends.
     const invulnAlpha = health.invulnerabilityFrames > 0
-      ? (Math.floor(health.invulnerabilityFrames / 6) % 2 === 0 ? 0.28 : 1)
+      ? (Math.floor(health.invulnerabilityFrames / 6) % 2 === 0 ? 0.62 : 1)
       : 1;
 
     // Motion-trail ghosts behind the player (drawn back-to-front: oldest
@@ -94,17 +98,16 @@ export class PlayerRenderer {
       // farmer is the visible focal point but obstacles/blocks around
       // him feel proportional.
       const bodyScale = (p.height / 720) * 1.23;
-      const spriteW = 120 * bodyScale;
-      const spriteH = spriteW * (img.naturalHeight / img.naturalWidth);
+      const spriteW = Math.round(120 * bodyScale);
+      const spriteH = Math.round(spriteW * (img.naturalHeight / img.naturalWidth));
       const x = p.width / 2 + g.laneX * p.visualLaneWidth;
-      // v3.7.3: same bottom-margin offset as the live player so trail
-      // ghosts line up exactly with the runner.
       const bottomMargin = world.config.player.bottomMargin ?? 0;
       const y = p.groundY - bottomMargin + g.y;
 
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.translate(x, y);
+      // v3.8.24 — pixel-snap trail ghosts (same fix as the live body).
+      ctx.translate(Math.round(x), Math.round(y));
       // Greenish tint via composite — purely cosmetic, ties to speed-burst.
       ctx.drawImage(img, -spriteW / 2, -spriteH, spriteW, spriteH);
       ctx.globalCompositeOperation = 'source-atop';
@@ -127,15 +130,22 @@ export class PlayerRenderer {
 
     const x = p.width / 2 + renderLaneX * p.visualLaneWidth;
     const idleBob = !vert.isJumping ? Math.sin(anim.idleTime * 0.10) * 2.4 : 0;
-    // v3.7.3: lift the player above the road's foreground edge so a strip
-    // of road / decor sits visibly below their feet — matches the
-    // reference framing. Config-driven so it tunes without rebuilds.
     const bottomMargin = world.config.player.bottomMargin ?? 0;
     const y = p.groundY - bottomMargin + vert.y + idleBob;
     const tilt = (lane.targetLane - lane.laneX) * 0.10 + lane.laneTilt * 0.05;
-    const stretch = 1 + vert.jumpStretch * 0.07 - vert.landSquash * 0.03;
-    const squash = 1 - vert.jumpStretch * 0.05 + vert.landSquash * 0.07;
 
+    // v3.8.24 Player Visual Consistency Pass — REMOVED state-based
+    // visual scaling. Previously stretch/squash/jumpStretch/landSquash
+    // applied ±7% scale on takeoff/landing, lateral squash applied
+    // ±18% scale on lane-change, and crouchSquashY (0.78) shrank the
+    // crouch sprite by 22% on top of the shorter crouch ART. The
+    // result: the player's visual size CHANGED between states (jump
+    // briefly bigger / duck briefly smaller / lane-change wobble).
+    // Per the brief, scale is now CONSTANT; only pose (sprite art
+    // choice) + foot-anchor Y (jump arc) + tilt (rotation, not scale)
+    // change between states.
+    const stretch = 1;
+    const squash = 1;
     const bodyScale = (p.height / 720) * 1.23;
 
     // State-priority pick: menu/dead idle → hit (one-shot during invuln) →
@@ -195,21 +205,23 @@ export class PlayerRenderer {
     if (!spriteImg?.naturalWidth) return;
     const refFrame = this.assets.get(fallbackKey) ?? spriteImg;
 
-    // Lateral squash: when the player is sliding sideways fast (big
-    // laneTilt), stretch horizontally and squash vertically — gives the
-    // body a sense of weight + momentum into the new lane.
-    const lateral = Math.min(0.18, Math.abs(lane.laneTilt) * 0.08);
+    // v3.8.24 — lateral momentum lean removed (was ±18% horizontal
+    // scale on lane-change). The tilt rotation already conveys
+    // momentum without distorting the silhouette.
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(x, y);
+    // v3.8.24 — pixel-snap the player's translate origin so sub-pixel
+    // motion (jump arc, idle bob) doesn't shimmer the silhouette.
+    ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate(tilt);
-    const crouchSquashY = crouching ? world.config.player.crouch.spriteYScale : 1;
-    ctx.scale(squash * (1 + lateral), stretch * crouchSquashY * (1 - lateral * 0.35));
-    // v3.8.6 Tier-2 — base 138 → 120 (-13%). See comment in trail-ghost
-    // section above for full rationale.
-    const spriteW = 120 * bodyScale;
-    const spriteH = spriteW * (refFrame.naturalHeight / refFrame.naturalWidth);
+    // v3.8.24 — crouchSquashY (0.78) REMOVED. Crouch sprite art is
+    // already shorter (78 px vs 96 px run); the extra Y-squash was a
+    // double-duck that made the player visually smaller than just the
+    // pose change.
+    ctx.scale(squash, stretch);
+    const spriteW = Math.round(120 * bodyScale);
+    const spriteH = Math.round(spriteW * (refFrame.naturalHeight / refFrame.naturalWidth));
     ctx.drawImage(spriteImg, -spriteW / 2, -spriteH, spriteW, spriteH);
 
     if (isClone) {
@@ -220,6 +232,56 @@ export class PlayerRenderer {
       ctx.fillRect(-spriteW / 2, -spriteH, spriteW, spriteH);
     }
 
+    ctx.restore();
+
+    // v3.8.24 — ?debugPlayer=1 overlay. Drawn AFTER the body restore so
+    // labels and boxes sit on top of the sprite. Only fires for the
+    // primary (non-clone) body; clones aren't relevant to consistency QA.
+    if (!isClone && world.config.debug?.showPlayer) {
+      this.#drawPlayerDebug(world, {
+        x, y, spriteW, spriteH, alpha, prefix, runKey, crouching, airborne, justHit,
+      });
+    }
+  }
+
+  /** v3.8.24 — visual-bounds + foot-anchor + state debug overlay. */
+  #drawPlayerDebug(world, info) {
+    const ctx = this.ctx;
+    const { x, y, spriteW, spriteH, alpha, prefix, runKey, crouching, airborne, justHit } = info;
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    ctx.save();
+    // Visual bounds (sprite quad in canvas space, ignoring tilt rotation
+    // for clarity — the rotation is small enough that the box is a
+    // useful reference even untilted).
+    ctx.strokeStyle = '#00ffd6';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rx - spriteW / 2, ry - spriteH, spriteW, spriteH);
+    // Feet anchor — bright red dot at (x, y). Must stay stable across
+    // states (run / jump / duck / hit / post-hit). If it drifts, the
+    // foot-anchor design is broken.
+    ctx.fillStyle = '#ff3030';
+    ctx.beginPath();
+    ctx.arc(rx, ry, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Collision-capsule rectangle (from config). Width matches lane
+    // hit-tolerance; height shrinks when crouching to half.
+    const collisionH = crouching ? spriteH * 0.55 : spriteH * 0.95;
+    const collisionW = spriteW * 0.42;
+    ctx.strokeStyle = 'rgba(255,210,80,0.7)';
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(rx - collisionW / 2, ry - collisionH, collisionW, collisionH);
+    ctx.setLineDash([]);
+    // Text label — state + scale + alpha + frame key.
+    const state = justHit ? 'HIT' : airborne ? 'JUMP' : crouching ? 'DUCK' : 'RUN';
+    const text = `${state} | a=${alpha.toFixed(2)} | ${runKey}`;
+    ctx.font = '11px monospace';
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(rx - tw / 2 - 4, ry - spriteH - 18, tw + 8, 14);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, rx, ry - spriteH - 8);
     ctx.restore();
   }
 }

@@ -87,6 +87,12 @@ import('./render/renderers/scenery/sceneryDispatch.js').then(({
 if (params.get('debugSideMatrix') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showSideMatrix', { value: true, writable: false, configurable: true });
 }
+// `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
+// collision capsule, and state label so visual-consistency QA can
+// verify scale stays constant across states.
+if (params.get('debugPlayer') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: true, writable: false, configurable: true });
+}
 
 const canvas = document.getElementById('game');
 const game = new Game(canvas, {
