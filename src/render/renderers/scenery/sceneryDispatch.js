@@ -78,6 +78,13 @@ const SIDE_MAPPING_BY_TYPE = new Map([
   ['terrainBlock',       'swapped'],
   ['floating_platform',  'swapped'],
   ['platform',           'swapped'],
+  // v3.8.34 — P1 Golden Rule pairs. Designer shipped under the same
+  // visible-face convention as the v3.8.27 wave; if a future batch
+  // flips convention, override via ?sideMapping=type:normal.
+  ['stone_brick_single', 'swapped'],
+  ['stone_wall_low',     'swapped'],
+  ['stone_wall_stairs',  'swapped'],
+  ['planter_pot',        'swapped'],
 ]);
 let globalSwap = false;
 
@@ -131,17 +138,30 @@ register(['grass_dirt_platform_long', 'grassDirtPlatformLong'], (deps, x, y, sca
     () => deps.paint.platform(x, y, scale, 0));
 });
 
-register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs'], (deps, x, y, scale, variant) => {
+register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs'], (deps, x, y, scale, variant, side) => {
   const v = variant ?? 0;
   const stoneKey  = v % 2 === 0 ? 'stoneWallLow'  : 'stoneWallStairs';
+  // v3.8.34 — side-aware variant pass. Variant index selects low vs stairs
+  // (matching the existing legacy fallback chain), then SIDE_KEY_FOR picks
+  // the _left or _right delivery via SIDE_MAPPING_BY_TYPE.
+  if (side === -1 || side === 1) {
+    const stoneType = v % 2 === 0 ? 'stone_wall_low' : 'stone_wall_stairs';
+    return deps.sprites.draw(`${stoneKey}${SIDE_KEY_FOR(side, stoneType)}`, x, y, 200 * scale);
+  }
   const legacyKey = v % 2 === 0 ? 'purpleWallLow' : 'purpleWallStairs';
   tryDraw(deps, [stoneKey, legacyKey], x, y, 200 * scale,
     () => deps.paint.grassWall(x, y, scale, v % 2));
+  return false;
 });
 
-register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, y, scale, variant) => {
+register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, y, scale, variant, side) => {
+  // v3.8.34 — side-aware variant pass.
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`stoneBrickSingle${SIDE_KEY_FOR(side, 'stone_brick_single')}`, x, y, 110 * scale);
+  }
   tryDraw(deps, ['stoneBrickSingle', 'purpleBrick01'], x, y, 110 * scale,
     () => deps.paint.wallBlock(x, y, scale, variant === 2 ? 3 : 1, 1));
+  return false;
 });
 
 register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) => {
@@ -164,9 +184,14 @@ register(['question_block', 'questionBlock'], (deps, x, y, scale) => {
 });
 
 // Legacy 'green_pipe' / 'pipe' redirects to planter_pot per v3 brief.
-register(['green_pipe', 'pipe', 'planter_pot', 'planterPot'], (deps, x, y, scale) => {
+register(['green_pipe', 'pipe', 'planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
+  // v3.8.34 — side-aware variant pass.
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`planterPot${SIDE_KEY_FOR(side, 'planter_pot')}`, x, y, 130 * scale);
+  }
   tryDraw(deps, ['planterPot', 'pipeGreenSprite'], x, y, 130 * scale,
     () => deps.paint.pipe(x, y, scale));
+  return false;
 });
 
 register(['fence_wood_short', 'fence'], (deps, x, y, scale) => {
@@ -264,6 +289,8 @@ export function getSceneryDraw(assetType) {
 const SIDE_AWARE_TYPES = new Set([
   'grass_dirt_block', 'grass_dirt_step', 'terrainBlock',
   'floating_platform', 'platform',
+  // v3.8.34 — P1 Golden Rule batch.
+  'stone_brick_single', 'stone_wall_low', 'stone_wall_stairs', 'planter_pot',
 ]);
 
 /** @param {string} assetType */

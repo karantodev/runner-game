@@ -35,12 +35,18 @@ const ASSETS_DIR = path.join(ROOT, 'assets');
 const GAME_CONFIG = path.join(ROOT, 'src/config/gameConfig.js');
 const REPORT_OUT = path.join(ROOT, 'docs/asset-audit-report.md');
 
-/** Walk a directory recursively and return relative file paths from ROOT. */
+/**
+ * Walk a directory recursively and return relative file paths from ROOT.
+ * v3.8.34 — skips `_source/` subtrees so designer working-files and
+ * rejected deliveries don't pollute the unregistered / overdelivery
+ * counts. Engine never reads from `_source/`, audit shouldn't either.
+ */
 async function walk(dir) {
   const out = [];
   async function recurse(d) {
     const entries = await fs.readdir(d, { withFileTypes: true });
     for (const e of entries) {
+      if (e.isDirectory() && e.name === '_source') continue;
       const full = path.join(d, e.name);
       if (e.isDirectory()) await recurse(full);
       else if (e.isFile()) out.push(path.relative(ROOT, full));
