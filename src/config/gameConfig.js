@@ -522,6 +522,11 @@ export const GAME_CONFIG = Object.freeze({
     vineBarrierSingle03: './assets/obstacles/vine_barrier/vine_barrier_single_03.png',
     vineBarrierSingle04: './assets/obstacles/vine_barrier/vine_barrier_single_04.png',
     planterPot:          './assets/obstacles/planter_pot/planter_pot.png',
+    // v3.8.34 — Golden Rule P1 pair. Designer delivered the _left /
+    // _right variants alongside the stone_brick batch. SIDE_MAPPING_
+    // BY_TYPE default is 'swapped' (visible-face convention) to match.
+    planterPotLeft:      './assets/obstacles/planter_pot/planter_pot_left.png',
+    planterPotRight:     './assets/obstacles/planter_pot/planter_pot_right.png',
 
     // ── Structures — animated question block, stone (replaces purple) ────
     questionBlockAnim01:  './assets/structures/question_block/question_block_01.png',
@@ -532,6 +537,17 @@ export const GAME_CONFIG = Object.freeze({
     stoneBrickSingle:     './assets/structures/stone_brick/stone_brick_single.png',
     stoneWallLow:         './assets/structures/stone_brick/stone_wall_low.png',
     stoneWallStairs:      './assets/structures/stone_brick/stone_wall_stairs.png',
+    // v3.8.34 — Golden Rule P1 pair completion. Designer delivered the
+    // _left / _right variants matching the existing v3.8.27 batch
+    // (visible-face / SWAPPED convention — see sceneryDispatch.js).
+    // Mapping defaults to 'swapped' in SIDE_MAPPING_BY_TYPE so the
+    // engine picks the correct file per shoulder.
+    stoneBrickSingleLeft:  './assets/structures/stone_brick/stone_brick_single_left.png',
+    stoneBrickSingleRight: './assets/structures/stone_brick/stone_brick_single_right.png',
+    stoneWallLowLeft:      './assets/structures/stone_brick/stone_wall_low_left.png',
+    stoneWallLowRight:     './assets/structures/stone_brick/stone_wall_low_right.png',
+    stoneWallStairsLeft:   './assets/structures/stone_brick/stone_wall_stairs_left.png',
+    stoneWallStairsRight:  './assets/structures/stone_brick/stone_wall_stairs_right.png',
     platformFloating:     './assets/structures/platforms/platform_floating.png',
     // v3.8.15 — designer-delivered per-side platform variants.
     platformFloatingLeft:  './assets/structures/platforms/platform_floating_left.png',

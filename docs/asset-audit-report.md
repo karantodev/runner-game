@@ -8,12 +8,12 @@ Source-of-truth: `assets/` tree vs `src/config/gameConfig.js → GAME_CONFIG.ass
 
 | Metric | Count |
 |---|---|
-| Files in `assets/` (any extension) | 407 |
-| Registered keys in gameConfig | 277 |
-| Files reachable from gameConfig | 277 |
-| **Unregistered PNGs** | **153** |
-| **Dead keys (config → missing file)** | **28** |
-| Duplicate / near-duplicate groups (≥ 3 files / stem) | 23 |
+| Files in `assets/` (any extension) | 421 |
+| Registered keys in gameConfig | 285 |
+| Files reachable from gameConfig | 285 |
+| **Unregistered PNGs** | **145** |
+| **Dead keys (config → missing file)** | **14** |
+| Duplicate / near-duplicate groups (≥ 3 files / stem) | 26 |
 | Side-aware pairs (`_left` + `_right`) | 16 |
 | **Side-aware orphans** (one half shipped) | **1** |
 
@@ -21,14 +21,14 @@ Source-of-truth: `assets/` tree vs `src/config/gameConfig.js → GAME_CONFIG.ass
 
 | Category | File count |
 |---|---|
-| `assets/effects` | 59 |
+| `assets/effects` | 71 |
 | `assets/player` | 54 |
 | `assets/ui` | 50 |
 | `assets/structures` | 40 |
 | `assets/terrain` | 36 |
 | `assets/background` | 31 |
 | `assets/decor` | 24 |
-| `assets/collectibles` | 20 |
+| `assets/collectibles` | 22 |
 | `assets/obstacles` | 19 |
 | `assets/powerups` | 17 |
 | `assets/environment` | 11 |
@@ -56,20 +56,6 @@ These keys ARE registered in `GAME_CONFIG.assets` but the file is gone from disk
 | `orchidGoldSparkle04` | `assets/collectibles/orchid\_gold/orchid\_gold\_sparkle\_04.png` | **ANIM_PENDING_DESIGNER** |
 | `orchidGoldCollect05` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_05.png` | **ANIM_PENDING_DESIGNER** |
 | `orchidGoldCollect06` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_06.png` | **ANIM_PENDING_DESIGNER** |
-| `orchidGoldCollect07` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_07.png` | **ANIM_PENDING_DESIGNER** |
-| `orchidGoldCollect08` | `assets/collectibles/orchid\_gold/orchid\_gold\_collect\_08.png` | **ANIM_PENDING_DESIGNER** |
-| `dustPuff04` | `assets/effects/dust\_puff/dust\_puff\_04.png` | **ANIM_PENDING_DESIGNER** |
-| `jumpDust01` | `assets/effects/jump\_dust/jump\_dust\_01.png` | **ANIM_PENDING_DESIGNER** |
-| `jumpDust02` | `assets/effects/jump\_dust/jump\_dust\_02.png` | **ANIM_PENDING_DESIGNER** |
-| `jumpDust03` | `assets/effects/jump\_dust/jump\_dust\_03.png` | **ANIM_PENDING_DESIGNER** |
-| `jumpDust04` | `assets/effects/jump\_dust/jump\_dust\_04.png` | **ANIM_PENDING_DESIGNER** |
-| `hitFlash01` | `assets/effects/hit\_flash/hit\_flash\_01.png` | **ANIM_PENDING_DESIGNER** |
-| `hitFlash02` | `assets/effects/hit\_flash/hit\_flash\_02.png` | **ANIM_PENDING_DESIGNER** |
-| `hitFlash03` | `assets/effects/hit\_flash/hit\_flash\_03.png` | **ANIM_PENDING_DESIGNER** |
-| `hitFlash04` | `assets/effects/hit\_flash/hit\_flash\_04.png` | **ANIM_PENDING_DESIGNER** |
-| `laneSwoosh03` | `assets/effects/lane\_swoosh/lane\_swoosh\_03.png` | **ANIM_PENDING_DESIGNER** |
-| `laneSwoosh04` | `assets/effects/lane\_swoosh/lane\_swoosh\_04.png` | **ANIM_PENDING_DESIGNER** |
-| `collectBurst08` | `assets/effects/collect\_burst/collect\_burst\_08.png` | **ANIM_PENDING_DESIGNER** |
 | `iconComboX2` | `assets/ui/icons/icon\_combo\_x2.png` | **DEPRECATED** |
 | `iconComboX3` | `assets/ui/icons/icon\_combo\_x3.png` | **DEPRECATED** |
 | `iconComboX5` | `assets/ui/icons/icon\_combo\_x5.png` | **DEPRECATED** |
@@ -147,7 +133,7 @@ assets/player/farmer_run/player_farmer_run_11.png
 assets/player/farmer_run/player_farmer_run_12.png
 ```
 
-### `assets/effects` — stem `collect\_burst` (7 files)
+### `assets/effects` — stem `collect\_burst` (8 files)
 
 ```
 assets/effects/collect_burst/collect_burst_01.png
@@ -157,6 +143,7 @@ assets/effects/collect_burst/collect_burst_04.png
 assets/effects/collect_burst/collect_burst_05.png
 assets/effects/collect_burst/collect_burst_06.png
 assets/effects/collect_burst/collect_burst_07.png
+assets/effects/collect_burst/collect_burst_08.png
 ```
 
 ### `assets/background` — stem `cloud` (6 files)
@@ -170,6 +157,27 @@ assets/background/clouds/cloud_medium.png
 assets/background/clouds/cloud_small.png
 ```
 
+### `assets/collectibles` — stem `orchid\_gold\_collect` (6 files)
+
+```
+assets/collectibles/orchid_gold/orchid_gold_collect_01.png
+assets/collectibles/orchid_gold/orchid_gold_collect_02.png
+assets/collectibles/orchid_gold/orchid_gold_collect_03.png
+assets/collectibles/orchid_gold/orchid_gold_collect_04.png
+assets/collectibles/orchid_gold/orchid_gold_collect_07.png
+assets/collectibles/orchid_gold/orchid_gold_collect_08.png
+```
+
+### `assets/effects` — stem `dust\_puff` (5 files)
+
+```
+assets/effects/dust_puff/dust_puff_01.png
+assets/effects/dust_puff/dust_puff_02.png
+assets/effects/dust_puff/dust_puff_03.png
+assets/effects/dust_puff/dust_puff_04.png
+assets/effects/dust_puff_small.png
+```
+
 ### `assets/structures` — stem `question\_block` (5 files)
 
 ```
@@ -178,15 +186,6 @@ assets/structures/question_block/question_block_01.png
 assets/structures/question_block/question_block_02.png
 assets/structures/question_block/question_block_03.png
 assets/structures/question_block/question_block_04.png
-```
-
-### `assets/collectibles` — stem `orchid\_gold\_collect` (4 files)
-
-```
-assets/collectibles/orchid_gold/orchid_gold_collect_01.png
-assets/collectibles/orchid_gold/orchid_gold_collect_02.png
-assets/collectibles/orchid_gold/orchid_gold_collect_03.png
-assets/collectibles/orchid_gold/orchid_gold_collect_04.png
 ```
 
 ### `assets/decor` — stem `grass\_tuft` (4 files)
@@ -207,13 +206,31 @@ assets/effects/dust/dust_burst_03.png
 assets/effects/dust/dust_burst_04.png
 ```
 
-### `assets/effects` — stem `dust\_puff` (4 files)
+### `assets/effects` — stem `hit\_flash` (4 files)
 
 ```
-assets/effects/dust_puff/dust_puff_01.png
-assets/effects/dust_puff/dust_puff_02.png
-assets/effects/dust_puff/dust_puff_03.png
-assets/effects/dust_puff_small.png
+assets/effects/hit_flash/hit_flash_01.png
+assets/effects/hit_flash/hit_flash_02.png
+assets/effects/hit_flash/hit_flash_03.png
+assets/effects/hit_flash/hit_flash_04.png
+```
+
+### `assets/effects` — stem `jump\_dust` (4 files)
+
+```
+assets/effects/jump_dust/jump_dust_01.png
+assets/effects/jump_dust/jump_dust_02.png
+assets/effects/jump_dust/jump_dust_03.png
+assets/effects/jump_dust/jump_dust_04.png
+```
+
+### `assets/effects` — stem `lane\_swoosh` (4 files)
+
+```
+assets/effects/lane_swoosh/lane_swoosh_01.png
+assets/effects/lane_swoosh/lane_swoosh_02.png
+assets/effects/lane_swoosh/lane_swoosh_03.png
+assets/effects/lane_swoosh/lane_swoosh_04.png
 ```
 
 ### `assets/obstacles` — stem `vine\_barrier` (4 files)
@@ -354,25 +371,17 @@ assets/effects/sparkles/sparkle_star_02.png
 assets/effects/sparkles/sparkle_star_gold_01.png
 ```
 
-### SIDE_PAIR_PENDING (17)
+### SIDE_PAIR_PENDING (9)
 
 ```
 assets/decor/large/fence/fence_wood_short_left.png
 assets/decor/large/fence/fence_wood_short_right.png
-assets/obstacles/planter_pot/planter_pot_left.png
-assets/obstacles/planter_pot/planter_pot_right.png
 assets/structures/bricks/purple_brick_single_left.png
 assets/structures/bricks/purple_brick_single_right.png
 assets/structures/platforms/grass_dirt_platform_long_left.png
 assets/structures/platforms/grass_dirt_platform_long_right.png
 assets/structures/platforms/platform_hanging_vines_left.png
 assets/structures/platforms/platform_hanging_vines_right.png
-assets/structures/stone_brick/stone_brick_single_left.png
-assets/structures/stone_brick/stone_brick_single_right.png
-assets/structures/stone_brick/stone_wall_low_left.png
-assets/structures/stone_brick/stone_wall_low_right.png
-assets/structures/stone_brick/stone_wall_stairs_left.png
-assets/structures/stone_brick/stone_wall_stairs_right.png
 assets/terrain/blocks/grass_dirt_step_right.png
 ```
 

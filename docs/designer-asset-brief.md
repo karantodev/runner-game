@@ -35,24 +35,44 @@ The export rules below are now the **enforced standard** for every future player
 - ❌ **No 1254 × 1254 canvas** or any other non-canonical size
 - ❌ **No tight-cropped crouch / jump frames**
 
-#### P1 — Side-aware Golden Rule pairs (6 files)
+#### ✅ P1 — Side-aware Golden Rule pairs — **DELIVERED & WIRED** (v3.8.34)
 
-1. **6 side-aware PNGs** to finish the Golden Rule:
-   - `structures/stone_brick/stone_wall_low_left/right.png`     (168 × 56)
-   - `structures/stone_brick/stone_brick_single_left/right.png`  (56 × 56)
-   - `obstacles/planter_pot/planter_pot_left/right.png`          (64 × 80)
+Designer delivered 8 PNGs (4 pairs); engine registered new keys + wired the side-aware dispatcher branches; `SIDE_PAIR_PENDING` count dropped 17 → 9. Mapping default is `swapped` (visible-face convention, matching the v3.8.27 wave). Acceptance verified via the Sprite Lab QA panel `?debugSides=1` overlay.
 
-#### P2 — Anim sheets
+| Pair | Status | Path | Mapping |
+|---|---|---|---|
+| `stone_wall_low_left/right` (168 × 56) | ✅ accepted | `assets/structures/stone_brick/` | swapped |
+| `stone_brick_single_left/right` (56 × 56) | ✅ accepted | `assets/structures/stone_brick/` | swapped |
+| `stone_wall_stairs_left/right` (168 × 56) | ✅ accepted | `assets/structures/stone_brick/` | swapped |
+| `obstacles/planter_pot_left/right` (64 × 80) | ✅ accepted | `assets/obstacles/planter_pot/` | swapped |
 
-2. **Anim sheets that aren't shipped yet**:
-   - `sparkle_01..04`, `hit_flash_01..04`, `lane_swoosh_01..04`, `collect_burst_01..08`
-   - `orchid_gold_sparkle_01..04`, `orchid_gold_collect_01..08`
+#### ✅ P2 — Anim sheets — **DELIVERED & ACCEPTED** (v3.8.34)
 
-#### P3 — Housekeeping
+Designer delivered every previously-dead anim key at the canonical path. Files bridge the existing keys; no config changes required.
 
-3. **Rename or move** the two player WIP folders that use Cyrillic / transliterated names:
-   - `player/farmer_remaining_batch/` → canonical English names OR move to `_source/`
-   - `player/farmer_unfinished_batch/` → same
+- ✅ `effects/hit_flash/hit_flash_01..04.png` → `hitFlash01..04` (wired in EffectsRenderer)
+- ✅ `effects/jump_dust/jump_dust_01..04.png` → `jumpDust01..04` (wired in EffectsSystem)
+- ✅ `effects/lane_swoosh/lane_swoosh_03..04.png` → `laneSwoosh03..04` (completes the 4-frame sequence)
+- ✅ `effects/collect_burst/collect_burst_08.png` → `collectBurst08`
+- ✅ `effects/dust_puff/dust_puff_04.png` → `dustPuff04`
+- ✅ `effects/sparkle/sparkle_01..04.png` (updated re-export)
+- ✅ `collectibles/orchid_gold/orchid_gold_collect_07..08.png` → `orchidGoldCollect07..08`
+- ✅ `collectibles/orchid_gold/orchid_gold_main.png` (updated re-export)
+
+#### 🛑 P2 — REJECTED in v3.8.34 intake (moved to `_source/`)
+
+Two folders shipped to non-canonical paths that duplicate the already-registered canonical locations. Moved to `assets/_source/rejected_2026_05_29/` (with `README.md` documenting why) so designer can recover if needed; engine never reads from `_source/`.
+
+| Rejected path | Canonical path | Reason |
+|---|---|---|
+| `assets/effects/orchid_gold_collect/orchid_gold_collect_01..06.png` | `assets/collectibles/orchid_gold/orchid_gold_collect_01..06.png` | wrong category; canonical already filled |
+| `assets/effects/orchid_gold_sparkle/orchid_gold_sparkle_01..04.png` | `assets/collectibles/orchid_gold/orchid_gold_sparkle_01..04.png` | wrong category; canonical already filled |
+
+If a future re-spin of these animations is needed, overwrite IN PLACE at the canonical paths above — do not re-create under `assets/effects/`.
+
+#### ✅ P3 — Player WIP folders — **MOVED** (v3.8.33)
+
+Player WIP batches moved to `assets/player/_source/` per the housekeeping rule. Engine never reads from `_source/`; audit script now also skips it (v3.8.34) so designer working-files don't pollute the unregistered / overdelivery counts.
 
 ### 🛑 DO NOT MAKE MORE OF THESE (already enough)
 
