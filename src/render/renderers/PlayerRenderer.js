@@ -1,14 +1,70 @@
 const CLONE_TINT = '#a978ff';
 
 /**
+ * v3.8.29 — Canonical Player Frame Model.
+ *
+ * Every player sprite is conceptually drawn into a 64×96 canonical canvas
+ * with anchor at canvas-bottom-center. The engine uses a UNIFIED pixel
+ * scale derived from this canonical width — every sprite is rendered at
+ * `naturalW × PIXEL_SCALE`, never stretched to fit a target width.
+ *
+ * Why this matters: v3.8.25 introduced a "fixed visual box" and force-fit
+ * every sprite to `visualW = 120 * bodyScale`. A 56-wide crouch sprite
+ * therefore became 120 wide on screen — the SAME pixel width as a 64-wide
+ * run sprite. That made the crouched farmer appear BIGGER than the running
+ * farmer inside the same outer box. The cyan box was consistent, the
+ * character inside was not.
+ *
+ * With v3.8.29, PIXEL_SCALE = (120 * bodyScale) / 64 is constant for the
+ * whole renderer call. A 64-wide sprite draws at 120, a 56-wide sprite
+ * draws at 105 (smaller, as it should be — designer cropped tighter), a
+ * 72-wide sprite draws at 135 (wider). Character body scale is preserved
+ * faithfully from the source.
+ *
+ * Per-frame metadata can override the anchor for sprites the designer
+ * ships off-center or above the canvas floor. Default metadata anchors
+ * each sprite at its own bottom-center, which matches the historical
+ * "sprite bottom = character feet" convention.
+ */
+const CANONICAL_PLAYER = { w: 64, h: 96 };
+
+/**
+ * Per-frame override format:
+ *   { spriteOffsetX, spriteOffsetY, anchorX, footY }
+ * — `spriteOffsetX/Y` = top-left of sprite art inside the canonical canvas
+ * — `anchorX, footY`  = anchor point in CANVAS coords; this anchor maps to
+ *                       the player's foot position
+ * Add entries here only when a sprite breaks the default
+ * "bottom-center of natural art = character feet" convention.
+ */
+const PLAYER_FRAME_META = {
+  // No overrides yet. Designer currently ships sprites with character feet
+  // at sprite bottom; the default below is sufficient. Example override:
+  //   playerFarmerCrouch01: { spriteOffsetX: 0, spriteOffsetY: 24, anchorX: 32, footY: 96 },
+};
+
+function getFrameMeta(spriteImg, key) {
+  const override = PLAYER_FRAME_META[key];
+  if (override) return override;
+  // Default: sprite-bottom-center anchored at player feet, sprite occupies
+  // its own natural dimensions inside an implicit canvas of the same size.
+  return {
+    spriteOffsetX: 0,
+    spriteOffsetY: 0,
+    anchorX: spriteImg.naturalWidth / 2,
+    footY: spriteImg.naturalHeight,
+  };
+}
+
+/**
  * Player + split-clones rendering. Picks the correct sprite from the
- * run or crouch atlas, applies tilt / squash / stretch / Y-squash
- * (crouch), and overlays a coloured wash for clone bodies.
+ * run / crouch / jump / hit / idle atlas, applies tilt, and overlays a
+ * coloured wash for clone bodies.
  *
  * The procedural fillRect-fallback farmer that used to live here was
- * removed in phase 5: all 8 run frames and 4 crouch frames are bundled
- * assets and load reliably; if a future asset fails to load, the canvas
- * draws a blank where the player was and the developer fixes the asset.
+ * removed in phase 5: all bundled frames load reliably; if a future asset
+ * fails to load, the canvas draws a blank where the player was and the
+ * developer fixes the asset.
  */
 export class PlayerRenderer {
   constructor({ ctx, projection, assets }) {
@@ -92,28 +148,31 @@ export class PlayerRenderer {
       const img = this.assets.get(key);
       if (!img?.naturalWidth) continue;
 
-      // v3.8.6 Tier-2 composition pass — base width 138 → 120 (-13%).
-      // Previous size was dominating the road and made everything else
-      // read undersized. New ratio matches the reference where the
-      // farmer is the visible focal point but obstacles/blocks around
-      // him feel proportional.
+      // v3.8.29 — uniform PIXEL_SCALE (same as live body), so trail ghosts
+      // match the live player's per-sprite proportions exactly. Previously
+      // ghosts were force-fit to width 120 like the body was; now both
+      // share the canonical-canvas-derived scale.
       const bodyScale = (p.height / 720) * 1.23;
-      const spriteW = Math.round(120 * bodyScale);
-      const spriteH = Math.round(spriteW * (img.naturalHeight / img.naturalWidth));
+      const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
+      const meta = getFrameMeta(img, key);
+      const drawW = Math.round(img.naturalWidth * pixelScale);
+      const drawH = Math.round(img.naturalHeight * pixelScale);
+      const anchorXInSprite = meta.anchorX - meta.spriteOffsetX;
+      const anchorYInSprite = meta.footY - meta.spriteOffsetY;
+      const drawLeft = Math.round(-anchorXInSprite * pixelScale);
+      const drawTop = Math.round(-anchorYInSprite * pixelScale);
       const x = p.width / 2 + g.laneX * p.visualLaneWidth;
       const bottomMargin = world.config.player.bottomMargin ?? 0;
       const y = p.groundY - bottomMargin + g.y;
 
       ctx.save();
       ctx.globalAlpha = alpha;
-      // v3.8.24 — pixel-snap trail ghosts (same fix as the live body).
       ctx.translate(Math.round(x), Math.round(y));
-      // Greenish tint via composite — purely cosmetic, ties to speed-burst.
-      ctx.drawImage(img, -spriteW / 2, -spriteH, spriteW, spriteH);
+      ctx.drawImage(img, drawLeft, drawTop, drawW, drawH);
       ctx.globalCompositeOperation = 'source-atop';
       ctx.globalAlpha = alpha * 0.6;
       ctx.fillStyle = '#7dff64';
-      ctx.fillRect(-spriteW / 2, -spriteH, spriteW, spriteH);
+      ctx.fillRect(drawLeft, drawTop, drawW, drawH);
       ctx.restore();
     }
   }
@@ -138,15 +197,15 @@ export class PlayerRenderer {
     // visual scaling. Previously stretch/squash/jumpStretch/landSquash
     // applied ±7% scale on takeoff/landing, lateral squash applied
     // ±18% scale on lane-change, and crouchSquashY (0.78) shrank the
-    // crouch sprite by 22% on top of the shorter crouch ART. The
-    // result: the player's visual size CHANGED between states (jump
-    // briefly bigger / duck briefly smaller / lane-change wobble).
-    // Per the brief, scale is now CONSTANT; only pose (sprite art
-    // choice) + foot-anchor Y (jump arc) + tilt (rotation, not scale)
-    // change between states.
+    // crouch sprite by 22% on top of the shorter crouch ART. Scale is
+    // now CONSTANT; only pose (sprite art choice) + foot-anchor Y
+    // (jump arc) + tilt (rotation, not scale) change between states.
     const stretch = 1;
     const squash = 1;
     const bodyScale = (p.height / 720) * 1.23;
+    // v3.8.29 — unified pixel scale derived from canonical 64×96 canvas.
+    // See module-level comment for the full rationale.
+    const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
 
     // State-priority pick: menu/dead idle → hit (one-shot during invuln) →
     // jump (one-shot per arc) → crouch (looped) → run (looped). Hit frames
@@ -205,84 +264,97 @@ export class PlayerRenderer {
     if (!spriteImg?.naturalWidth) return;
     const refFrame = this.assets.get(fallbackKey) ?? spriteImg;
 
-    // v3.8.24 — lateral momentum lean removed (was ±18% horizontal
-    // scale on lane-change). The tilt rotation already conveys
-    // momentum without distorting the silhouette.
-
-    // v3.8.25 Fixed Visual Box — the OUTER visual frame is constant
-    // across run / jump / duck / hit. We size it from the canonical
-    // RUN sprite's aspect ratio (the tallest pose), so when the crouch
-    // sprite (shorter ART) is drawn inside the box, its top stops
-    // BELOW the box top — the empty space is the visible duck pose,
-    // not a size shrink of the whole character.
-    const canonImg = this.assets.get('playerFarmerRun01') ?? refFrame;
-    const visualW = Math.round(120 * bodyScale);
-    const visualH = Math.round(visualW * (canonImg.naturalHeight / canonImg.naturalWidth));
-    // Sprite is drawn at its NATURAL aspect, anchored at the bottom of
-    // the visual box. Crouch (shorter) → drawn smaller height, but the
-    // outer box stays visualH. Run / jump / hit (taller) → fills the box.
-    const drawW = visualW;
-    const drawH = Math.round(visualW * (spriteImg.naturalHeight / spriteImg.naturalWidth));
+    // v3.8.29 True Sprite Scale Normalization — uniform pixel scale.
+    // The CANONICAL outer box stays constant across all states (sized
+    // from CANONICAL_PLAYER.w × .h × pixelScale). The sprite art is
+    // drawn at its NATURAL dimensions scaled by `pixelScale` (NOT
+    // stretched to fit a target width like in v3.8.25). Per-frame meta
+    // anchors map a (anchorX, footY) point on the canvas to the
+    // player's foot position. Default meta = sprite-bottom-center, so
+    // historical sprites without overrides keep working.
+    const visualW = Math.round(CANONICAL_PLAYER.w * pixelScale);
+    const visualH = Math.round(CANONICAL_PLAYER.h * pixelScale);
+    const meta = getFrameMeta(spriteImg, runKey);
+    const drawW = Math.round(spriteImg.naturalWidth * pixelScale);
+    const drawH = Math.round(spriteImg.naturalHeight * pixelScale);
+    const anchorXInSprite = meta.anchorX - meta.spriteOffsetX;
+    const anchorYInSprite = meta.footY - meta.spriteOffsetY;
+    const drawLeft = Math.round(-anchorXInSprite * pixelScale);
+    const drawTop = Math.round(-anchorYInSprite * pixelScale);
 
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate(tilt);
     ctx.scale(squash, stretch);
-    ctx.drawImage(spriteImg, -drawW / 2, -drawH, drawW, drawH);
+    ctx.drawImage(spriteImg, drawLeft, drawTop, drawW, drawH);
 
     if (isClone) {
       // Purple wash overlay so split-clones read as duplicates of the player.
       ctx.globalCompositeOperation = 'source-atop';
       ctx.globalAlpha = alpha * 0.55;
       ctx.fillStyle = CLONE_TINT;
-      ctx.fillRect(-drawW / 2, -drawH, drawW, drawH);
+      ctx.fillRect(drawLeft, drawTop, drawW, drawH);
     }
 
     ctx.restore();
 
-    // v3.8.25 — debug overlay uses the OUTER visual box (visualW × visualH),
-    // not the inner sprite draw rect. Outer box stays the same size
-    // across all states; sprite art changes inside.
     if (!isClone && world.config.debug?.showPlayer) {
       this.#drawPlayerDebug(world, {
-        x, y, visualW, visualH, drawH, alpha, prefix, runKey, crouching, airborne, justHit,
+        x, y, visualW, visualH, drawW, drawH, drawLeft, drawTop,
+        alpha, runKey, crouching, airborne, justHit, pixelScale,
       });
     }
   }
 
   /**
-   * v3.8.25 — visual-bounds (OUTER fixed box) + foot-anchor + sprite-
-   * art bounds (inner) + collision capsule + state label.
+   * v3.8.29 — debug overlay surfaces the canonical-box vs sprite-art-box
+   * relationship so QA can verify two invariants at once:
    *
-   * The cyan outer box stays the SAME size across all states. A magenta
-   * inner box shows the actual sprite art bounds (smaller for crouch).
-   * The empty space between cyan and magenta on a crouch frame is the
-   * "duck pose lives inside the box" gap.
+   *  • CYAN outer box = canonical 64×96 × pixelScale — CONSTANT across
+   *    every state. If two states show different cyan box sizes, the
+   *    bug is in the renderer / pixelScale derivation.
+   *  • MAGENTA inner box = actual sprite-art draw rect at uniform
+   *    pixelScale (so a 56-wide sprite shows a NARROWER magenta box,
+   *    not a same-width box like in v3.8.25). If the magenta box wider
+   *    than cyan, designer over-shipped width vs canonical.
+   *  • RED foot dot = anchor point (player.y). Should stay rooted at
+   *    the same screen line across all states except jump.
+   *  • YELLOW capsule = collision capsule, shorter in DUCK.
+   *
+   * The "duck looks like a shrunken farmer" failure shows up here as
+   * MAGENTA visibly narrower AND shorter than cyan — and matching
+   * character pixel scale to run. The "duck looks like a crouched
+   * farmer of correct size" success shows up as MAGENTA at the same
+   * pixel scale as run, just shorter.
    */
   #drawPlayerDebug(world, info) {
     const ctx = this.ctx;
-    const { x, y, visualW, visualH, drawH, alpha, runKey, crouching, airborne, justHit } = info;
+    const {
+      x, y, visualW, visualH, drawW, drawH, drawLeft, drawTop,
+      alpha, runKey, crouching, airborne, justHit, pixelScale,
+    } = info;
     const rx = Math.round(x);
     const ry = Math.round(y);
     ctx.save();
-    // OUTER visual box — constant across states
+    // OUTER canonical box (cyan) — 64×96 × pixelScale. Constant.
     ctx.strokeStyle = '#00ffd6';
     ctx.lineWidth = 1;
     ctx.strokeRect(rx - visualW / 2, ry - visualH, visualW, visualH);
-    // INNER sprite-art box — shows actual drawn sprite rect (shorter for crouch)
-    if (drawH !== visualH) {
-      ctx.strokeStyle = 'rgba(255,92,214,0.7)';
-      ctx.setLineDash([2, 2]);
-      ctx.strokeRect(rx - visualW / 2, ry - drawH, visualW, drawH);
-      ctx.setLineDash([]);
-    }
-    // Foot anchor — stable red dot
+    // INNER sprite-art box (magenta dashed) — actual drawn rect. Width
+    // and height both vary by sprite at uniform scale.
+    const sx = rx + drawLeft;
+    const sy = ry + drawTop;
+    ctx.strokeStyle = 'rgba(255,92,214,0.85)';
+    ctx.setLineDash([2, 2]);
+    ctx.strokeRect(sx, sy, drawW, drawH);
+    ctx.setLineDash([]);
+    // Foot anchor (red dot) — stays put across run/duck/hit, lifts in jump.
     ctx.fillStyle = '#ff3030';
     ctx.beginPath();
     ctx.arc(rx, ry, 3, 0, Math.PI * 2);
     ctx.fill();
-    // Collision capsule — yellow dashed, height shrinks ONLY when crouching
+    // Collision capsule (yellow dashed) — shorter when crouching.
     const collisionH = crouching ? visualH * 0.55 : visualH * 0.95;
     const collisionW = visualW * 0.42;
     ctx.strokeStyle = 'rgba(255,210,80,0.7)';
@@ -291,7 +363,7 @@ export class PlayerRenderer {
     ctx.setLineDash([]);
     // State label
     const state = justHit ? 'HIT' : airborne ? 'JUMP' : crouching ? 'DUCK' : 'RUN';
-    const text = `${state} | a=${alpha.toFixed(2)} | box=${visualW}×${visualH} | ${runKey}`;
+    const text = `${state} | scale=${pixelScale.toFixed(2)} | box=${visualW}×${visualH} | art=${drawW}×${drawH} | ${runKey}`;
     ctx.font = '11px monospace';
     const tw = ctx.measureText(text).width;
     ctx.fillStyle = 'rgba(0,0,0,0.65)';

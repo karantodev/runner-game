@@ -352,47 +352,102 @@ if (debugEnabled) {
 }
 
 /**
+ * v3.8.29 — Player Debug State Registry.
+ *
+ * Flat array, grouped via the `group` field. The DOM QA panel renders one
+ * button per entry; keyboard 1-9 maps to the first nine ids for backward
+ * compat. Adding a new state = appending one entry here; no renderer
+ * change required.
+ *
+ * Separation of concerns:
+ *  • POSE states (Run / Jump / Duck / Hit) — pin the player to a frame
+ *    by setting vy, y, isJumping, crouching, invuln, hitFlash, runFrame
+ *    on the live components. Effects (idle / invuln blink) belong here
+ *    because they live ON the player.
+ *  • OVERLAY states (Death / Replay) — change `world.state` so the
+ *    death animation / replay overlay renders. The player pose under
+ *    the overlay is whatever the death/replay system draws.
+ *
+ * `runFrame` is optional; setting it pegs a specific animation frame
+ * (frame index N → runFrame = N * 3.15, matches the renderer cadence).
+ */
+const PLAYER_DEBUG_STATES = [
+  // Run
+  { id: 'run',           label: 'Run (anim)',      group: 'Run',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'run_01',        label: 'Frame 01',        group: 'Run',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0, runFrame: 0 },
+  { id: 'run_03',        label: 'Frame 03',        group: 'Run',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0, runFrame: 6.3 },
+  { id: 'run_06',        label: 'Frame 06',        group: 'Run',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0, runFrame: 15.75 },
+  // Jump (all six poses, derived from the renderer's vy thresholds)
+  { id: 'jump_ascend',   label: 'Ascend',          group: 'Jump',    worldState: 'paused', vy: -14, y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'jump_takeoff',  label: 'Takeoff (late)',  group: 'Jump',    worldState: 'paused', vy: -7,  y: -130, isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'jump_apex_up',  label: 'Apex Up',         group: 'Jump',    worldState: 'paused', vy: -2,  y: -160, isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'jump_peak',     label: 'Peak',            group: 'Jump',    worldState: 'paused', vy: 2,   y: -160, isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'jump_descend',  label: 'Descend',         group: 'Jump',    worldState: 'paused', vy: 7,   y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'jump_land',     label: 'Hard Impact',     group: 'Jump',    worldState: 'paused', vy: 14,  y: -10,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+  // Duck
+  { id: 'duck',          label: 'Duck (anim)',     group: 'Duck',    worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0 },
+  { id: 'duck_01',       label: 'Frame 01',        group: 'Duck',    worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0, runFrame: 0 },
+  { id: 'duck_02',       label: 'Frame 02',        group: 'Duck',    worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0, runFrame: 3.15 },
+  { id: 'duck_03',       label: 'Frame 03',        group: 'Duck',    worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0, runFrame: 6.3 },
+  // Hit (4 frames pegged via invuln countdown threshold in renderer)
+  { id: 'hit_01',        label: 'Hit Frame 01',    group: 'Hit',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 80, hitFlash: 0.6 },
+  { id: 'hit_02',        label: 'Hit Frame 02',    group: 'Hit',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 76, hitFlash: 0.6 },
+  { id: 'hit_03',        label: 'Hit Frame 03',    group: 'Hit',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 70, hitFlash: 0.6 },
+  { id: 'hit_04',        label: 'Hit Frame 04',    group: 'Hit',     worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 62, hitFlash: 0.6 },
+  // Effects (still a pose, not an overlay)
+  { id: 'invuln_dim',    label: 'Invuln (dim)',    group: 'Effects', worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 21, hitFlash: 0 },
+  { id: 'invuln_bright', label: 'Invuln (bright)', group: 'Effects', worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 24, hitFlash: 0 },
+  { id: 'idle_menu',     label: 'Idle (menu)',     group: 'Effects', worldState: 'menu',   vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+  // Overlay (game state, not player pose)
+  { id: 'death',         label: 'Death',           group: 'Overlay', worldState: 'dying',  vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+  { id: 'replay',        label: 'Replay Overlay',  group: 'Overlay', worldState: 'dead',   vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+];
+
+const PLAYER_DEBUG_STATE_BY_ID = new Map(PLAYER_DEBUG_STATES.map((s) => [s.id, s]));
+const PLAYER_DEBUG_GROUPS = [...new Set(PLAYER_DEBUG_STATES.map((s) => s.group))];
+// Keyboard 1-9 map to the most-used QA targets (backward compat).
+const PLAYER_DEBUG_KEY_MAP = {
+  '1': 'run', '2': 'jump_ascend', '3': 'jump_peak', '4': 'jump_descend',
+  '5': 'duck', '6': 'hit_01', '7': 'invuln_dim', '8': 'death', '9': 'replay',
+};
+
+/**
  * v3.8.27 — installs the player-states debug mode on top of the game.
- * Sets world to a paused-but-rendering state, exposes 1-9 hotkeys, and
- * adds capturePlayerStates() to the debug API.
+ * v3.8.29 — driven by PLAYER_DEBUG_STATES registry + on-screen QA panel.
  */
 function installPlayerStatesMode(game, debugApi) {
-  const PRESETS = {
-    run:           { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
-    jump_ascend:   { worldState: 'paused', vy: -14, y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
-    jump_peak:     { worldState: 'paused', vy: 0,   y: -160, isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
-    jump_descend:  { worldState: 'paused', vy: 12,  y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
-    duck:          { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0 },
-    hit:           { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 78, hitFlash: 0.6 },
-    invulnerable:  { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 30, hitFlash: 0 },
-    death:         { worldState: 'dying',  vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
-    replay:        { worldState: 'dying',  vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
-  };
-  const KEY_MAP = {
-    '1': 'run', '2': 'jump_ascend', '3': 'jump_peak', '4': 'jump_descend',
-    '5': 'duck', '6': 'hit', '7': 'invulnerable', '8': 'death', '9': 'replay',
+  // Mode flags toggled from the QA panel.
+  const modes = {
+    poseBaselineLock: false,  // force y = 0 across all states (visual QA on common ground line)
+    hidePerfHud: false,
+    hideOrchidPanel: false,
   };
 
-  const applyPreset = (presetName) => {
-    const preset = PRESETS[presetName];
-    if (!preset || !game.world?.player) return;
+  const applyPreset = (stateId) => {
+    const state = PLAYER_DEBUG_STATE_BY_ID.get(stateId);
+    if (!state || !game.world?.player) return;
     const w = game.world;
     const p = w.player;
-    w.state = preset.worldState;
-    if (preset.worldState === 'dying') w.dyingFrames = w.config.gameplay.dyingFrames;
+    w.state = state.worldState;
+    if (state.worldState === 'dying') w.dyingFrames = w.config.gameplay.dyingFrames;
     // Centre player in middle lane, zero scroll for a stable backdrop.
     p.components.LaneState.laneX = 0;
     p.components.LaneState.targetLane = 0;
     p.components.LaneState.laneTilt = 0;
-    p.components.VerticalState.y = preset.y;
-    p.components.VerticalState.vy = preset.vy;
-    p.components.VerticalState.isJumping = preset.isJumping;
+    // Pose-baseline lock: force y = 0 so jump pose can be compared on
+    // the same ground line as run/duck/hit. The vy still gets applied
+    // so the renderer picks the correct jump frame, but the visual
+    // anchor is locked to the ground.
+    p.components.VerticalState.y = modes.poseBaselineLock ? 0 : state.y;
+    p.components.VerticalState.vy = state.vy;
+    p.components.VerticalState.isJumping = state.isJumping;
     p.components.VerticalState.jumpStretch = 0;
     p.components.VerticalState.landSquash = 0;
-    p.components.CrouchState.isCrouching = preset.crouching;
-    p.components.Health.invulnerabilityFrames = preset.invuln;
-    p.components.Health.hitFlash = preset.hitFlash;
-    console.info(`[debugPlayerStates] state = ${presetName}`);
+    p.components.CrouchState.isCrouching = state.crouching;
+    p.components.Health.invulnerabilityFrames = state.invuln;
+    p.components.Health.hitFlash = state.hitFlash;
+    if (state.runFrame !== undefined) p.components.AnimState.runFrame = state.runFrame;
+    console.info(`[debugPlayerStates] state = ${stateId}${modes.poseBaselineLock ? ' (baseline-locked)' : ''}`);
   };
 
   // Start the run automatically so player exists, then immediately
@@ -409,46 +464,52 @@ function installPlayerStatesMode(game, debugApi) {
     requestAnimationFrame(enterMode);
   });
 
-  // Keyboard 1-9 switches state.
+  // Keyboard 1-9 — backward compat. Panel buttons cover everything else.
   window.addEventListener('keydown', (event) => {
     if (!GAME_CONFIG.debug.showPlayerStates) return;
     const target = event.target;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-    const presetName = KEY_MAP[event.key];
+    const presetName = PLAYER_DEBUG_KEY_MAP[event.key];
     if (!presetName) return;
     event.preventDefault();
     applyPreset(presetName);
   });
 
   /**
-   * v3.8.28 — capturePlayerStates({ debugOverlay, download }):
-   *   debugOverlay: true  — keep cyan/magenta/red player overlay (default; technical QA)
+   * v3.8.28 / v3.8.29 — capturePlayerStates({ debugOverlay, download, group }):
+   *   debugOverlay: true  — keep cyan/magenta/red overlay (technical QA, default)
    *   debugOverlay: false — temporarily disable showPlayer for clean visual QA
    *   download:     true  — auto-trigger download per state
+   *   group:        'Run' | 'Jump' | ... — only capture states in this group
    *
-   * Note: DOM-level overlays (PerformanceHUD panel, Orchid debug panel)
-   * sit OUTSIDE the canvas, so canvas.toDataURL never includes them.
-   * Only the in-canvas debug overlay (PlayerRenderer.#drawPlayerDebug)
-   * is gated by the showPlayer flag.
+   * Returns { [stateId]: dataURL } for downstream composition.
+   * Note: DOM overlays (PerformanceHUD, debug panel, QA panel) sit OUTSIDE
+   * the canvas, so canvas.toDataURL never includes them — but the
+   * hidePerfHud/hideOrchidPanel toggles still apply for manual
+   * system screenshots taken on top of the QA panel.
    */
   debugApi.applyPlayerState = applyPreset;
-  debugApi.capturePlayerStates = async ({ debugOverlay = true, download = false } = {}) => {
-    const states = Object.keys(PRESETS);
+  debugApi.getPlayerDebugStates = () => PLAYER_DEBUG_STATES.map((s) => ({ ...s }));
+  debugApi.setPoseBaselineLock = (v) => { modes.poseBaselineLock = !!v; };
+  debugApi.capturePlayerStates = async ({ debugOverlay = true, download = false, group = 'all' } = {}) => {
+    const targets = group === 'all'
+      ? PLAYER_DEBUG_STATES
+      : PLAYER_DEBUG_STATES.filter((s) => s.group === group);
     const canvas = document.getElementById('game');
     const prevShowPlayer = GAME_CONFIG.debug.showPlayer;
     if (!debugOverlay) {
       Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: false, writable: false, configurable: true });
     }
     const results = {};
-    for (const state of states) {
-      applyPreset(state);
+    for (const state of targets) {
+      applyPreset(state.id);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const dataURL = canvas.toDataURL('image/png');
-      results[state] = dataURL;
+      results[state.id] = dataURL;
       if (download) {
         const a = document.createElement('a');
         a.href = dataURL;
-        a.download = `player_state_${state}${debugOverlay ? '_debug' : '_clean'}.png`;
+        a.download = `player_state_${state.id}${debugOverlay ? '_debug' : '_clean'}.png`;
         a.click();
       }
     }
@@ -460,58 +521,229 @@ function installPlayerStatesMode(game, debugApi) {
   };
 
   /**
-   * v3.8.28 — capturePlayerStatesContactSheet({ debugOverlay, cols, download }):
-   * Composites all 9 state captures into one PNG grid (3 × 3 by default).
-   * Lets QA verify cyan box constancy at a glance.
+   * v3.8.28 / v3.8.29 — capturePlayerStatesContactSheet({ debugOverlay, columns, download, group }):
+   * Composites every state in `group` into one PNG grid. Default `columns`
+   * is auto-derived from the state count (4 for all, 3 otherwise).
    */
-  debugApi.capturePlayerStatesContactSheet = async ({ debugOverlay = true, cols = 3, download = true } = {}) => {
-    const shots = await debugApi.capturePlayerStates({ debugOverlay, download: false });
+  debugApi.capturePlayerStatesContactSheet = async ({
+    debugOverlay = true, columns, cols, download = true, group = 'all',
+  } = {}) => {
+    const shots = await debugApi.capturePlayerStates({ debugOverlay, download: false, group });
     const states = Object.keys(shots);
-    const rows = Math.ceil(states.length / cols);
+    const colCount = columns ?? cols ?? (states.length > 9 ? 4 : 3);
+    const rows = Math.ceil(states.length / colCount);
     const canvas = document.getElementById('game');
     const cellW = canvas.width;
     const cellH = canvas.height;
     const margin = 12;
     const labelH = 28;
     const sheet = document.createElement('canvas');
-    sheet.width = cols * cellW + (cols + 1) * margin;
+    sheet.width = colCount * cellW + (colCount + 1) * margin;
     sheet.height = rows * (cellH + labelH) + (rows + 1) * margin;
     const ctx = sheet.getContext('2d');
     ctx.fillStyle = '#0a0d14';
     ctx.fillRect(0, 0, sheet.width, sheet.height);
     ctx.imageSmoothingEnabled = false;
     for (let i = 0; i < states.length; i += 1) {
-      const state = states[i];
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+      const stateId = states[i];
+      const col = i % colCount;
+      const row = Math.floor(i / colCount);
       const x = margin + col * (cellW + margin);
       const y = margin + row * (cellH + labelH + margin);
       const img = new Image();
-      img.src = shots[state];
+      img.src = shots[stateId];
       // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => { img.onload = r; });
       ctx.drawImage(img, x, y, cellW, cellH);
       ctx.font = 'bold 18px monospace';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(state.toUpperCase(), x + cellW / 2, y + cellH + 20);
+      ctx.fillText(stateId.toUpperCase(), x + cellW / 2, y + cellH + 20);
     }
     const dataURL = sheet.toDataURL('image/png');
     if (download) {
+      const groupSlug = group === 'all' ? '' : `_${group.toLowerCase()}`;
       const a = document.createElement('a');
       a.href = dataURL;
-      a.download = `player_states_contact_sheet${debugOverlay ? '_debug' : '_clean'}.png`;
+      a.download = `player_states_contact_sheet${groupSlug}${debugOverlay ? '_debug' : '_clean'}.png`;
       a.click();
     }
     return dataURL;
   };
 
+  installPlayerStateQAPanel(debugApi, modes, applyPreset);
+
   console.info(
-    '[debugPlayerStates] keys 1-9 switch state.\n' +
-    '  Captures:\n' +
-    '    __ORCHID_DEBUG__.capturePlayerStates({ debugOverlay: false, download: true })\n' +
-    '    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ debugOverlay: false })',
+    '[debugPlayerStates] on-screen panel available top-right.\n' +
+    '  Keyboard 1-9 still maps to run / jump (×3) / duck / hit / invuln / death / replay.\n' +
+    '  Captures via console:\n' +
+    "    __ORCHID_DEBUG__.capturePlayerStates({ debugOverlay: false, download: true, group: 'Run' })\n" +
+    "    __ORCHID_DEBUG__.capturePlayerStatesContactSheet({ debugOverlay: false, group: 'Jump' })",
   );
+}
+
+/**
+ * v3.8.29 — On-screen QA panel for the player-states debug mode.
+ * Renders one button per registry entry, grouped by `group`, plus toggles
+ * for pose-baseline-lock / DOM overlay visibility / debug overlay and
+ * capture buttons (per group + all). Buttons are generated from
+ * PLAYER_DEBUG_STATES — no hardcoded 1-9 limit, no list to maintain in
+ * two places.
+ */
+function installPlayerStateQAPanel(debugApi, modes, applyPreset) {
+  const panel = document.createElement('aside');
+  panel.id = 'player-state-qa-panel';
+  Object.assign(panel.style, {
+    position: 'fixed',
+    top: '12px',
+    right: '12px',
+    zIndex: '1001',
+    width: '300px',
+    maxHeight: '94vh',
+    overflowY: 'auto',
+    padding: '12px',
+    borderRadius: '12px',
+    background: 'rgba(10, 20, 32, 0.92)',
+    color: '#dfefff',
+    font: '12px/1.35 system-ui, sans-serif',
+    boxShadow: '0 10px 24px rgba(0,0,0,0.32)',
+  });
+
+  const title = document.createElement('div');
+  title.textContent = 'PLAYER STATE QA';
+  Object.assign(title.style, { fontWeight: '700', fontSize: '13px', marginBottom: '8px', letterSpacing: '0.5px' });
+  panel.appendChild(title);
+
+  const groupedHint = document.createElement('div');
+  groupedHint.textContent = `${PLAYER_DEBUG_STATES.length} states / ${PLAYER_DEBUG_GROUPS.length} groups · 1-9 hotkeys`;
+  Object.assign(groupedHint.style, { color: '#7fa9c8', fontSize: '10px', marginBottom: '10px' });
+  panel.appendChild(groupedHint);
+
+  const labelStyle = { fontWeight: '700', fontSize: '11px', marginTop: '8px', marginBottom: '4px', color: '#a8d4ff', textTransform: 'uppercase', letterSpacing: '0.4px' };
+  const btnStyle = {
+    padding: '5px 8px', margin: '2px 3px 2px 0', border: '0', borderRadius: '6px',
+    cursor: 'pointer', background: '#1f3d5c', color: '#dfefff',
+    font: '11px/1.1 system-ui, sans-serif',
+  };
+  const captureBtnStyle = { ...btnStyle, background: '#8fe35e', color: '#11210b', fontWeight: '700' };
+
+  // STATE BUTTONS — grouped
+  for (const group of PLAYER_DEBUG_GROUPS) {
+    const groupLabel = document.createElement('div');
+    groupLabel.textContent = group;
+    Object.assign(groupLabel.style, labelStyle);
+    panel.appendChild(groupLabel);
+    const row = document.createElement('div');
+    Object.assign(row.style, { display: 'flex', flexWrap: 'wrap' });
+    for (const state of PLAYER_DEBUG_STATES.filter((s) => s.group === group)) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = state.label;
+      btn.title = state.id;
+      Object.assign(btn.style, btnStyle);
+      btn.addEventListener('click', () => applyPreset(state.id));
+      row.appendChild(btn);
+    }
+    panel.appendChild(row);
+  }
+
+  // TOGGLES
+  const togglesLabel = document.createElement('div');
+  togglesLabel.textContent = 'Toggles';
+  Object.assign(togglesLabel.style, labelStyle);
+  panel.appendChild(togglesLabel);
+
+  const makeToggle = (name, getter, setter) => {
+    const row = document.createElement('label');
+    Object.assign(row.style, { display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 0', cursor: 'pointer' });
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = getter();
+    cb.addEventListener('change', () => setter(cb.checked));
+    row.appendChild(cb);
+    const txt = document.createElement('span');
+    txt.textContent = name;
+    row.appendChild(txt);
+    return row;
+  };
+
+  panel.appendChild(makeToggle(
+    'Technical overlay (cyan/magenta/red)',
+    () => GAME_CONFIG.debug.showPlayer,
+    (v) => Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: !!v, writable: false, configurable: true }),
+  ));
+  panel.appendChild(makeToggle(
+    'Pose baseline lock (jump y → 0)',
+    () => modes.poseBaselineLock,
+    (v) => {
+      modes.poseBaselineLock = !!v;
+      applyPreset('run');  // re-apply current to reflect lock visually
+    },
+  ));
+  panel.appendChild(makeToggle(
+    'Hide perf HUD',
+    () => modes.hidePerfHud,
+    (v) => {
+      modes.hidePerfHud = !!v;
+      const el = document.getElementById('perf-hud');
+      if (el) el.style.display = v ? 'none' : '';
+    },
+  ));
+  panel.appendChild(makeToggle(
+    'Hide Orchid debug panel',
+    () => modes.hideOrchidPanel,
+    (v) => {
+      modes.hideOrchidPanel = !!v;
+      const el = document.getElementById('debug-panel');
+      if (el) el.style.display = v ? 'none' : '';
+    },
+  ));
+
+  // CAPTURE BUTTONS
+  const captureLabel = document.createElement('div');
+  captureLabel.textContent = 'Capture';
+  Object.assign(captureLabel.style, labelStyle);
+  panel.appendChild(captureLabel);
+
+  const captureRow = document.createElement('div');
+  Object.assign(captureRow.style, { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' });
+  const techBtn = document.createElement('button');
+  techBtn.type = 'button';
+  techBtn.textContent = 'Sheet ALL · technical';
+  Object.assign(techBtn.style, captureBtnStyle);
+  techBtn.addEventListener('click', () =>
+    debugApi.capturePlayerStatesContactSheet({ debugOverlay: true, group: 'all' }));
+  captureRow.appendChild(techBtn);
+  const cleanBtn = document.createElement('button');
+  cleanBtn.type = 'button';
+  cleanBtn.textContent = 'Sheet ALL · clean';
+  Object.assign(cleanBtn.style, captureBtnStyle);
+  cleanBtn.addEventListener('click', () =>
+    debugApi.capturePlayerStatesContactSheet({ debugOverlay: false, group: 'all' }));
+  captureRow.appendChild(cleanBtn);
+  panel.appendChild(captureRow);
+
+  for (const group of PLAYER_DEBUG_GROUPS) {
+    const row = document.createElement('div');
+    Object.assign(row.style, { display: 'flex', gap: '4px', marginBottom: '3px' });
+    const t = document.createElement('button');
+    t.type = 'button';
+    t.textContent = `${group} · tech`;
+    Object.assign(t.style, captureBtnStyle);
+    t.addEventListener('click', () =>
+      debugApi.capturePlayerStatesContactSheet({ debugOverlay: true, group }));
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.textContent = `${group} · clean`;
+    Object.assign(c.style, captureBtnStyle);
+    c.addEventListener('click', () =>
+      debugApi.capturePlayerStatesContactSheet({ debugOverlay: false, group }));
+    row.appendChild(t);
+    row.appendChild(c);
+    panel.appendChild(row);
+  }
+
+  document.body.appendChild(panel);
 }
 
 game.boot().catch((error) => {
