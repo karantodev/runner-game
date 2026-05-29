@@ -1,7 +1,21 @@
 :root {
-  --hud-bg: rgba(12, 24, 36, 0.84);
-  --hud-border: rgba(134, 170, 202, 0.32);
-  --hud-shadow: rgba(0, 0, 0, 0.35);
+  /* v3.3 pixel-art palette (matches the in-game reference) */
+  --hud-bg: #0c1828;
+  --hud-bg-translucent: rgba(12, 24, 40, 0.92);
+  --hud-bg-inner: #18283e;
+  --hud-outline: #000000;
+  --hud-highlight: #3a5a7e;      /* 1px top-left inner stroke */
+  --hud-shadow: #061018;         /* 1px bottom-right inner stroke */
+  --hud-text: #ffffff;
+  --hud-text-muted: #9bb0c8;
+  --hud-gold: #ffd54a;
+  --hud-gold-dark: #b08018;
+  --hud-red: #e44848;
+  --hud-red-dark: #7a2018;
+  --hud-green: #74c050;
+  --hud-blue: #5ab8ff;
+  --pixel-font: 'Press Start 2P', 'Silkscreen', 'Courier New', monospace;
+  --pixel-font-body: 'Silkscreen', 'Press Start 2P', 'Courier New', monospace;
 }
 
 * { box-sizing: border-box; }
@@ -20,7 +34,11 @@ body {
 
 #app {
   position: fixed;
-  inset: 0;
+  /* env(safe-area-inset-*) evaluates to 0 on non-notched devices, so this
+   * is a no-op on desktop / Android / consoles and only kicks in on
+   * iPhone X+ with viewport-fit=cover (set in the <meta viewport>). */
+  inset: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+         env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,25 +63,33 @@ canvas {
   background: #77bdf0;
 }
 
+/* All HUD panels: solid dark-navy with pixel emboss (1px top-left light,
+ * 1px bottom-right dark) + hard 2px black outline. No rounded corners,
+ * no blur, no gradient — pure pixel-art panel. */
 .hud-box {
   position: absolute;
   z-index: 5;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
-  border: 2px solid var(--hud-border);
-  border-radius: 14px;
+  padding: 10px 14px;
+  border: 2px solid var(--hud-outline);
+  border-radius: 0;
   background: var(--hud-bg);
-  box-shadow: 0 6px 22px var(--hud-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
-  backdrop-filter: blur(6px);
-  font-weight: 800;
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  backdrop-filter: none;
+  font-family: var(--pixel-font);
+  font-weight: 400;          /* Press Start 2P only has one weight */
+  color: var(--hud-text);
+  letter-spacing: 1px;
 }
 
 .icon-button {
-  border: 2px solid var(--hud-border);
-  color: #fff;
+  border: 2px solid var(--hud-outline);
+  color: var(--hud-text);
   cursor: pointer;
+  background: var(--hud-bg);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
 }
 
 .icon-button:hover { transform: translateY(-1px); }
@@ -71,21 +97,172 @@ canvas {
 .hud-button-img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; display: block; }
 .hud-flower-icon { width: 28px; height: 28px; object-fit: contain; image-rendering: pixelated; }
 .hud-heart { width: 26px; height: 26px; object-fit: contain; image-rendering: pixelated; }
-.hud-energy { width: 30px; height: 14px; object-fit: contain; image-rendering: pixelated; }
+.hud-energy { width: 14px; height: 22px; object-fit: contain; image-rendering: pixelated; }
 
-#pause { top: 24px; left: 24px; padding: 13px 15px; }
-#score-box { top: 24px; right: 24px; min-width: 148px; justify-content: center; font-size: 28px; background: url('./assets/ui/panels/score_panel_bg.png') center / 100% 100% no-repeat, var(--hud-bg); }
-#score-box .flower-icon { color: #ffd95a; font-size: 30px; line-height: 1; text-shadow: 0 2px 0 #9b6414; }
-#hearts-box { top: 92px; right: 24px; min-width: 148px; justify-content: center; gap: 7px; background: url('./assets/ui/panels/lives_panel_bg.png') center / 100% 100% no-repeat, var(--hud-bg); }
-#distance-box { top: 160px; right: 24px; min-width: 148px; justify-content: center; font-size: 18px; }
+#pause { top: 20px; left: 20px; padding: 12px 14px; }
+#pause svg { fill: var(--hud-text); }
+
+/* v3.8.4 HUD polish — top-right column has stable 8 px gaps, fixed 160 px
+ * width across score / hearts / distance, identical 2 px border + emboss. */
+#score-box,
+#hearts-box,
+#distance-box {
+  right: 20px;
+  width: 160px;
+  min-width: 0;
+}
+
+#score-box {
+  top: 20px;
+  justify-content: flex-start;
+  font-size: 20px;
+  /* drop the legacy wooden panel PNG background — pixel emboss handles it */
+  background: var(--hud-bg);
+}
+#score-box .hud-flower-icon { width: 28px; height: 28px; }
+#score-box #score {
+  color: var(--hud-text);
+  font-family: var(--pixel-font);
+  font-size: 18px;
+  text-shadow: 2px 2px 0 var(--hud-shadow);
+}
+
+#hearts-box {
+  top: 84px;
+  justify-content: center;
+  gap: 6px;
+  background: var(--hud-bg);
+}
+
+#distance-box {
+  top: 148px;
+  justify-content: space-between;
+  font-size: 12px;
+  background: var(--hud-bg);
+}
+#distance-box #distance {
+  color: var(--hud-text);
+  font-family: var(--pixel-font);
+  font-size: 14px;
+}
+
 #tier-box { display: none; }
-#tier-box .best-label { color: rgba(255,255,255,0.72); font-size: 12px; letter-spacing: .5px; }
-#powerups-box { bottom: 120px; left: 24px; min-width: 160px; min-height: 48px; align-items: center; font-size: 13px; line-height: 1.35; }
-#powerups-box .muted { color: rgba(255,255,255,0.54); }
-.tool-icon { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; display: block; }
-#ability { bottom: 24px; left: 24px; flex-direction: column; align-items: center; gap: 6px; padding: 12px 14px 14px; background: url('./assets/ui/panels/tool_panel_bg.png') center / 100% 100% no-repeat, var(--hud-bg); border: none; box-shadow: none; backdrop-filter: none; min-width: 78px; }
-#ability .bar { display: flex; gap: 4px; align-items: center; }
-.hud-label { color: rgba(255,255,255,0.62); font-size: 12px; letter-spacing: 1px; }
+
+/* v3.8.4 — bottom-left ability panel compacted: 76 → 64 px min width and
+ * 6 → 4 px gaps so it doesn't bleed into the playable corridor. Powerups
+ * panel aligned to the same left edge as #ability. */
+#powerups-box {
+  bottom: 156px; left: 20px;
+  width: 168px;
+  min-height: 44px;
+  align-items: stretch;
+  font-size: 10px;
+  line-height: 1.35;
+  background: var(--hud-bg);
+}
+#powerups-box .muted { color: var(--hud-text-muted); font-family: var(--pixel-font-body); }
+
+/* v3.8.10 — bottom-left ability HUD reworked to "compact item card" feel
+ * per the target reference. Shovel icon enlarged 42 → 72 (+71%), panel
+ * pushed to a near-square 100 px width, padding bumped for breathing
+ * room, charge segments enlarged 30×14 → 26×18 so they read as a meter
+ * not as dots. */
+.tool-icon {
+  width: 72px; height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+  margin-bottom: 2px;
+}
+#ability {
+  bottom: 20px; left: 20px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px 10px;
+  min-width: 100px;
+  background: var(--hud-bg);
+}
+#ability .bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.hud-label {
+  color: var(--hud-text-muted);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+/* v3.3 — combo multiplier badge: shows next to score when streak ≥ 5 orchids.
+ * v3.5 — .warning class kicks in when graceFrames is about to expire so
+ * the player has a visual "grab next orchid NOW" cue. */
+.hud-combo {
+  color: var(--hud-gold);
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  margin-left: 10px;
+  text-shadow: 2px 2px 0 var(--hud-gold-dark);
+  animation: combo-pop 0.36s ease-out;
+}
+@keyframes combo-pop {
+  0%   { transform: scale(1.4); opacity: 0; }
+  60%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+/* v3.5 decay warning — pulse red so the player sees the streak is about
+ * to break. Two-step animation: scale + colour shift. */
+.hud-combo.warning {
+  animation: combo-warn 0.4s steps(2) infinite;
+  color: var(--hud-red);
+  text-shadow: 2px 2px 0 var(--hud-red-dark);
+}
+@keyframes combo-warn {
+  0%   { transform: scale(1.0); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1.0); }
+}
+
+/* v3.1 — rare-orchid highlight in death-screen summary. */
+.hud-rare {
+  color: #5ab8ff;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(90,184,255,0.55);
+}
+
+/* v3.3 — lifetime stats block in death screen (pixel palette). */
+.lifetime-stats {
+  margin-top: 16px;
+  padding: 12px;
+  border: 2px solid var(--hud-outline);
+  background: var(--hud-bg);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  font-family: var(--pixel-font-body);
+  font-size: 12px;
+  text-align: left;
+}
+.lifetime-stats h4 {
+  margin: 0 0 8px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--hud-gold);
+  text-transform: uppercase;
+}
+.lifetime-stats ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
+.lifetime-stats li { color: var(--hud-text-muted); }
+.lifetime-stats b { color: var(--hud-text); }
 
 .overlay {
   position: absolute;
@@ -97,84 +274,120 @@ canvas {
   padding: 24px;
   pointer-events: none;
   opacity: 0;
-  background: rgba(0, 0, 0, 0.44);
-  backdrop-filter: blur(8px);
-  transition: opacity 180ms ease;
+  background: rgba(6, 12, 24, 0.78);
+  backdrop-filter: none;
+  transition: opacity 200ms steps(4);
 }
 .overlay.on { opacity: 1; pointer-events: auto; }
 .card {
-  width: min(460px, calc(100vw - 48px));
-  padding: 30px 34px;
-  border-radius: 20px;
-  background: #fff;
-  color: #111827;
+  width: min(480px, calc(100vw - 48px));
+  padding: 28px 30px;
+  border-radius: 0;
+  background: var(--hud-bg);
+  border: 3px solid var(--hud-outline);
+  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow);
+  color: var(--hud-text);
   text-align: center;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  font-family: var(--pixel-font-body);
 }
-.card h1 { margin: 0 0 10px; font-size: 34px; line-height: 1.1; }
-.card p { margin: 0 0 22px; color: #4b5563; line-height: 1.5; }
-.card button {
-  border: 0;
-  border-radius: 12px;
-  padding: 12px 30px;
-  background: #2f8f3b;
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
-  cursor: pointer;
+.card h1 {
+  margin: 0 0 14px;
+  font-family: var(--pixel-font);
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--hud-gold);
+  line-height: 1.4;
+  text-shadow: 2px 2px 0 var(--hud-gold-dark);
 }
-.card button:hover { background: #38a847; }
+.card p {
+  margin: 0 0 22px;
+  color: var(--hud-text-muted);
+  font-family: var(--pixel-font-body);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.card b { color: var(--hud-text); }
+
+/* Death-screen run summary — tighten the 6 rows so they breathe but don't
+ * dominate the card. Single line-height, monochrome muted, white numbers
+ * via the .card b rule above. */
+.run-summary {
+  font-family: var(--pixel-font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--hud-text-muted);
+  margin: 4px 0 18px;
+}
+.run-summary b { color: var(--hud-text); }
+
+/* v3.4 death-cause headline: prominent above the summary. */
+.death-cause {
+  font-family: var(--pixel-font);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  color: var(--hud-red);
+  text-shadow: 1px 1px 0 var(--hud-red-dark);
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: rgba(196, 64, 48, 0.12);
+  border: 1px solid var(--hud-red-dark);
+}
+.death-cause b { color: var(--hud-text); }
 
 /* ── Leaderboard panel inside the death-overlay card ─────────────────────── */
 .leaderboard-prompt {
   margin: 10px 0 14px;
   padding: 12px;
-  border-radius: 10px;
-  background: #f4f7fb;
+  background: var(--hud-bg-inner);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
   text-align: center;
 }
-.leaderboard-prompt p { margin: 0 0 8px; color: #1f2937; font-weight: 600; }
+.leaderboard-prompt p {
+  margin: 0 0 8px;
+  color: var(--hud-text);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
 .leaderboard-prompt input {
-  width: 70%;
+  width: 60%;
   padding: 8px 10px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 8px;
-  font: 600 14px system-ui, sans-serif;
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-shadow);
+  border-radius: 0;
+  font-family: var(--pixel-font-body);
+  font-size: 13px;
   margin-right: 6px;
 }
-.leaderboard-prompt button {
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: #2f8f3b;
-  color: #fff;
-  font: 700 13px system-ui, sans-serif;
-  cursor: pointer;
-}
-.leaderboard-prompt button:hover { background: #38a847; }
 .leaderboard-list {
   list-style: none;
   margin: 12px 0 8px;
   padding: 0;
   text-align: left;
-  font: 13px ui-monospace, "SF Mono", Menlo, monospace;
-  color: #1f2937;
+  font-family: var(--pixel-font-body);
+  font-size: 13px;
+  color: var(--hud-text);
   max-height: 200px;
   overflow-y: auto;
+  border: 2px solid var(--hud-outline);
+  background: var(--hud-bg-inner);
 }
 .leaderboard-list li {
   display: grid;
-  grid-template-columns: 30px 1fr auto;
+  grid-template-columns: 36px 1fr auto;
   gap: 10px;
-  padding: 4px 8px;
-  border-bottom: 1px solid #eef1f5;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hud-shadow);
 }
-.leaderboard-list li:nth-child(1) { background: #fff8d8; font-weight: 800; }
-.leaderboard-list li:nth-child(2) { background: #f3eef9; font-weight: 700; }
-.leaderboard-list li:nth-child(3) { background: #fbf2e7; font-weight: 600; }
-.leaderboard-list .lb-rank { color: #6b7280; }
-.leaderboard-list .lb-name { color: #111827; overflow: hidden; text-overflow: ellipsis; }
-.leaderboard-list .lb-score { color: #2f6f30; }
+.leaderboard-list li:nth-child(1) { color: var(--hud-gold); }
+.leaderboard-list li:nth-child(2) { color: #b890ff; }
+.leaderboard-list li:nth-child(3) { color: #e8a040; }
+.leaderboard-list .lb-rank { color: var(--hud-text-muted); }
+.leaderboard-list .lb-name { color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; }
+.leaderboard-list .lb-score { color: var(--hud-gold); font-weight: bold; }
 
 #hint {
   display: none;
@@ -206,28 +419,30 @@ canvas {
   gap: 18px;
 }
 #touch-controls button {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  background: rgba(12, 24, 36, 0.62);
-  color: #f5fbff;
-  font: 700 28px/1 system-ui, sans-serif;
+  width: 64px;
+  height: 64px;
+  border-radius: 0;
+  border: 2px solid var(--hud-outline);
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  font-family: var(--pixel-font);
+  font-size: 22px;
   cursor: pointer;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  transition: transform 60ms ease, background 60ms ease;
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  transition: none;
 }
 #touch-controls button.is-active {
-  transform: scale(0.92);
-  background: rgba(76, 168, 76, 0.78);
+  /* Invert emboss for the "pressed" feel — same trick as menu buttons. */
+  box-shadow: inset -1px -1px 0 var(--hud-highlight), inset 1px 1px 0 var(--hud-shadow);
+  background: var(--hud-bg-inner);
 }
 #touch-controls .touch-pad--right button[data-action="jump"] {
-  background: rgba(46, 139, 46, 0.72);
+  color: var(--hud-green);
 }
 #touch-controls .touch-pad--right button[data-action="jump"].is-active {
-  background: rgba(82, 196, 82, 0.92);
+  background: var(--hud-bg-inner);
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -243,7 +458,405 @@ body.force-touch #touch-controls { display: flex; }
   #distance-box { top: 120px; right: 12px; min-width: 112px; font-size: 14px; }
   #tier-box { display: none; }
   #powerups-box { bottom: 100px; left: 12px; min-width: 132px; font-size: 11px; padding: 8px 10px; }
-  #ability { bottom: 12px; left: 12px; padding: 10px 12px 12px; min-width: 68px; }
+  #ability { bottom: 12px; left: 12px; padding: 10px 12px 10px; min-width: 84px; }
+  #ability .tool-icon { width: 56px; height: 56px; }
   #touch-controls { padding: 12px 14px 18px; }
   #touch-controls button { width: 64px; height: 64px; font-size: 24px; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+/*  Global focus ring for keyboard + gamepad navigation.                    */
+/*  Two layers so the ring sits OUTSIDE the pixel emboss:                    */
+/*    - 2px gold outline                                                     */
+/*    - 1px transparent offset                                               */
+/*  ::-moz-focus-inner removed for parity across browsers.                   */
+/* ═════════════════════════════════════════════════════════════════════════ */
+button::-moz-focus-inner { border: 0; padding: 0; }
+button:focus, input:focus, select:focus, [tabindex]:focus,
+.ui-focused {
+  outline: 2px solid var(--hud-gold);
+  outline-offset: 2px;
+}
+/* The hover/focus background lift should look identical for both states
+ * so the user feels consistent feedback whether moving by mouse, keyboard
+ * or gamepad. */
+button:focus, [tabindex]:focus {
+  background-color: var(--hud-bg-inner);
+}
+/* Active state via .ui-pressed mirrors :active emboss-invert; UINavigator
+ * adds the class on A-button down + removes on release. */
+.pixel-btn.ui-pressed,
+.menu-secondary.ui-pressed,
+.share-row button.ui-pressed,
+.settings-danger button.ui-pressed,
+#start-button.ui-pressed,
+#leaderboard-submit.ui-pressed {
+  box-shadow: inset -1px -1px 0 var(--hud-highlight), inset 1px 1px 0 var(--hud-shadow);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+/*  v3.3 pixel-art UI restyle                                                */
+/*  Solid dark-navy panels, 2px black outline, 1px highlight/shadow inset    */
+/*  for embossing, pixel font (Press Start 2P / Silkscreen).                 */
+/* ═════════════════════════════════════════════════════════════════════════ */
+
+/* Generic pixel button — base style for menu CTAs, settings, share. */
+.pixel-btn,
+.menu-secondary,
+.share-row button,
+.settings-danger button,
+#start-button,
+#leaderboard-submit {
+  font-family: var(--pixel-font);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--hud-text);
+  background: var(--hud-bg);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  border-radius: 0;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: none;
+}
+.pixel-btn:hover,
+.menu-secondary:hover,
+.share-row button:hover,
+.settings-danger button:hover,
+#start-button:hover,
+#leaderboard-submit:hover {
+  background: var(--hud-bg-inner);
+}
+.pixel-btn:active,
+.menu-secondary:active,
+.share-row button:active,
+.settings-danger button:active,
+#start-button:active,
+#leaderboard-submit:active {
+  box-shadow: inset -1px -1px 0 var(--hud-highlight), inset 1px 1px 0 var(--hud-shadow);
+}
+
+/* Primary CTA accent (Start Run / Run Again). */
+#start-button {
+  background: var(--hud-gold);
+  color: var(--hud-bg);
+  font-size: 13px;
+  text-shadow: 1px 1px 0 var(--hud-gold-dark);
+}
+#start-button:hover { background: #ffe07a; }
+
+/* Power-up time bars. */
+.powerup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 2px 0;
+}
+.powerup-row .powerup-icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 1px solid var(--hud-outline);
+}
+.powerup-row .powerup-meter {
+  flex: 1 1 auto;
+  height: 8px;
+  background: var(--hud-bg-inner);
+  border: 1px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-shadow);
+}
+.powerup-row .powerup-meter-fill {
+  height: 100%;
+  background: currentColor;
+  transition: width 100ms linear;
+}
+.powerup-row .powerup-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  min-width: 50px;
+}
+.powerup-row[data-type="speed-burst"]  { color: var(--hud-green); }
+.powerup-row[data-type="split-clones"] { color: #b890ff; }
+.powerup-row[data-type="magnet"]       { color: #ff7ad6; }
+.powerup-row[data-type="shield"]       { color: var(--hud-blue); }
+.powerup-row[data-type="score-x2"]     { color: var(--hud-gold); }
+
+/* Loading screen. */
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hud-bg);
+  opacity: 1;
+  transition: opacity 320ms steps(8);
+}
+.loading:not(.on) { opacity: 0; pointer-events: none; }
+.loading-card {
+  text-align: center;
+  max-width: 360px;
+  padding: 28px 36px;
+  background: var(--hud-bg-inner);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+}
+.loading-card h1 {
+  margin: 0 0 14px;
+  font-family: var(--pixel-font);
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--hud-gold);
+  text-shadow: 2px 2px 0 var(--hud-gold-dark);
+}
+.loading-card p {
+  margin: 0 0 16px;
+  color: var(--hud-text-muted);
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+.loading-bar {
+  width: 100%;
+  height: 14px;
+  background: var(--hud-bg);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-shadow);
+}
+.loading-fill {
+  height: 100%;
+  background: var(--hud-gold);
+  width: 0;
+  transition: width 80ms steps(20);
+}
+
+/* Menu CTA row under the start button. */
+.menu-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Pause-screen action stack — full-width buttons in a vertical column. */
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.pause-actions button {
+  width: 100%;
+}
+
+/* Tutorial pill — top-centre, non-blocking. */
+.tutorial {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms steps(4);
+}
+.tutorial.on { opacity: 1; }
+.tutorial-card {
+  background: var(--hud-bg);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  border-radius: 0;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+.tutorial-icon {
+  font-family: var(--pixel-font);
+  font-size: 14px;
+  color: var(--hud-gold);
+  text-shadow: 1px 1px 0 var(--hud-gold-dark);
+}
+.tutorial-text {
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--hud-text);
+}
+@media (max-width: 760px) {
+  .tutorial { top: 72px; }
+  .tutorial-card { padding: 8px 14px; gap: 8px; }
+  .tutorial-icon { font-size: 12px; }
+  .tutorial-text { font-size: 8px; }
+}
+
+/* Settings modal. */
+.settings-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 12, 24, 0.78);
+}
+.settings-modal.on { display: flex; }
+.settings-card {
+  background: var(--hud-bg);
+  border: 3px solid var(--hud-outline);
+  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow);
+  border-radius: 0;
+  padding: 24px 28px;
+  min-width: 320px;
+  max-width: 420px;
+}
+.settings-card h2 {
+  margin: 0 0 20px;
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  color: var(--hud-gold);
+  letter-spacing: 2px;
+  text-align: center;
+  text-shadow: 2px 2px 0 var(--hud-gold-dark);
+}
+.settings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+  background: var(--hud-bg-inner);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+}
+.settings-list li {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hud-shadow);
+}
+.settings-list li:last-child {
+  border-bottom: none;
+}
+.settings-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.settings-list input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--hud-gold);
+  cursor: pointer;
+}
+.settings-list select {
+  margin-left: auto;
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  border: 1px solid var(--hud-outline);
+  padding: 4px 8px;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+}
+.settings-list .muted {
+  color: var(--hud-text-muted);
+  font-size: 8px;
+  margin-left: 4px;
+}
+.settings-danger {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 12px 14px !important;
+  border-top: 1px solid var(--hud-shadow) !important;
+}
+.settings-danger button {
+  flex: 1 1 auto;
+  color: var(--hud-text-muted);
+  background: var(--hud-bg);
+  font-size: 9px;
+  padding: 8px 10px;
+  letter-spacing: 1px;
+}
+.settings-danger button:hover {
+  background: var(--hud-bg-inner);
+  color: var(--hud-text);
+}
+.settings-danger button::before {
+  content: '✕ ';
+  color: var(--hud-text-muted);
+}
+
+/* Achievement toast. */
+.achievement-toast {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-160%);
+  z-index: 45;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--hud-bg);
+  border: 2px solid var(--hud-outline);
+  box-shadow: inset 1px 1px 0 var(--hud-gold), inset -1px -1px 0 var(--hud-shadow);
+  border-radius: 0;
+  padding: 12px 22px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--hud-text);
+  transition: transform 280ms steps(6);
+  pointer-events: none;
+}
+.achievement-toast.on {
+  transform: translateX(-50%) translateY(0);
+}
+.achievement-trophy {
+  font-size: 18px;
+  color: var(--hud-gold);
+}
+
+/* Share buttons row on death screen. */
+.share-row {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+  justify-content: center;
+}
+.share-row button {
+  min-width: 140px;
+  padding: 14px 18px;
+  font-size: 12px;
+}
+
+/* Daily-challenge badge inline in death body. */
+.daily-label {
+  color: var(--hud-gold);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 2px;
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 6px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-outline);
+}
+
+/* Rare-orchid highlight in death body summary. */
+.hud-rare {
+  color: var(--hud-blue);
+  font-family: var(--pixel-font);
+  font-size: 11px;
 }

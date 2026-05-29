@@ -26,6 +26,7 @@ export class InputManager {
   #activeTouchId = null;
   #axisCooldown = 0;
   #buttonMemory = new Map();
+  #warnedNonStandardMapping = false;
 
   constructor(canvas) {
     this.canvas = canvas;
@@ -79,6 +80,17 @@ export class InputManager {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = Array.from(pads).find(Boolean);
     if (!pad) return;
+
+    // Button-index assumptions below (0=jump, 8=select, 9=start, 12=D-pad up,
+    // 13=D-pad down) follow the W3C standard Gamepad mapping. Pads that
+    // report a non-standard mapping (rare third-party / legacy controllers,
+    // some DualShock-over-Bluetooth on macOS Safari) may have different
+    // indices. Warn the developer once so the issue is visible — use the
+    // ?gamepadDebug=1 overlay to identify the actual indices for remapping.
+    if (pad.mapping !== 'standard' && !this.#warnedNonStandardMapping) {
+      this.#warnedNonStandardMapping = true;
+      console.warn(`[InputManager] Gamepad has non-standard mapping "${pad.mapping || '(empty)'}" — id=${pad.id}. Button bindings may be wrong. Open the game with ?gamepadDebug=1 to inspect live button/axis indices.`);
+    }
 
     if (this.#axisCooldown > 0) this.#axisCooldown -= 1;
     const xAxis = pad.axes[0] ?? 0;

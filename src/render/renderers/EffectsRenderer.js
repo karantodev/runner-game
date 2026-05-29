@@ -1,53 +1,281 @@
 /**
- * Particle entities + score-popup entities + full-screen hit flash.
- * Sits on top of all world geometry so VFX always read.
+ * Particles + score popups + full-screen hit flash. Sits on top of all
+ * world geometry so VFX always read.
+ *
+ * Particles and popups are owned by their respective systems as pool-backed
+ * plain-object arrays (`world.particleSystem.particles`,
+ * `world.popupSystem.popups`) — NOT registry entities. This keeps the
+ * per-burst spawn allocation-free.
+ *
+ * v3: when a particle carries a `spriteKey` (e.g. 'dustPuff', 'sparkle'),
+ * the matching frame from the designer-shipped 4-frame sheet is drawn
+ * instead of the procedural arc. If the spritesheet isn't loaded the
+ * particle falls back to the arc — so this code keeps running cleanly
+ * during partial asset deliveries.
  */
 export class EffectsRenderer {
-  constructor({ ctx, projection }) {
+  constructor({ ctx, projection, gradients, assets }) {
     this.ctx = ctx;
     this.projection = projection;
+    this.gradients = gradients;
+    this.assets = assets;
+    /**
+     * Decaying combo pulse (0..1). Bumped to 1 by EventBus 'comboChanged'
+     * milestones (see World wiring); decays in render() each frame. Drives
+     * a vignette + center ×N badge overlay so the player feels the tier
+     * crossing without needing audio.
+     */
+    this.comboPulse = 0;
+    this.comboPulseMultiplier = 0;
+  }
+
+  /**
+   * Trigger a combo pulse — called by World when comboChanged fires with
+   * a higher multiplier. Cheap and idempotent: re-arming overwrites the
+   * decay, no allocation.
+   */
+  triggerComboPulse(multiplier) {
+    this.comboPulse = 1;
+    this.comboPulseMultiplier = multiplier;
   }
 
   render(world) {
     const ctx = this.ctx;
-    if (world.config.gameFeel.particles) {
-      for (const e of world.registry.query('ParticleTag', 'ScreenPos', 'ParticleData', 'Lifetime')) {
-        const pos = e.components.ScreenPos;
-        const data = e.components.ParticleData;
-        const life = e.components.Lifetime;
-        ctx.fillStyle = data.color;
-        ctx.globalAlpha = Math.min(1, life.life / 22);
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, data.radius, 0, Math.PI * 2);
-        ctx.fill();
+
+    // Active-power-up vignette: tinted radial edges that pulse slowly.
+    // Burst (green) and split-clones (purple) stack alpha-wise — both can
+    // be active at the same time.
+    const burstActive = world.powerUpSystem.isSpeedBurstActive();
+    const splitActive = world.powerUpSystem.isSplitClonesActive();
+    if (burstActive || splitActive) {
+      const pulse = 0.65 + 0.35 * Math.sin(world.timeAlive * 0.11);
+      if (burstActive) {
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = this.gradients.burstVignette;
+        ctx.fillRect(0, 0, this.projection.width, this.projection.height);
       }
+      if (splitActive) {
+        ctx.globalAlpha = pulse * 0.9;
+        ctx.fillStyle = this.gradients.splitVignette;
+        ctx.fillRect(0, 0, this.projection.width, this.projection.height);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // v3.5 power-up SYNERGY glow — when 2+ power-ups stack simultaneously,
+    // overlay a rainbow shimmer at the screen edges. 3+ punches the
+    // intensity further. Pure visual feedback for "you're in the zone".
+    const activeCount = this.#countActivePowerUps(world);
+    if (activeCount >= 2) {
+      const intensity = activeCount >= 3 ? 0.45 : 0.22;
+      const pulse = 0.55 + 0.45 * Math.sin(world.timeAlive * 0.14);
+      ctx.save();
+      ctx.globalAlpha = intensity * pulse;
+      const W = this.projection.width;
+      const H = this.projection.height;
+      const grad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.7);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      // Pick a colour swirl that drifts over time — rainbow hint without
+      // a full HSV cycle.
+      const hue = Math.floor((world.timeAlive * 0.6) % 360);
+      grad.addColorStop(0.7, `hsla(${hue}, 90%, 60%, 0.55)`);
+      grad.addColorStop(1, `hsla(${(hue + 90) % 360}, 90%, 55%, 0.85)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    if (world.config.gameFeel.particles) {
+      const particles = world.particleSystem.particles;
+      for (let i = 0; i < particles.length; i += 1) {
+        const p = particles[i];
+        const lifeAlpha = Math.min(1, p.life / 22);
+        ctx.globalAlpha = lifeAlpha;
+        const spriteImg = this.#particleSprite(p);
+        if (spriteImg) {
+          const w = (p.spriteSize || p.radius * 6);
+          const h = w * (spriteImg.naturalHeight / spriteImg.naturalWidth);
+          ctx.drawImage(spriteImg, p.x - w / 2, p.y - h / 2, w, h);
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
     }
 
     if (world.config.gameFeel.scorePopups) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      for (const e of world.registry.query('ScorePopupTag', 'ScreenPos', 'ScorePopupData', 'Lifetime')) {
-        const pos = e.components.ScreenPos;
-        const data = e.components.ScorePopupData;
-        const life = e.components.Lifetime;
-        const t = life.life / life.maxLife;
+      const popups = world.popupSystem.popups;
+      for (let i = 0; i < popups.length; i += 1) {
+        const p = popups[i];
+        const t = p.life / p.maxLife;
         ctx.globalAlpha = Math.min(1, t * 1.35);
-        ctx.font = `900 ${Math.round(18 * data.scale)}px system-ui, sans-serif`;
+        ctx.font = `900 ${Math.round(18 * p.scale)}px system-ui, sans-serif`;
         ctx.strokeStyle = 'rgba(22,36,18,0.55)';
         ctx.lineWidth = 3;
-        ctx.strokeText(data.text, pos.x, pos.y);
-        ctx.fillStyle = data.color;
-        ctx.fillText(data.text, pos.x, pos.y);
+        ctx.strokeText(p.text, p.x, p.y);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x, p.y);
       }
     }
 
-    // Hit flash now lives on the player's Health component.
+    // v3.5 dying state: REPLAY-style indicator + chromatic vignette
+    // during the slow-mo death moment. Reads from world.dyingFrames as
+    // the timing source; alpha decays as the timer drains so the effect
+    // is at its boldest right after the fatal hit.
+    if (world.state === 'dying') {
+      const total = world.config.gameplay.dyingFrames || 1;
+      const t = Math.max(0, Math.min(1, world.dyingFrames / total));
+      const W = this.projection.width;
+      const H = this.projection.height;
+
+      // Chromatic vignette — red edges fading toward centre.
+      ctx.save();
+      ctx.globalAlpha = 0.45 * t;
+      const dGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.15, W / 2, H / 2, W * 0.7);
+      dGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      dGrad.addColorStop(1, 'rgba(180,40,40,0.85)');
+      ctx.fillStyle = dGrad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      // "REPLAY" pill at the top — readable cue that the game is showing
+      // the slow-mo of the last hit. Cheap text + 1 stroke + 1 fill.
+      ctx.save();
+      ctx.globalAlpha = 0.85 * t;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '900 28px system-ui, sans-serif';
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      ctx.lineWidth = 5;
+      const replayY = H * 0.18;
+      ctx.strokeText('• REPLAY •', W / 2, replayY);
+      ctx.fillStyle = '#ff8a8a';
+      ctx.fillText('• REPLAY •', W / 2, replayY);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // v3.4 countdown: big 3 / 2 / 1 / GO overlay during world.state === 'starting'.
+    // Scale + fade-in/out driven by the per-second slice of countdownFrames.
+    if (world.state === 'starting' && world.countdownFrames > 0) {
+      const remainingSec = world.countdownFrames / 60;
+      const wholeRemaining = Math.ceil(remainingSec);
+      const label = wholeRemaining > 0 ? String(wholeRemaining) : 'GO!';
+      // Fraction inside the current second: 1 → fresh number, 0 → about to swap.
+      const frac = remainingSec - Math.floor(remainingSec);
+      // Snap on entry (big), fade out as the number ages.
+      const alpha = Math.min(1, frac * 2.5);
+      const scale = 1.4 - frac * 0.4;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fontSize = Math.round(160 * scale);
+      ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 10;
+      const cx = this.projection.width / 2;
+      const cy = this.projection.height * 0.42;
+      ctx.strokeText(label, cx, cy);
+      ctx.fillStyle = '#ffd54a';
+      ctx.fillText(label, cx, cy);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // Combo pulse — golden vignette + center ×N badge that decays over
+    // ~600 ms. Triggered by World when comboChanged crosses a tier.
+    if (this.comboPulse > 0) {
+      const a = this.comboPulse;
+      // Decay rate: ~0.025 per render frame → finishes around 0.4-0.6 s.
+      this.comboPulse = Math.max(0, this.comboPulse - 0.025);
+
+      // Golden vignette via radial gradient — uses the existing splitVignette
+      // pattern as a tinted overlay; cheap because no per-frame allocation.
+      ctx.save();
+      ctx.globalAlpha = a * 0.35;
+      ctx.fillStyle = '#ffd54a';
+      // Soft inner cut-out (player area stays clear, edges glow).
+      const cx = this.projection.width / 2;
+      const cy = this.projection.height * 0.55;
+      const grad = ctx.createRadialGradient(cx, cy, this.projection.width * 0.18, cx, cy, this.projection.width * 0.6);
+      grad.addColorStop(0, 'rgba(255,213,74,0)');
+      grad.addColorStop(1, 'rgba(255,213,74,0.85)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, this.projection.width, this.projection.height);
+      ctx.restore();
+
+      // Center ×N badge — scales-up + fades. Skipped when the trigger
+      // didn't carry a multiplier (e.g. milestone flash reuses the pulse
+      // but draws its own popup text).
+      if (this.comboPulseMultiplier > 0) {
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const fontSize = 96 + (1 - a) * 30;
+        ctx.font = `900 ${Math.round(fontSize)}px system-ui, sans-serif`;
+        ctx.strokeStyle = 'rgba(122, 74, 8, 0.85)';
+        ctx.lineWidth = 8;
+        ctx.strokeText(`×${this.comboPulseMultiplier}`, cx, this.projection.height * 0.42);
+        ctx.fillStyle = '#ffd54a';
+        ctx.fillText(`×${this.comboPulseMultiplier}`, cx, this.projection.height * 0.42);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Hit flash — prefers designer-shipped full-screen overlay (4 frames
+    // by alpha decay); falls back to a flat colour fill if the overlay
+    // isn't loaded.
     const flash = world.player?.components.Health.hitFlash ?? 0;
     if (flash > 0) {
-      ctx.globalAlpha = flash * 0.12;
-      ctx.fillStyle = '#ff6464';
-      ctx.fillRect(0, 0, this.projection.width, this.projection.height);
+      const flashIdx = Math.min(3, Math.floor((1 - flash) * 4));
+      const flashImg = this.assets?.get(`hitFlash0${flashIdx + 1}`);
+      if (flashImg?.naturalWidth) {
+        ctx.globalAlpha = Math.min(1, flash);
+        ctx.drawImage(flashImg, 0, 0, this.projection.width, this.projection.height);
+      } else {
+        ctx.globalAlpha = flash * 0.12;
+        ctx.fillStyle = '#ff6464';
+        ctx.fillRect(0, 0, this.projection.width, this.projection.height);
+      }
     }
     ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Count of currently-active power-ups. Reads through the legacy
+   * accessors so a future power-up addition (which already extends
+   * PowerUpSystem via the data table) needs zero changes here.
+   */
+  #countActivePowerUps(world) {
+    const pu = world.powerUpSystem;
+    let c = 0;
+    if (pu.isSpeedBurstActive())  c += 1;
+    if (pu.isSplitClonesActive()) c += 1;
+    if (pu.isMagnetActive())      c += 1;
+    if (pu.isShieldActive())      c += 1;
+    if (pu.isScoreX2Active())     c += 1;
+    return c;
+  }
+
+  /**
+   * Look up the current frame of a sprite-driven particle. Frame index
+   * advances linearly with age, capped at spriteFrames-1 so the last
+   * frame stays on screen for the tail of the life budget.
+   */
+  #particleSprite(p) {
+    if (!p.spriteKey || !p.spriteFrames || !this.assets) return null;
+    const age = 1 - (p.life / p.maxLife);
+    const frameIdx = Math.min(p.spriteFrames - 1, Math.floor(age * p.spriteFrames));
+    const key = `${p.spriteKey}0${frameIdx + 1}`;
+    const img = this.assets.get(key);
+    return img?.naturalWidth ? img : null;
   }
 }

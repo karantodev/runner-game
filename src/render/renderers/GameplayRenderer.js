@@ -1,9 +1,15 @@
+import { getCollectibleSpec } from '../../ecs/collectibleTypes.js';
+
 /**
  * In-lane gameplay items: obstacles (vine, overhang, single-lane hazards)
  * and collectibles (flowers, life, power-ups). Z-sorted by distance every
  * frame so far things sit behind near things.
  *
  * Does NOT paint the player — see PlayerRenderer.
+ *
+ * Collectible visuals are data-driven via `COLLECTIBLE_REGISTRY`. Each
+ * entry's `render` block decides the kind, sprite key, glow colour, and
+ * size — adding a new pickup never touches this renderer.
  */
 export class GameplayRenderer {
   constructor({ ctx, projection, assets, sprites, paint }) {
@@ -35,39 +41,69 @@ export class GameplayRenderer {
 
   #collectibleEntity(entity, world) {
     const pos = entity.components.Position;
-    const sprite = entity.components.Sprite;
     const data = entity.components.CollectibleData;
-    const p = this.projection.project(pos.lane, pos.distance);
+    // v3.8.14 — clean far-gate approach. Collectibles past distance 90
+    // are well inside the road's tile-fade-out zone (FAR_VISIBLE=84) and
+    // sit visually near the castle gate. Skipping them keeps the final
+    // approach to the gate clear, and players still have ~90 world-units
+    // of warning before any pickup. distance 70-90 fades smoothly so
+    // pickups don't pop in.
+    if (pos.distance > 90) return;
+    const distanceFadeT = pos.distance > 70 ? Math.max(0, 1 - (pos.distance - 70) / 20) : 1;
+    const p = this.projection.projectVisual(pos.lane, pos.distance);
     const yOffset = data.high ? -86 : -40;
     const wobble = Math.sin(data.t) * 4 * p.scale;
-    const x = p.sx + data.laneJitter * this.projection.laneWidth;
+    const x = p.sx + data.laneJitter * this.projection.visualLaneWidth;
     const y = p.sy + yOffset * p.scale + wobble;
     const pop = world.config.gameFeel.ambientMotion ? 1 + Math.sin(data.t * 2.1) * 0.05 : 1;
-    const assetType = sprite.assetType ?? sprite.type;
 
-    if (assetType === 'heart_full' || data.type === 'life') {
-      this.paint.heart(x, y, p.scale * 1.35 * pop);
-      return;
+    const spec = getCollectibleSpec(data.type);
+    if (!spec) return;
+    if (world.powerUpSystem?.isMagnetActive() && (spec.render.kind === 'flower' || spec.render.kind === 'rare')) {
+      this.#drawMagnetStreak(world, pos, x, y, p.scale);
     }
-
-    if (assetType === 'speed_tree_pickup' || data.type === 'power-tree') {
-      this.#powerGlow(x, y - 22 * p.scale, p.scale * pop, '#72ff66');
-      this.paint.tree(x, y + 28 * p.scale, p.scale * 0.64 * pop);
-      return;
-    }
-
-    if (assetType === 'power_mushroom_pickup' || data.type === 'power-mushroom') {
-      this.#powerGlow(x, y - 22 * p.scale, p.scale * pop, '#ad72ff');
-      this.paint.mushroom(x, y + 18 * p.scale, p.scale * 0.82 * pop, 'purple');
-      return;
-    }
-
-    const flowerKey = p.scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
-    const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
-    if (!this.sprites.draw(flowerKey, x, y, 72 * p.scale * pop * szMod)) this.paint.flower(x, y, p.scale * 1.65 * pop);
+    const draw = COLLECTIBLE_DRAWERS[spec.render.kind];
+    const prevAlpha = this.ctx.globalAlpha;
+    if (distanceFadeT < 1) this.ctx.globalAlpha = prevAlpha * distanceFadeT;
+    draw?.(this, x, y, p.scale, pop, spec.render, data);
+    if (distanceFadeT < 1) this.ctx.globalAlpha = prevAlpha;
   }
 
-  #powerGlow(x, y, scale, color) {
+  /**
+   * v3.5 — thin pink streak from orchid toward player while magnet is
+   * active. Visual confirmation that the pickup is being pulled. Kept
+   * fully procedural (no particles, no allocation) so it scales with
+   * dense orchid trails.
+   */
+  #drawMagnetStreak(world, pos, x, y, scale) {
+    if (!world.player) return;
+    const cfg = world.config.powerUps.magnet;
+    const playerLaneX = world.player.components.LaneState.laneX;
+    const laneDelta = playerLaneX - pos.lane;
+    if (Math.abs(laneDelta) > cfg.radius) return;
+    if (pos.distance < -3 || pos.distance > cfg.radius * 14) return;
+
+    const playerX = this.projection.width / 2 + playerLaneX * this.projection.visualLaneWidth;
+    const playerY = this.projection.groundY - 50;
+    const ctx = this.ctx;
+    ctx.save();
+    // Fade strength based on distance: closer = brighter. radius * 14 is
+    // the cull window, so normalise to [0,1].
+    const t = Math.max(0, Math.min(1, 1 - (pos.distance / (cfg.radius * 14))));
+    ctx.globalAlpha = 0.18 + t * 0.42;
+    ctx.strokeStyle = '#ff7ad6';
+    ctx.lineWidth = Math.max(1, 2 * scale);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(playerX, playerY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Public helpers used by COLLECTIBLE_DRAWERS (module-level dispatch table
+  // sits outside the class so `#private` would be inaccessible). Module
+  // boundary remains the encapsulation layer.
+  drawPowerGlow(x, y, scale, color) {
     const ctx = this.ctx;
     ctx.save();
     ctx.globalAlpha = 0.78;
@@ -80,6 +116,17 @@ export class GameplayRenderer {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x, y, 42 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawFallbackPowerDot(x, y, scale, color) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.92;
+    ctx.beginPath();
+    ctx.arc(x, y, 22 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -100,7 +147,7 @@ export class GameplayRenderer {
       return;
     }
 
-    const p = this.projection.project(pos.lane, pos.distance);
+    const p = this.projection.projectVisual(pos.lane, pos.distance);
     if (box.warning) this.#warningPulse(p.sx, p.sy - 58 * p.scale, p.scale, world.timeAlive);
     if (assetType === 'spiky_bush_obstacle' || box.type === 'bush') this.paint.bush(p.sx, p.sy, p.scale);
     if (assetType === 'dry_grass_obstacle' || box.type === 'wheat') {
@@ -116,15 +163,28 @@ export class GameplayRenderer {
   #vine(distance, scrollOffset, warning = false) {
     const ctx = this.ctx;
     const p = this.projection;
-    const p1 = p.project(-p.roadHalfLaneUnits + 0.1, distance);
-    const p2 = p.project(p.roadHalfLaneUnits - 0.1, distance);
+    // v3.8.3 — vine span clamped to ±1.4 lane units (the playable area).
+    // Previously vines used roadHalfLaneUnits (visual road extent) and
+    // grew with the wider road, dominating the entire frame. Players
+    // only ever interact with lanes -1/0/+1, so the vine just needs to
+    // cover that span — visually narrower, height proportional.
+    const VINE_LANE_HALF = 1.4;
+    const p1 = p.projectVisual(-VINE_LANE_HALF, distance);
+    const p2 = p.projectVisual(VINE_LANE_HALF, distance);
     const scale = p1.scale;
     const vineCx = (p1.sx + p2.sx) / 2;
-    const vineW = (p2.sx - p1.sx) + 90 * scale;
+    // v3.8.6 — vine width padding 60 → 32 so the obstacle reads as a
+    // controlled lane-spanning bar, not a wall that eats the whole
+    // visual frame. Combined with the alpha drop on the ground shadow,
+    // the vine telegraphs "duck under" without dominating composition.
+    const vineW = (p2.sx - p1.sx) + 32 * scale;
 
-    // Shadow bar grounding the vine regardless of sprite load.
+    // Warning lane painted on the road IN FRONT of the vine. Drawn first
+    // so the vine's own shadow bar sits on top and grounds the obstacle.
+    if (warning) this.#warningBand(distance, 'up', scrollOffset);
+
     ctx.save();
-    ctx.globalAlpha = 0.32;
+    ctx.globalAlpha = 0.24;
     ctx.fillStyle = '#1a4a20';
     ctx.fillRect(vineCx - vineW / 2, p1.sy - 6 * scale, vineW, 8 * scale);
     ctx.restore();
@@ -158,26 +218,24 @@ export class GameplayRenderer {
       }
     }
 
-    if (warning) {
-      ctx.save();
-      ctx.strokeStyle = `rgba(255,220,120,${0.30 + Math.sin(scrollOffset * 0.1) * 0.08})`;
-      ctx.lineWidth = Math.max(2, 10 * scale);
-      ctx.beginPath();
-      ctx.moveTo(p1.sx, p1.sy - 20 * scale);
-      ctx.lineTo(p2.sx, p2.sy - 20 * scale);
-      ctx.stroke();
-      ctx.restore();
-    }
   }
 
-  #overhang(distance, assetType, warning, timeAlive) {
+  #overhang(distance, assetType, warning, _timeAlive) {
     const ctx = this.ctx;
     const p = this.projection;
-    const p1 = p.project(-p.roadHalfLaneUnits + 0.1, distance);
-    const p2 = p.project(p.roadHalfLaneUnits - 0.1, distance);
+    // v3.8.3 — overhang also clamped to playable lane span ±1.4 (same
+    // reasoning as vines: covers the lanes the player can actually
+    // occupy without bleeding into the shoulder/decor zone).
+    const PLAY_HALF = 1.4;
+    const p1 = p.projectVisual(-PLAY_HALF, distance);
+    const p2 = p.projectVisual(PLAY_HALF, distance);
     const scale = p1.scale;
     const cx = (p1.sx + p2.sx) / 2;
-    const roadW = (p2.sx - p1.sx) + 110 * scale;
+    const roadW = (p2.sx - p1.sx) + 80 * scale;
+
+    // Warning lane painted on the road UNDER the overhang. Drawn first so
+    // the obstacle (and its ground-shadow ellipse) cover the band's far edge.
+    if (warning) this.#warningBand(distance, 'down', 0);
 
     const key = assetType === 'spider_web_overhang' ? 'spiderWebOverhang' : 'lowBranchOverhang';
     const image = this.assets.get(key);
@@ -197,26 +255,84 @@ export class GameplayRenderer {
       const aspect = image.naturalHeight / image.naturalWidth;
       const drawW = roadW;
       const drawH = drawW * aspect;
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
+      // imageSmoothingEnabled is set false once per frame in RenderSystem.
       ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
-      ctx.restore();
     } else {
       this.#paintOverhangFallback(cx, overhangTopY, roadW, scale, assetType);
     }
+  }
 
-    if (warning) {
-      const pulse = 0.5 + 0.5 * Math.sin(timeAlive * 0.32);
-      ctx.save();
-      ctx.strokeStyle = `rgba(255,220,120,${0.28 + pulse * 0.14})`;
-      ctx.lineWidth = Math.max(2, 9 * scale);
-      ctx.setLineDash([12 * scale, 8 * scale]);
+  /**
+   * Striped trapezoidal warning band painted on the road in front of an
+   * all-lane obstacle. The 4 bands alternate base-color and dark for the
+   * standard "danger zone" stripe pattern; a chevron arrow on top points
+   * up (jump) or down (duck). Intensity fades in as the obstacle nears.
+   *
+   * @param {number} distance — world-distance of the obstacle
+   * @param {'up' | 'down'} direction — required player action
+   * @param {number} scrollOffset — used to tie pulse phase to road scroll
+   */
+  #warningBand(distance, direction, scrollOffset) {
+    const p = this.projection;
+    const ctx = this.ctx;
+
+    // Closeness goes 0 → 1 as the obstacle approaches from distance 30 to 4.
+    const closeness = Math.max(0, Math.min(1, (30 - distance) / 26));
+    if (closeness <= 0.02) return;
+
+    // Band extends 6 world-units back from the obstacle base distance.
+    const distFar = Math.max(0.5, distance);
+    const distNear = Math.max(0.2, distance - 6);
+
+    const baseColor = direction === 'up' ? '255,220,80' : '120,220,255';
+    const darkColor = '40,30,10';
+    const pulse = 0.55 + 0.45 * Math.sin(scrollOffset * (0.12 + closeness * 0.2));
+    const alpha = (0.30 + closeness * 0.36) * (0.7 + pulse * 0.3);
+
+    // 4 alternating stripes — each is its own perspective-correct quad.
+    const bands = 4;
+    for (let i = 0; i < bands; i += 1) {
+      const t1 = i / bands;
+      const t2 = (i + 1) / bands;
+      const d1 = distFar - (distFar - distNear) * t1;
+      const d2 = distFar - (distFar - distNear) * t2;
+      const lL1 = p.projectVisual(-p.roadHalfLaneUnits + 0.1, d1);
+      const lR1 = p.projectVisual( p.roadHalfLaneUnits - 0.1, d1);
+      const lL2 = p.projectVisual(-p.roadHalfLaneUnits + 0.1, d2);
+      const lR2 = p.projectVisual( p.roadHalfLaneUnits - 0.1, d2);
+      ctx.fillStyle = i % 2 === 0
+        ? `rgba(${baseColor},${alpha})`
+        : `rgba(${darkColor},${alpha * 0.62})`;
       ctx.beginPath();
-      ctx.moveTo(p1.sx, overhangTopY + headroom + 16 * scale);
-      ctx.lineTo(p2.sx, overhangTopY + headroom + 16 * scale);
-      ctx.stroke();
-      ctx.restore();
+      ctx.moveTo(lL1.sx, lL1.sy);
+      ctx.lineTo(lR1.sx, lR1.sy);
+      ctx.lineTo(lR2.sx, lR2.sy);
+      ctx.lineTo(lL2.sx, lL2.sy);
+      ctx.closePath();
+      ctx.fill();
     }
+
+    // Chevron arrow centered above the band, scaled to the band's depth.
+    const midDist = (distFar + distNear) / 2;
+    const pMid = p.projectVisual(0, midDist);
+    const size = 56 * pMid.scale;
+    const dirSign = direction === 'up' ? -1 : 1;
+    const cy = pMid.sy + (direction === 'up' ? -size * 0.9 : -size * 0.3);
+    ctx.save();
+    ctx.globalAlpha = 0.55 + pulse * 0.35;
+    ctx.strokeStyle = `rgb(${baseColor})`;
+    ctx.lineWidth = Math.max(2, 7 * pMid.scale);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 2; i += 1) {
+      const yOff = i * size * 0.36 * dirSign;
+      ctx.beginPath();
+      ctx.moveTo(pMid.sx - size * 0.5, cy + yOff + size * 0.32 * dirSign);
+      ctx.lineTo(pMid.sx,               cy + yOff);
+      ctx.lineTo(pMid.sx + size * 0.5, cy + yOff + size * 0.32 * dirSign);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   #paintOverhangFallback(cx, topY, width, scale, assetType) {
@@ -290,3 +406,71 @@ export class GameplayRenderer {
 function byDistanceComponent(a, b) {
   return b.components.Position.distance - a.components.Position.distance;
 }
+
+/**
+ * One renderer per collectible `render.kind`. Each receives:
+ *   self  — the GameplayRenderer instance (for #powerGlow, sprites, paint)
+ *   x, y  — already projected + wobble-adjusted screen coords
+ *   scale — projection.scale
+ *   pop   — ambient-motion size pulse (1 ± 0.05)
+ *   r     — render block from the registry (kind, spriteKey?, glowColor?, size?)
+ *   data  — raw CollectibleData (for laneJitter on the flower size mod)
+ */
+const COLLECTIBLE_DRAWERS = {
+  life(self, x, y, scale, pop) {
+    self.paint.heart(x, y, scale * 1.35 * pop);
+  },
+
+  power(self, x, y, scale, pop, r) {
+    self.drawPowerGlow(x, y - 22 * scale, scale * pop, r.glowColor ?? '#a7ff7e');
+    // Speed-burst + split-clones reuse painter routines for back-compat;
+    // every other power-up renders from a sprite key + fallback dot.
+    if (r.glowColor === '#72ff66') { self.paint.tree(x, y + 28 * scale, scale * 0.64 * pop); return; }
+    if (r.glowColor === '#ad72ff') { self.paint.mushroom(x, y + 18 * scale, scale * 0.82 * pop, 'purple'); return; }
+    if (r.spriteKey && self.sprites.draw(r.spriteKey, x, y, (r.size ?? 76) * scale * pop)) return;
+    // v3.8.9 — prefer canonical pickup icons shipped in pickups/. Fall
+    // back to the v3.6 misc/ stand-ins (sign_wooden_shield etc.) if the
+    // canonical PNG didn't load.
+    const canonicalKey =
+      r.glowColor === '#8cdcff' ? 'pickupShield'  :
+      r.glowColor === '#ff7ad6' ? 'pickupMagnet'  :
+      r.glowColor === '#ffd54a' ? 'pickupScoreX2' : null;
+    if (canonicalKey && self.sprites.draw(canonicalKey, x, y, (r.size ?? 76) * scale * pop)) return;
+    const miscKey =
+      r.glowColor === '#8cdcff' ? 'miscShieldSign'   :
+      r.glowColor === '#ff7ad6' ? 'miscPotionEmerald':
+      r.glowColor === '#ffd54a' ? 'miscHourglass'    : null;
+    if (miscKey && self.sprites.draw(miscKey, x, y, (r.size ?? 76) * scale * pop)) return;
+    self.drawFallbackPowerDot(x, y, scale, r.glowColor ?? '#ffffff');
+  },
+
+  rare(self, x, y, scale, pop, r) {
+    // v3.8.9 — designer-delivered halo PNG drawn beneath the orchid
+    // (when present); procedural glow stays as fallback so empty-asset
+    // builds still get a glow. Halo size ~1.6× sprite for the "aura"
+    // read.
+    const haloSize = (r.size ?? 92) * scale * pop * 1.6;
+    if (!self.sprites.draw('orchidBlueRareHalo', x, y, haloSize)) {
+      self.drawPowerGlow(x, y - 28 * scale, scale * pop * 1.15, r.glowColor ?? '#5ab8ff');
+    }
+    if (r.spriteKey && self.sprites.draw(r.spriteKey, x, y, (r.size ?? 92) * scale * pop)) return;
+    const flowerKey = scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
+    if (self.sprites.draw(flowerKey, x, y, (r.size ?? 92) * scale * pop)) return;
+    self.paint.flower(x, y, scale * 1.95 * pop);
+  },
+
+  flower(self, x, y, scale, pop, _r, data) {
+    // v3.8.5 — bump orchid base 52 → 60. Reference shows golden flowers
+    // as crisp, unmistakable markers; at 52 the mid-depth flowers were
+    // getting lost in road texture. 60 keeps depth scaling honest
+    // (still shrinks at distance) while giving near pickups proper
+    // weight and presence.
+    const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
+    const w = 60 * scale * pop * szMod;
+    if (self.sprites.draw('orchidGoldMain', x, y, w)) return;
+    if (self.sprites.draw('orchidGoldBig', x, y, w * 0.9)) return;
+    const legacyKey = scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
+    if (self.sprites.draw(legacyKey, x, y, 72 * scale * pop * szMod)) return;
+    self.paint.flower(x, y, scale * 1.65 * pop);
+  },
+};

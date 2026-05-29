@@ -1,5 +1,6 @@
 import { clamp } from '../utils/math.js';
 import { Rng } from '../utils/rng.js';
+import { ObjectPool } from '../utils/pool.js';
 import { EntityRegistry } from '../ecs/EntityRegistry.js';
 import { createPlayer } from '../ecs/factories.js';
 import { MovementSystem } from '../systems/MovementSystem.js';
@@ -14,6 +15,11 @@ import { SpawnSystem } from '../systems/SpawnSystem.js';
 import { DecorationSystem } from '../systems/DecorationSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { PowerUpSystem } from '../systems/PowerUpSystem.js';
+import { ComboSystem } from '../systems/ComboSystem.js';
+import { AdaptiveSkill } from '../core/AdaptiveSkill.js';
+
+/** v3.4 countdown: 3.0 seconds @ 60Hz, plus a small "GO" tail. */
+const COUNTDOWN_TOTAL_FRAMES = 200;
 
 /**
  * Per-frame system ordering. Each system has `update(world, delta)`.
@@ -54,7 +60,12 @@ export class World {
    * @param {object} config
    * @param {import('./Projection.js').Projection} projection
    * @param {import('../core/EventBus.js').EventBus} eventBus
-   * @param {{ seed?: number | string, leaderboard?: import('../core/Leaderboard.js').Leaderboard }} [options]
+   * @param {{
+   *   seed?: number | string,
+   *   leaderboard?: import('../core/Leaderboard.js').Leaderboard,
+   *   playerStats?: import('../core/PlayerStats.js').PlayerStats,
+   *   adaptiveQuality?: import('../core/AdaptiveQuality.js').AdaptiveQuality,
+   * }} [options]
    */
   constructor(config, projection, eventBus, options = {}) {
     this.config = config;
@@ -63,19 +74,35 @@ export class World {
     this.registry = new EntityRegistry();
     this.rng = new Rng(options.seed);
     this.leaderboard = options.leaderboard ?? null;
+    this.playerStats = options.playerStats ?? null;
+    this.adaptiveQuality = options.adaptiveQuality ?? null;
+    /** Optional ShareSystem hook (HudSystem reads it for death-screen buttons). */
+    this.share = options.share ?? null;
     /** Set to the rank (1..N) of the most recent run if it placed on the board. */
     this.lastRunRank = 0;
 
-    // Subsystems with their own state (timers, snapshots, etc.).
+    // Subsystems with their own state (timers, snapshots, pools, etc.).
     this.powerUpSystem = new PowerUpSystem(config, eventBus);
-    this.spawnSystem = new SpawnSystem(config, projection, this.rng);
+    this.comboSystem = new ComboSystem(config, eventBus);
+    // v3.5: adaptive skill reads PlayerStats' recent-runs window and
+    // biases the difficulty curve. SpawnSystem holds the DifficultyDirector
+    // which consults it on every pattern pick.
+    this.adaptiveSkill = new AdaptiveSkill(this.playerStats);
+    this.spawnSystem = new SpawnSystem(config, projection, this.rng, this.adaptiveSkill);
     this.decorationSystem = new DecorationSystem(config, projection, this.rng);
     this.collisionSystem = new CollisionSystem(config, eventBus);
     this.gameStateSystem = new GameStateSystem(config, eventBus);
     this.effectsSystem = new EffectsSystem(config, eventBus, projection);
+    this.particleSystem = new ParticleSystem();
+    this.popupSystem = new ScorePopupSystem();
+    this.cleanupSystem = new CleanupSystem();
 
-    // Per-frame pipeline.
+    // Per-frame pipeline. powerUpSystem + comboSystem tick first so timer
+    // expiry is visible to gameStateSystem (speedMultiplier / combo value)
+    // and collisionSystem (magnet, shield) within the same frame.
     this._pipeline = [
+      this.powerUpSystem,
+      this.comboSystem,
       new PlayerInputSystem(eventBus),
       this.gameStateSystem,
       new PlayerPhysicsSystem(eventBus),
@@ -83,10 +110,13 @@ export class World {
       this.decorationSystem,
       new MovementSystem(),
       this.collisionSystem,
-      new ParticleSystem(),
-      new ScorePopupSystem(),
-      new CleanupSystem(),
+      this.particleSystem,
+      this.popupSystem,
+      this.cleanupSystem,
     ];
+    // Subset that still ticks in menu / dead / paused states so the end
+    // screens stay alive (particles fall, popups fade, dead entities reaped).
+    this._menuTickSystems = [this.particleSystem, this.popupSystem, this.cleanupSystem];
 
     // Event-driven systems still need a world handle for handlers.
     this.gameStateSystem.attach(this);
@@ -99,6 +129,18 @@ export class World {
     this._renderLanes = [];
     this.input = null;
     this.player = null;
+    /**
+     * Bounded ring of motion-trail ghost snapshots — populated by
+     * PlayerPhysicsSystem during speed-burst, drained by PlayerRenderer.
+     * Backed by a pool so a burst (~120 spawns over 360 frames) does
+     * not allocate fresh ghost objects.
+     */
+    this.playerTrail = [];
+    this.playerTrailPool = new ObjectPool(
+      () => ({ laneX: 0, y: 0, runFrame: 0, crouching: false, life: 0, maxLife: 0 }),
+      null,
+      16,
+    );
 
     this.reset();
   }
@@ -116,25 +158,69 @@ export class World {
     this.cameraImpulseTime = 0;
     this.scrollOffset = 0;
     this.lastRunRank = 0;
+    // v3.1 — distance-baseline accumulator. Combo state lives in ComboSystem.
+    this.distanceScoreCarry = 0;
+    this.countdownFrames = 0;
+    this.dyingFrames = 0;
+    this.comboSystem.reset('start');
+    // Run-scoped totals — fed into PlayerStats on death.
+    this.orchidsCollectedThisRun = 0;
+    this.rareOrchidsCollectedThisRun = 0;
+    this.nearMissesThisRun = 0;
+    this.lastHazardType = null;
+    this.lastMilestoneIndex = -1;
+    this.lastSpeedTier = 0;   // GameStateSystem watches baseSpeed crossings
 
     this.registry.clear();
     this.player = createPlayer(this.registry, this.config);
     this.powerUpSystem.reset();
+    // v3.5: refresh skill bias so the upcoming run sees the most recent
+    // death history (the previous run's distance was just recorded in
+    // saveBestScore).
+    this.adaptiveSkill?.refresh();
     this.spawnSystem.reset();
     this.decorationSystem.reset();
-  }
-
-  start() {
-    this.reset();
-    this.state = 'playing';
+    this.particleSystem.reset();
+    this.popupSystem.reset();
+    this.projection.focalImpulse = 0;
+    for (let i = 0; i < this.playerTrail.length; i += 1) this.playerTrailPool.release(this.playerTrail[i]);
+    this.playerTrail.length = 0;
+    // v3.8.2 — populate decor + orchids on reset so the menu / death /
+    // pause overlay already shows a fully-stocked road behind the UI.
+    // Entities sit still while state !== 'playing' (SpawnSystem and
+    // physics bail in that case) — this is purely a visual fill.
     this.spawnSystem.prepopulate(this);
     this.decorationSystem.prepopulate(this);
+  }
+
+  /**
+   * @param {{ skipCountdown?: boolean }} [opts]
+   *
+   * v3.8 — countdown is OPT-IN. Default behaviour (no opts) jumps
+   * straight into 'playing'. The user complained that clicking Start
+   * appeared to "do nothing for 3 seconds"; we keep the countdown code
+   * intact for callers that explicitly request it via
+   * `start({ skipCountdown: false })`, but the menu / restart paths get
+   * an instant start now.
+   */
+  start(opts = {}) {
+    this.reset();
+    // reset() already prepopulates the scene; no duplicate spawn here.
+    if (opts.skipCountdown === false) {
+      this.state = 'starting';
+      this.countdownFrames = COUNTDOWN_TOTAL_FRAMES;
+    } else {
+      this.state = 'playing';
+      this.countdownFrames = 0;
+    }
     this.eventBus.emit('scoreChanged', this.score);
     this.eventBus.emit('livesChanged', this.lives);
     this.eventBus.emit('tierChanged', this.currentTier);
     this.eventBus.emit('distanceChanged', this.distanceRun);
     this.eventBus.emit('powerUpsChanged', this.powerUpSystem.snapshot());
+    // ComboSystem.reset() emits comboChanged when state actually changes.
     this.eventBus.emit('stateChanged', this.state);
+    if (this.state === 'starting') this.eventBus.emit('countdown:start');
   }
 
   pause() {
@@ -165,24 +251,83 @@ export class World {
     if (this.state === 'menu' && input.consume('start')) {
       this.start();
     }
-    if (input.consume('restart')) {
-      this.start();
+    // v3.1: restart only consumed in dead/paused. Previously a stray R
+    // mid-run would silently nuke a long session — frustrating for casual
+    // players. Speedrunners can still pause→restart in two key presses.
+    if (this.state === 'dead' || this.state === 'paused') {
+      if (input.consume('restart')) this.start();
+    }
+
+    if (this.state === 'dying') {
+      // v3.5 slow-mo death moment. Keep ticking the simulation but at a
+      // fraction of real speed so the player sees what hit them. After
+      // dyingFrames expire, run the regular death close-out (save scores,
+      // transition to 'dead' which spawns the score overlay).
+      this.dyingFrames = Math.max(0, this.dyingFrames - delta);
+      const slowDelta = delta * (this.config.gameplay.dyingSpeedScale ?? 0.25);
+      for (const sys of this._pipeline) this.#tickSystem(sys, slowDelta);
+      this.#updateClouds(slowDelta);
+      if (this.dyingFrames <= 0) {
+        this.saveBestScore();
+        this.state = 'dead';
+        this.eventBus.emit('stateChanged', this.state);
+      }
+      return;
+    }
+
+    if (this.state === 'starting') {
+      // Drain countdown frames; emit per-second 'countdown:tick' events
+      // so SoundSystem can chirp and EffectsRenderer can paint the
+      // big 3 / 2 / 1 / GO overlay. Input is consumed to avoid burning
+      // jump-buffer on accidental presses before the player is ready.
+      input.consume('jump');
+      input.consume('crouchDown');
+      input.consume('moveLeft');
+      input.consume('moveRight');
+      const before = Math.ceil(this.countdownFrames / 60);
+      this.countdownFrames = Math.max(0, this.countdownFrames - delta);
+      const after = Math.ceil(this.countdownFrames / 60);
+      if (after < before && after > 0) this.eventBus.emit('countdown:tick', { remaining: after });
+      this.#updateClouds(delta);
+      for (const sys of this._menuTickSystems) this.#tickSystem(sys, delta);
+      if (this.countdownFrames <= 0) {
+        this.state = 'playing';
+        this.eventBus.emit('countdown:go');
+        this.eventBus.emit('stateChanged', this.state);
+      }
+      return;
     }
 
     if (this.state !== 'playing') {
       if (this.state === 'dead') input.consume('start');
       this.#updateClouds(delta);
       // Particles/popups still animate so end screens feel alive.
-      for (const sys of [this._pipeline[7], this._pipeline[8], this._pipeline[9]]) {
-        sys.update(this, delta);
-      }
+      for (const sys of this._menuTickSystems) this.#tickSystem(sys, delta);
       return;
     }
 
     input.consume('start');
 
-    for (const sys of this._pipeline) sys.update(this, delta);
+    for (const sys of this._pipeline) this.#tickSystem(sys, delta);
     this.#updateClouds(delta);
+  }
+
+  /**
+   * Run one system tick with error containment so a thrown system doesn't
+   * cancel the rest of the frame. We log the first failure per system
+   * (system name + the actual error), then suppress so a per-frame bug
+   * doesn't drown the console.
+   */
+  #tickSystem(sys, delta) {
+    try {
+      sys.update(this, delta);
+    } catch (err) {
+      if (!sys._tickErrLogged) {
+        sys._tickErrLogged = true;
+        const name = sys.constructor?.name ?? 'system';
+        console.error(`[World] ${name}.update() threw — subsequent failures suppressed:`, err);
+      }
+    }
   }
 
   // ── Player-occupied lanes (used by CollisionSystem + renderers) ────────────
@@ -248,6 +393,25 @@ export class World {
       // name; we only stash whether it qualified so the HUD knows to ask.
       this.lastRunRank = -1; // sentinel for "qualified, awaiting name"
     }
+    // v3.1: aggregate per-run totals into lifetime stats. Quiet no-op
+    // when PlayerStats is unavailable so unit tests / embed contexts
+    // still terminate cleanly.
+    if (this.playerStats) {
+      this.playerStats.recordRun({
+        orchids: this.orchidsCollectedThisRun,
+        rareOrchids: this.rareOrchidsCollectedThisRun,
+        distance: this.distanceRun,
+        nearMisses: this.nearMissesThisRun,
+      });
+    }
+    // v3.2: signal end-of-run to subscribers (achievements, telemetry).
+    // Emitted AFTER stats are updated so achievement predicates see the
+    // freshest lifetime numbers.
+    this.eventBus.emit('run:ended', {
+      score: this.score,
+      distance: Math.floor(this.distanceRun),
+      daily: !!this.dailyMode,
+    });
   }
 
   #updateClouds(delta) {

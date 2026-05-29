@@ -14,11 +14,22 @@ export const LAYERS = Object.freeze({
   PARTICLES: 7,
 });
 
+/**
+ * v3.8.4 parallax — stronger separation between depth layers. Reference
+ * has crisp depth: distant mountains barely move, mid-elements drift
+ * leisurely, foreground decor scrolls with the road. Calibration:
+ *   sky / gradient        0.00  static (handled outside this table)
+ *   farBackground (mtns)  0.05  near-static pixel crawl
+ *   castle / greenhouse   0.22  slow drift on the focal landmark
+ *   midground (terraces)  0.48  mid trees + rolling hills
+ *   foreground (decor)    0.95  near-1:1 with the road
+ *   road tiles            1.00  ground truth (set in RoadRenderer)
+ */
 export const PARALLAX = Object.freeze({
-  farBackground: 0.08,
-  castle: 0.20,
-  midground: 0.46,
-  foreground: 0.82,
+  farBackground: 0.05,
+  castle:        0.22,
+  midground:     0.48,
+  foreground:    0.95,
 });
 
 export const AMBIENT_MOTES = Object.freeze([

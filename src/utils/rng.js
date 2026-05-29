@@ -51,15 +51,24 @@ export function stringToSeed(s) {
 export class Rng {
   /** @param {number | string} [seed] — uint32 or arbitrary string */
   constructor(seed = (Math.random() * 0x100000000) >>> 0) {
+    this.reseed(seed);
+  }
+
+  /**
+   * Mutate state words in place to a fresh seed. Existing callers that
+   * hold a reference to this Rng (DifficultyDirector, PatternLibrary,
+   * SpawnSystem) keep working without re-wiring — useful for switching
+   * into a daily-challenge run mid-session.
+   *
+   * @param {number | string} seed
+   */
+  reseed(seed) {
     const numericSeed = typeof seed === 'string' ? stringToSeed(seed) : seed >>> 0;
     this.seed = numericSeed;
-    // Four 32-bit state words derived from the seed, all non-zero.
     this._a = hashUint32(numericSeed);
     this._b = hashUint32(this._a);
     this._c = hashUint32(this._b);
     this._d = hashUint32(this._c) | 1;
-    // Burn a few rounds so the first sample isn't tied to the seed's
-    // immediate hash output.
     for (let i = 0; i < 12; i += 1) this._uint32();
   }
 

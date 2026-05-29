@@ -20,19 +20,26 @@ export function parallaxOffset(projection, scrollOffset, amount, driftPhase = 0)
 }
 
 /**
- * Width of the road silhouette at the bottom edge of the canvas, in pixels.
+ * VISUAL width of the road silhouette at the bottom edge of the canvas.
+ * v3.8.7 — uses `roadVisualBaseHalfWidth`, so the road silhouette tightens
+ * with `visualLaneScale` without affecting gameplay collision math.
  * @param {Projection} projection
  */
 export function roadBaseHalfWidth(projection) {
-  return projection.roadBaseHalfWidth * 0.92;
+  return projection.roadVisualBaseHalfWidth * 0.92;
 }
 
 /**
- * Width of the road silhouette at the vanishing horizon, in pixels.
+ * VISUAL width of the road silhouette at the vanishing horizon.
+ * v3.8.8 — coefficients dropped (0.010 → 0.005, 0.040 → 0.025). The
+ * road now narrows to ~8 px on each side at the top — a slit that
+ * reads as "tunnel into the castle gate" instead of a wide trapezoid
+ * ending. The castle approach ramp (drawn in LandmarksRenderer) then
+ * fills the narrow gap into the gate.
  * @param {Projection} projection
  */
 export function roadTopHalfWidth(projection) {
-  return Math.max(projection.width * 0.022, roadBaseHalfWidth(projection) * 0.068);
+  return Math.max(projection.width * 0.005, roadBaseHalfWidth(projection) * 0.025);
 }
 
 /**

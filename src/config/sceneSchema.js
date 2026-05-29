@@ -37,12 +37,24 @@ export const ASSET_TYPES = Object.freeze({
   stone_obstacle: { group: 'obstacles', zone: SCENE_ZONES.MAIN_LANE_2, gameplay: true, footprint: '1 lane' },
   purple_brick_single: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
   purple_brick_platform_3: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
+  // v3: 'stone_*' replaces purple-Mario bricks. Aliases below keep legacy
+  // composition data alive until designer ships the new stone palette.
+  stone_brick_single: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
+  stone_wall_low: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
+  stone_wall_stairs: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
   question_block: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
-  green_pipe: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
+  // green_pipe retired — kept as a no-op redirect to planter_pot so any
+  // legacy spawn data that still references it draws the new sprite.
+  green_pipe: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile', deprecated: true, redirectTo: 'planter_pot' },
+  planter_pot: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
   floating_platform: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '2-3 tiles' },
   grass_dirt_block: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 lane' },
   grass_dirt_step: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '2 lanes' },
   grass_dirt_wall: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 lane' },
+  // v3.8 — designer-delivered explicit-side step. SceneryRenderer mirrors
+  // structural items on lane > 0 so this also visually serves the right side.
+  grass_dirt_step_left: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '2 lanes' },
+  grass_dirt_platform_long: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '2-3 tiles' },
   purple_flower_single: { group: 'decor_small', zone: SCENE_ZONES.SHOULDER_LEFT, gameplay: false, footprint: 'small' },
   yellow_flower_small: { group: 'decor_small', zone: SCENE_ZONES.SHOULDER_LEFT, gameplay: false, footprint: 'small' },
   grass_tuft: { group: 'decor_small', zone: SCENE_ZONES.SHOULDER_LEFT, gameplay: false, footprint: 'small' },
@@ -67,6 +79,9 @@ export const ASSET_TYPES = Object.freeze({
   forest_far: { group: 'background', zone: SCENE_ZONES.BACKGROUND_MID, gameplay: false, footprint: 'mid layer' },
   meadow_far: { group: 'background', zone: SCENE_ZONES.BACKGROUND_MID, gameplay: false, footprint: 'mid layer' },
   castle_far: { group: 'background', zone: SCENE_ZONES.BACKGROUND_FAR, gameplay: false, footprint: 'focal point' },
+  // v3 focal landmark: Victorian botanical greenhouse — replaces castle.
+  // LandmarksRenderer tries greenhouse* first and falls back to castle*.
+  greenhouse_far: { group: 'background', zone: SCENE_ZONES.BACKGROUND_FAR, gameplay: false, footprint: 'focal point' },
 });
 
 export function zoneForMainLane(lane) {

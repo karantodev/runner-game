@@ -55,6 +55,10 @@ export class PixelPainter {
   }
 
   pipe(x, y, scale = 1) {
+    // v3 brief: Mario pipe retired in favour of a terracotta planter pot.
+    // Try planter first, fall back to the legacy pipeGreen sprite while
+    // legacy assets still ship with the build.
+    if (this.sprites.draw('planterPot', x, y, 95 * scale, 'bottom')) return;
     this.sprites.draw('pipeGreen', x, y, 95 * scale, 'bottom');
   }
 

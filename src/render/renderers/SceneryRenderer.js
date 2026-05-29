@@ -1,6 +1,60 @@
 import { AMBIENT_MOTES, LAYERS, PARALLAX } from '../constants.js';
 import { parallaxOffset, roadBaseHalfWidth } from '../helpers.js';
 import { LANE_BANDS, SCENE_ZONES } from '../../config/sceneSchema.js';
+
+/**
+ * v3.7 per-band visual-size multipliers. SceneryRenderer multiplies the
+ * projected scale by this so each zone reads at its intended weight
+ * without changing the individual prefab scales.
+ */
+const BAND_SIZE_BIAS = Object.freeze({
+  [LANE_BANDS.SHOULDER]:  0.55,   // tiny buffer flora
+  [LANE_BANDS.STRUCTURE]: 1.00,   // blocks / mushrooms / fences
+  // v3.7.1 — trees were dominating the frame at 1.40. Reference shows
+  // them as small background mass, not foreground props. Cut to 0.80 +
+  // pair with the BAND_ALPHA_BIAS so they read as fading background.
+  [LANE_BANDS.NATURE]:    0.80,
+});
+
+/** v3.7.1 — extra alpha multiplier so NATURE reads as washed-back. */
+const BAND_ALPHA_BIAS = Object.freeze({
+  [LANE_BANDS.NATURE]: 0.78,
+});
+
+/** v3.7.4 — prefab filter. Only tree assetTypes get rendered as static frame. */
+function isTreeAssetType(assetType) {
+  return assetType === 'tree_round' || assetType === 'tree';
+}
+
+/**
+ * v3.7 lane-remap. Legacy prefab data hugged the road tightly
+ * (STRUCTURE at lane 1.88-2.18, NATURE trees at lane 3.04-3.22). The
+ * new zone scheme pushes them outward so the decor band reads as a real
+ * 60-80 px corridor and the trees frame the horizon. Mapped at render-
+ * time instead of mutating the data file — keeps SHOULDER (buffer)
+ * untouched and lets us re-tune in a single place.
+ */
+function remapLaneForBand(lane, band) {
+  const sign = Math.sign(lane) || 1;
+  const abs = Math.abs(lane);
+  if (band === LANE_BANDS.STRUCTURE) {
+    // v3.8.8 Tier-3 — pulled decor in HARD. Was [2.40, 3.50] which left
+    // ~53 px of empty grass between visual road edge and the nearest
+    // block. Now [2.18, 2.78]: clusters sit 15-40 px outside the road
+    // shoulder per the target reference's tight fantasy corridor.
+    if (abs < 1.85) return lane;
+    const t = Math.min(1, (abs - 1.85) / 0.40);
+    return sign * (2.18 + t * (2.78 - 2.18));
+  }
+  if (band === LANE_BANDS.NATURE) {
+    // v3.8.8 — NATURE remap follows: [3.00, 3.70]. Trees still frame the
+    // horizon but no longer float in distant haze.
+    if (abs < 2.40) return lane;
+    const t = Math.min(1, (abs - 2.40) / 0.85);
+    return sign * (3.00 + t * (3.70 - 3.00));
+  }
+  return lane;
+}
 import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
 import { getSceneryDraw } from './scenery/sceneryDispatch.js';
 
@@ -12,12 +66,13 @@ import { getSceneryDraw } from './scenery/sceneryDispatch.js';
  * dispatcher that paints every individual scenery asset type.
  */
 export class SceneryRenderer {
-  constructor({ ctx, projection, assets, sprites, paint }) {
+  constructor({ ctx, projection, assets, sprites, paint, gradients }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.sprites = sprites;
     this.paint = paint;
+    this.gradients = gradients;
     this._drawDeps = { sprites, paint };
     this._structural = [];
     this._organic = [];
@@ -25,7 +80,16 @@ export class SceneryRenderer {
 
   render(world) {
     this.#midgroundTerraces(world);
-    this.#foregroundGarden(world.scrollOffset, world);
+    // v3.7.5 — #foregroundGarden removed. It painted:
+    //   1. a static side-gradient panel on each shoulder (light-green tint)
+    //   2. 28 procedural fillRect grass blades re-seeded off scrollOffset
+    //      every frame — caused the visible flicker on the left shoulder
+    //   3. four sprite-flora items per side anchored to FIXED screen X —
+    //      these were the "static bushes in the bottom corners"
+    // The game is a treadmill: only true background (trees / mountains /
+    // sky) should sit still, every other prop must flow with the road.
+    // Dynamic decor through DecorationSystem covers the buffer/structure
+    // zones with entities that actually scroll toward the camera.
 
     // Reuse the two scratch arrays — clearing length to 0 keeps the same
     // backing storage and avoids per-frame allocation of two new arrays.
@@ -48,19 +112,38 @@ export class SceneryRenderer {
   // ── Static prefab layers ────────────────────────────────────────────────────
 
   #midgroundTerraces(world) {
-    for (const item of MIDGROUND_SCENERY) this.#drawComposedSceneryItem(item, world, LAYERS.MIDGROUND_TERRAIN, 0.92);
+    // v3.7.4: only TREE entries from the midground prefab are rendered.
+    // Static blocks / walls / mushrooms / fences sat at fixed distance
+    // and looked "frozen" while dynamic decor scrolled toward the player.
+    // Trees are the one prop the user actually wants framing the road.
+    for (const item of MIDGROUND_SCENERY) {
+      if (!isTreeAssetType(item.assetType)) continue;
+      this.#drawComposedSceneryItem(item, world, LAYERS.MIDGROUND_TERRAIN, 0.74);
+    }
   }
 
   #foregroundFrame(world) {
-    for (const item of FOREGROUND_FRAME_SCENERY) this.#drawComposedSceneryItem(item, world, LAYERS.FOREGROUND_DECOR, 0.95);
+    // Same filter as #midgroundTerraces — only trees survive.
+    for (const item of FOREGROUND_FRAME_SCENERY) {
+      if (!isTreeAssetType(item.assetType)) continue;
+      this.#drawComposedSceneryItem(item, world, LAYERS.FOREGROUND_DECOR, 0.95);
+    }
   }
 
   #drawComposedSceneryItem(item, world, layer, alpha = 1) {
-    const p = this.#projectWithParallax(item.lane, item.distance, world, layer);
+    // v3.7: project against the zone-remapped lane so the prefab pushes
+    // outward into the new wider decor / nature bands.
+    const band = this.#bandForZone(item.zone);
+    const projLane = remapLaneForBand(item.lane, band);
+    const p = this.#projectWithParallax(projLane, item.distance, world, layer);
     const layerBoost = layer === LAYERS.MIDGROUND_TERRAIN ? 1.12 : layer === LAYERS.FOREGROUND_DECOR ? 1.06 : 1;
-    const scale = p.scale * (item.scale ?? item.visualScale ?? 1) * layerBoost;
+    const sizeBias = BAND_SIZE_BIAS[band] ?? 1;
+    const scale = p.scale * (item.scale ?? item.visualScale ?? 1) * layerBoost * sizeBias;
+    const alphaBias = BAND_ALPHA_BIAS[band] ?? 1;
     const y = p.sy + (item.yOffset ?? 0) * scale;
-    this.#drawSceneryType(item.assetType ?? item.type, p.sx, y, scale, item.variant, alpha);
+    // v3.8.14 — pixel-snap projected position so decor sprites don't
+    // jitter at sub-pixel boundaries when scroll advances.
+    this.#drawSceneryType(item.assetType ?? item.type, Math.round(p.sx), Math.round(y), scale, item.variant, alpha * alphaBias);
   }
 
   // ── Dynamic per-side scenery ────────────────────────────────────────────────
@@ -72,23 +155,52 @@ export class SceneryRenderer {
       || scenic.zone === SCENE_ZONES.STRUCTURE_RIGHT;
   }
 
+  /**
+   * Map a SCENE_ZONES.* literal to its LANE_BANDS.* equivalent so prefab
+   * data (which tags zones, not bands) drives the same remap logic that
+   * dynamically-spawned scenery (which tags bands) uses.
+   */
+  #bandForZone(zone) {
+    if (zone === SCENE_ZONES.NATURE_LEFT || zone === SCENE_ZONES.NATURE_RIGHT) return LANE_BANDS.NATURE;
+    if (zone === SCENE_ZONES.STRUCTURE_LEFT || zone === SCENE_ZONES.STRUCTURE_RIGHT) return LANE_BANDS.STRUCTURE;
+    if (zone === SCENE_ZONES.SHOULDER_LEFT || zone === SCENE_ZONES.SHOULDER_RIGHT) return LANE_BANDS.SHOULDER;
+    return LANE_BANDS.PLAY;
+  }
+
   #sceneryEntity(entity, world, layer) {
     const pos = entity.components.Position;
     const sprite = entity.components.Sprite;
     const scenic = entity.components.ScenicData;
     if (pos.distance < -5.5) return;
-    const p = this.#projectWithParallax(pos.lane, pos.distance, world, layer);
-    const scale = p.scale * sprite.visualScale;
+    // v3.7: remap entity lane into the wider zones before projecting.
+    const projLane = remapLaneForBand(pos.lane, scenic.laneBand);
+    const p = this.#projectWithParallax(projLane, pos.distance, world, layer);
+    // v3.7 per-band size bias. Each LANE_BAND has a target visual weight:
+    //   SHOULDER  — buffer flowers, grass tufts: tiny, soft (≤30% lane)
+    //   STRUCTURE — blocks, mushrooms, fences: full-bodied (100%)
+    //   NATURE    — trees, hedges: imposing (140%) to read as background mass
+    // Falls back to 1.0 for any band that hasn't been classified.
+    const sizeBias = BAND_SIZE_BIAS[scenic.laneBand] ?? 1.0;
+    const scale = p.scale * sprite.visualScale * sizeBias;
     const y = p.sy + sprite.yOffset * scale;
 
     const isStructural = this.#isStructural(entity);
     const nearFade = isStructural ? 1 : Math.max(0, Math.min(1, (pos.distance + 5.5) / 12));
     const farFade = Math.max(0.62, Math.min(1, p.scale * 3.1));
     let alpha = nearFade * farFade;
-    if (scenic.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.74;
+    // v3.8.6 Tier-2 — SHOULDER base bias raised 0.74 → 0.85 so corridor
+    // reads denser. Close-fade floor raised 0 → 0.55 so props at distance
+    // 0-16 stay readable instead of vanishing — the empty-bottom-corner
+    // problem the user kept flagging traces to this fade-to-zero.
+    if (scenic.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.85;
     if (scenic.laneBand === LANE_BANDS.SHOULDER && pos.distance < 16) {
-      alpha *= Math.max(0, pos.distance / 16);
+      alpha *= Math.max(0.55, pos.distance / 16);
     }
+    // v3.7.1: NATURE alpha-fade so trees read as background mass even at
+    // closer depths. Combined with the 0.80 size bias they stop dominating
+    // the frame.
+    const bandAlphaBias = BAND_ALPHA_BIAS[scenic.laneBand];
+    if (bandAlphaBias != null) alpha *= bandAlphaBias;
     if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale)) {
       alpha = Math.min(alpha, (pos.distance / 20) * 0.22);
     }
@@ -96,7 +208,9 @@ export class SceneryRenderer {
     if (alpha <= 0.03) return;
 
     const mirrored = isStructural && pos.lane > 0;
-    this.#drawSceneryType(sprite.assetType ?? sprite.type, p.sx, y, scale, sprite.variant, alpha, mirrored);
+    // v3.8.14 — pixel-snap projected position. Same rationale as the
+    // composed-prefab path above.
+    this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
   }
 
   #intrudesOnGameplayCorridor(x, scale) {
@@ -106,7 +220,10 @@ export class SceneryRenderer {
   }
 
   #projectWithParallax(lane, distance, world, layer) {
-    const projected = this.projection.project(lane, distance);
+    // v3.8.7 — projectVisual so decor placement scales with visualLaneScale
+    // alongside the road silhouette. Keeps the gap between road edge and
+    // structure decor constant as the visual model is tuned.
+    const projected = this.projection.projectVisual(lane, distance);
     const amount = layer === LAYERS.MIDGROUND_TERRAIN ? PARALLAX.midground : PARALLAX.foreground;
     return {
       ...projected,
@@ -125,14 +242,14 @@ export class SceneryRenderer {
     const y1 = p.height;
 
     ctx.save();
+    // The foreground-side gradient is pre-built in GradientCache once per
+    // viewport size — re-creating it here every frame allocated two
+    // CanvasGradient objects and was visible in the GC trace.
+    const sideGradient = this.gradients.foregroundSide;
     for (const side of [-1, 1]) {
       const edgeX = vpX + side * baseHalf;
       const outerX = side < 0 ? 0 : p.width;
-      const grad = ctx.createLinearGradient(0, y0, 0, y1);
-      grad.addColorStop(0, 'rgba(58,150,46,0.00)');
-      grad.addColorStop(0.45, 'rgba(37,126,38,0.32)');
-      grad.addColorStop(1, 'rgba(20,86,33,0.72)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = sideGradient;
       ctx.beginPath();
       ctx.moveTo(edgeX, y0);
       ctx.lineTo(outerX, y0 + 48);

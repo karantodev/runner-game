@@ -5,16 +5,10 @@ import {
   Health,
   Hitbox,
   LaneState,
-  Lifetime,
-  ParticleData,
-  ParticleTag,
   PlayerIntent,
   PlayerTag,
   Position,
   ScenicData,
-  ScorePopupData,
-  ScorePopupTag,
-  ScreenPos,
   Scrollable,
   Sprite,
   VerticalState,
@@ -34,6 +28,11 @@ const COLLECTIBLE_DEFAULT_ASSET = {
   life: 'heart_full',
   'power-tree': 'speed_tree_pickup',
   'power-mushroom': 'power_mushroom_pickup',
+  // v3.1 — new power-up types + rare orchid
+  'power-magnet': 'power_magnet_pickup',
+  'power-shield': 'power_shield_pickup',
+  'power-double': 'power_double_pickup',
+  'rare-orchid': 'rare_orchid_pickup',
   flower: 'golden_flower',
 };
 
@@ -139,36 +138,3 @@ export function createScenery(registry, opts) {
     .add('Scrollable', Scrollable());
 }
 
-/**
- * Spawn a particle entity in screen space.
- *
- * @param {import('./EntityRegistry.js').EntityRegistry} registry
- * @param {{
- *   x: number, y: number, vx: number, vy: number,
- *   life: number, radius: number, color: string, gravity?: number,
- * }} opts
- */
-export function spawnParticleEntity(registry, opts) {
-  return registry.create()
-    .add('ParticleTag', ParticleTag())
-    .add('ScreenPos', ScreenPos(opts.x, opts.y))
-    .add('ParticleData', ParticleData(opts.vx, opts.vy, opts.radius, opts.color, opts.gravity ?? 0.25))
-    .add('Lifetime', Lifetime(opts.life));
-}
-
-/**
- * Spawn a score popup entity.
- *
- * @param {import('./EntityRegistry.js').EntityRegistry} registry
- * @param {{
- *   x: number, y: number, vy: number,
- *   text: string, color: string, scale?: number, life: number,
- * }} opts
- */
-export function spawnScorePopupEntity(registry, opts) {
-  return registry.create()
-    .add('ScorePopupTag', ScorePopupTag())
-    .add('ScreenPos', ScreenPos(opts.x, opts.y))
-    .add('ScorePopupData', ScorePopupData(opts.text, opts.color, opts.vy, opts.scale ?? 0.78))
-    .add('Lifetime', Lifetime(opts.life));
-}
