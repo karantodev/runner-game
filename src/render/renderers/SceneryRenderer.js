@@ -38,20 +38,21 @@ function remapLaneForBand(lane, band) {
   const sign = Math.sign(lane) || 1;
   const abs = Math.abs(lane);
   if (band === LANE_BANDS.STRUCTURE) {
-    // v3.8.8 Tier-3 — pulled decor in HARD. Was [2.40, 3.50] which left
-    // ~53 px of empty grass between visual road edge and the nearest
-    // block. Now [2.18, 2.78]: clusters sit 15-40 px outside the road
-    // shoulder per the target reference's tight fantasy corridor.
+    // v3.8.19 — STRUCTURE band pulled even tighter ([2.18, 2.78] →
+    // [2.12, 2.68]). Combined with the new dense cluster prefabs the
+    // side corridor reads as a continuous wall, not a row of distant
+    // billboards. Innermost blocks now sit ~5 px outside road edge.
     if (abs < 1.85) return lane;
     const t = Math.min(1, (abs - 1.85) / 0.40);
-    return sign * (2.18 + t * (2.78 - 2.18));
+    return sign * (2.12 + t * (2.68 - 2.12));
   }
   if (band === LANE_BANDS.NATURE) {
-    // v3.8.8 — NATURE remap follows: [3.00, 3.70]. Trees still frame the
-    // horizon but no longer float in distant haze.
+    // v3.8.19 — NATURE pulled in too: [3.00, 3.70] → [2.92, 3.60].
+    // Trees and large foliage sit just behind the structure band,
+    // forming the outer corridor wall.
     if (abs < 2.40) return lane;
     const t = Math.min(1, (abs - 2.40) / 0.85);
-    return sign * (3.00 + t * (3.70 - 3.00));
+    return sign * (2.92 + t * (3.60 - 2.92));
   }
   return lane;
 }

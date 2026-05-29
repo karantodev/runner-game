@@ -10,7 +10,7 @@ import { LANE_BANDS, SCENE_ZONES } from './sceneSchema.js';
 export const SIDE_DECORATION_PREFABS = Object.freeze([
   {
     id: 'cliff-flower-meadow',
-    weight: 4,
+    weight: 2,
     items: [
       { assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 1.06, variant: 0 },
       { assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: 0.9, scale: 0.48 },
@@ -194,6 +194,71 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { assetType: 'sprout_soil',      laneBand: LANE_BANDS.SHOULDER, lane: 1.42, dist: -1.8, scale: 0.30 },
     ],
   },
+
+  // ── v3.8.19 Side Corridor Density Pass ──────────────────────────────────────
+  // Four dense cluster templates targeting the gaps the user flagged:
+  // (1) bottom-corner foreground framing, (2) mid-depth platform+question
+  // stack, (3) pipe + stairs identity beat, (4) tall vertical wall accent.
+  // Each cluster mixes >= 4 items at staggered dist so the prefab
+  // occupies 3-4 worldscale units of road depth.
+
+  {
+    // (1) Heavy near-corner block: large platform + mushroom on top +
+    // purple-brick accent + flowers + fence behind. Lane 1.86 keeps the
+    // platform anchor close to road edge after the remap.
+    id: 'corner-platform-mushroom-frame',
+    weight: 5,
+    items: [
+      { assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
+      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.56, variant: 'red',    yOffset: -130 },
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.7, scale: 0.84, variant: 0 },
+      { assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  1.6, scale: 0.78 },
+      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  0.8, scale: 0.46 },
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.46, dist: -1.6, scale: 0.32 },
+    ],
+  },
+  {
+    // (2) Platform with TWO question_blocks at different heights -- the
+    // "arcade platformer" beat the user wants more of. Bricks below for
+    // structural anchor.
+    id: 'platform-qblock-stack',
+    weight: 4,
+    items: [
+      { assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.92, variant: 1 },
+      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.76, variant: 1, yOffset: -100 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.74, yOffset: -170 },
+      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.3, scale: 0.70, yOffset: -110 },
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist:  1.5, scale: 0.30 },
+      { assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.66, dist: -1.7, scale: 0.40 },
+    ],
+  },
+  {
+    // (3) Pipe + stairs identity beat. The stairs (grass_dirt_step_left)
+    // auto-flips on right-side spawn so we get matching staircases on
+    // both sides without a second asset.
+    id: 'pipe-stairs-flower-bed',
+    weight: 4,
+    items: [
+      { assetType: 'green_pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 0.96 },
+      { assetType: 'grass_dirt_step_left',laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.94 },
+      { assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist:  1.2, scale: 0.54 },
+      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist: -0.8, scale: 0.46 },
+      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.42, dist:  1.9, scale: 0.30 },
+    ],
+  },
+  {
+    // (4) Tall vertical wall accent: two grass_dirt_blocks stacked +
+    // mushroom on top + flowers at base. Mid-depth visual landmark.
+    id: 'tall-block-stack-vertical',
+    weight: 3,
+    items: [
+      { assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98, variant: 0 },
+      { assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.46, variant: 'red', yOffset: -250 },
+      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.4, scale: 0.46 },
+      { assetType: 'sprout_soil',         laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.7, scale: 0.30 },
+    ],
+  },
   {
     id: 'fence-flower-row',
     weight: 5,
@@ -218,7 +283,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   },
   {
     id: 'organic-meadow',
-    weight: 3,
+    weight: 2,
     items: [
       { assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist: 0.0, scale: 0.52 },
       { assetType: 'mushroom_red_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.52, dist: -1.0, scale: 0.50, variant: 'purple' },
