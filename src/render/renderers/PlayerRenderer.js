@@ -57,6 +57,34 @@ function getFrameMeta(spriteImg, key) {
 }
 
 /**
+ * v3.8.31 — fit-to-canonical guard.
+ *
+ * Designer occasionally ships frames at way-higher-than-canonical
+ * resolution (e.g., jump01 at 1254×1254 instead of 64×96 — see the asset
+ * audit's PATH_MISMATCH bucket). With the v3.8.29 uniform PIXEL_SCALE
+ * model, those frames render at `naturalW × 2.77 ≈ 3470` px — completely
+ * off-canvas — and the QA contact sheet shows only a stray corner of the
+ * sprite poking through.
+ *
+ * Honest rendering would be "draw what the designer shipped at the
+ * declared scale." But for QA usefulness — and so that gameplay doesn't
+ * break on a single oversized asset — when the source ratio exceeds
+ * 1.25× canonical in either dimension, fall back to scale-to-fit-
+ * canonical. The character ends up at roughly canonical size (sprite
+ * downsampled to ~177×266 px), and the source-size warning in the
+ * debug label still surfaces the underlying asset problem.
+ *
+ * Returns a render scale to apply uniformly to naturalW and naturalH.
+ */
+function getRenderScale(spriteImg, pixelScale) {
+  const ratioW = spriteImg.naturalWidth / CANONICAL_PLAYER.w;
+  const ratioH = spriteImg.naturalHeight / CANONICAL_PLAYER.h;
+  const ratio = Math.max(ratioW, ratioH);
+  if (ratio > 1.25) return pixelScale / ratio;
+  return pixelScale;
+}
+
+/**
  * Player + split-clones rendering. Picks the correct sprite from the
  * run / crouch / jump / hit / idle atlas, applies tilt, and overlays a
  * coloured wash for clone bodies.
@@ -149,18 +177,19 @@ export class PlayerRenderer {
       if (!img?.naturalWidth) continue;
 
       // v3.8.29 — uniform PIXEL_SCALE (same as live body), so trail ghosts
-      // match the live player's per-sprite proportions exactly. Previously
-      // ghosts were force-fit to width 120 like the body was; now both
-      // share the canonical-canvas-derived scale.
+      // match the live player's per-sprite proportions exactly.
+      // v3.8.31 — fit-to-canonical guard so oversized source frames don't
+      // spill ghosts across the whole canvas.
       const bodyScale = (p.height / 720) * 1.23;
       const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
+      const renderScale = getRenderScale(img, pixelScale);
       const meta = getFrameMeta(img, key);
-      const drawW = Math.round(img.naturalWidth * pixelScale);
-      const drawH = Math.round(img.naturalHeight * pixelScale);
+      const drawW = Math.round(img.naturalWidth * renderScale);
+      const drawH = Math.round(img.naturalHeight * renderScale);
       const anchorXInSprite = meta.anchorX - meta.spriteOffsetX;
       const anchorYInSprite = meta.footY - meta.spriteOffsetY;
-      const drawLeft = Math.round(-anchorXInSprite * pixelScale);
-      const drawTop = Math.round(-anchorYInSprite * pixelScale);
+      const drawLeft = Math.round(-anchorXInSprite * renderScale);
+      const drawTop = Math.round(-anchorYInSprite * renderScale);
       const x = p.width / 2 + g.laneX * p.visualLaneWidth;
       const bottomMargin = world.config.player.bottomMargin ?? 0;
       const y = p.groundY - bottomMargin + g.y;
@@ -266,21 +295,23 @@ export class PlayerRenderer {
 
     // v3.8.29 True Sprite Scale Normalization — uniform pixel scale.
     // The CANONICAL outer box stays constant across all states (sized
-    // from CANONICAL_PLAYER.w × .h × pixelScale). The sprite art is
-    // drawn at its NATURAL dimensions scaled by `pixelScale` (NOT
-    // stretched to fit a target width like in v3.8.25). Per-frame meta
-    // anchors map a (anchorX, footY) point on the canvas to the
-    // player's foot position. Default meta = sprite-bottom-center, so
-    // historical sprites without overrides keep working.
+    // from CANONICAL_PLAYER.w × .h × pixelScale). Sprite art is drawn at
+    // its NATURAL dimensions scaled by `renderScale`. For canonical-sized
+    // frames (≤1.25× canonical) renderScale == pixelScale. For oversized
+    // frames (e.g., 1254×1254 designer mistakes), renderScale falls back
+    // to "fit canonical" so the sprite occupies roughly the canonical box
+    // instead of overflowing the canvas — the source-size warning in the
+    // debug label still surfaces the asset bug so designer can fix it.
     const visualW = Math.round(CANONICAL_PLAYER.w * pixelScale);
     const visualH = Math.round(CANONICAL_PLAYER.h * pixelScale);
     const meta = getFrameMeta(spriteImg, runKey);
-    const drawW = Math.round(spriteImg.naturalWidth * pixelScale);
-    const drawH = Math.round(spriteImg.naturalHeight * pixelScale);
+    const renderScale = getRenderScale(spriteImg, pixelScale);
+    const drawW = Math.round(spriteImg.naturalWidth * renderScale);
+    const drawH = Math.round(spriteImg.naturalHeight * renderScale);
     const anchorXInSprite = meta.anchorX - meta.spriteOffsetX;
     const anchorYInSprite = meta.footY - meta.spriteOffsetY;
-    const drawLeft = Math.round(-anchorXInSprite * pixelScale);
-    const drawTop = Math.round(-anchorYInSprite * pixelScale);
+    const drawLeft = Math.round(-anchorXInSprite * renderScale);
+    const drawTop = Math.round(-anchorYInSprite * renderScale);
 
     ctx.save();
     ctx.globalAlpha = alpha;
