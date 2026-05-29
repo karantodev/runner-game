@@ -9,7 +9,11 @@ import { runPatternTests } from './systems/spawn/PatternTests.js';
 
 const params = new URLSearchParams(window.location.search);
 const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-const requestedDebug = params.get('debug') === '1' || params.get('debugRun') === '1' || params.get('autostart') === '1';
+const requestedDebug =
+  params.get('debug') === '1'
+  || params.get('debugRun') === '1'
+  || params.get('autostart') === '1'
+  || params.get('debugPlayerStates') === '1';  // v3.8.27 — implies debug mode
 const debugAllowed = (isLocalDev && GAME_CONFIG.debug.allowLocalTools) || GAME_CONFIG.debug.allowRemoteTools;
 const debugEnabled = requestedDebug && debugAllowed;
 const autostart = debugEnabled && (params.get('autostart') === '1' || params.get('debugRun') === '1');
@@ -91,6 +95,13 @@ if (params.get('debugSideMatrix') === '1') {
 // collision capsule, and state label so visual-consistency QA can
 // verify scale stays constant across states.
 if (params.get('debugPlayer') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: true, writable: false, configurable: true });
+}
+// `?debugPlayerStates=1` — full state-switching QA mode. Freezes the
+// world, exposes 1-9 to force a state, and adds a capture helper.
+// Implies showPlayer = true so the cyan/magenta/red overlay shows.
+if (params.get('debugPlayerStates') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showPlayerStates', { value: true, writable: false, configurable: true });
   Object.defineProperty(GAME_CONFIG.debug, 'showPlayer', { value: true, writable: false, configurable: true });
 }
 
@@ -332,6 +343,106 @@ if (debugEnabled) {
       console.error('[Orchid Debug] capture failed', error);
     });
   });
+
+  // v3.8.27 — ?debugPlayerStates=1 wiring: keyboard 1-9 forces a state,
+  // world frozen, capturePlayerStates() helper grabs dataURLs.
+  if (GAME_CONFIG.debug.showPlayerStates) {
+    installPlayerStatesMode(game, debugApi);
+  }
+}
+
+/**
+ * v3.8.27 — installs the player-states debug mode on top of the game.
+ * Sets world to a paused-but-rendering state, exposes 1-9 hotkeys, and
+ * adds capturePlayerStates() to the debug API.
+ */
+function installPlayerStatesMode(game, debugApi) {
+  const PRESETS = {
+    run:           { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+    jump_ascend:   { worldState: 'paused', vy: -14, y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+    jump_peak:     { worldState: 'paused', vy: 0,   y: -160, isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+    jump_descend:  { worldState: 'paused', vy: 12,  y: -80,  isJumping: true,  crouching: false, invuln: 0,  hitFlash: 0 },
+    duck:          { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: true,  invuln: 0,  hitFlash: 0 },
+    hit:           { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 78, hitFlash: 0.6 },
+    invulnerable:  { worldState: 'paused', vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 30, hitFlash: 0 },
+    death:         { worldState: 'dying',  vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+    replay:        { worldState: 'dying',  vy: 0,   y: 0,    isJumping: false, crouching: false, invuln: 0,  hitFlash: 0 },
+  };
+  const KEY_MAP = {
+    '1': 'run', '2': 'jump_ascend', '3': 'jump_peak', '4': 'jump_descend',
+    '5': 'duck', '6': 'hit', '7': 'invulnerable', '8': 'death', '9': 'replay',
+  };
+
+  const applyPreset = (presetName) => {
+    const preset = PRESETS[presetName];
+    if (!preset || !game.world?.player) return;
+    const w = game.world;
+    const p = w.player;
+    w.state = preset.worldState;
+    if (preset.worldState === 'dying') w.dyingFrames = w.config.gameplay.dyingFrames;
+    // Centre player in middle lane, zero scroll for a stable backdrop.
+    p.components.LaneState.laneX = 0;
+    p.components.LaneState.targetLane = 0;
+    p.components.LaneState.laneTilt = 0;
+    p.components.VerticalState.y = preset.y;
+    p.components.VerticalState.vy = preset.vy;
+    p.components.VerticalState.isJumping = preset.isJumping;
+    p.components.VerticalState.jumpStretch = 0;
+    p.components.VerticalState.landSquash = 0;
+    p.components.CrouchState.isCrouching = preset.crouching;
+    p.components.Health.invulnerabilityFrames = preset.invuln;
+    p.components.Health.hitFlash = preset.hitFlash;
+    console.info(`[debugPlayerStates] state = ${presetName}`);
+  };
+
+  // Start the run automatically so player exists, then immediately
+  // flip into the debug state.
+  const enterMode = () => {
+    if (!game.world?.player) {
+      requestAnimationFrame(enterMode);
+      return;
+    }
+    applyPreset('run');
+  };
+  requestAnimationFrame(() => {
+    debugApi.startDebugRun();
+    requestAnimationFrame(enterMode);
+  });
+
+  // Keyboard 1-9 switches state.
+  window.addEventListener('keydown', (event) => {
+    if (!GAME_CONFIG.debug.showPlayerStates) return;
+    const target = event.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+    const presetName = KEY_MAP[event.key];
+    if (!presetName) return;
+    event.preventDefault();
+    applyPreset(presetName);
+  });
+
+  // capturePlayerStates({ overlay, download }) — dataURLs per state.
+  debugApi.applyPlayerState = applyPreset;
+  debugApi.capturePlayerStates = async ({ download = false } = {}) => {
+    const states = Object.keys(PRESETS);
+    const canvas = document.getElementById('game');
+    const results = {};
+    for (const state of states) {
+      applyPreset(state);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const dataURL = canvas.toDataURL('image/png');
+      results[state] = dataURL;
+      if (download) {
+        const a = document.createElement('a');
+        a.href = dataURL;
+        a.download = `player_state_${state}.png`;
+        a.click();
+      }
+    }
+    applyPreset('run');
+    return results;
+  };
+
+  console.info('[debugPlayerStates] active. Keys 1-9 switch state. __ORCHID_DEBUG__.capturePlayerStates({ download: true }) to grab all.');
 }
 
 game.boot().catch((error) => {
