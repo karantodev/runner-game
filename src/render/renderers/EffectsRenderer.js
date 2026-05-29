@@ -143,19 +143,41 @@ export class EffectsRenderer {
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
 
-      // "REPLAY" pill at the top — readable cue that the game is showing
-      // the slow-mo of the last hit. Cheap text + 1 stroke + 1 fill.
+      // v3.8.26 — "REPLAY" pill reworked for legibility. Earlier 28 px
+      // soft red text was almost invisible against the bright corridor.
+      // Now: 56 px bold, brighter danger-red, dark pill BACKDROP so the
+      // text reads against any background — even dense flower fields.
+      // Includes a small "TAP TO RESTART" subtitle so the player knows
+      // the input cue.
       ctx.save();
-      ctx.globalAlpha = 0.85 * t;
+      ctx.globalAlpha = 0.92 * t;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '900 28px system-ui, sans-serif';
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-      ctx.lineWidth = 5;
-      const replayY = H * 0.18;
-      ctx.strokeText('• REPLAY •', W / 2, replayY);
-      ctx.fillStyle = '#ff8a8a';
-      ctx.fillText('• REPLAY •', W / 2, replayY);
+      const replayY = Math.round(H * 0.22);
+      // Pill backdrop
+      ctx.font = '900 56px system-ui, sans-serif';
+      const pillText = '• REPLAY •';
+      const pillW = ctx.measureText(pillText).width + 56;
+      const pillH = 84;
+      ctx.fillStyle = 'rgba(20,4,4,0.78)';
+      ctx.beginPath();
+      const rx = W / 2 - pillW / 2;
+      const ry = replayY - pillH / 2;
+      ctx.rect(rx, ry, pillW, pillH);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,80,80,0.55)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rx, ry, pillW, pillH);
+      // Main text
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 6;
+      ctx.strokeText(pillText, W / 2, replayY - 6);
+      ctx.fillStyle = '#ff5050';
+      ctx.fillText(pillText, W / 2, replayY - 6);
+      // Subtitle
+      ctx.font = '700 16px system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,200,200,0.92)';
+      ctx.fillText('TAP TO RESTART', W / 2, replayY + 24);
       ctx.restore();
       ctx.globalAlpha = 1;
     }
