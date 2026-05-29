@@ -179,6 +179,10 @@ export const GAME_CONFIG = Object.freeze({
     // side-aware structural prop showing type, side, dx from road
     // centre, and whether the per-side variant or a fallback was used.
     showSides: false,
+    // v3.8.17 — toggled via ?debugSideMatrix=1. Replaces dynamic
+    // scenery with a 4-cell test grid per side-aware type so a QA
+    // observer can pick the visually-correct variant per side.
+    showSideMatrix: false,
   },
 
   scene: {

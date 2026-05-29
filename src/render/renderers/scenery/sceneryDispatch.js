@@ -49,22 +49,26 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
 //   0 = block_01, 1 = block_02, 2 = block_flower_01, 3 = block_flower_02
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
-// v3.8.16 side-aware mapping audit.
+// v3.8.16/.17 side-aware mapping.
 //
 // Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
-//   _left.png  → asset placed on the road's LEFT shoulder; its
-//                visible (road-facing) face is the block's RIGHT side
-//   _right.png → asset placed on the road's RIGHT shoulder; its
-//                visible (road-facing) face is the block's LEFT side
+//   _left.png  → asset placed on the road's LEFT shoulder
+//   _right.png → asset placed on the road's RIGHT shoulder
 //
 // The engine derives side from `mirrored` in SceneryRenderer:
 //   side = mirrored ? 1 : -1   // +1 = right shoulder, -1 = left shoulder
 //
-// If a future designer batch uses the OPPOSITE naming convention
-// ("_left" = the block's left face is visible, regardless of placement),
-// flip SIDE_KEY_FOR to swap the mapping in ONE place:
-//   const SIDE_KEY_FOR = (side) => (side === -1 ? 'Right' : 'Left');
-const SIDE_KEY_FOR = (side) => (side === -1 ? 'Left' : 'Right');
+// v3.8.17 — `?sideMapping=swapped` URL flag flips the mapping at boot
+// without touching this file. Lets QA A/B-compare the two interpretations
+// of the designer's naming convention (placement vs visible-face) in
+// clean back-to-back screenshots.
+let swapSideMapping = false;
+export function setSideMappingSwap(swap) { swapSideMapping = !!swap; }
+export function isSideMappingSwapped() { return swapSideMapping; }
+const SIDE_KEY_FOR = (side) =>
+  swapSideMapping
+    ? (side === -1 ? 'Right' : 'Left')
+    : (side === -1 ? 'Left'  : 'Right');
 
 // v3.8.16 — two-pass dispatch. side ∈ {-1, +1} = first pass; only side-
 // variant is attempted. If it draws, return true. Otherwise return false

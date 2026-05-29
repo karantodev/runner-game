@@ -48,6 +48,20 @@ if (params.get('debugAxis') === '1') {
 if (params.get('debugSides') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showSides', { value: true, writable: false, configurable: true });
 }
+// `?sideMapping=swapped` flips SIDE_KEY_FOR globally so LEFT placement
+// draws the designer's _right.png and vice versa. Used to A/B test
+// whether the designer's left/right naming refers to placement side or
+// visible-face side. Default: normal (placement convention).
+import('./render/renderers/scenery/sceneryDispatch.js').then(({ setSideMappingSwap }) => {
+  if (params.get('sideMapping') === 'swapped') setSideMappingSwap(true);
+});
+// `?debugSideMatrix=1` replaces gameplay scenery with an isolated
+// test matrix of every side-aware sprite at every left/right variant,
+// drawn at three depths (near/mid/far). Lets QA compare _left vs
+// _right artwork without gameplay noise.
+if (params.get('debugSideMatrix') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showSideMatrix', { value: true, writable: false, configurable: true });
+}
 
 const canvas = document.getElementById('game');
 const game = new Game(canvas, {
