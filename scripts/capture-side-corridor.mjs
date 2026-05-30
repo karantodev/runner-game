@@ -80,10 +80,10 @@ async function capture(label) {
  * × 3 distances per side = 3 × 6 grid (before-left half + after-right
  * half, with labels). Use an off-screen browser canvas to build it.
  */
-async function compose() {
-  const beforeDir = path.join(ROOT, 'docs/visual-qa/before');
-  const afterDir  = path.join(ROOT, 'docs/visual-qa/after');
-  const outFile   = path.join(ROOT, 'docs/visual-qa/side-corridor-before-after.png');
+async function compose(beforeLabel = 'before', afterLabel = 'after', outName) {
+  const beforeDir = path.join(ROOT, 'docs/visual-qa', beforeLabel);
+  const afterDir  = path.join(ROOT, 'docs/visual-qa', afterLabel);
+  const outFile   = path.join(ROOT, 'docs/visual-qa', outName ?? `side-corridor-${beforeLabel}-vs-${afterLabel}.png`);
   const cellW = 384;   // each cell is ~25% width of 1536-source
   const cellH = 216;   // proportional
   const margin = 8;
@@ -114,13 +114,15 @@ async function compose() {
         row.push({
           x: margin + i * (cellW + margin),
           y: headerH + margin + r * (cellH + labelH + margin),
-          label: `BEFORE · seed=${seed} · ${dist}m`,
+          label: `${beforeLabel.toUpperCase()} · seed=${seed} · ${dist}m`,
+          isAfter: false,
           src: await dataUrl(path.join(beforeDir, `seed-${seed}-dist-${dist}.png`)),
         });
         row.push({
           x: margin + (i + DISTANCES.length) * (cellW + margin),
           y: headerH + margin + r * (cellH + labelH + margin),
-          label: `AFTER · seed=${seed} · ${dist}m`,
+          label: `${afterLabel.toUpperCase()} · seed=${seed} · ${dist}m`,
+          isAfter: true,
           src: await dataUrl(path.join(afterDir, `seed-${seed}-dist-${dist}.png`)),
         });
       }
@@ -135,14 +137,14 @@ async function compose() {
       ctx.fillStyle = '#9ad17a';
       ctx.font = 'bold 18px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText('Side Corridor — BEFORE (Phase 6) vs AFTER (Phase 7 art-direction)', 12, 26);
+      ctx.fillText('Side Corridor — visual recomposition', 12, 26);
       for (const cell of cells) {
         const img = new Image();
         img.src = cell.src;
         // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => { img.onload = r; });
         ctx.drawImage(img, cell.x, cell.y, cellW, cellH);
-        ctx.fillStyle = cell.label.startsWith('AFTER') ? '#9ad17a' : '#a8d4ff';
+        ctx.fillStyle = cell.isAfter ? '#9ad17a' : '#a8d4ff';
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(cell.label, cell.x + cellW / 2, cell.y + cellH + 14);
@@ -158,11 +160,21 @@ async function compose() {
 }
 
 const cmd = process.argv[2];
-if (cmd === 'before' || cmd === 'after') {
+if (cmd === 'capture') {
+  const label = process.argv[3];
+  if (!label) {
+    console.error('usage: node scripts/capture-side-corridor.mjs capture <label>');
+    process.exit(1);
+  }
+  capture(label).catch((e) => { console.error(e); process.exit(1); });
+} else if (cmd === 'before' || cmd === 'after') {
   capture(cmd).catch((e) => { console.error(e); process.exit(1); });
 } else if (cmd === 'compose') {
-  compose().catch((e) => { console.error(e); process.exit(1); });
+  const before = process.argv[3] ?? 'before';
+  const after  = process.argv[4] ?? 'after';
+  const out    = process.argv[5];
+  compose(before, after, out).catch((e) => { console.error(e); process.exit(1); });
 } else {
-  console.error('usage: node scripts/capture-side-corridor.mjs <before|after|compose>');
+  console.error('usage: node scripts/capture-side-corridor.mjs <before|after|capture <label>|compose [before [after [out]]]>');
   process.exit(1);
 }

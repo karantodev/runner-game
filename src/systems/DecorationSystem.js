@@ -88,7 +88,11 @@ export class DecorationSystem {
     for (const entry of HERO_LAYOUT) {
       const prefab = this.prefabsById.get(entry.prefabId);
       if (!prefab) continue;
-      this.#spawnChunk(world, entry.side, entry.distance, prefab);
+      // v3.8.42 — Phase 7b per-entry scale multiplier. HERO_LAYOUT zones
+      // declare a multiplier (1.0 near, 0.75 mid, 0.40 far) so the
+      // perspective reads as actual depth instead of "everything is the
+      // same size at different positions".
+      this.#spawnChunk(world, entry.side, entry.distance, prefab, entry.scaleMultiplier ?? 1);
       if (entry.side < 0) lastHeroDistLeft  = Math.max(lastHeroDistLeft,  entry.distance);
       else                 lastHeroDistRight = Math.max(lastHeroDistRight, entry.distance);
     }
@@ -96,8 +100,13 @@ export class DecorationSystem {
     // Phase 2 — procedural variation past the hero stretch. Step from
     // the last hero distance + spacing so we don't overlap the hand-
     // placed clusters.
-    const procStartLeft  = lastHeroDistLeft  + spacing;
-    const procStartRight = lastHeroDistRight + spacing;
+    // v3.8.42 — Phase 7b clean castle approach. Hard-floor procStart at
+    // 200m so the 150-200m band stays empty (HERO_LAYOUT itself ends at
+    // 150m). Without this, procedural fill would creep into the castle
+    // approach with even our soft pool, breaking the road→castle axis.
+    const PROC_FLOOR = 200;
+    const procStartLeft  = Math.max(PROC_FLOOR, lastHeroDistLeft  + spacing);
+    const procStartRight = Math.max(PROC_FLOOR, lastHeroDistRight + spacing);
     for (let distance = procStartLeft; distance < maxDist; distance += spacing) {
       this.#spawnSideChunk(world, -1, distance + this.rng.range(-0.7, 0.7));
     }
@@ -133,13 +142,13 @@ export class DecorationSystem {
   }
 
   /** Deterministic path: explicit prefab, no RNG noise (used by HERO_LAYOUT). */
-  #spawnChunk(world, side, distance, prefab) {
+  #spawnChunk(world, side, distance, prefab, scaleMultiplier = 1) {
     this.lastChunk[String(side)] = prefab.id;
     if (this.placement && !this.placement.shouldSpawnPrefab(prefab, side)) return;
-    this.#spawnChunkItems(world, side, distance, prefab, /* useRng */ false);
+    this.#spawnChunkItems(world, side, distance, prefab, /* useRng */ false, scaleMultiplier);
   }
 
-  #spawnChunkItems(world, side, distance, chunk, useRng) {
+  #spawnChunkItems(world, side, distance, chunk, useRng, scaleMultiplier = 1) {
     for (const item of chunk.items) {
       const mirroredLane = side * item.lane;
       const jitter = useRng ? this.rng.range(-0.028, 0.028) : 0;
@@ -168,8 +177,12 @@ export class DecorationSystem {
         lane: mirroredLane + side * jitter,
         distance: distance + item.dist,
         variant,
-        scale: item.scale * scaleJitter,
-        yOffset: item.yOffset ?? 0,
+        // v3.8.42 — Phase 7b: per-entry scaleMultiplier propagates to
+        // every item in the prefab. Multiplied with the per-item scale
+        // and the procedural scaleJitter so a single HERO_LAYOUT entry
+        // can shrink an entire cluster for perspective depth.
+        scale: item.scale * scaleJitter * scaleMultiplier,
+        yOffset: (item.yOffset ?? 0) * scaleMultiplier,
         chunkId: chunk.id,
         // v3.8.39 — Phase 5 slot metadata. null when the prefab item
         // hasn't been annotated yet.
