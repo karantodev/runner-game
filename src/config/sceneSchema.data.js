@@ -374,6 +374,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // outer tree shadow + cascade of flowers.
     id: 'hero-layered-corner-brick',
     weight: 5,
+    // v3.8.41 — Phase 7. Heavy hero compositions stay out of the
+    // procedural weighted pool so they can't accidentally land on
+    // top of HERO_LAYOUT's curated anchors.
+    proceduralOk: false,
     // v3.8.39 — Phase 5 structured slots. INNER tier is two
     // ground-anchored bricks; MID tier is a platform with a mushroom
     // topper; OUTER tier is loose foreground/background framing.
@@ -405,6 +409,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // arcade beats per the user's request "qblocks выше и крупнее".
     id: 'hero-layered-platform-qblocks',
     weight: 4,
+    proceduralOk: false,
     items: [
       // INNER: low brick accent at road edge
       { id: 'brick_inner', role: 'base', anchor: 'ground',
@@ -433,6 +438,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // user wants.
     id: 'hero-layered-pipe-landmark',
     weight: 4,
+    proceduralOk: false,
     items: [
       // INNER: pipe right at road edge — the centerpiece landmark
       { id: 'pipe_inner', role: 'base', anchor: 'ground',
@@ -459,6 +465,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // the user wants more of.
     id: 'hero-layered-brick-cascade',
     weight: 4,
+    proceduralOk: false,
     items: [
       // INNER bricks
       { id: 'brick_inner_a', role: 'base', anchor: 'ground',
@@ -758,31 +765,45 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
  *   120-140 → small far-corridor tail
  *   > 150  → handed off to weighted random
  */
+/**
+ * v3.8.41 — Phase 7 visual art-direction pass. The previous 14-entry
+ * layout placed two heavy heros at distance 12/16 (right at the
+ * player's feet), then four more heavy beats by distance 38. With the
+ * road foreshortening, that read as "wall of stuff at the bottom".
+ *
+ * V2 spreads the depth rhythm into 5 explicit zones:
+ *
+ *   NEAR FOREGROUND  (14-24m)  — 2 large anchors, framing the road,
+ *                                NOT blocking the gameplay corridor.
+ *   NEAR-MID         (38-58m)  — one structural beat per side,
+ *                                alternating L/R for a clear cadence.
+ *   MID              (78-118m) — smaller blocks/platforms alternating,
+ *                                lighter than the near beats.
+ *   FAR              (140-170m)— tiny silhouettes only — soft flora
+ *                                or fence rows, no heavy clutter.
+ *   CASTLE APPROACH  (185m+)   — minimal density so the road→castle
+ *                                axis stays dominant.
+ *
+ * Net change: 14 entries → 11. ~20% lower beat density + clearer
+ * left/right alternation + explicit "no heavy clutter near castle".
+ */
 export const HERO_LAYOUT = Object.freeze([
-  // Bottom-corner anchors — these define the foreground framing
-  { distance:  12, side: -1, prefabId: 'hero-layered-corner-brick' },     // LEFT  near anchor
-  { distance:  16, side:  1, prefabId: 'hero-layered-pipe-landmark' },    // RIGHT pipe landmark
-  // Mid-near: arcade beats (question blocks + brick cascade)
-  { distance:  32, side: -1, prefabId: 'hero-layered-platform-qblocks' }, // LEFT  qblocks
-  { distance:  38, side:  1, prefabId: 'hero-layered-brick-cascade' },    // RIGHT brick cascade
-  // Mid: pipe identity again + stronger right anchor
-  { distance:  56, side: -1, prefabId: 'pipe-stairs-flower-bed' },        // LEFT  pipe-stairs
-  { distance:  64, side:  1, prefabId: 'corner-platform-mushroom-frame' },// RIGHT platform-mushroom
-  // Mid-far: more qblocks, vertical landmark
-  { distance:  88, side: -1, prefabId: 'platform-qblock-stack' },         // LEFT  qblocks again
-  { distance:  96, side:  1, prefabId: 'tall-block-stack-vertical' },     // RIGHT vertical landmark
-  // Far corridor tail — smaller density
-  { distance: 122, side: -1, prefabId: 'wall-stack-near' },               // LEFT  small far wall
-  { distance: 132, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT small far brick
-  // v3.8.35 — extended landmark beats. Previous tail ended at 132 and
-  // weighted-random took over — producing the "many grass blocks +
-  // mushrooms" monotony in the mid-far band. These 4 entries extend
-  // the curated zone to ~190 with explicit purple-brick and
-  // gate-side identity beats before procedural decor kicks in.
-  { distance: 148, side: -1, prefabId: 'brick-corridor-segment' },        // LEFT  mid-far purple brick
-  { distance: 158, side:  1, prefabId: 'pipe-with-flowers' },             // RIGHT pipe landmark continuation
-  { distance: 174, side: -1, prefabId: 'qblock-floating-cluster' },       // LEFT  qblock cluster landmark
-  { distance: 188, side:  1, prefabId: 'brick-corridor-segment' },        // RIGHT gate-side brick decoration
+  // NEAR FOREGROUND — two anchors that read as the corridor's front frame.
+  { distance:  16, side: -1, prefabId: 'hero-layered-corner-brick' },     // LEFT  anchor
+  { distance:  22, side:  1, prefabId: 'hero-layered-pipe-landmark' },    // RIGHT pipe landmark
+  // NEAR-MID — strong structural beat per side, alternating.
+  { distance:  42, side: -1, prefabId: 'hero-layered-platform-qblocks' }, // LEFT  qblock beat
+  { distance:  58, side:  1, prefabId: 'corner-platform-mushroom-frame' },// RIGHT platform+mushroom
+  // MID — lighter blocks/platforms; alternating; max one mushroom per side.
+  { distance:  82, side: -1, prefabId: 'brick-corridor-segment' },        // LEFT  mid brick
+  { distance: 100, side:  1, prefabId: 'long-platform-with-mushroom' },   // RIGHT mid platform
+  { distance: 118, side: -1, prefabId: 'fence-flower-row' },              // LEFT  soft mid accent
+  // FAR — tiny silhouettes only, no heavy structures.
+  { distance: 142, side:  1, prefabId: 'leaf-forest-edge' },              // RIGHT soft leaves
+  { distance: 162, side: -1, prefabId: 'organic-meadow' },                // LEFT  soft meadow
+  // CASTLE APPROACH — minimal density. One small accent on each side.
+  { distance: 188, side:  1, prefabId: 'fence-flower-row' },              // RIGHT minimal
+  { distance: 196, side: -1, prefabId: 'large-bush-garden' },             // LEFT  background bush
 ]);
 
 /**
