@@ -101,6 +101,12 @@ export const Sprite = (type, assetType, variant = null, visualScale = 1, yOffset
   variant,
   visualScale,
   yOffset,
+  // v3.8.39 — Phase 5 prefab item role (optional). Populated by
+  // createScenery when a SIDE_DECORATION_PREFAB declares structured
+  // slots. Read by SceneryRenderer's composition overlay for the role
+  // badge. null when the entity wasn't spawned from an annotated prefab.
+  role: null,
+  prefabId: null,
 });
 
 // Particles & score popups live in their own pool-backed systems

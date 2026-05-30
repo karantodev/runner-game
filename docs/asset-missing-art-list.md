@@ -1,6 +1,6 @@
 # Asset Missing-Art / Reject-Art List
 
-Generated 2026-05-29T23:31:35.139Z.
+Generated 2026-05-30T04:13:04.294Z.
 Derived from `ASSET_SEMANTICS` + audit buckets. Designer hand-off doc.
 
 ## ✅ A — NO NEED / DUPLICATE / REJECT (23)
@@ -67,7 +67,48 @@ Engine needs BOTH `<key>Left` and `<key>Right` registered + on disk.
 - `pickupShield` → `assets/pickups/shield/shield.png`
 - `pickupScoreX2` → `assets/pickups/score_x2/score_x2.png`
 
-## 🟢 C — LOW PRIORITY OPTIONAL (35)
+## 🟡 D — NEEDS PREFAB SLOT (33) / NEEDS DESIGNER FIX (0)
+Phase 5 introduced explicit `role` / `parentId` / `anchor` slots in
+SIDE_DECORATION_PREFABS. The following prefabs are still loose item arrays —
+they spawn fine in warn mode but won't survive strict mode if a future
+change makes their support graph fail validation. Annotate progressively.
+
+### Prefabs needing slot annotation (33)
+- `cliff-flower-meadow`
+- `grass-wall-mushroom`
+- `pipe-vine-garden`
+- `blockstack-platform`
+- `brick-corridor-segment`
+- `qblock-floating-cluster`
+- `wall-and-mushroom-grove`
+- `pipe-with-flowers`
+- `pipe-mushroom-platform`
+- `dense-platform-trio`
+- `fence-bush-corner`
+- `long-platform-with-mushroom`
+- `long-platform-question-stack`
+- `platform-pipe-flowers`
+- `wall-stack-near`
+- `corner-platform-mushroom-frame`
+- `platform-qblock-stack`
+- `pipe-stairs-flower-bed`
+- `tall-block-stack-vertical`
+- `fence-flower-row`
+- `platform-high-cliff`
+- `organic-meadow`
+- `leaf-forest-edge`
+- `blue-mushroom-grove`
+- `large-bush-garden`
+- `hanging-platform-garden`
+- `big-bush-wall`
+- `block-mushroom-on-top`
+- `block-flower-on-top`
+- `block-grass-on-top`
+- `block-sprout-on-top`
+- `block-flower-builtin`
+- `step-left-with-mushroom`
+
+## 🟢 E — LOW PRIORITY OPTIONAL (35)
 Alt-style variants on disk without an engine consumer. Could enrich variety
 in a future composition-template pass; not blocking gameplay today.
 

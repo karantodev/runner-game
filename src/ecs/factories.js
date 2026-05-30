@@ -130,10 +130,18 @@ export function createScenery(registry, opts) {
     laneBand = null,
     zone = null,
     chunkId = null,
+    // v3.8.39 — Phase 5 prefab slot metadata. Passed through to the
+    // Sprite component so the composition debug overlay can show role
+    // badges per entity.
+    role = null,
+    prefabId = null,
   } = opts;
+  const sprite = Sprite(type, assetType, variant, scale, yOffset);
+  sprite.role = role;
+  sprite.prefabId = prefabId ?? chunkId;
   return registry.create()
     .add('Position', Position(lane, distance))
-    .add('Sprite', Sprite(type, assetType, variant, scale, yOffset))
+    .add('Sprite', sprite)
     .add('ScenicData', ScenicData(laneBand, zone, chunkId))
     .add('Scrollable', Scrollable());
 }

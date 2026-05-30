@@ -136,6 +136,40 @@ test('placement validator — seeded run produces zero rule violations', async (
   expect(violations).toBe(0);
 });
 
+// v3.8.39 — Phase 5 multi-seed composition guard. Each seed runs the
+// hero cycle + procedural decor for ~1.2 s; both placement (Phase 2)
+// AND prefab composition (Phase 5) violation counters must stay at
+// zero. Catches generator/prefab regressions that only show up under
+// specific RNG sequences.
+for (const seed of [1, 42, 99, 123, 777]) {
+  test(`composition graph — seed=${seed} produces zero placement+composition violations`, async ({ page }) => {
+    test.setTimeout(45_000);
+    await page.goto(`/dev.html?debug=1&seed=${seed}`);
+    await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+    await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
+    await page.waitForTimeout(1200);
+    const state = await page.evaluate(() => window.__ORCHID_DEBUG__.getState());
+    expect(state.placementViolations, `placement violations @ seed=${seed}`).toBe(0);
+    expect(state.compositionViolations, `composition violations @ seed=${seed}`).toBe(0);
+  });
+}
+
+test('strict enforcement — ?enforcePlacement=1 drops violations and finishes the run', async ({ page }) => {
+  // v3.8.39 — sanity test for strict mode. With enforcement on, both
+  // SpawnSystem and DecorationSystem skip violating spawns instead of
+  // warn-and-continue. The seeded run should still complete (game.world
+  // remains in playing state) and the violation counters stay at zero
+  // because the current catalog is clean.
+  await page.goto('/dev.html?debug=1&seed=42&enforcePlacement=1');
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
+  await page.waitForTimeout(1200);
+  const state = await page.evaluate(() => window.__ORCHID_DEBUG__.getState());
+  expect(['playing', 'starting']).toContain(state.worldState);
+  expect(state.placementViolations).toBe(0);
+  expect(state.compositionViolations).toBe(0);
+});
+
 test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   // Two independent debug runs with the same seed should yield identical
   // spawn-system traces (pattern ids in order). The test does two cold

@@ -125,12 +125,17 @@ export class DecorationSystem {
   #spawnSideChunk(world, side, distance) {
     const chunk = this.#pickChunk(side);
     this.lastChunk[String(side)] = chunk.id;
+    // v3.8.39 — Phase 5 prefab composition validation. Strict mode skips
+    // the whole prefab if support graph is invalid; warn-mode logs once
+    // per prefab id and proceeds.
+    if (this.placement && !this.placement.shouldSpawnPrefab(chunk, side)) return;
     this.#spawnChunkItems(world, side, distance, chunk, /* useRng */ true);
   }
 
   /** Deterministic path: explicit prefab, no RNG noise (used by HERO_LAYOUT). */
   #spawnChunk(world, side, distance, prefab) {
     this.lastChunk[String(side)] = prefab.id;
+    if (this.placement && !this.placement.shouldSpawnPrefab(prefab, side)) return;
     this.#spawnChunkItems(world, side, distance, prefab, /* useRng */ false);
   }
 
@@ -166,6 +171,10 @@ export class DecorationSystem {
         scale: item.scale * scaleJitter,
         yOffset: item.yOffset ?? 0,
         chunkId: chunk.id,
+        // v3.8.39 — Phase 5 slot metadata. null when the prefab item
+        // hasn't been annotated yet.
+        role: item.role ?? null,
+        prefabId: chunk.id,
       });
     }
   }

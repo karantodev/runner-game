@@ -1,6 +1,6 @@
 # Asset Audit Report
 
-Generated: 2026-05-29
+Generated: 2026-05-30
 
 Source-of-truth: `assets/` tree vs `src/config/gameConfig.js → GAME_CONFIG.assets` registry.
 

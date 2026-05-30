@@ -669,3 +669,104 @@ export function isSupportAllowed(parentType, childType) {
   }
   return { ok: true };
 }
+
+/**
+ * v3.8.39 — Phase 5 Prefab Composition Graph.
+ *
+ * @typedef {'base' | 'support' | 'topper' | 'child-decor' | 'foreground-accent' | 'background-accent' | 'road-facing-face' | 'loose-decor'} PrefabItemRole
+ *
+ * @typedef {'ground' | 'top' | 'front' | 'back' | 'left-edge' | 'right-edge' | 'road-facing-side' | 'outer-side'} PrefabItemAnchor
+ *
+ * @typedef {object} PrefabItem
+ * @property {string} assetType                     — required, e.g. 'grass_dirt_block'
+ * @property {string} [id]                          — local within prefab, e.g. 'base_01'
+ * @property {PrefabItemRole} [role]                — defaults to 'loose-decor'
+ * @property {string} [parentId]                    — another item's id within this prefab
+ * @property {PrefabItemAnchor} [anchor]            — where this item attaches to its parent / ground
+ * @property {number} [zLayer]                      — render-order hint (Phase 6)
+ * — plus the existing geometry: laneBand, lane, dist, scale, yOffset, variant
+ */
+
+const SUPPORT_REQUIRED_GROUND_FALLBACK_ROLES = new Set(['base', 'support', 'loose-decor', 'foreground-accent', 'background-accent']);
+
+/**
+ * v3.8.39 — Runtime prefab composition validator.
+ *
+ * Walks a prefab's items and checks the support graph:
+ *   - referenced parentId must resolve to a sibling item
+ *   - child's assetType must be allowed on parent's assetType via
+ *     allowedParents / allowedChildren in the semantic registry
+ *   - support-required items must declare a parent OR sit on 'ground'
+ *     (the default role 'base' / unrolled items)
+ *   - side-aware items get a warning so QA can spot facing mismatches
+ *
+ * Errors block strict-mode spawning; warnings are surfaced via
+ * console + compositionReport but don't block.
+ *
+ * @param {{ id: string, items: PrefabItem[] }} prefab
+ * @param {-1 | 1} [side]
+ * @returns {{ ok: boolean, errors: object[], warnings: object[] }}
+ */
+export function validatePrefab(prefab, side) {
+  const errors = [];
+  const warnings = [];
+  if (!prefab || !Array.isArray(prefab.items) || prefab.items.length === 0) {
+    return { ok: false, errors: [{ kind: 'NO_ITEMS', prefab: prefab?.id ?? '?' }], warnings };
+  }
+  const itemById = new Map();
+  for (const item of prefab.items) {
+    if (item.id) itemById.set(item.id, item);
+  }
+  for (const item of prefab.items) {
+    const semantic = ASSET_SEMANTICS[item.assetType];
+    if (!semantic) continue; // unknown — defer to audit/registry layer
+    const role = item.role ?? 'loose-decor';
+    // Check 1 — parent reference resolves.
+    if (item.parentId) {
+      const parent = itemById.get(item.parentId);
+      if (!parent) {
+        errors.push({ kind: 'PARENT_MISSING', prefab: prefab.id, item: item.id ?? item.assetType, parentId: item.parentId });
+        continue;
+      }
+      // Check 2 — child allowed on parent. Accept if EITHER side declares
+      // the relationship (parent's allowedChildren or child's allowedParents).
+      const parentAccepts = ASSET_SEMANTICS[parent.assetType]?.allowedChildren?.includes(item.assetType);
+      const childAccepts = semantic.allowedParents?.includes(parent.assetType);
+      if (!parentAccepts && !childAccepts) {
+        errors.push({
+          kind: 'INVALID_PARENT_CHILD',
+          prefab: prefab.id,
+          item: item.id ?? item.assetType,
+          parent: parent.assetType,
+          child: item.assetType,
+        });
+      }
+    } else if (semantic.supportType === 'support-required'
+            && !SUPPORT_REQUIRED_GROUND_FALLBACK_ROLES.has(role)) {
+      // Check 3 — support-required item with no parent. Allowed only
+      // when the role indicates ground placement (base/support/loose).
+      // A 'topper' or 'child-decor' role without parent is a floating
+      // element and the generator should reject it.
+      errors.push({
+        kind: 'FLOATING_SUPPORT_REQUIRED',
+        prefab: prefab.id,
+        item: item.id ?? item.assetType,
+        assetType: item.assetType,
+        role,
+      });
+    }
+    // Check 4 — side-aware items warning so QA panels can spot
+    // facing/mirroring problems. Not an error; SIDE_MAPPING_BY_TYPE
+    // handles direction at draw time.
+    if (semantic.orientationType === 'side-aware' && side !== undefined) {
+      warnings.push({
+        kind: 'SIDE_AWARE_PRESENT',
+        prefab: prefab.id,
+        item: item.id ?? item.assetType,
+        assetType: item.assetType,
+        side,
+      });
+    }
+  }
+  return { ok: errors.length === 0, errors, warnings };
+}

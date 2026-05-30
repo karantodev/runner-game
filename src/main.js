@@ -337,6 +337,10 @@ function createDebugApi() {
         // zone / adjacency rule in this run. Regression-tested by the
         // 'placement validator' Playwright spec.
         placementViolations: game.world.placement?.violations ?? 0,
+        // v3.8.39 — Phase 5 prefab composition counter. 0 means every
+        // SIDE_DECORATION_PREFAB spawn passed validatePrefab() (support
+        // graph + parent/child + side-aware checks).
+        compositionViolations: game.world.placement?.compositionViolations ?? 0,
         lastCapture: debugState.lastCapture,
         errors: debugState.errors,
       };
@@ -373,16 +377,36 @@ function createDebugApi() {
           invalid.push({ assetType, reason: 'NEEDS_SEMANTIC_CLASSIFICATION' });
         }
       }
+      // v3.8.39 — Phase 5 metrics: surface prefab composition state +
+      // most/least used assets so the team sees which corners of the
+      // catalog are over- or under-used.
+      const placement = game.world.placement;
+      const errors = placement?.recentPrefabErrors ?? [];
+      const errorsByKind = new Map();
+      for (const e of errors) bump(errorsByKind, e.kind);
+      const sortedAssetTypes = [...byAssetType.entries()].sort((a, b) => b[1] - a[1]);
+      const registeredAssetTypes = Object.keys(ASSET_SEMANTICS);
+      const usedAssetTypes = new Set(byAssetType.keys());
+      const leastUsedRegistered = registeredAssetTypes
+        .filter((k) => !usedAssetTypes.has(k))
+        .sort();
       const report = {
         timestamp: new Date().toISOString(),
         totalEntities: [...byAssetType.values()].reduce((a, b) => a + b, 0),
-        placementViolations: game.world.placement?.violations ?? 0,
+        // Phase 2 counter — bad zone / adjacency placements.
+        placementViolations: placement?.violations ?? 0,
+        // Phase 5 counters — bad prefab support graphs.
+        compositionViolations: placement?.compositionViolations ?? 0,
+        prefabErrorsByKind: Object.fromEntries(errorsByKind),
+        recentPrefabErrors: errors,
         byCategory: Object.fromEntries(byCategory),
-        byAssetType: Object.fromEntries([...byAssetType.entries()].sort((a, b) => b[1] - a[1])),
+        mostUsedAssetTypes: Object.fromEntries(sortedAssetTypes.slice(0, 10)),
+        leastUsedRegisteredAssets: leastUsedRegistered.slice(0, 20),
         invalid,
       };
       console.info('[compositionReport]', report);
       console.table(report.byCategory);
+      if (Object.keys(report.prefabErrorsByKind).length) console.table(report.prefabErrorsByKind);
       return report;
     },
   };

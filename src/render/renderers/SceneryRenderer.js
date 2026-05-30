@@ -79,6 +79,16 @@ const COMPOSITION_COLORS = {
   background: '#888',
   unknown:    '#ff8030',
 };
+const ROLE_BADGE_LETTER = {
+  'base':              'B',
+  'support':           'S',
+  'topper':            'T',
+  'child-decor':       'C',
+  'foreground-accent': 'F',
+  'background-accent': 'K',
+  'road-facing-face':  'R',
+  'loose-decor':       'L',
+};
 
 function categoryFor(assetType) {
   return ASSET_SEMANTICS[assetType]?.category ?? 'unknown';
@@ -260,7 +270,12 @@ export class SceneryRenderer {
     const mirrored = isStructural && pos.lane > 0;
     // v3.8.14 — pixel-snap projected position. Same rationale as the
     // composed-prefab path above.
+    // v3.8.39 — Phase 5 role propagation. Sprite.role (populated by
+    // createScenery for annotated prefabs) feeds the role badge in
+    // the composition overlay.
+    this._currentItemRole = sprite.role ?? null;
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
+    this._currentItemRole = null;
   }
 
   #intrudesOnGameplayCorridor(x, scale) {
@@ -423,9 +438,16 @@ export class SceneryRenderer {
     const color = invalid ? COMPOSITION_COLORS.unknown : COMPOSITION_COLORS[category] ?? '#fff';
     const ctx = this.ctx;
     const labelY = Math.round(y - 152 * scale);
+    // v3.8.39 — Phase 5 role badge. Read from the per-entity Sprite
+    // component (added by createScenery for prefab items that declared a
+    // role). One-letter prefix in square brackets: B=base, S=support,
+    // T=topper, C=child, F=foreground, K=background, R=road-facing,
+    // L=loose. Missing role → no badge.
+    const role = this._currentItemRole;
+    const roleBadge = role ? `[${ROLE_BADGE_LETTER[role] ?? role[0].toUpperCase()}] ` : '';
     const label = invalid
-      ? `${category.toUpperCase()} · ${assetType} · ${zone} · INVALID`
-      : `${category.toUpperCase()} · ${assetType} · ${zone}${semantic.orientationType === 'side-aware' ? (usedSideVariant ? ' · sideVar' : ' · fallback') : ''}`;
+      ? `${roleBadge}${category.toUpperCase()} · ${assetType} · ${zone} · INVALID`
+      : `${roleBadge}${category.toUpperCase()} · ${assetType} · ${zone}${semantic.orientationType === 'side-aware' ? (usedSideVariant ? ' · sideVar' : ' · fallback') : ''}`;
     ctx.save();
     ctx.font = '10px monospace';
     const tw = ctx.measureText(label).width;
