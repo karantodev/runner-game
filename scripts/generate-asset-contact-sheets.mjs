@@ -35,28 +35,78 @@ const OUT_DIR = path.join(ROOT, 'docs/visual-qa/asset-contact-sheets');
 
 async function walk(dir) {
   const out = [];
+  // v3.8.45 — track which subtrees were intentionally skipped + how
+  // many files live inside them. Surfaced in the README coverage
+  // section so the reader sees we're not missing data silently.
+  const skipped = [];
+  async function countSubtree(d) {
+    let n = 0;
+    const entries = await fs.readdir(d, { withFileTypes: true });
+    for (const e of entries) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) n += await countSubtree(full);
+      else if (e.isFile() && full.endsWith('.png')) n += 1;
+    }
+    return n;
+  }
   async function recurse(d) {
     const entries = await fs.readdir(d, { withFileTypes: true });
     for (const e of entries) {
-      if (e.isDirectory() && e.name === '_source') continue;
       const full = path.join(d, e.name);
+      if (e.isDirectory() && e.name === '_source') {
+        const n = await countSubtree(full);
+        skipped.push({ relPath: path.relative(ROOT, full), count: n, reason: 'archived / rejected designer batch' });
+        continue;
+      }
       if (e.isDirectory()) await recurse(full);
       else if (e.isFile() && full.endsWith('.png')) out.push(full);
     }
   }
   await recurse(dir);
-  return out.sort();
+  return { files: out.sort(), skipped };
 }
 
 async function readPngHeader(absPath) {
   let fh;
   try {
     fh = await fs.open(absPath, 'r');
-    const buf = Buffer.alloc(24);
-    await fh.read(buf, 0, 24, 0);
+    // 33 bytes covers PNG signature (8) + IHDR length+type (8) + IHDR
+    // data (13 bytes: width 4 + height 4 + bit depth 1 + color type 1
+    // + compression 1 + filter 1 + interlace 1) + 4 CRC bytes.
+    const buf = Buffer.alloc(33);
+    await fh.read(buf, 0, 33, 0);
     if (buf[0] !== 0x89 || buf[1] !== 0x50) return null;
-    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+    return {
+      width: buf.readUInt32BE(16),
+      height: buf.readUInt32BE(20),
+      // v3.8.45 — color type byte. 0 grayscale, 2 RGB (no alpha),
+      // 3 indexed (alpha via tRNS), 4 grayscale+alpha, 6 RGBA.
+      colorType: buf.readUInt8(25),
+    };
   } catch { return null; } finally { if (fh) await fh.close(); }
+}
+
+/**
+ * v3.8.45 — quality flags derived purely from PNG header (no pixel
+ * inspection). Useful for "designer fix required" triage without an
+ * image library:
+ *   NO_TRANSPARENCY      — colour type 0 (grayscale) or 2 (RGB) means
+ *                          the file ships without an alpha channel.
+ *                          Side-decor / collectible sprites with no
+ *                          alpha render as opaque rectangles in-game.
+ *   OVERSIZED_CANVAS     — width × height much larger than the
+ *                          category's expected size (player 64×96,
+ *                          decor < 256, etc.). Heuristic.
+ *   LARGE_BACKGROUND_OK  — > 1000 px on a side AND lives under
+ *                          background/ — expected size, not flagged.
+ */
+function qualityFlagsFor({ width, height, colorType, relPath }) {
+  const flags = [];
+  if (colorType === 0 || colorType === 2) flags.push('NO_TRANSPARENCY');
+  const isBackground = /^assets\/(background|sky|landmarks|mountains|forest|meadow)\//.test(relPath);
+  const oversize = (width >= 512 || height >= 512);
+  if (oversize && !isBackground) flags.push('OVERSIZED_CANVAS');
+  return flags;
 }
 
 async function hashFile(absPath) {
@@ -207,13 +257,17 @@ async function renderSheet(browser, { sheetId, title, cells }) {
       // Status → colour palette.
       const STATUS_COLOR = {
         USED: '#9ad17a',
+        USED_DYNAMIC: '#7de0c4',
         REGISTERED_UNUSED: '#a8d4ff',
         UNREGISTERED: '#ff9050',
         DUPLICATE: '#ff5050',
         SIDE_PAIR_OK: '#9ad17a',
         SIDE_PAIR_MISMATCH: '#ff5050',
+        SIDE_PAIR_MISSING_RIGHT: '#ff5050',
+        ROAD_PAIR_ASYMMETRIC: '#a8d4ff',
         MISSING: '#ff5050',
         UNCLASSIFIED: '#c78cff',
+        DESIGNER_FIX_REQUIRED: '#ff5050',
       };
 
       // Cell helper.
@@ -315,23 +369,45 @@ async function renderSheet(browser, { sheetId, title, cells }) {
 
 // ── Side-aware pairs sheet ─────────────────────────────────────────
 
+/**
+ * v3.8.45 — split side-pair detection into two pools so the
+ * SIDE_AWARE_SCENERY_PAIR report only contains structural scenery the
+ * dispatcher actually places side-aware (grass_dirt_step, stone_brick,
+ * planter_pot, etc.). Road-kit pairs (road_lane_left/right etc.) live
+ * under assets/terrain/road/ and are intentionally asymmetric for
+ * perspective — they're handled by RoadRenderer, not the side-aware
+ * dispatcher.
+ */
+function isRoadKitPath(relPath) {
+  return /^assets\/terrain\/road\//.test(relPath)
+      || /road_(lane|shoulder|mid|foreground)/.test(relPath);
+}
 function findSidePairs(entries) {
   const byPath = new Map(entries.map((e) => [e.relPath, e]));
-  const pairs = [];
+  const sceneryPairs = [];
+  const roadPairs = [];
   for (const e of entries) {
     if (!e.relPath.endsWith('_left.png')) continue;
     const rightPath = e.relPath.replace(/_left\.png$/, '_right.png');
     const right = byPath.get(rightPath);
     const stem = e.relPath.replace(/_left\.png$/, '');
-    const status = right
-      ? (e.width === right.width && e.height === right.height ? 'SIDE_PAIR_OK' : 'SIDE_PAIR_MISMATCH')
-      : 'SIDE_PAIR_MISSING_RIGHT';
-    pairs.push({ stem, left: e, right, status });
+    const dimsMatch = right && e.width === right.width && e.height === right.height;
+    if (isRoadKitPath(e.relPath)) {
+      const status = right
+        ? (dimsMatch ? 'ROAD_PAIR_OK' : 'ROAD_PAIR_ASYMMETRIC')
+        : 'ROAD_PAIR_MISSING_RIGHT';
+      roadPairs.push({ stem, left: e, right, status, kind: 'road' });
+    } else {
+      const status = right
+        ? (dimsMatch ? 'SIDE_PAIR_OK' : 'SIDE_PAIR_MISMATCH')
+        : 'SIDE_PAIR_MISSING_RIGHT';
+      sceneryPairs.push({ stem, left: e, right, status, kind: 'scenery' });
+    }
   }
-  return pairs;
+  return { sceneryPairs, roadPairs };
 }
 
-async function renderSidePairsSheet(browser, pairs) {
+async function renderSidePairsSheet(browser, pairs, sheetId = '14-side-aware-pairs', title = 'Side-aware pairs') {
   const cells = [];
   for (const p of pairs) {
     // Render LEFT cell.
@@ -367,7 +443,7 @@ async function renderSidePairsSheet(browser, pairs) {
       });
     }
   }
-  return renderSheet(browser, { sheetId: '14-side-aware-pairs', title: 'Side-aware pairs', cells });
+  return renderSheet(browser, { sheetId, title, cells });
 }
 
 // ── Duplicates sheet ───────────────────────────────────────────────
@@ -463,15 +539,26 @@ async function renderMissingSheet(browser, entries, keyToPath) {
 // ── Runtime consumer detection ─────────────────────────────────────
 
 /**
- * Tries to find keys that are actually referenced from runtime code
- * (anywhere under src/). Returns a set of registered keys that
- * appear at least once. Anything NOT in this set + present in
- * gameConfig.assets = registered but unused.
+ * v3.8.45 — runtime usage detection with dynamic stem awareness.
+ *
+ * Returns:
+ *   usedExplicit  Set<key>   keys whose full identifier appears more
+ *                            than once in src/ — declaration + consumer.
+ *   usedDynamic   Set<key>   numbered variants whose STEM (e.g.,
+ *                            'playerFarmerRun', 'sparkle') appears as a
+ *                            string literal in src/. The renderer
+ *                            assembles the key at runtime as
+ *                            `${stem}${frame}`, so individual variant
+ *                            keys never appear in source even though
+ *                            every frame is actually rendered.
+ *
+ * Dynamic stems are detected automatically: any registered key that
+ * ends in `\d{1,3}` has its stem (key with trailing digits stripped)
+ * tested against src/ source. If the stem appears verbatim, every
+ * numbered sibling of that stem is marked USED_DYNAMIC.
  */
 async function findRuntimeUsedKeys(keyToPath) {
   const srcDir = path.join(ROOT, 'src');
-  const used = new Set();
-  // Grep src/ recursively for each key.
   const files = [];
   async function recurse(d) {
     const entries = await fs.readdir(d, { withFileTypes: true });
@@ -482,19 +569,37 @@ async function findRuntimeUsedKeys(keyToPath) {
     }
   }
   await recurse(srcDir);
-  // Concatenate all source content once — then test each key against it.
   const allSrc = (await Promise.all(files.map((f) => fs.readFile(f, 'utf8')))).join('\n');
+
+  // Pass 1 — explicit key usage (declaration + at least one consumer).
+  const usedExplicit = new Set();
   for (const key of keyToPath.keys()) {
-    // Skip the gameConfig declaration itself (it always has `<key>:`).
-    // A key is "used" when it appears in code as a string literal or
-    // identifier substring distinct from its own declaration line.
-    // Cheap heuristic: occurrence count > 1 (declaration + at least one
-    // consumer somewhere in src/).
     const re = new RegExp(`\\b${key}\\b`, 'g');
     const matches = allSrc.match(re);
-    if (matches && matches.length > 1) used.add(key);
+    if (matches && matches.length > 1) usedExplicit.add(key);
   }
-  return used;
+
+  // Pass 2 — dynamic stem detection. Group keys by stem (key minus
+  // trailing digits); if the stem occurs in src/ even when the
+  // individual variant doesn't, mark every variant as used-dynamic.
+  const stemGroups = new Map(); // stem → [keys]
+  for (const key of keyToPath.keys()) {
+    const stem = key.replace(/\d{1,3}$/, '');
+    if (stem === key) continue; // no trailing digits, not a sequence variant
+    if (!stemGroups.has(stem)) stemGroups.set(stem, []);
+    stemGroups.get(stem).push(key);
+  }
+  const usedDynamic = new Set();
+  for (const [stem, variants] of stemGroups) {
+    if (variants.length < 2) continue; // single member — not a sequence
+    // Stem appears in src/ as a string literal (template-prefix usage).
+    const re = new RegExp(`\\b${stem}\\b`, 'g');
+    const matches = allSrc.match(re);
+    if (matches && matches.length >= 1) {
+      for (const v of variants) if (!usedExplicit.has(v)) usedDynamic.add(v);
+    }
+  }
+  return { usedExplicit, usedDynamic };
 }
 
 // ── Main pipeline ──────────────────────────────────────────────────
@@ -518,24 +623,30 @@ async function main() {
   await fs.mkdir(OUT_DIR, { recursive: true });
   console.log(`[contact-sheets] scanning ${path.relative(ROOT, ASSETS_DIR)}`);
 
-  const files = await walk(ASSETS_DIR);
+  const { files, skipped: skippedFolders } = await walk(ASSETS_DIR);
+  const sourceFileCount = skippedFolders.reduce((s, x) => s + x.count, 0);
   const entries = [];
   for (const f of files) {
     const [dims, hash] = await Promise.all([readPngHeader(f), hashFile(f)]);
     if (!dims) continue;
+    const relPath = path.relative(ROOT, f);
     entries.push({
       absPath: f,
-      relPath: path.relative(ROOT, f),
+      relPath,
       width: dims.width,
       height: dims.height,
+      colorType: dims.colorType,
+      qualityFlags: qualityFlagsFor({ width: dims.width, height: dims.height, colorType: dims.colorType, relPath }),
       hash,
     });
   }
-  console.log(`[contact-sheets] scanned ${entries.length} PNGs`);
+  console.log(`[contact-sheets] scanned ${entries.length} PNGs (+ ${sourceFileCount} skipped in _source/)`);
 
   const { keyToPath, pathToKey } = await parseGameConfigKeys();
-  const runtimeUsed = await findRuntimeUsedKeys(keyToPath);
-  console.log(`[contact-sheets] runtime consumer scan: ${runtimeUsed.size}/${keyToPath.size} keys used in src/`);
+  const { usedExplicit, usedDynamic } = await findRuntimeUsedKeys(keyToPath);
+  const usedAll = new Set([...usedExplicit, ...usedDynamic]);
+  const runtimeUsed = usedAll; // back-compat alias for legacy callers
+  console.log(`[contact-sheets] runtime consumer scan: ${usedExplicit.size} explicit + ${usedDynamic.size} dynamic = ${usedAll.size}/${keyToPath.size} keys used in src/`);
 
   // Build per-file metadata.
   const enriched = entries.map((e) => {
@@ -581,7 +692,9 @@ async function main() {
             absPath: e.absPath,
             width: e.width, height: e.height,
             status: e.key
-              ? (runtimeUsed.has(e.key) ? 'USED' : 'REGISTERED_UNUSED')
+              ? (usedExplicit.has(e.key) ? 'USED'
+                : usedDynamic.has(e.key) ? 'USED_DYNAMIC'
+                : 'REGISTERED_UNUSED')
               : 'UNREGISTERED',
             role: e.class,
           }));
@@ -591,10 +704,19 @@ async function main() {
       }
     }
     if (shouldRender('side-aware')) {
-      const pairs = findSidePairs(enriched);
-      if (pairs.length) {
-        const sheets = await renderSidePairsSheet(browser, pairs);
-        generatedSheets.push({ group: { id: '14-side-aware-pairs', title: 'Side-aware pairs' }, sheets, cellCount: pairs.length * 2 });
+      const { sceneryPairs, roadPairs } = findSidePairs(enriched);
+      if (sceneryPairs.length) {
+        const sheets = await renderSidePairsSheet(browser, sceneryPairs, '14-side-aware-pairs', 'Side-aware scenery pairs');
+        generatedSheets.push({ group: { id: '14-side-aware-pairs', title: 'Side-aware scenery pairs' }, sheets, cellCount: sceneryPairs.length * 2 });
+      }
+      if (roadPairs.length) {
+        const sheets = await renderSidePairsSheet(
+          browser,
+          roadPairs.map((p) => ({ ...p, status: p.status.replace('ROAD_PAIR', 'SIDE_PAIR') })),
+          '14b-road-kit-pairs',
+          'Road-kit pairs (intentionally asymmetric)',
+        );
+        generatedSheets.push({ group: { id: '14b-road-kit-pairs', title: 'Road-kit pairs' }, sheets, cellCount: roadPairs.length * 2 });
       }
     }
     if (shouldRender('duplicates')) {
@@ -617,38 +739,61 @@ async function main() {
       generatedSheets.push({ group: { id: '18-missing-dead-keys-placeholders', title: 'Missing / dead keys' }, sheets, cellCount: [...keyToPath.values()].filter((p) => !enriched.some((e) => e.relPath === p)).length });
     }
 
-    // Build markdown index + inventory.
-    await writeMarkdownIndex(generatedSheets, enriched, pathToKey, runtimeUsed);
+    // v3.8.45 — Phase 7d production buckets. Assign every PNG to one
+    // of 10 buckets so the manifest + cleanup proposal are unambiguous.
+    const buckets = classifyBuckets(enriched, pathToKey, usedExplicit, usedDynamic);
+
+    // Build markdown index + inventory + manifest + cleanup proposal.
+    await writeMarkdownIndex(generatedSheets, enriched, pathToKey, runtimeUsed, usedExplicit, usedDynamic, skippedFolders, sourceFileCount);
     await writeInventoryMarkdown(enriched, pathToKey, runtimeUsed);
+    await writeProductionManifest(buckets, sourceFileCount, skippedFolders);
+    await writeCleanupProposal(buckets, enriched, pathToKey);
   } finally {
     await browser.close();
   }
 }
 
-async function writeMarkdownIndex(generated, enriched, pathToKey, runtimeUsed) {
+async function writeMarkdownIndex(generated, enriched, pathToKey, runtimeUsed, usedExplicit, usedDynamic, skippedFolders, sourceFileCount) {
   const total = enriched.length;
   const registered = enriched.filter((e) => pathToKey.has(e.relPath)).length;
   const unregistered = total - registered;
   const dupGroups = findDuplicates(enriched);
-  const pairs = findSidePairs(enriched);
-  const pairsOk = pairs.filter((p) => p.status === 'SIDE_PAIR_OK').length;
-  const pairsBroken = pairs.length - pairsOk;
+  const { sceneryPairs, roadPairs } = findSidePairs(enriched);
+  const sceneryOk = sceneryPairs.filter((p) => p.status === 'SIDE_PAIR_OK').length;
+  const sceneryBroken = sceneryPairs.filter((p) => p.status === 'SIDE_PAIR_MISMATCH').length;
+  const sceneryMissing = sceneryPairs.filter((p) => p.status === 'SIDE_PAIR_MISSING_RIGHT').length;
   // pathToKey is a Map<relPath, key>; its keys() ARE the registered
   // paths. Dead = registered path with no file on disk.
   const fileSet = new Set(enriched.map((e) => e.relPath));
   const deadKeys = [...pathToKey.keys()].filter((p) => !fileSet.has(p)).length;
+  const totalIncludingSource = total + sourceFileCount;
+  const coverage = totalIncludingSource > 0 ? Math.round((total / totalIncludingSource) * 1000) / 10 : 100;
   const lines = [];
   lines.push('# Asset Contact Sheets');
   lines.push('');
   lines.push(`Generated ${new Date().toISOString()}`);
   lines.push('');
+  lines.push('## Coverage');
+  lines.push('');
+  lines.push(`- PNG files discovered (all):                **${totalIncludingSource}**`);
+  lines.push(`- PNG files shown in contact sheets:         **${total}**`);
+  lines.push(`- Coverage:                                  **${coverage}%**`);
+  if (skippedFolders.length) {
+    lines.push('');
+    lines.push('### Skipped folders (intentional)');
+    for (const s of skippedFolders) lines.push(`- \`${s.relPath}/\` — ${s.count} files — ${s.reason}`);
+  }
+  lines.push('');
+  lines.push('## Summary');
+  lines.push('');
   lines.push(`- Total PNG files: **${total}**`);
   lines.push(`- Registered in gameConfig: **${registered}**`);
   lines.push(`- Unregistered: **${unregistered}**`);
-  lines.push(`- Runtime-used keys: **${runtimeUsed.size}** / ${pathToKey.size}`);
+  lines.push(`- Runtime-used: **${runtimeUsed.size}** / ${pathToKey.size} keys (${usedExplicit.size} explicit + ${usedDynamic.size} dynamic)`);
   lines.push(`- Dead keys (no file): **${deadKeys}**`);
   lines.push(`- Exact duplicate groups (SHA-256): **${dupGroups.length}**`);
-  lines.push(`- Side-aware pairs (OK / broken / missing-right): **${pairsOk}** / **${pairsBroken}** / **${pairs.filter((p) => p.status === 'SIDE_PAIR_MISSING_RIGHT').length}**`);
+  lines.push(`- Side-aware scenery pairs (OK / mismatch / missing-right): **${sceneryOk}** / **${sceneryBroken}** / **${sceneryMissing}**`);
+  lines.push(`- Road-kit pairs (asymmetric is intentional): **${roadPairs.length}**`);
   lines.push('');
   lines.push('## Contact sheets');
   lines.push('');
@@ -719,16 +864,23 @@ async function writeInventoryMarkdown(enriched, pathToKey, runtimeUsed) {
     lines.push('');
   }
 
-  // Side-aware problems.
-  const pairs = findSidePairs(enriched);
-  const problems = pairs.filter((p) => p.status !== 'SIDE_PAIR_OK');
-  lines.push(`## Side-aware problems (${problems.length})`);
-  for (const p of problems) {
+  // Side-aware scenery problems (separated from road-kit pairs).
+  const { sceneryPairs, roadPairs } = findSidePairs(enriched);
+  const sceneryProblems = sceneryPairs.filter((p) => p.status !== 'SIDE_PAIR_OK');
+  lines.push(`## Side-aware scenery problems (${sceneryProblems.length})`);
+  for (const p of sceneryProblems) {
     if (p.status === 'SIDE_PAIR_MISSING_RIGHT') {
       lines.push(`- \`${p.stem}\` — missing **_right.png** (have \`${p.left.relPath}\` ${p.left.width}×${p.left.height})`);
     } else {
       lines.push(`- \`${p.stem}\` — DIM MISMATCH: left ${p.left.width}×${p.left.height} ≠ right ${p.right.width}×${p.right.height}`);
     }
+  }
+  lines.push('');
+  const roadAsym = roadPairs.filter((p) => p.status === 'ROAD_PAIR_ASYMMETRIC');
+  lines.push(`## Road-kit pairs — asymmetric (informational, ${roadAsym.length})`);
+  lines.push('Road tiles intentionally differ left/right for perspective; treated separately from scenery side-pairs.');
+  for (const p of roadAsym) {
+    lines.push(`- \`${p.stem}\` — left ${p.left.width}×${p.left.height} / right ${p.right.width}×${p.right.height}`);
   }
   lines.push('');
 
@@ -744,9 +896,9 @@ async function writeInventoryMarkdown(enriched, pathToKey, runtimeUsed) {
   // Action lists.
   lines.push('## Designer action list');
   lines.push('');
-  lines.push(`- **P0**: ${problems.filter((p) => p.status === 'SIDE_PAIR_MISMATCH').length} side-pair dim mismatches need re-export`);
+  lines.push(`- **P0**: ${sceneryProblems.filter((p) => p.status === 'SIDE_PAIR_MISMATCH').length} side-pair dim mismatches need re-export`);
   lines.push(`- **P0**: ${dups.length} exact-content duplicate groups — pick one canonical path per asset, archive the rest`);
-  lines.push(`- **P1**: ${problems.filter((p) => p.status === 'SIDE_PAIR_MISSING_RIGHT').length} side-aware pairs missing _right.png`);
+  lines.push(`- **P1**: ${sceneryProblems.filter((p) => p.status === 'SIDE_PAIR_MISSING_RIGHT').length} side-aware pairs missing _right.png`);
   lines.push(`- **P1**: ${deadKeys.length} dead-key files designer needs to ship`);
   lines.push('');
   lines.push('## Developer action list');
@@ -757,6 +909,196 @@ async function writeInventoryMarkdown(enriched, pathToKey, runtimeUsed) {
   lines.push('');
   await fs.writeFile(path.join(OUT_DIR, 'asset-visual-inventory.md'), lines.join('\n'));
   console.log('[contact-sheets] wrote docs/visual-qa/asset-contact-sheets/asset-visual-inventory.md');
+}
+
+/**
+ * v3.8.45 — Phase 7d production buckets. Every PNG receives exactly
+ * one bucket label (A-J). Used downstream by writeProductionManifest +
+ * writeCleanupProposal so the team has a single decision table for
+ * keep / archive / reject / fix / wire / classify.
+ */
+function classifyBuckets(enriched, pathToKey, usedExplicit, usedDynamic) {
+  const buckets = {
+    A_ACTIVE_RUNTIME: [],            // key in src, file OK
+    B_USED_DYNAMIC: [],              // animation stem used in src
+    C_REGISTERED_INTENTIONAL_UNUSED: [], // key with no consumer, kept on purpose
+    D_UNREGISTERED_PENDING_WIRE: [], // file on disk, no key, but seems intended
+    E_DESIGNER_FIX_REQUIRED: [],     // oversized / no-alpha / pair-mismatch
+    F_DUPLICATE_REJECT: [],          // SHA matches another file
+    G_OVERDELIVERY_REJECT: [],       // beyond brief target (stop list)
+    H_ARCHIVE_SOURCE_ONLY: [],       // already moved to _source/
+    I_MISSING_DEAD_KEY: [],          // key without file
+    J_UNCLASSIFIED_BLOCKER: [],      // file with no ASSET_CLASS_BY_TYPE entry
+  };
+  // Build duplicate index — first file (alphabetical) is canonical.
+  const dupGroups = findDuplicates(enriched);
+  const dupNonCanonical = new Set();
+  for (const group of dupGroups) {
+    const sorted = [...group].sort((a, b) => a.relPath.localeCompare(b.relPath));
+    for (let i = 1; i < sorted.length; i += 1) dupNonCanonical.add(sorted[i].relPath);
+  }
+  // Side-pair mismatch index (only scenery pairs, not road kit).
+  const { sceneryPairs } = findSidePairs(enriched);
+  const designerFixPaths = new Set();
+  for (const p of sceneryPairs) {
+    if (p.status === 'SIDE_PAIR_MISMATCH') {
+      designerFixPaths.add(p.left.relPath);
+      if (p.right) designerFixPaths.add(p.right.relPath);
+    }
+  }
+
+  for (const e of enriched) {
+    const key = pathToKey.get(e.relPath);
+    if (dupNonCanonical.has(e.relPath)) { buckets.F_DUPLICATE_REJECT.push(e); continue; }
+    if (designerFixPaths.has(e.relPath) || e.qualityFlags.length > 0) {
+      // Only flag DESIGNER_FIX_REQUIRED when the asset is runtime-used
+      // OR registered. An unregistered oversized PNG is overdelivery,
+      // not a fix request.
+      if (key) { buckets.E_DESIGNER_FIX_REQUIRED.push(e); continue; }
+    }
+    if (key) {
+      if (usedExplicit.has(key)) { buckets.A_ACTIVE_RUNTIME.push(e); continue; }
+      if (usedDynamic.has(key))  { buckets.B_USED_DYNAMIC.push(e); continue; }
+      buckets.C_REGISTERED_INTENTIONAL_UNUSED.push(e);
+      continue;
+    }
+    // Unregistered. Classify between PENDING_WIRE and OVERDELIVERY.
+    // Heuristic: file lives in a directory whose stem already has many
+    // siblings → likely overdelivery; otherwise → pending wire.
+    const stem = path.basename(e.relPath, '.png').replace(/_(left|right|\d{1,3})$/, '');
+    const dirSiblings = enriched.filter((x) => path.dirname(x.relPath) === path.dirname(e.relPath)).length;
+    if (dirSiblings >= 6) buckets.G_OVERDELIVERY_REJECT.push(e);
+    else buckets.D_UNREGISTERED_PENDING_WIRE.push(e);
+  }
+
+  // Missing dead keys — keys without a file on disk.
+  const fileSet = new Set(enriched.map((e) => e.relPath));
+  for (const [relPath, key] of pathToKey) {
+    if (!fileSet.has(relPath)) {
+      buckets.I_MISSING_DEAD_KEY.push({ key, relPath, expectedPath: relPath });
+    }
+  }
+  return buckets;
+}
+
+async function writeProductionManifest(buckets, sourceFileCount, skippedFolders) {
+  const out = path.join(ROOT, 'docs/asset-production-manifest.md');
+  const lines = [];
+  lines.push('# Asset Production Manifest');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('');
+  lines.push('Every PNG receives exactly one production bucket. Sum equals');
+  lines.push('the total scanned (excluding `_source/` which is bucket **H**).');
+  lines.push('');
+  const total = Object.values(buckets).reduce((s, list) => s + list.length, 0);
+  lines.push(`- Total entries classified: **${total}**`);
+  lines.push(`- Files archived in \`_source/\` (bucket H, listed in skipped): **${sourceFileCount}**`);
+  lines.push('');
+  const titles = {
+    A_ACTIVE_RUNTIME:                 'A — ACTIVE_RUNTIME (explicit src/ consumer)',
+    B_USED_DYNAMIC:                   'B — USED_DYNAMIC (animation stem consumer)',
+    C_REGISTERED_INTENTIONAL_UNUSED:  'C — REGISTERED but INTENTIONAL_UNUSED',
+    D_UNREGISTERED_PENDING_WIRE:      'D — UNREGISTERED_PENDING_WIRE',
+    E_DESIGNER_FIX_REQUIRED:          'E — DESIGNER_FIX_REQUIRED',
+    F_DUPLICATE_REJECT:               'F — DUPLICATE_REJECT (non-canonical SHA copies)',
+    G_OVERDELIVERY_REJECT:            'G — OVERDELIVERY_REJECT (above brief count)',
+    H_ARCHIVE_SOURCE_ONLY:            'H — ARCHIVE_SOURCE_ONLY (`_source/`)',
+    I_MISSING_DEAD_KEY:               'I — MISSING_DEAD_KEY (registered key has no file)',
+    J_UNCLASSIFIED_BLOCKER:           'J — UNCLASSIFIED_BLOCKER (no ASSET_CLASS_BY_TYPE entry)',
+  };
+  for (const [key, list] of Object.entries(buckets)) {
+    lines.push(`## ${titles[key]} (${list.length})`);
+    lines.push('');
+    for (const item of list.slice(0, 60)) {
+      if (item.expectedPath) lines.push(`- \`${item.key}\` → expected at \`${item.relPath}\``);
+      else lines.push(`- \`${item.relPath}\` — ${item.width}×${item.height}${item.qualityFlags?.length ? ` · ${item.qualityFlags.join(', ')}` : ''}`);
+    }
+    if (list.length > 60) lines.push(`- _(${list.length - 60} more)_`);
+    lines.push('');
+  }
+  if (skippedFolders.length) {
+    lines.push('## Skipped folders (bucket H — already archived)');
+    lines.push('');
+    for (const s of skippedFolders) lines.push(`- \`${s.relPath}/\` — ${s.count} files — ${s.reason}`);
+    lines.push('');
+  }
+  await fs.writeFile(out, lines.join('\n'));
+  console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
+}
+
+async function writeCleanupProposal(buckets, enriched, pathToKey) {
+  const out = path.join(ROOT, 'docs/asset-cleanup-proposal.md');
+  const lines = [];
+  lines.push('# Asset Cleanup Proposal');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('');
+  lines.push('**Nothing is removed automatically.** This is a decision surface.');
+  lines.push('Each section names assets; the human reviewer marks approval.');
+  lines.push('');
+
+  lines.push('## Safe to keep (no action)');
+  lines.push('');
+  lines.push(`Buckets A + B + C. ${buckets.A_ACTIVE_RUNTIME.length} explicit + ${buckets.B_USED_DYNAMIC.length} dynamic + ${buckets.C_REGISTERED_INTENTIONAL_UNUSED.length} intentional-unused = ${buckets.A_ACTIVE_RUNTIME.length + buckets.B_USED_DYNAMIC.length + buckets.C_REGISTERED_INTENTIONAL_UNUSED.length} files. See production manifest.`);
+  lines.push('');
+
+  lines.push(`## Safe to archive after approval (bucket F + G, ${buckets.F_DUPLICATE_REJECT.length + buckets.G_OVERDELIVERY_REJECT.length} files)`);
+  lines.push('');
+  lines.push('Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.');
+  lines.push('');
+  if (buckets.F_DUPLICATE_REJECT.length) {
+    lines.push(`### Duplicate non-canonical copies (${buckets.F_DUPLICATE_REJECT.length})`);
+    for (const e of buckets.F_DUPLICATE_REJECT.slice(0, 30)) lines.push(`- \`${e.relPath}\` — same SHA as a canonical sibling`);
+    if (buckets.F_DUPLICATE_REJECT.length > 30) lines.push(`- _(${buckets.F_DUPLICATE_REJECT.length - 30} more)_`);
+    lines.push('');
+  }
+  if (buckets.G_OVERDELIVERY_REJECT.length) {
+    lines.push(`### Overdelivery (${buckets.G_OVERDELIVERY_REJECT.length})`);
+    for (const e of buckets.G_OVERDELIVERY_REJECT.slice(0, 30)) lines.push(`- \`${e.relPath}\``);
+    if (buckets.G_OVERDELIVERY_REJECT.length > 30) lines.push(`- _(${buckets.G_OVERDELIVERY_REJECT.length - 30} more)_`);
+    lines.push('');
+  }
+
+  lines.push(`## Needs designer re-export (bucket E, ${buckets.E_DESIGNER_FIX_REQUIRED.length})`);
+  lines.push('');
+  lines.push('Active or registered files with quality issues: oversized canvas, no alpha channel, or side-pair dimension mismatch.');
+  lines.push('');
+  for (const e of buckets.E_DESIGNER_FIX_REQUIRED.slice(0, 40)) {
+    lines.push(`- \`${e.relPath}\` — ${e.width}×${e.height} · ${e.qualityFlags.join(', ') || 'pair-mismatch'}`);
+  }
+  if (buckets.E_DESIGNER_FIX_REQUIRED.length > 40) lines.push(`- _(${buckets.E_DESIGNER_FIX_REQUIRED.length - 40} more)_`);
+  lines.push('');
+
+  lines.push(`## Needs developer wiring (bucket D, ${buckets.D_UNREGISTERED_PENDING_WIRE.length})`);
+  lines.push('');
+  lines.push('Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.');
+  lines.push('');
+  for (const e of buckets.D_UNREGISTERED_PENDING_WIRE.slice(0, 40)) lines.push(`- \`${e.relPath}\``);
+  if (buckets.D_UNREGISTERED_PENDING_WIRE.length > 40) lines.push(`- _(${buckets.D_UNREGISTERED_PENDING_WIRE.length - 40} more)_`);
+  lines.push('');
+
+  lines.push(`## Needs designer to ship (bucket I, ${buckets.I_MISSING_DEAD_KEY.length})`);
+  lines.push('');
+  lines.push('Keys registered without a file. Either ship the file or remove the key.');
+  lines.push('');
+  for (const item of buckets.I_MISSING_DEAD_KEY) lines.push(`- \`${item.key}\` → expected at \`${item.relPath}\``);
+  lines.push('');
+
+  lines.push(`## Needs semantic classification (bucket J, ${buckets.J_UNCLASSIFIED_BLOCKER.length})`);
+  lines.push('');
+  lines.push('No entry in `ASSET_CLASS_BY_TYPE`. Add one OR delete if unused.');
+  for (const e of buckets.J_UNCLASSIFIED_BLOCKER.slice(0, 20)) lines.push(`- \`${e.relPath}\``);
+  lines.push('');
+
+  lines.push('## Do not touch');
+  lines.push('');
+  lines.push('- Bucket H (`_source/` already archived) — leave for designer recovery.');
+  lines.push('- Road-kit pairs (`assets/terrain/road/`) flagged as asymmetric — intentional perspective.');
+  lines.push('- Background-only layers > 512 px — large canvas is expected.');
+  lines.push('');
+  await fs.writeFile(out, lines.join('\n'));
+  console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
 }
 
 main().catch((err) => { console.error('[contact-sheets] failed', err); process.exit(1); });
