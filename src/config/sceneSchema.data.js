@@ -277,18 +277,28 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // outer tree shadow + cascade of flowers.
     id: 'hero-layered-corner-brick',
     weight: 5,
+    // v3.8.39 — Phase 5 structured slots. INNER tier is two
+    // ground-anchored bricks; MID tier is a platform with a mushroom
+    // topper; OUTER tier is loose foreground/background framing.
     items: [
       // INNER tier (right at road edge)
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.88, variant: 1 },
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.4, scale: 0.86, variant: 0 },
+      { id: 'brick_inner_a', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.88, variant: 1 },
+      { id: 'brick_inner_b', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.4, scale: 0.86, variant: 0 },
       // MID tier (longer platform set further out)
-      { assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 1.00 },
-      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 0.54, variant: 'red', yOffset: -130 },
-      // OUTER tier (extra mushroom + fence framing)
-      { assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist: -1.0, scale: 0.86 },
+      { id: 'platform_mid', role: 'base', anchor: 'ground',
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 1.00 },
+      { id: 'mushroom_top', role: 'topper', parentId: 'platform_mid', anchor: 'top',
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist: 0.7, scale: 0.54, variant: 'red', yOffset: -130 },
+      // OUTER tier (extra fence framing)
+      { id: 'fence_outer', role: 'foreground-accent', anchor: 'ground',
+        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist: -1.0, scale: 0.86 },
       // Flower cascade across road-shoulder
-      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.2, scale: 0.48 },
-      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.46, dist: -1.7, scale: 0.32 },
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground',
+        assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.2, scale: 0.48 },
+      { id: 'flower_b', role: 'loose-decor', anchor: 'ground',
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.46, dist: -1.7, scale: 0.32 },
     ],
   },
   {
@@ -300,16 +310,23 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       // INNER: low brick accent at road edge
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  0.0, scale: 0.78, variant: 0 },
-      // MID: platform with two visible question_blocks on top
-      { assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.96, variant: 1 },
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 1.05, yOffset: -215 },
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.96, yOffset: -150 },
-      // OUTER: brick wall + small mushroom on the outer frame
-      { assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.5, scale: 0.94, variant: 1 },
-      { assetType: 'mushroom_blue_big',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  1.5, scale: 0.48, yOffset: -120 },
+      { id: 'brick_inner', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  0.0, scale: 0.78, variant: 0 },
+      // MID: platform with two visible question_blocks "floating" above it
+      { id: 'platform_mid', role: 'base', anchor: 'ground',
+        assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.96, variant: 1 },
+      { id: 'qblock_a', role: 'loose-decor', anchor: 'ground',
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 1.05, yOffset: -215 },
+      { id: 'qblock_b', role: 'loose-decor', anchor: 'ground',
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.96, yOffset: -150 },
+      // OUTER: wall with a mushroom topper on the outer frame
+      { id: 'wall_outer', role: 'base', anchor: 'ground',
+        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.5, scale: 0.94, variant: 1 },
+      { id: 'mushroom_top', role: 'topper', parentId: 'wall_outer', anchor: 'top',
+        assetType: 'mushroom_blue_big',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  1.5, scale: 0.48, yOffset: -120 },
       // SHOULDER flowers
-      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist:  1.4, scale: 0.32 },
+      { id: 'flower_shoulder', role: 'loose-decor', anchor: 'ground',
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist:  1.4, scale: 0.32 },
     ],
   },
   {
@@ -320,16 +337,22 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     id: 'hero-layered-pipe-landmark',
     weight: 4,
     items: [
-      // INNER: pipe right at road edge
-      { assetType: 'green_pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
+      // INNER: pipe right at road edge — the centerpiece landmark
+      { id: 'pipe_inner', role: 'base', anchor: 'ground',
+        assetType: 'green_pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
       // MID: brick base + flower bed behind/beside pipe
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: -1.4, scale: 0.84, variant: 0 },
-      { assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist: -0.6, scale: 0.60 },
+      { id: 'brick_mid', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: -1.4, scale: 0.84, variant: 0 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground',
+        assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist: -0.6, scale: 0.60 },
       // OUTER: fence + grass tuft frame the landmark
-      { assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist:  1.0, scale: 0.86 },
-      { assetType: 'grass_tuft_large',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.70, dist:  1.6, scale: 0.48 },
+      { id: 'fence_outer', role: 'foreground-accent', anchor: 'ground',
+        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist:  1.0, scale: 0.86 },
+      { id: 'tuft_outer', role: 'loose-decor', anchor: 'ground',
+        assetType: 'grass_tuft_large',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.70, dist:  1.6, scale: 0.48 },
       // SHOULDER flowers
-      { assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist:  0.8, scale: 0.46 },
+      { id: 'flower_front', role: 'loose-decor', anchor: 'ground',
+        assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist:  0.8, scale: 0.46 },
     ],
   },
   {
@@ -341,17 +364,24 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       // INNER bricks
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.86, variant: 1 },
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.2, scale: 0.84, variant: 0 },
-      // MID brick + question_block on top
-      { assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.82, variant: 1 },
-      // v3.8.22 — qblock scale 0.72 → 0.92, yOffset -90 → -130 for visibility
-      { assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.92, yOffset: -130 },
-      // OUTER big mushroom landmark
-      { assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: -1.6, scale: 0.74, variant: 'red' },
+      { id: 'brick_inner_a', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.86, variant: 1 },
+      { id: 'brick_inner_b', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.2, scale: 0.84, variant: 0 },
+      // MID brick + question_block "topper" (renders above brick via yOffset)
+      { id: 'brick_mid', role: 'base', anchor: 'ground',
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.82, variant: 1 },
+      { id: 'qblock_mid', role: 'loose-decor', anchor: 'top',
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.92, yOffset: -130 },
+      // OUTER big mushroom — ground-anchored, no parent needed (role 'base'
+      // lets it sit on the ground without violating support-required).
+      { id: 'mushroom_outer', role: 'base', anchor: 'ground',
+        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: -1.6, scale: 0.74, variant: 'red' },
       // SHOULDER flora at base
-      { assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.4, scale: 0.42 },
-      { assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.8, scale: 0.30 },
+      { id: 'tuft_a', role: 'loose-decor', anchor: 'ground',
+        assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.4, scale: 0.42 },
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground',
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.8, scale: 0.30 },
     ],
   },
   {

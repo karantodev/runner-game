@@ -30,7 +30,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 // v3.8.36 — Phase 1 semantic registry. Imported (not regex-parsed) so the
 // audit fails loudly if the registry file breaks parse.
-import { ASSET_SEMANTICS } from '../src/config/assetSemantics.js';
+import { ASSET_SEMANTICS, validatePrefab } from '../src/config/assetSemantics.js';
+// v3.8.39 — Phase 5 prefab slot coverage check.
+import { SIDE_DECORATION_PREFABS } from '../src/config/sceneSchema.data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -533,6 +535,29 @@ async function main() {
  * the established DO-NOT-RECREATE list from deprecated + overdelivery
  * buckets.
  */
+/**
+ * v3.8.39 — Phase 5 prefab coverage. A prefab is "annotated" when at
+ * least one item declares a `role`. Returns the un-annotated ids so the
+ * action list can flag them as NEEDS PREFAB SLOT.
+ */
+function findPrefabsNeedingSlots() {
+  const needing = [];
+  for (const p of SIDE_DECORATION_PREFABS) {
+    const annotated = p.items.some((it) => 'role' in it);
+    if (!annotated) needing.push(p.id);
+  }
+  return needing;
+}
+
+function findPrefabCompositionErrors() {
+  const errs = [];
+  for (const p of SIDE_DECORATION_PREFABS) {
+    const v = validatePrefab(p, -1);
+    if (!v.ok) errs.push({ id: p.id, errors: v.errors });
+  }
+  return errs;
+}
+
 function buildMissingArtList({ deadKeys, unregClassified, keys }) {
   // For side-pair detection, look up registered gameConfig keys that
   // include "Left" or "Right" suffix. We don't try to reverse-engineer
@@ -610,7 +635,33 @@ function buildMissingArtList({ deadKeys, unregClassified, keys }) {
   // Low-priority optional bucket — files designer over-shipped but
   // that COULD be alt-style accents if engine ever uses them.
   const altVariant = unregClassified.filter((u) => u.kind === 'ALT_VARIANT');
-  lines.push(`## 🟢 C — LOW PRIORITY OPTIONAL (${altVariant.length})`);
+  // v3.8.39 — Phase 5 prefab coverage. List prefabs that haven't
+  // received role/parent annotation yet so the dev sees the remaining
+  // work to make every cluster a structured composition.
+  const needsSlots = findPrefabsNeedingSlots();
+  const compositionErrors = findPrefabCompositionErrors();
+  if (needsSlots.length || compositionErrors.length) {
+    lines.push(`## 🟡 D — NEEDS PREFAB SLOT (${needsSlots.length}) / NEEDS DESIGNER FIX (${compositionErrors.length})`);
+    lines.push('Phase 5 introduced explicit `role` / `parentId` / `anchor` slots in');
+    lines.push('SIDE_DECORATION_PREFABS. The following prefabs are still loose item arrays —');
+    lines.push('they spawn fine in warn mode but won\'t survive strict mode if a future');
+    lines.push('change makes their support graph fail validation. Annotate progressively.');
+    lines.push('');
+    if (needsSlots.length) {
+      lines.push(`### Prefabs needing slot annotation (${needsSlots.length})`);
+      for (const id of needsSlots) lines.push(`- \`${id}\``);
+      lines.push('');
+    }
+    if (compositionErrors.length) {
+      lines.push(`### Prefabs with validation errors (${compositionErrors.length})`);
+      for (const e of compositionErrors) {
+        lines.push(`- \`${e.id}\` — ${e.errors.map((x) => x.kind).join(', ')}`);
+      }
+      lines.push('');
+    }
+  }
+
+  lines.push(`## 🟢 E — LOW PRIORITY OPTIONAL (${altVariant.length})`);
   lines.push('Alt-style variants on disk without an engine consumer. Could enrich variety');
   lines.push('in a future composition-template pass; not blocking gameplay today.');
   lines.push('');
