@@ -1,6 +1,6 @@
 # Asset Contact Sheets
 
-Generated 2026-05-30T18:28:06.888Z
+Generated 2026-05-30T18:42:39.798Z
 
 ## Coverage
 
@@ -25,11 +25,9 @@ Generated 2026-05-30T18:28:06.888Z
 
 ## Contact sheets
 
-### Side-aware scenery pairs (22 cells)
-- [`14-side-aware-pairs.png`](14-side-aware-pairs.png)
-
-### Road-kit pairs (10 cells)
-- [`14b-road-kit-pairs.png`](14b-road-kit-pairs.png)
+### Exact duplicates (49 cells)
+- [`15-duplicates-exact-page-01.png`](15-duplicates-exact-page-01.png)
+- [`15-duplicates-exact-page-02.png`](15-duplicates-exact-page-02.png)
 
 ### Missing / dead keys (14 cells)
 - [`18-missing-dead-keys-placeholders.png`](18-missing-dead-keys-placeholders.png)
