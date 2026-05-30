@@ -61,7 +61,7 @@ function remapLaneForBand(lane, band) {
   }
   return lane;
 }
-import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
+import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY, bandForDistance } from '../../config/sceneSchema.data.js';
 import { getSceneryDraw, isSideAwareSceneryType } from './scenery/sceneryDispatch.js';
 import { ASSET_SEMANTICS, getCanonicalSemantic } from '../../config/assetSemantics.js';
 
@@ -152,6 +152,11 @@ export class SceneryRenderer {
     // After the entire scenery pass we walk it once to draw lines from
     // each child to its parent.
     this._supportPositions = world.config.debug?.showComposition ? new Map() : null;
+    // v3.8.51 — Phase 9 prefab-group bounding boxes. Per-frame map of
+    // prefabId → { minX, maxX, minY, maxY, count, side }, populated as
+    // items render. Drawn once after the scenery pass. Only built when
+    // showCompositionGroups is on.
+    this._groupBoxes = world.config.debug?.showCompositionGroups ? new Map() : null;
     // v3.8.17 — when the side-matrix debug overlay is on, skip the
     // dynamic scenery rendering entirely and draw the test grid
     // instead. Sky / mountains / road / castle still render in their
@@ -190,6 +195,8 @@ export class SceneryRenderer {
     this.#foregroundFrame(world);
     // v3.8.40 — Phase 6 parent-child support lines pass.
     this.#drawSupportLines();
+    // v3.8.51 — Phase 9 prefab-group bounding box pass.
+    this.#drawGroupBoxes();
   }
 
   // ── Static prefab layers ────────────────────────────────────────────────────
@@ -298,9 +305,11 @@ export class SceneryRenderer {
     // the composition overlay.
     this._currentItemRole = sprite.role ?? null;
     this._currentItemLane = pos.lane;
+    this._currentPrefabId = sprite.prefabId ?? null;
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
     this._currentItemLane = null;
+    this._currentPrefabId = null;
     // v3.8.40 — Phase 6 record screen position for parent-child line
     // drawing. Only when the composition overlay is enabled.
     if (this._supportPositions && sprite.prefabId && sprite.itemId) {
@@ -309,6 +318,32 @@ export class SceneryRenderer {
         x: Math.round(p.sx), y: Math.round(y),
         parent: sprite.parentItemId ? `${sprite.prefabId}/${sprite.parentItemId}` : null,
       });
+    }
+    // v3.8.51 — accumulate prefab-group bbox for showCompositionGroups.
+    if (this._groupBoxes && sprite.prefabId) {
+      const sx = Math.round(p.sx);
+      const sy = Math.round(y);
+      // Approximate sprite footprint — use a fixed cell sized by scale.
+      const halfW = Math.round(32 * scale);
+      const halfH = Math.round(64 * scale);
+      const groupKey = `${sprite.prefabId}#${pos.distance.toFixed(0)}#${pos.lane > 0 ? 'R' : 'L'}`;
+      const existing = this._groupBoxes.get(groupKey);
+      if (existing) {
+        existing.minX = Math.min(existing.minX, sx - halfW);
+        existing.maxX = Math.max(existing.maxX, sx + halfW);
+        existing.minY = Math.min(existing.minY, sy - halfH);
+        existing.maxY = Math.max(existing.maxY, sy + 8);
+        existing.count += 1;
+      } else {
+        this._groupBoxes.set(groupKey, {
+          prefabId: sprite.prefabId,
+          side: pos.lane > 0 ? 1 : -1,
+          distance: pos.distance,
+          minX: sx - halfW, maxX: sx + halfW,
+          minY: sy - halfH, maxY: sy + 8,
+          count: 1,
+        });
+      }
     }
   }
 
@@ -348,6 +383,42 @@ export class SceneryRenderer {
       ctx.moveTo(info.x, info.y);
       ctx.lineTo(parent.x, parent.y);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * v3.8.51 — Phase 9 prefab-group bounding box pass. Draws a dashed
+   * rectangle around each cluster + a label "{prefabId} · {band} ·
+   * {side} · {count}" so QA can read which cluster owns which screen
+   * region. Only fires when ?showCompositionGroups=1.
+   */
+  #drawGroupBoxes() {
+    if (!this._groupBoxes || this._groupBoxes.size === 0) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    for (const g of this._groupBoxes.values()) {
+      const w = g.maxX - g.minX;
+      const h = g.maxY - g.minY;
+      const sideTag = g.side > 0 ? 'RIGHT_SHOULDER' : 'LEFT_SHOULDER';
+      const band = bandForDistance(g.distance);
+      const label = `${g.prefabId} · ${band} · ${sideTag} · n=${g.count}`;
+      // Box.
+      ctx.strokeStyle = 'rgba(255, 220, 80, 0.85)';
+      ctx.strokeRect(g.minX, g.minY, w, h);
+      // Label backdrop + text — above the box top.
+      ctx.setLineDash([]);
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      ctx.fillRect(g.minX, g.minY - 14, tw + 8, 14);
+      ctx.fillStyle = '#ffdc50';
+      ctx.fillText(label, g.minX + 4, g.minY - 2);
+      ctx.setLineDash([6, 4]);
     }
     ctx.restore();
   }
@@ -533,6 +604,12 @@ export class SceneryRenderer {
       `side: ${sideFacing}${canonical?.sideFacing && canonical.sideFacing !== 'neutral' ? (usedSideVariant ? ' · var' : ' · fb') : ''}`,
       `coll: ${collision} · sup: ${support}`,
     ];
+    // v3.8.51 — extra line when ?showCompositionGroups=1 is on: the
+    // prefab cluster owning this entity. Skipped when prefabId is null
+    // (static MIDGROUND_SCENERY / FOREGROUND_FRAME items).
+    if (this._world?.config.debug?.showCompositionGroups && this._currentPrefabId) {
+      lines.push(`group: ${this._currentPrefabId}`);
+    }
     ctx.save();
     ctx.font = '10px monospace';
     let maxW = 0;

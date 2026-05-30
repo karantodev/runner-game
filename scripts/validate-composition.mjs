@@ -253,6 +253,74 @@ for (const entry of scene.HERO_LAYOUT) {
   }
 }
 
+// ── 6a. BAND_OVERSUBSCRIBED — HERO_LAYOUT density per depth band ──────
+const bandSideCounts = new Map();
+for (const entry of scene.HERO_LAYOUT) {
+  const band = scene.bandForDistance(entry.distance);
+  const key = `${band}|${entry.side > 0 ? 'R' : 'L'}`;
+  bandSideCounts.set(key, (bandSideCounts.get(key) ?? 0) + 1);
+}
+for (const [key, count] of bandSideCounts) {
+  const [band, sideTag] = key.split('|');
+  const limit = scene.DEPTH_BANDS[band]?.maxClustersPerSide ?? 99;
+  if (count > limit) {
+    pushHard('BAND_OVERSUBSCRIBED', { band, side: sideTag, count, limit });
+  }
+}
+
+// ── 6b. ISOLATED_CUBE — HERO_LAYOUT must reference multi-item clusters ─
+const prefabsByIdLocal = new Map(scene.SIDE_DECORATION_PREFABS.map((p) => [p.id, p]));
+for (const entry of scene.HERO_LAYOUT) {
+  const prefab = prefabsByIdLocal.get(entry.prefabId);
+  if (!prefab) {
+    pushHard('HERO_LAYOUT_PREFAB_MISSING', { prefabId: entry.prefabId, distance: entry.distance });
+    continue;
+  }
+  if (prefab.items.length < 2) {
+    pushHard('ISOLATED_CUBE', { prefabId: entry.prefabId, distance: entry.distance, itemCount: prefab.items.length });
+  }
+}
+
+// ── 6c. QBLOCK_FLOATING — question_block must sit on a structural sibling
+const STRUCTURAL_ASSETS = new Set(['purple_brick_single', 'grass_dirt_block', 'grass_dirt_wall', 'floating_platform', 'grass_dirt_platform_long', 'grass_dirt_step']);
+for (const prefab of scene.SIDE_DECORATION_PREFABS) {
+  for (const item of prefab.items) {
+    if (item.assetType !== 'question_block') continue;
+    // OK if it has an explicit parent.
+    if (item.parentId) continue;
+    // OK if a structural sibling sits near it (lane ≤ 0.3 + dist ≤ 1.5).
+    const hasStructuralNeighbour = prefab.items.some((sib) =>
+      sib !== item
+      && STRUCTURAL_ASSETS.has(sib.assetType)
+      && Math.abs((sib.lane ?? 0) - (item.lane ?? 0)) <= 0.3
+      && Math.abs((sib.dist ?? 0) - (item.dist ?? 0)) <= 1.5
+    );
+    if (!hasStructuralNeighbour) {
+      pushHard('QBLOCK_FLOATING', { prefabId: prefab.id, itemId: item.id ?? item.assetType });
+    }
+  }
+}
+
+// ── 6d. PIPE_NOT_LANDMARK — green_pipe must be anchored as base/support
+for (const prefab of scene.SIDE_DECORATION_PREFABS) {
+  for (const item of prefab.items) {
+    if (item.assetType !== 'green_pipe') continue;
+    const role = item.role ?? 'loose-decor';
+    // OK if base / support (the landmark + clearly anchored variants).
+    if (role === 'base' || role === 'support') continue;
+    // OK if a structural sibling is right next to it.
+    const hasStructuralNeighbour = prefab.items.some((sib) =>
+      sib !== item
+      && STRUCTURAL_ASSETS.has(sib.assetType)
+      && Math.abs((sib.lane ?? 0) - (item.lane ?? 0)) <= 0.25
+      && Math.abs((sib.dist ?? 0) - (item.dist ?? 0)) <= 1.2
+    );
+    if (!hasStructuralNeighbour) {
+      pushHard('PIPE_NOT_LANDMARK', { prefabId: prefab.id, itemId: item.id ?? item.assetType, role });
+    }
+  }
+}
+
 // ── 6. OBSTACLE_BEHIND_DECOR (warning) — z-layer + lane proximity ─────
 // For each prefab, find pairs of items where one canonical role is
 // GAMEPLAY_OBSTACLE and a decor item shares the same lane (±0.4) AND

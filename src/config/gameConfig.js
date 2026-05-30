@@ -233,12 +233,20 @@ export const GAME_CONFIG = Object.freeze({
     // v3.8.38 — composition filter mode. 'all' (default), 'obstacles',
     // 'pickups', 'decor', 'invalid'. Set via ?compositionFilter=...
     compositionFilter: 'all',
+    // v3.8.51 — Phase 9 composition GROUP overlay. When ON (and
+    // showComposition is also ON), draws a dashed bounding box around
+    // each prefab group with a label "{prefabId} · {band} · {side} ·
+    // density:N". Toggle via ?showCompositionGroups=1.
+    showCompositionGroups: false,
   },
 
   scene: {
     zones: SCENE_ZONES,
     laneBands: LANE_BANDS,
     assetTypes: ASSET_TYPES,
+    // v3.8.51 — Phase 9 active visual composition theme. Drives the
+    // procedural prefab pool in DecorationSystem.
+    theme: 'GARDEN_CORRIDOR_REFERENCE',
   },
 
   powerUps: {

@@ -1,6 +1,6 @@
 # Asset Production Manifest
 
-Generated 2026-05-30T20:57:52.080Z.
+Generated 2026-05-30T22:08:41.865Z.
 
 Every PNG receives exactly one production bucket. Sum equals
 the total scanned (excluding `_source/` which is bucket **H**).
