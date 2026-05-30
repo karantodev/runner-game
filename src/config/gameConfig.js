@@ -216,6 +216,13 @@ export const GAME_CONFIG = Object.freeze({
     // and the calling system (SpawnSystem / DecorationSystem) skips the
     // spawn. Toggle via ?enforcePlacement=1.
     enforcePlacementRules: false,
+    // v3.8.38 — Phase 3 composition debug. When ON, SceneryRenderer +
+    // GameplayRenderer overlay semantic info per entity (category color,
+    // assetType, zone, side, validity). Toggle via ?debugComposition=1.
+    showComposition: false,
+    // v3.8.38 — composition filter mode. 'all' (default), 'obstacles',
+    // 'pickups', 'decor', 'invalid'. Set via ?compositionFilter=...
+    compositionFilter: 'all',
   },
 
   scene: {

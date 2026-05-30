@@ -511,6 +511,54 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
 ]);
 
 /**
+ * v3.8.38 — Phase 4 composition intents. Each prefab is annotated with
+ * a `kind` describing its role in the visible-corridor composition.
+ * DecorationSystem reads this map to avoid consecutive prefabs of the
+ * same intent on the same side, producing visible variety without
+ * rewriting every prefab definition.
+ *
+ *   flora-mix         soft cluster of small flora + minor structure
+ *   pipe-landmark     pipe-anchored cluster — the corridor's iconic beat
+ *   support-stack     brick / wall stack — vertical mass + readable form
+ *   platform-cluster  floating platform + child decor — mid-band depth
+ *   cluster           dense multi-element cluster (visual heat)
+ *   fence-row         repeating fence sections
+ *   corner-anchor     bottom-corner foreground framing
+ *   vertical-landmark tall column to break the silhouette
+ *   hero-landmark     curated HERO_LAYOUT-specific composition
+ *   step-feature      step-block + small accent
+ *   landscape         large soft landscape band (cliff, meadow)
+ */
+export const PREFAB_INTENT_BY_ID = Object.freeze({
+  'cliff-flower-meadow':              'landscape',
+  'grass-wall-mushroom':              'flora-mix',
+  'pipe-vine-garden':                 'pipe-landmark',
+  'blockstack-platform':              'support-stack',
+  'brick-corridor-segment':           'support-stack',
+  'qblock-floating-cluster':          'cluster',
+  'wall-and-mushroom-grove':          'flora-mix',
+  'pipe-with-flowers':                'pipe-landmark',
+  'pipe-mushroom-platform':           'pipe-landmark',
+  'dense-platform-trio':              'platform-cluster',
+  'fence-bush-corner':                'fence-row',
+  'long-platform-with-mushroom':      'platform-cluster',
+  'long-platform-question-stack':     'platform-cluster',
+  'platform-pipe-flowers':            'platform-cluster',
+  'wall-stack-near':                  'support-stack',
+  'corner-platform-mushroom-frame':   'corner-anchor',
+  'platform-qblock-stack':            'cluster',
+  'pipe-stairs-flower-bed':           'pipe-landmark',
+  'tall-block-stack-vertical':        'vertical-landmark',
+  'hero-layered-corner-brick':        'hero-landmark',
+  'hero-layered-platform-qblocks':    'hero-landmark',
+  'hero-layered-pipe-landmark':       'hero-landmark',
+  'hero-layered-brick-cascade':       'hero-landmark',
+  'fence-flower-row':                 'fence-row',
+  'platform-high-cliff':              'vertical-landmark',
+  'step-left-with-mushroom':          'step-feature',
+});
+
+/**
  * v3.8.21 — Deterministic HERO LAYOUT for the first ~150 m of every run.
  *
  * The user flagged: weighted-random prefab rotation sometimes lands a

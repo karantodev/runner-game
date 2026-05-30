@@ -1,5 +1,6 @@
 import { Game } from './core/Game.js';
 import { GAME_CONFIG } from './config/gameConfig.js';
+import { ASSET_SEMANTICS } from './config/assetSemantics.js';
 import { TouchControls } from './core/TouchControls.js';
 import { SwipeGestures } from './core/SwipeGestures.js';
 import { PerformanceHUD } from './core/PerformanceHUD.js';
@@ -97,6 +98,17 @@ if (params.get('debugSideMatrix') === '1') {
 // regressions in HERO_LAYOUT / HERO_ROAD_SEQUENCE during composition QA.
 if (params.get('enforcePlacement') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'enforcePlacementRules', { value: true, writable: false, configurable: true });
+}
+// v3.8.38 — `?debugComposition=1` overlays semantic info per spawned
+// entity (category badge, assetType, zone, side, validity). Pair with
+// `?compositionFilter=obstacles|pickups|decor|invalid` to scope the
+// overlay to a single category for clearer reading.
+if (params.get('debugComposition') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showComposition', { value: true, writable: false, configurable: true });
+}
+const compositionFilter = params.get('compositionFilter');
+if (compositionFilter && ['all', 'obstacles', 'pickups', 'decor', 'invalid'].includes(compositionFilter)) {
+  Object.defineProperty(GAME_CONFIG.debug, 'compositionFilter', { value: compositionFilter, writable: false, configurable: true });
 }
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
@@ -336,6 +348,42 @@ function createDebugApi() {
       const results = runPatternTests();
       console.info('[PatternTests]', results.summary);
       return results;
+    },
+    /**
+     * v3.8.38 — Phase 3 composition report. Walks the live registry,
+     * groups entities by AssetSemantic category, counts entries per
+     * assetType + flags any assetType whose placement violates the
+     * semantic zone (e.g., obstacle ending up on side-decor). Result is
+     * a structured object the QA panel renders + a console table.
+     */
+    compositionReport() {
+      const r = game.world.registry;
+      const byCategory = new Map();
+      const byAssetType = new Map();
+      const invalid = [];
+      const bump = (map, key) => map.set(key, (map.get(key) ?? 0) + 1);
+      for (const e of r.query('Sprite')) {
+        const sprite = e.components.Sprite;
+        const assetType = sprite.assetType ?? sprite.type;
+        const semantic = ASSET_SEMANTICS[assetType];
+        const category = semantic?.category ?? 'unknown';
+        bump(byCategory, category);
+        bump(byAssetType, assetType);
+        if (!semantic) {
+          invalid.push({ assetType, reason: 'NEEDS_SEMANTIC_CLASSIFICATION' });
+        }
+      }
+      const report = {
+        timestamp: new Date().toISOString(),
+        totalEntities: [...byAssetType.values()].reduce((a, b) => a + b, 0),
+        placementViolations: game.world.placement?.violations ?? 0,
+        byCategory: Object.fromEntries(byCategory),
+        byAssetType: Object.fromEntries([...byAssetType.entries()].sort((a, b) => b[1] - a[1])),
+        invalid,
+      };
+      console.info('[compositionReport]', report);
+      console.table(report.byCategory);
+      return report;
     },
   };
 }
