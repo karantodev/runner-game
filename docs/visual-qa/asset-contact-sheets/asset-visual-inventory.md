@@ -1,6 +1,6 @@
 # Asset Visual Inventory
 
-Generated 2026-05-30T18:53:35.142Z
+Generated 2026-05-30T19:29:56.916Z
 Derived from the contact-sheet generator pass.
 
 ## Active assets (USED — referenced in src/)
@@ -38,11 +38,16 @@ Derived from the contact-sheet generator pass.
 - `spiderWebOverhang` → assets/obstacles/overhangs/spider_web_overhang.png
 - `vineBarrierFull` → assets/obstacles/vines/vine_barrier_full.png
 
-### Collectibles (9)
+### Collectibles (14)
 - `lifeHeart` → assets/collectibles/life-heart.png
 - `orchidBlueRareHalo` → assets/collectibles/orchid_blue/orchid_blue_rare_halo.png
 - `orchidBlueRare` → assets/collectibles/orchid_blue_rare.png
 - `orchidGoldBig` → assets/collectibles/orchid_gold/orchid_gold_big.png
+- `orchidGoldCollect02` → assets/collectibles/orchid_gold/orchid_gold_collect_02.png
+- `orchidGoldCollect03` → assets/collectibles/orchid_gold/orchid_gold_collect_03.png
+- `orchidGoldCollect04` → assets/collectibles/orchid_gold/orchid_gold_collect_04.png
+- `orchidGoldCollect07` → assets/collectibles/orchid_gold/orchid_gold_collect_07.png
+- `orchidGoldCollect08` → assets/collectibles/orchid_gold/orchid_gold_collect_08.png
 - `orchidGoldMain` → assets/collectibles/orchid_gold/orchid_gold_main.png
 - `sprout` → assets/collectibles/sprout.png
 - `pickupMagnet` → assets/pickups/pickup_magnet.png
@@ -180,9 +185,8 @@ Derived from the contact-sheet generator pass.
 - `miscPotionEmerald` → assets/misc/potion_emerald.png
 - `miscShieldSign` → assets/misc/sign_wooden_shield.png
 
-## Unregistered (140)
-### BACKGROUND (2)
-- assets/background/clouds/clouds.png — 1960×403
+## Unregistered (110)
+### BACKGROUND (1)
 - assets/background/mountains/mountains-far.png — 1672×168
 
 ### COLLECTIBLES (1)
@@ -208,7 +212,7 @@ Derived from the contact-sheet generator pass.
 - assets/decor/small/leaves/leaf_clump_round.png — 40×32
 - assets/decor/small/plants/sprout_soil.png — 32×24
 
-### EFFECTS (36)
+### EFFECTS (28)
 - assets/effects/bursts/light_burst_gradient_01.png — 1672×941
 - assets/effects/bursts/light_burst_sun_01.png — 1672×941
 - assets/effects/dust/dust_burst_01.png — 1448×1086
@@ -219,27 +223,24 @@ Derived from the contact-sheet generator pass.
 - assets/effects/dust/dust_cloud_02.png — 1448×1086
 - assets/effects/dust/dust_puffs_01.png — 1448×1086
 - assets/effects/dust/dust_smoke_01.png — 1448×1086
-- assets/effects/effect_burst_gold_01.png — 1254×1254
 - assets/effects/effect_gold_spark_burst.png — 1254×1254
-- assets/effects/effect_magic_circle_glow_01.png — 1254×1254
 - assets/effects/effect_small_star_burst.png — 1254×1254
 - assets/effects/effect_small_star_glint.png — 1254×1254
-- assets/effects/effect_star_burst_small_01.png — 1254×1254
-- assets/effects/effect_star_small_01.png — 1254×1254
 - assets/effects/light/light_streak_01.png — 2172×724
 - assets/effects/magic/magic_glow_rainbow_01.png — 1254×1254
 - assets/effects/magic/sparkle_01.png — 1254×1254
 - assets/effects/magic/sparkle_02.png — 1254×1254
-- assets/effects/sparkle/sparkle_05.png — 1448×1086
 - assets/effects/sparkle/sparkle_gold_01.png — 1254×1254
-- assets/effects/sparkle_01.png — 1254×1254
 - assets/effects/sparkle_02.png — 1254×1254
-- assets/effects/sparkle_03.png — 1254×1254
-- assets/effects/sparkle_04.png — 1254×1254
 - assets/effects/sparkles/sparkle_small_01.png — 1254×1254
 - assets/effects/sparkles/sparkle_small_02.png — 1254×1254
 - assets/effects/sparkles/sparkle_star_01.png — 1254×1254
-- _(6 more)_
+- assets/effects/sparkles/sparkle_star_02.png — 1254×1254
+- assets/effects/sparkles/sparkle_star_gold_01.png — 1254×1254
+- assets/effects/trails/light_streak_01.png — 1672×941
+- assets/effects/trails/light_sweep_01.png — 1672×941
+- assets/effects/trails/light_trail_motion_01.png — 1536×1024
+- assets/effects/trails/light_trail_yellow_01.png — 1536×1024
 
 ### OBSTACLES (1)
 - assets/obstacles/mushroom_small/mushroom_small_red.png — 48×48
@@ -250,13 +251,9 @@ Derived from the contact-sheet generator pass.
 - assets/pickups/aura/pickup_shield_orchid_aura.png — 1254×1254
 - assets/pickups/aura/pickup_star_gold_aura.png — 1254×1254
 
-### PLATFORMS (6)
+### PLATFORMS (2)
 - assets/platforms/platform_floating.png — 1448×1086
-- assets/platforms/platform_grass_small.png — 1448×1086
-- assets/platforms/platform_grass_small_01.png — 1448×1086
 - assets/platforms/platform_grass_vines.png — 1448×1086
-- assets/platforms/platform_grass_vines_01.png — 1448×1086
-- assets/platforms/platform_hanging_vines.png — 1448×1086
 
 ### PLAYER (27)
 - assets/player/farmer_jump/player_farmer_jump_07.png — 64×96
@@ -286,25 +283,6 @@ Derived from the contact-sheet generator pass.
 - assets/player/farmer_unfinished_batch/фермер_в_движении_с_лопатой.png — 1024×1536
 - assets/player/farmer_unfinished_batch/фермер_в_наклоне_с_лопатой.png — 1122×1402
 - assets/player/farmer_unfinished_batch/фермер_в_прыжке_с_лопатой.png — 1024×1536
-
-### POWERUPS (17)
-- assets/powerups/magic_circle_glow_01.png — 1254×1254
-- assets/powerups/magnet_gold_aura_01.png — 1254×1254
-- assets/powerups/medal_x2_gold_01.png — 1254×1254
-- assets/powerups/powerup_gold_star.png — 1254×1254
-- assets/powerups/powerup_magic_circle_glow.png — 1254×1254
-- assets/powerups/powerup_magnet_01.png — 1254×1254
-- assets/powerups/powerup_magnet_gold_aura.png — 1254×1254
-- assets/powerups/powerup_medal_x2_gold.png — 1254×1254
-- assets/powerups/powerup_multiplier_x2_medal_01.png — 1254×1254
-- assets/powerups/powerup_orchid_shield_glow.png — 1254×1254
-- assets/powerups/powerup_shield_orchid_01.png — 1254×1254
-- assets/powerups/powerup_star_gold_01.png — 1254×1254
-- assets/powerups/shield_orchid_glow_01.png — 1254×1254
-- assets/powerups/star_burst_gold_01.png — 1254×1254
-- assets/powerups/star_glint_small_01.png — 1254×1254
-- assets/powerups/star_gold_01.png — 1254×1254
-- assets/powerups/star_gold_small_01.png — 1254×1254
 
 ### STRUCTURES (13)
 - assets/structures/bricks/purple_brick_single_left.png — 1254×1254
@@ -340,85 +318,10 @@ Derived from the contact-sheet generator pass.
 - assets/ui/icons/heart_red.png — 1254×1254
 - assets/ui/panels/panel_large_dark.png — 1586×992
 
-## Duplicate exact groups (15)
-### Group 1 (2 copies — 1960×403)
-- assets/background/clouds/cloud_large.png
-- assets/background/clouds/clouds.png
-
-### Group 2 (4 copies — 1254×1254)
-- assets/collectibles/orchid_blue/orchid_blue_rare_halo.png
-- assets/effects/effect_magic_circle_glow_01.png
-- assets/powerups/magic_circle_glow_01.png
-- assets/powerups/powerup_magic_circle_glow.png
-
-### Group 3 (2 copies — 1254×1254)
-- assets/collectibles/orchid_gold/orchid_gold_collect_01.png
-- assets/collectibles/orchid_gold/orchid_gold_main.png
-
-### Group 4 (2 copies — 1448×1086)
-- assets/effects/dust_puff/dust_puff_03.png
-- assets/effects/sparkle/sparkle_05.png
-
-### Group 5 (4 copies — 1254×1254)
-- assets/effects/effect_burst_gold_01.png
-- assets/effects/effect_gold_spark_burst.png
-- assets/effects/sparkle_04.png
-- assets/powerups/star_burst_gold_01.png
-
-### Group 6 (4 copies — 1254×1254)
-- assets/effects/effect_small_star_burst.png
-- assets/effects/effect_star_small_01.png
-- assets/effects/sparkle_01.png
-- assets/powerups/star_gold_small_01.png
-
-### Group 7 (4 copies — 1254×1254)
-- assets/effects/effect_small_star_glint.png
-- assets/effects/effect_star_burst_small_01.png
-- assets/effects/sparkle_03.png
-- assets/powerups/star_glint_small_01.png
-
-### Group 8 (4 copies — 1254×1254)
-- assets/effects/sparkle_02.png
-- assets/powerups/powerup_gold_star.png
-- assets/powerups/powerup_star_gold_01.png
-- assets/powerups/star_gold_01.png
-
-### Group 9 (4 copies — 1254×1254)
-- assets/pickups/pickup_magnet.png
-- assets/powerups/magnet_gold_aura_01.png
-- assets/powerups/powerup_magnet_01.png
-- assets/powerups/powerup_magnet_gold_aura.png
-
-### Group 10 (4 copies — 1254×1254)
-- assets/pickups/pickup_score_x2.png
-- assets/powerups/medal_x2_gold_01.png
-- assets/powerups/powerup_medal_x2_gold.png
-- assets/powerups/powerup_multiplier_x2_medal_01.png
-
-### Group 11 (4 copies — 1254×1254)
-- assets/pickups/pickup_shield.png
-- assets/powerups/powerup_orchid_shield_glow.png
-- assets/powerups/powerup_shield_orchid_01.png
-- assets/powerups/shield_orchid_glow_01.png
-
-### Group 12 (3 copies — 1448×1086)
-- assets/platforms/platform_floating.png
-- assets/platforms/platform_grass_small.png
-- assets/platforms/platform_grass_small_01.png
-
-### Group 13 (3 copies — 1448×1086)
-- assets/platforms/platform_grass_vines.png
-- assets/platforms/platform_grass_vines_01.png
-- assets/platforms/platform_hanging_vines.png
-
-### Group 14 (2 copies — 1254×1254)
+## Duplicate exact groups (1)
+### Group 1 (2 copies — 1254×1254)
 - assets/structures/question_block/question_block_02.png
 - assets/structures/question_block/question_block_04.png
-
-### Group 15 (3 copies — 1964×516)
-- assets/ui/panels/lives_panel_bg.png
-- assets/ui/panels/panel_long_blue.png
-- assets/ui/panels/score_panel_bg.png
 
 ## Side-aware scenery problems (1)
 - `assets/terrain/blocks/grass_dirt_step` — DIM MISMATCH: left 1086×1448 ≠ right 1254×1254
@@ -439,12 +342,12 @@ Road tiles intentionally differ left/right for perspective; treated separately f
 ## Designer action list
 
 - **P0**: 1 side-pair dim mismatches need re-export
-- **P0**: 15 exact-content duplicate groups — pick one canonical path per asset, archive the rest
+- **P0**: 1 exact-content duplicate groups — pick one canonical path per asset, archive the rest
 - **P1**: 0 side-aware pairs missing _right.png
 - **P1**: 6 dead-key files designer needs to ship
 
 ## Developer action list
 
-- wire: 282 registered keys lack a runtime consumer
+- wire: 279 registered keys lack a runtime consumer
 - classify: files in `unclassified` group need ASSET_CLASS_BY_TYPE entry
 - reject (move to _source/): files in duplicate groups beyond the canonical copy

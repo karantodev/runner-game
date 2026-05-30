@@ -1,12 +1,12 @@
 # Asset Production Manifest
 
-Generated 2026-05-30T18:53:35.145Z.
+Generated 2026-05-30T19:29:56.918Z.
 
 Every PNG receives exactly one production bucket. Sum equals
 the total scanned (excluding `_source/` which is bucket **H**).
 
-- Total entries classified: **437**
-- Files archived in `_source/` (bucket H, listed in skipped): **24**
+- Total entries classified: **390**
+- Files archived in `_source/` (bucket H, listed in skipped): **57**
 
 ## A — ACTIVE_RUNTIME (explicit src/ consumer) (60)
 
@@ -71,8 +71,10 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/terrain/road/kit/shoulder_inner_left.png` — 96×128
 - `assets/terrain/road/kit/shoulder_inner_right.png` — 96×128
 
-## B — USED_DYNAMIC (animation stem consumer) (30)
+## B — USED_DYNAMIC (animation stem consumer) (32)
 
+- `assets/collectibles/orchid_gold/orchid_gold_collect_07.png` — 96×96
+- `assets/collectibles/orchid_gold/orchid_gold_collect_08.png` — 96×96
 - `assets/effects/dust_puff/dust_puff_04.png` — 32×24
 - `assets/effects/jump_dust/jump_dust_01.png` — 48×28
 - `assets/effects/jump_dust/jump_dust_02.png` — 48×28
@@ -104,15 +106,13 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/player/farmer_run/player_farmer_run_07.png` — 64×96
 - `assets/player/farmer_run/player_farmer_run_08.png` — 64×96
 
-## C — REGISTERED but INTENTIONAL_UNUSED (50)
+## C — REGISTERED but INTENTIONAL_UNUSED (48)
 
 - `assets/background/castle/castle_far.png` — 557×562
 - `assets/background/clouds/cloud_large.png` — 1960×403
 - `assets/background/greenhouse/greenhouse_mid.png` — 320×240
 - `assets/background/greenhouse/greenhouse_near.png` — 384×288
 - `assets/collectibles/life_heart.png` — 40×36
-- `assets/collectibles/orchid_gold/orchid_gold_collect_07.png` — 96×96
-- `assets/collectibles/orchid_gold/orchid_gold_collect_08.png` — 96×96
 - `assets/collectibles/orchid_gold/orchid_gold_halo.png` — 72×72
 - `assets/effects/collect_burst/collect_burst_08.png` — 96×96
 - `assets/effects/collect_orchid_burst.png` — 144×144
@@ -157,7 +157,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/ui/tools/tool_shovel_full.png` — 64×80
 - `assets/ui/tools/tool_shovel_handle.png` — 48×64
 
-## D — UNREGISTERED_PENDING_WIRE (54)
+## D — UNREGISTERED_PENDING_WIRE (57)
 
 - `assets/background/mountains/mountains-far.png` — 1672×168
 - `assets/decor/large/bushes/bush_large.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -184,6 +184,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/effects/magic/magic_glow_rainbow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/magic/sparkle_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/magic/sparkle_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/sparkle/sparkle_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_small_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -198,6 +199,8 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/pickups/aura/pickup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_shield_orchid_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_star_gold_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/platforms/platform_floating.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/platforms/platform_grass_vines.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -234,10 +237,10 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/collectibles/gold/gold_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_big.png` — 1035×936 · OVERSIZED_CANVAS
-- `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_03.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_04.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/collectibles/orchid_gold/orchid_gold_main.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/branches/decorative_branch_flowers_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/bush_bright_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/bush_flower_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -278,44 +281,11 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/effects/speed_line/speed_line.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - _(72 more)_
 
-## F — DUPLICATE_REJECT (non-canonical SHA copies) (34)
+## F — DUPLICATE_REJECT (non-canonical SHA copies) (1)
 
-- `assets/background/clouds/clouds.png` — 1960×403
-- `assets/collectibles/orchid_gold/orchid_gold_main.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/effect_gold_spark_burst.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/effect_magic_circle_glow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/effect_star_burst_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/effect_star_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/sparkle/sparkle_05.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/sparkle_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/sparkle_03.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/sparkle_04.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_grass_small.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_grass_small_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_grass_vines.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_hanging_vines.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/magic_circle_glow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/magnet_gold_aura_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/medal_x2_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_gold_star.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_magic_circle_glow.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_magnet_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_magnet_gold_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_multiplier_x2_medal_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_orchid_shield_glow.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_shield_orchid_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/powerup_star_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/shield_orchid_glow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/star_burst_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/star_glint_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/star_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/powerups/star_gold_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/structures/question_block/question_block_04.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/ui/panels/panel_long_blue.png` — 1964×516 · OVERSIZED_CANVAS
-- `assets/ui/panels/score_panel_bg.png` — 1964×516 · OVERSIZED_CANVAS
 
-## G — OVERDELIVERY_REJECT (above brief count) (56)
+## G — OVERDELIVERY_REJECT (above brief count) (53)
 
 - `assets/collectibles/orchid_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_burst_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -326,13 +296,10 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/effects/dust/dust_cloud_02.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_puffs_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_smoke_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/effect_burst_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/effect_gold_spark_burst.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/effect_small_star_burst.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/effect_small_star_glint.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/sparkle/sparkle_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkle_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_floating.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/platforms/platform_grass_vines_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_jump/player_farmer_jump_07.png` — 64×96
 - `assets/player/farmer_jump/player_farmer_jump_08.png` — 64×96
 - `assets/player/farmer_jump/player_farmer_jump_09.png` — 64×96
@@ -389,25 +356,11 @@ the total scanned (excluding `_source/` which is bucket **H**).
 ## J — UNCLASSIFIED_BLOCKER (no ASSET_CLASS_BY_TYPE entry) (0)
 
 
-## undefined (15)
+## undefined (1)
 
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
-- `undefined` — undefined×undefined
 - `undefined` — undefined×undefined
 
 ## Skipped folders (bucket H — already archived)
 
-- `assets/_source/` — 10 files — archived / rejected designer batch
+- `assets/_source/` — 43 files — archived / rejected designer batch
 - `assets/player/_source/` — 14 files — archived / rejected designer batch

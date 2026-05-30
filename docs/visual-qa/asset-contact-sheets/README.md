@@ -1,25 +1,25 @@
 # Asset Contact Sheets
 
-Generated 2026-05-30T18:53:35.135Z
+Generated 2026-05-30T19:29:56.912Z
 
 ## Coverage
 
 - PNG files discovered (all):                **440**
-- PNG files shown in contact sheets:         **416**
-- Coverage:                                  **94.5%**
+- PNG files shown in contact sheets:         **383**
+- Coverage:                                  **87%**
 
 ### Skipped folders (intentional)
-- `assets/_source/` — 10 files — archived / rejected designer batch
+- `assets/_source/` — 43 files — archived / rejected designer batch
 - `assets/player/_source/` — 14 files — archived / rejected designer batch
 
 ## Summary
 
-- Total PNG files: **416**
-- Registered in gameConfig: **276**
-- Unregistered: **140**
-- Runtime-used: **152** / 282 keys (111 explicit + 41 dynamic)
+- Total PNG files: **383**
+- Registered in gameConfig: **273**
+- Unregistered: **110**
+- Runtime-used: **159** / 279 keys (111 explicit + 48 dynamic)
 - Dead keys (no file): **6**
-- Exact duplicate groups (SHA-256): **15**
+- Exact duplicate groups (SHA-256): **1**
 - Side-aware scenery pairs (OK / mismatch / missing-right): **10** / **1** / **0**
 - Road-kit pairs (asymmetric is intentional): **5**
 
@@ -32,11 +32,8 @@ Generated 2026-05-30T18:53:35.135Z
 ### Obstacles (13 cells)
 - [`02-obstacles.png`](02-obstacles.png)
 
-### Collectibles (24 cells)
+### Collectibles (23 cells)
 - [`03-collectibles.png`](03-collectibles.png)
-
-### Power-ups (17 cells)
-- [`04-powerups.png`](04-powerups.png)
 
 ### Side structures — blocks (30 cells)
 - [`05-side-structures-blocks.png`](05-side-structures-blocks.png)
@@ -57,18 +54,18 @@ Generated 2026-05-30T18:53:35.135Z
 - [`10-mushrooms-flowers-small-decor-page-01.png`](10-mushrooms-flowers-small-decor-page-01.png)
 - [`10-mushrooms-flowers-small-decor-page-02.png`](10-mushrooms-flowers-small-decor-page-02.png)
 
-### Background — sky / clouds / mountains / castle (32 cells)
+### Background — sky / clouds / mountains / castle (31 cells)
 - [`11-background-sky-clouds-mountains-castle.png`](11-background-sky-clouds-mountains-castle.png)
 
-### Effects — sparkles / dust / hit-flash / bursts (69 cells)
+### Effects — sparkles / dust / hit-flash / bursts (61 cells)
 - [`12-effects-sparkles-dust-hit-flash-bursts-page-01.png`](12-effects-sparkles-dust-hit-flash-bursts-page-01.png)
 - [`12-effects-sparkles-dust-hit-flash-bursts-page-02.png`](12-effects-sparkles-dust-hit-flash-bursts-page-02.png)
 
-### UI / HUD / icons (46 cells)
+### UI / HUD / icons (44 cells)
 - [`13-ui-hud-icons-page-01.png`](13-ui-hud-icons-page-01.png)
 - [`13-ui-hud-icons-page-02.png`](13-ui-hud-icons-page-02.png)
 
-### Unclassified (27 cells)
+### Unclassified (23 cells)
 - [`unclassified.png`](unclassified.png)
 
 ### Side-aware scenery pairs (22 cells)
@@ -77,17 +74,16 @@ Generated 2026-05-30T18:53:35.135Z
 ### Road-kit pairs (10 cells)
 - [`14b-road-kit-pairs.png`](14b-road-kit-pairs.png)
 
-### Exact duplicates (49 cells)
-- [`15-duplicates-exact-page-01.png`](15-duplicates-exact-page-01.png)
-- [`15-duplicates-exact-page-02.png`](15-duplicates-exact-page-02.png)
+### Exact duplicates (2 cells)
+- [`15-duplicates-exact.png`](15-duplicates-exact.png)
 
-### Unregistered assets (140 cells)
+### Unregistered assets (110 cells)
 - [`16-unregistered-assets-page-01.png`](16-unregistered-assets-page-01.png)
 - [`16-unregistered-assets-page-02.png`](16-unregistered-assets-page-02.png)
 - [`16-unregistered-assets-page-03.png`](16-unregistered-assets-page-03.png)
 - [`16-unregistered-assets-page-04.png`](16-unregistered-assets-page-04.png)
 
-### Registered but unused (130 cells)
+### Registered but unused (120 cells)
 - [`17-registered-unused-page-01.png`](17-registered-unused-page-01.png)
 - [`17-registered-unused-page-02.png`](17-registered-unused-page-02.png)
 - [`17-registered-unused-page-03.png`](17-registered-unused-page-03.png)

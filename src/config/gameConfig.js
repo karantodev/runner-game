@@ -399,10 +399,12 @@ export const GAME_CONFIG = Object.freeze({
     uiFlowerIcon: './assets/ui/icons/flower_currency_icon.png',
 
     // UI — panels
-    uiScorePanel: './assets/ui/panels/score_panel_bg.png',
+    // v3.8.48 — removed uiScorePanel and uiPanelLongBlue: both files
+    // are SHA-256 identical to lives_panel_bg.png (Group #15 in the
+    // duplicate cleanup proposal). No src/ consumer for either key.
+    // The duplicate PNGs are archived to _source/rejected_2026_05_30/.
     uiLivesPanel: './assets/ui/panels/lives_panel_bg.png',
     uiToolPanel: './assets/ui/panels/tool_panel_bg.png',
-    uiPanelLongBlue: './assets/ui/panels/panel_long_blue.png',
 
     // UI — tools
     uiShovelFull: './assets/ui/tools/shovel_full.png',
@@ -496,7 +498,10 @@ export const GAME_CONFIG = Object.freeze({
     orchidGoldSparkle02: './assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png',
     orchidGoldSparkle03: './assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png',
     orchidGoldSparkle04: './assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png',
-    orchidGoldCollect01: './assets/collectibles/orchid_gold/orchid_gold_collect_01.png',
+    // v3.8.48 — removed orchidGoldCollect01: SHA-256 identical to
+    // orchid_gold_main.png (Group #3 in the duplicate cleanup
+    // proposal). No src/ consumer for any orchidGoldCollect key.
+    // The duplicate PNG is archived to _source/rejected_2026_05_30/.
     orchidGoldCollect02: './assets/collectibles/orchid_gold/orchid_gold_collect_02.png',
     orchidGoldCollect03: './assets/collectibles/orchid_gold/orchid_gold_collect_03.png',
     orchidGoldCollect04: './assets/collectibles/orchid_gold/orchid_gold_collect_04.png',

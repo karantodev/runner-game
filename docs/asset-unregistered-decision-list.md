@@ -1,6 +1,6 @@
 # Asset Unregistered Decision List
 
-Generated 2026-05-30T18:53:35.164Z.
+Generated 2026-05-30T19:29:56.922Z.
 
 Every unregistered PNG receives one decision subType. Total: **110**.
 
@@ -73,6 +73,7 @@ Every unregistered PNG receives one decision subType. Total: **110**.
 - `assets/effects/magic/magic_glow_rainbow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/magic/sparkle_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/magic/sparkle_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/sparkle/sparkle_gold_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_small_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkles/sparkle_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -84,6 +85,8 @@ Every unregistered PNG receives one decision subType. Total: **110**.
 - `assets/pickups/aura/pickup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_shield_orchid_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_star_gold_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/platforms/platform_floating.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/platforms/platform_grass_vines.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -98,9 +101,6 @@ Every unregistered PNG receives one decision subType. Total: **110**.
 - `assets/ui/cards/tool_shovel_card.png` — 1402×1122 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_burst_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/dust/dust_burst_02.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/dust/dust_burst_03.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/dust/dust_burst_04.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - _(30 more)_
 
 ## WRONG_CATEGORY — file lives in the wrong subfolder for its semantic (0)
