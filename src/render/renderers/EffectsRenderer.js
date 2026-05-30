@@ -139,16 +139,29 @@ export class EffectsRenderer {
       const W = this.projection.width;
       const H = this.projection.height;
 
-      // v3.8.35 — neutral navy/black dim instead of the heavy red wash.
-      // The red previously fought the death modal's gold/cream palette and
-      // hid the scene that the player just finished. Red identity is now
-      // carried exclusively by the .death-cause accent inside the modal.
+      // v3.8.43 — Phase 7c. Dark base dim with a SUBTLE red edge ring.
+      // Two stacked layers:
+      //   (1) Dark navy radial dim — keeps the centre readable, fades
+      //       to dark at the edge. Scene stays visible underneath.
+      //   (2) Faint red-tinted outer ring — accent only, not a wash.
+      // Replaces the v3.8.35 navy-only fall-back which read as
+      // "muted everything"; here the red signals "you died" without
+      // killing the underlying scene composition.
       ctx.save();
-      ctx.globalAlpha = 0.55 * t;
-      const dGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.15, W / 2, H / 2, W * 0.7);
-      dGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      dGrad.addColorStop(1, 'rgba(6, 12, 24, 0.82)');
-      ctx.fillStyle = dGrad;
+      // Layer 1: navy radial dim.
+      ctx.globalAlpha = 0.45 * t;
+      const navyGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.20, W / 2, H / 2, W * 0.75);
+      navyGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      navyGrad.addColorStop(0.6, 'rgba(6, 12, 24, 0.25)');
+      navyGrad.addColorStop(1, 'rgba(6, 12, 24, 0.72)');
+      ctx.fillStyle = navyGrad;
+      ctx.fillRect(0, 0, W, H);
+      // Layer 2: subtle red edge ring — accent only.
+      ctx.globalAlpha = 0.28 * t;
+      const redGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.40, W / 2, H / 2, W * 0.80);
+      redGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      redGrad.addColorStop(1, 'rgba(160, 30, 30, 0.65)');
+      ctx.fillStyle = redGrad;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
 
@@ -276,21 +289,20 @@ export class EffectsRenderer {
       }
     }
 
-    // Hit flash — prefers designer-shipped full-screen overlay (4 frames
-    // by alpha decay); falls back to a flat colour fill if the overlay
-    // isn't loaded.
+    // Hit flash — fires on collision feedback during 'playing'. NOT
+    // drawn during 'dying' / 'dead': those states own the screen and
+    // already render the navy + subtle-red edge vignette above; the
+    // designer hit_flash PNGs (translucent red checker pattern) on top
+    // of that read as a broken texture / debug grid through the
+    // half-transparent areas. v3.8.43 — Phase 7c: always use the flat
+    // colour-fill fallback, never the designer overlay. Even outside
+    // death the checker artwork is louder than the gameplay needs.
     const flash = world.player?.components.Health.hitFlash ?? 0;
-    if (!noFx && flash > 0) {
-      const flashIdx = Math.min(3, Math.floor((1 - flash) * 4));
-      const flashImg = this.assets?.get(`hitFlash0${flashIdx + 1}`);
-      if (flashImg?.naturalWidth) {
-        ctx.globalAlpha = Math.min(1, flash);
-        ctx.drawImage(flashImg, 0, 0, this.projection.width, this.projection.height);
-      } else {
-        ctx.globalAlpha = flash * 0.12;
-        ctx.fillStyle = '#ff6464';
-        ctx.fillRect(0, 0, this.projection.width, this.projection.height);
-      }
+    const inDeathState = world.state === 'dying' || world.state === 'dead';
+    if (!noFx && flash > 0 && !inDeathState) {
+      ctx.globalAlpha = flash * 0.12;
+      ctx.fillStyle = '#ff6464';
+      ctx.fillRect(0, 0, this.projection.width, this.projection.height);
     }
     ctx.globalAlpha = 1;
   }

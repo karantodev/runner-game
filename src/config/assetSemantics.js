@@ -630,6 +630,118 @@ export const ASSET_SEMANTICS = Object.freeze({
   }),
 });
 
+/**
+ * v3.8.43 — Phase 7c asset-class taxonomy.
+ *
+ * The existing `category` field on each ASSET_SEMANTICS entry covers
+ * coarse rendering buckets (obstacle / pickup / decor / etc.). The
+ * brief's Phase 7c spec asks for a finer 12-role taxonomy that also
+ * captures stacking and composition role. We keep both: `category`
+ * stays the existing field; `ASSET_CLASS_BY_TYPE` below is the new
+ * lookup the composition validator + audit script consume.
+ *
+ * Class enum:
+ *   GAMEPLAY_OBSTACLE         — vine / bush / wheat / wall / stone / overhang on the road
+ *   COLLECTIBLE               — golden / rare orchid / heart pickup
+ *   BONUS_POWERUP             — speed-tree / power-mushroom / magnet / shield / double
+ *   ROAD_DECOR                — road tiles + perspective lines (drawn by RoadRenderer)
+ *   SIDE_STRUCTURE            — brick / wall / pipe / qblock at the road shoulder
+ *   SUPPORT_FOUNDATION        — grass_dirt_block / wall / step / platform — host stackable children
+ *   STACKABLE_TOP             — mushroom_red / mushroom_blue (require parent support)
+ *   PLATFORM                  — floating_platform / hanging_platform_vines / purple_brick_platform_3
+ *   SIDE_DECOR_SMALL          — flowers / grass tufts / small bushes / sprouts / leaf-clump-small
+ *   SIDE_DECOR_LARGE          — bush_large / tree_round / fence / leaf-clump-round
+ *   LANDMARK                  — castle_far / greenhouse_far / player_farmer
+ *   BACKGROUND_ONLY           — sky / clouds / mountains / forest / meadow far
+ */
+export const ASSET_CLASS_BY_TYPE = Object.freeze({
+  // Gameplay obstacles
+  vine_barrier:                  'GAMEPLAY_OBSTACLE',
+  low_branch_overhang:           'GAMEPLAY_OBSTACLE',
+  spider_web_overhang:           'GAMEPLAY_OBSTACLE',
+  spiky_bush_obstacle:           'GAMEPLAY_OBSTACLE',
+  dry_grass_obstacle:            'GAMEPLAY_OBSTACLE',
+  small_center_mushroom:         'GAMEPLAY_OBSTACLE',
+  stone_obstacle:                'GAMEPLAY_OBSTACLE',
+
+  // Collectibles
+  golden_flower:                 'COLLECTIBLE',
+  heart_full:                    'COLLECTIBLE',
+  rare_orchid_pickup:            'COLLECTIBLE',
+
+  // Bonus / powerup
+  speed_tree_pickup:             'BONUS_POWERUP',
+  power_mushroom_pickup:         'BONUS_POWERUP',
+  power_magnet_pickup:           'BONUS_POWERUP',
+  power_shield_pickup:           'BONUS_POWERUP',
+  power_double_pickup:           'BONUS_POWERUP',
+
+  // Road decor (lane art)
+  road_lane_tile:                'ROAD_DECOR',
+  road_perspective_lines:        'ROAD_DECOR',
+
+  // Side structures (no children today)
+  purple_brick_single:           'SIDE_STRUCTURE',
+  stone_brick_single:            'SIDE_STRUCTURE',
+  stone_wall_low:                'SIDE_STRUCTURE',
+  stone_wall_stairs:             'SIDE_STRUCTURE',
+  planter_pot:                   'SIDE_STRUCTURE',
+  green_pipe:                    'SIDE_STRUCTURE',
+  question_block:                'SIDE_STRUCTURE',
+
+  // Support foundations (host stackable children)
+  grass_dirt_block:              'SUPPORT_FOUNDATION',
+  grass_dirt_wall:               'SUPPORT_FOUNDATION',
+  grass_dirt_step:               'SUPPORT_FOUNDATION',
+  grass_dirt_step_left:          'SUPPORT_FOUNDATION',
+  grass_dirt_platform_long:      'SUPPORT_FOUNDATION',
+
+  // Stackable tops (need a parent)
+  mushroom_red_big:              'STACKABLE_TOP',
+  mushroom_blue_big:             'STACKABLE_TOP',
+
+  // Platforms (floating, do not stack)
+  floating_platform:             'PLATFORM',
+  hanging_platform_vines:        'PLATFORM',
+  purple_brick_platform_3:       'PLATFORM',
+
+  // Side decor small
+  yellow_flower_small:           'SIDE_DECOR_SMALL',
+  purple_flower_single:          'SIDE_DECOR_SMALL',
+  grass_tuft:                    'SIDE_DECOR_SMALL',
+  grass_tuft_small:              'SIDE_DECOR_SMALL',
+  grass_tuft_large:              'SIDE_DECOR_SMALL',
+  wheat_tuft:                    'SIDE_DECOR_SMALL',
+  sprout_soil:                   'SIDE_DECOR_SMALL',
+  leaf_clump_small:              'SIDE_DECOR_SMALL',
+  bush_with_purple_flowers:      'SIDE_DECOR_SMALL',
+
+  // Side decor large
+  bush_large:                    'SIDE_DECOR_LARGE',
+  bush_large_with_purple_flowers:'SIDE_DECOR_LARGE',
+  tree_round:                    'SIDE_DECOR_LARGE',
+  fence_wood_short:              'SIDE_DECOR_LARGE',
+  leaf_clump_round:              'SIDE_DECOR_LARGE',
+
+  // Landmarks
+  castle_far:                    'LANDMARK',
+  greenhouse_far:                'LANDMARK',
+  player_farmer:                 'LANDMARK',
+
+  // Background-only
+  sky_gradient:                  'BACKGROUND_ONLY',
+  cloud_large:                   'BACKGROUND_ONLY',
+  mountains_far:                 'BACKGROUND_ONLY',
+  mountains_mid:                 'BACKGROUND_ONLY',
+  forest_far:                    'BACKGROUND_ONLY',
+  meadow_far:                    'BACKGROUND_ONLY',
+});
+
+/** @returns {string | undefined} */
+export function getAssetClass(assetType) {
+  return ASSET_CLASS_BY_TYPE[assetType];
+}
+
 /** @returns {AssetSemantic | undefined} */
 export function getAssetSemantic(assetType) {
   return ASSET_SEMANTICS[assetType];
