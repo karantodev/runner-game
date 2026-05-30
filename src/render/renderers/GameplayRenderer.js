@@ -1,26 +1,28 @@
 import { getCollectibleSpec } from '../../ecs/collectibleTypes.js';
-import { ASSET_SEMANTICS } from '../../config/assetSemantics.js';
+import { ASSET_SEMANTICS, getCanonicalSemantic } from '../../config/assetSemantics.js';
 
-// v3.8.38 — Phase 3 composition overlay palette + helpers. One colour
-// per AssetSemantic.category so QA can read the scene at a glance.
+// v3.8.50 — Phase 8 canonical overlay palette. Keyed by canonical
+// role (spec scheme: red/yellow/green/blue/gray/purple).
 const COMPOSITION_COLORS = {
-  obstacle:   '#ff5050',
-  pickup:     '#ffd54a',
-  powerup:    '#5ab8ff',
-  scenery:    '#9ad17a',
-  decor:      '#9ad17a',
-  support:    '#7da66a',
-  platform:   '#a8d4ff',
-  landmark:   '#c78cff',
-  background: '#888',
-  unknown:    '#ff8030',
+  GAMEPLAY_OBSTACLE:  '#ff5050',
+  COLLECTIBLE:        '#ffd54a',
+  BONUS_POWERUP:      '#6ee06e',
+  SIDE_STRUCTURE:     '#5ab8ff',
+  PLATFORM:           '#7fd0ff',
+  ROAD_DECOR:         '#a0a0a0',
+  SIDE_DECOR_SMALL:   '#a0a0a0',
+  SIDE_DECOR_LARGE:   '#9aa0a8',
+  SUPPORT_FOUNDATION: '#b78cff',
+  STACKABLE_TOP:      '#c39cff',
+  LANDMARK:           '#ffb0ff',
+  BACKGROUND_ONLY:    '#666',
+  unknown:            '#ff8030',
 };
-const COMPOSITION_SEMANTICS = ASSET_SEMANTICS;
-const COMPOSITION_FILTER_FN = (category, filter) => {
+const COMPOSITION_FILTER_FN = (role, filter) => {
   if (filter === 'all' || !filter) return true;
-  if (filter === 'obstacles') return category === 'obstacle';
-  if (filter === 'pickups')   return category === 'pickup' || category === 'powerup';
-  if (filter === 'decor')     return category === 'decor' || category === 'support' || category === 'scenery';
+  if (filter === 'obstacles') return role === 'GAMEPLAY_OBSTACLE';
+  if (filter === 'pickups')   return role === 'COLLECTIBLE' || role === 'BONUS_POWERUP';
+  if (filter === 'decor')     return role === 'SIDE_DECOR_SMALL' || role === 'SIDE_DECOR_LARGE' || role === 'ROAD_DECOR' || role === 'SUPPORT_FOUNDATION' || role === 'STACKABLE_TOP' || role === 'PLATFORM' || role === 'SIDE_STRUCTURE';
   if (filter === 'invalid')   return false;
   return true;
 };
@@ -76,27 +78,55 @@ export class GameplayRenderer {
     ctx.save();
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     for (const entity of queue) {
       const sprite = entity.components.Sprite;
       const pos = entity.components.Position;
       const assetType = sprite.assetType ?? sprite.type;
-      const semantic = COMPOSITION_SEMANTICS[assetType];
-      const category = semantic?.category ?? 'unknown';
-      const invalid = !semantic;
+      const canonical = getCanonicalSemantic(assetType);
+      const role = canonical?.role ?? 'UNKNOWN';
+      const invalid = !canonical;
       if (filter === 'invalid' && !invalid) continue;
-      if (filter !== 'invalid' && !COMPOSITION_FILTER_FN(category, filter)) continue;
+      if (filter !== 'invalid' && !COMPOSITION_FILTER_FN(role, filter)) continue;
       const proj = p.project(pos.lane, pos.distance);
       if (!proj || proj.sy < 60 || proj.sy > p.height - 20) continue;
-      const color = invalid ? '#ff8030' : COMPOSITION_COLORS[category] ?? '#fff';
-      const role = semantic?.gameplayRole ?? '?';
-      const label = `${category.toUpperCase()} · ${role} · ${assetType}`;
-      const tw = ctx.measureText(label).width;
+      const color = invalid ? COMPOSITION_COLORS.unknown : (COMPOSITION_COLORS[role] ?? '#fff');
+      // Runtime zone derived from lane sign (vs. canonical allowedZones).
+      const runtimeZone =
+        pos.lane <= -1.5 ? 'LEFT_SHOULDER' :
+        pos.lane >=  1.5 ? 'RIGHT_SHOULDER' :
+        Math.abs(pos.lane) > 1.0 ? 'ROAD_EDGE' : 'ROAD_CORE';
+      const collision = canonical?.gameplayCollision ?? '?';
+      const sideFacing = canonical?.sideFacing ?? '?';
+      const support = canonical?.supportRules
+        ? (canonical.supportRules.canStandAlone
+            ? 'standalone'
+            : canonical.supportRules.requiresPlatform
+              ? 'needs-platform'
+              : 'needs-ground')
+        : '?';
+      const lines = [
+        assetType,
+        `${role}${invalid ? ' · INVALID' : ''}`,
+        `zone: ${runtimeZone}`,
+        `side: ${sideFacing}`,
+        `coll: ${collision} · sup: ${support}`,
+      ];
+      let maxW = 0;
+      for (const l of lines) maxW = Math.max(maxW, ctx.measureText(l).width);
+      const lineH = 11;
+      const padX = 4;
+      const padY = 2;
+      const boxW = maxW + padX * 2;
+      const boxH = lineH * lines.length + padY * 2;
       const lx = Math.round(proj.sx);
-      const ly = Math.round(proj.sy - 90 * (proj.scale || 1));
+      const top = Math.round(proj.sy - 90 * (proj.scale || 1)) - boxH;
       ctx.fillStyle = 'rgba(0,0,0,0.72)';
-      ctx.fillRect(lx - tw / 2 - 4, ly - 11, tw + 8, 14);
+      ctx.fillRect(lx - boxW / 2, top, boxW, boxH);
       ctx.fillStyle = color;
-      ctx.fillText(label, lx, ly);
+      for (let i = 0; i < lines.length; i += 1) {
+        ctx.fillText(lines[i], lx, top + padY + i * lineH);
+      }
     }
     ctx.restore();
   }

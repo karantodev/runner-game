@@ -10,7 +10,11 @@
     "check": "node build.js --check",
     "test:smoke": "playwright test tests/smoke.spec.js",
     "test:runtime": "playwright test tests/ecs-runtime.spec.js",
-    "test": "playwright test"
+    "test": "playwright test",
+    "audit:assets": "node scripts/audit-assets.mjs --check --strict",
+    "audit:images": "node scripts/audit-images.mjs --check",
+    "audit:composition": "node scripts/validate-composition.mjs --check",
+    "audit:semantic": "node scripts/generate-semantic-registry.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"

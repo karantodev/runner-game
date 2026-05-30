@@ -216,9 +216,19 @@ export const GAME_CONFIG = Object.freeze({
     // and the calling system (SpawnSystem / DecorationSystem) skips the
     // spawn. Toggle via ?enforcePlacement=1.
     enforcePlacementRules: false,
-    // v3.8.38 — Phase 3 composition debug. When ON, SceneryRenderer +
-    // GameplayRenderer overlay semantic info per entity (category color,
-    // assetType, zone, side, validity). Toggle via ?debugComposition=1.
+    // v3.8.50 — Phase 8 canonical composition overlay. When ON,
+    // SceneryRenderer + GameplayRenderer draw a 5-line semantic
+    // badge per entity (assetType / role / zone / side / coll+sup).
+    // Colour matches the spec scheme:
+    //   red    = GAMEPLAY_OBSTACLE
+    //   yellow = COLLECTIBLE
+    //   green  = BONUS_POWERUP
+    //   blue   = SIDE_STRUCTURE / PLATFORM
+    //   gray   = SIDE_DECOR_* / ROAD_DECOR / BACKGROUND_ONLY
+    //   purple = SUPPORT_FOUNDATION / STACKABLE_TOP
+    //   pink   = LANDMARK
+    //   orange = no semantic registry entry (INVALID)
+    // Toggle via ?debugComposition=1.
     showComposition: false,
     // v3.8.38 — composition filter mode. 'all' (default), 'obstacles',
     // 'pickups', 'decor', 'invalid'. Set via ?compositionFilter=...

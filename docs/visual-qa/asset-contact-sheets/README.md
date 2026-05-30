@@ -1,6 +1,6 @@
 # Asset Contact Sheets
 
-Generated 2026-05-30T20:01:43.378Z
+Generated 2026-05-30T20:57:52.077Z
 
 ## Coverage
 
@@ -39,7 +39,8 @@ Generated 2026-05-30T20:01:43.378Z
 - [`05-side-structures-blocks.png`](05-side-structures-blocks.png)
 
 ### Side structures — walls / bricks (35 cells)
-- [`06-side-structures-walls-bricks.png`](06-side-structures-walls-bricks.png)
+- [`06-side-structures-walls-bricks-page-01.png`](06-side-structures-walls-bricks-page-01.png)
+- [`06-side-structures-walls-bricks-page-02.png`](06-side-structures-walls-bricks-page-02.png)
 
 ### Platforms (1 cells)
 - [`07-platforms.png`](07-platforms.png)
@@ -51,7 +52,8 @@ Generated 2026-05-30T20:01:43.378Z
 - [`09-nature-trees-bushes-grass.png`](09-nature-trees-bushes-grass.png)
 
 ### Mushrooms / flowers / small decor (35 cells)
-- [`10-mushrooms-flowers-small-decor.png`](10-mushrooms-flowers-small-decor.png)
+- [`10-mushrooms-flowers-small-decor-page-01.png`](10-mushrooms-flowers-small-decor-page-01.png)
+- [`10-mushrooms-flowers-small-decor-page-02.png`](10-mushrooms-flowers-small-decor-page-02.png)
 
 ### Background — sky / clouds / mountains / castle (30 cells)
 - [`11-background-sky-clouds-mountains-castle.png`](11-background-sky-clouds-mountains-castle.png)
@@ -59,6 +61,7 @@ Generated 2026-05-30T20:01:43.378Z
 ### Effects — sparkles / dust / hit-flash / bursts (61 cells)
 - [`12-effects-sparkles-dust-hit-flash-bursts-page-01.png`](12-effects-sparkles-dust-hit-flash-bursts-page-01.png)
 - [`12-effects-sparkles-dust-hit-flash-bursts-page-02.png`](12-effects-sparkles-dust-hit-flash-bursts-page-02.png)
+- [`12-effects-sparkles-dust-hit-flash-bursts-page-03.png`](12-effects-sparkles-dust-hit-flash-bursts-page-03.png)
 
 ### UI / HUD / icons (44 cells)
 - [`13-ui-hud-icons-page-01.png`](13-ui-hud-icons-page-01.png)
@@ -80,6 +83,7 @@ Generated 2026-05-30T20:01:43.378Z
 - [`16-unregistered-assets-page-01.png`](16-unregistered-assets-page-01.png)
 - [`16-unregistered-assets-page-02.png`](16-unregistered-assets-page-02.png)
 - [`16-unregistered-assets-page-03.png`](16-unregistered-assets-page-03.png)
+- [`16-unregistered-assets-page-04.png`](16-unregistered-assets-page-04.png)
 
 ### Registered but unused (120 cells)
 - [`17-registered-unused-page-01.png`](17-registered-unused-page-01.png)
