@@ -1,6 +1,6 @@
 # Asset Cleanup Proposal
 
-Generated 2026-05-30T19:29:56.920Z.
+Generated 2026-05-30T20:01:43.389Z.
 
 **Nothing is removed automatically.** This is a decision surface.
 Each section names assets; the human reviewer marks approval.
@@ -95,11 +95,10 @@ Active or registered files with quality issues: oversized canvas, no alpha chann
 - `assets/decor_small/plants/sprout_soil.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - _(92 more)_
 
-## Needs developer wiring (bucket D, 57)
+## Needs developer wiring (bucket D, 47)
 
 Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 
-- `assets/background/mountains/mountains-far.png`
 - `assets/decor/large/bushes/bush_large.png`
 - `assets/decor/large/bushes/bush_large_flowers.png`
 - `assets/decor/large/fence/fence_corner.png`
@@ -110,14 +109,6 @@ Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 - `assets/decor/large/mushrooms/mushroom_red_big.png`
 - `assets/decor/large/trees/tree_round.png`
 - `assets/decor/large/trees/tree_tall.png`
-- `assets/decor/small/bushes/bush_small.png`
-- `assets/decor/small/bushes/bush_small_flowers.png`
-- `assets/decor/small/flowers/flower_violet_cluster.png`
-- `assets/decor/small/flowers/flower_yellow_decor.png`
-- `assets/decor/small/grass/grass_tuft_large.png`
-- `assets/decor/small/grass/grass_tuft_small.png`
-- `assets/decor/small/leaves/leaf_clump_round.png`
-- `assets/decor/small/plants/sprout_soil.png`
 - `assets/effects/bursts/light_burst_gradient_01.png`
 - `assets/effects/bursts/light_burst_sun_01.png`
 - `assets/effects/light/light_streak_01.png`
@@ -134,12 +125,21 @@ Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 - `assets/effects/trails/light_sweep_01.png`
 - `assets/effects/trails/light_trail_motion_01.png`
 - `assets/effects/trails/light_trail_yellow_01.png`
-- `assets/obstacles/mushroom_small/mushroom_small_red.png`
 - `assets/pickups/aura/pickup_magnet_aura.png`
 - `assets/pickups/aura/pickup_medal_x2_gold.png`
 - `assets/pickups/aura/pickup_shield_orchid_aura.png`
 - `assets/pickups/aura/pickup_star_gold_aura.png`
-- _(17 more)_
+- `assets/platforms/platform_floating.png`
+- `assets/platforms/platform_grass_vines.png`
+- `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png`
+- `assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png`
+- `assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png`
+- `assets/player/farmer_remaining_batch/04_begushchiy_s_lopatoy_v_rukakh.png`
+- `assets/player/farmer_remaining_batch/05_fermer_s_lopatoy_v_piksel_arte.png`
+- `assets/structures/bricks/purple_brick_single_left.png`
+- `assets/structures/bricks/purple_brick_single_right.png`
+- `assets/structures/fences/fence_corner.png`
+- _(7 more)_
 
 ## Needs designer to ship (bucket I, 6)
 

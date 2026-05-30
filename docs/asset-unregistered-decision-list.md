@@ -1,21 +1,11 @@
 # Asset Unregistered Decision List
 
-Generated 2026-05-30T19:29:56.922Z.
+Generated 2026-05-30T20:01:43.392Z.
 
-Every unregistered PNG receives one decision subType. Total: **110**.
+Every unregistered PNG receives one decision subType. Total: **100**.
 
-## PENDING_WIRE — register in gameConfig + wire a consumer (10)
+## PENDING_WIRE — register in gameConfig + wire a consumer (0)
 
-- `assets/background/mountains/mountains-far.png` — 1672×168
-- `assets/decor/small/bushes/bush_small.png` — 56×48
-- `assets/decor/small/bushes/bush_small_flowers.png` — 56×48
-- `assets/decor/small/flowers/flower_violet_cluster.png` — 32×32
-- `assets/decor/small/flowers/flower_yellow_decor.png` — 24×24
-- `assets/decor/small/grass/grass_tuft_large.png` — 40×28
-- `assets/decor/small/grass/grass_tuft_small.png` — 24×16
-- `assets/decor/small/leaves/leaf_clump_round.png` — 40×32
-- `assets/decor/small/plants/sprout_soil.png` — 32×24
-- `assets/obstacles/mushroom_small/mushroom_small_red.png` — 48×48
 
 ## ALT_VARIANT — alternative art, do not wire unless needed (14)
 

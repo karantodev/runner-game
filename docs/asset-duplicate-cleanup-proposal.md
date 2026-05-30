@@ -1,6 +1,6 @@
 # Asset Duplicate Cleanup Proposal
 
-Generated 2026-05-30T19:29:56.921Z.
+Generated 2026-05-30T20:01:43.390Z.
 
 Per SHA-256 group: one canonical path is selected by the canonical-rank
 heuristic (`pickups/<feature>/` > `effects/<name>/` > `ui/` > `structures/`).

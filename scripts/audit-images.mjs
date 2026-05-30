@@ -100,7 +100,20 @@ async function main() {
     if (!byHash.has(e.hash)) byHash.set(e.hash, []);
     byHash.get(e.hash).push(e);
   }
-  const duplicates = [...byHash.values()].filter((group) => group.length > 1);
+  // v3.8.49 — intentional duplicate allowlist. Hashes belonging to a
+  // documented runtime pattern (e.g. question_block animation frame 4
+  // = frame 2 by design) are filtered OUT of the duplicates list so
+  // the audit doesn't ask us to "fix" them every run.
+  const INTENTIONAL_DUPLICATE_HASHES = new Set([
+    // Group #14 — questionBlockAnim02 / questionBlockAnim04 SHA-equal.
+    // Runtime cycles `questionBlockAnim0${animFrame}` over frames 1-4
+    // in sceneryDispatch.js:182; frame 4 reusing frame 2's art is the
+    // intended loop. See docs/asset-archive-manifest.md Group #14.
+    '4f2605dee4a5feaadc49ae5e3b731a79914180d0e49cfed1f6ac04d5289db9c1',
+  ]);
+  const allDuplicates = [...byHash.values()].filter((g) => g.length > 1);
+  const duplicates = allDuplicates.filter((g) => !INTENTIONAL_DUPLICATE_HASHES.has(g[0].hash));
+  const intentionalDuplicates = allDuplicates.filter((g) => INTENTIONAL_DUPLICATE_HASHES.has(g[0].hash));
 
   // 2. Stem-family dim inconsistency.
   const byStem = new Map();
@@ -117,7 +130,16 @@ async function main() {
 
   // 3. Side-pair dim mismatch (special case of #2, isolated for
   //    easier hand-off).
+  //
+  // v3.8.49 — road-kit pairs are excluded from the *failing* side-pair
+  // list. The road kit (`assets/terrain/road/**`) is intentionally
+  // asymmetric: lane / shoulder left & right are drawn from a 3-point
+  // perspective and have legitimately different widths. SIDE_AWARE
+  // scenery pairs (rocks, stairs, stone walls, terrain step blocks)
+  // are still expected to match. See Phase 7d sidePair split.
+  const isRoadKitPair = (relPath) => /^assets\/terrain\/road\//.test(relPath);
   const sidePairMismatches = [];
+  const sidePairMismatchesRoadKit = [];
   const filesByPath = new Map(entries.map((e) => [e.path, e]));
   for (const e of entries) {
     if (!e.path.endsWith('_left.png')) continue;
@@ -125,7 +147,8 @@ async function main() {
     const right = filesByPath.get(rightPath);
     if (!right) continue;
     if (e.width !== right.width || e.height !== right.height) {
-      sidePairMismatches.push({ left: e, right });
+      if (isRoadKitPair(e.path)) sidePairMismatchesRoadKit.push({ left: e, right });
+      else sidePairMismatches.push({ left: e, right });
     }
   }
 
@@ -147,8 +170,14 @@ async function main() {
     console.log('[image-audit:check]');
     console.log(`  scanned        ${entries.length} PNGs`);
     console.log(`  exact dupes    ${duplicates.length} groups (${duplicates.reduce((s, g) => s + g.length, 0)} files)`);
+    if (intentionalDuplicates.length) {
+      console.log(`  intentional    ${intentionalDuplicates.length} group(s) — documented runtime duplicates, excluded from fail`);
+    }
     console.log(`  stem dim mismatches ${dimMismatches.length}`);
     console.log(`  side-pair dim mismatches ${sidePairMismatches.length}`);
+    if (sidePairMismatchesRoadKit.length) {
+      console.log(`  road-kit pairs (intentional asym) ${sidePairMismatchesRoadKit.length}`);
+    }
     console.log(`  aspect flags   ${aspectFlags.length}`);
     if (duplicates.length || sidePairMismatches.length) {
       console.log('\n[image-audit:check] FAIL');
@@ -210,6 +239,20 @@ async function main() {
   }
   lines.push('');
 
+  lines.push(`## Road-kit intentional asymmetry (${sidePairMismatchesRoadKit.length})`);
+  if (sidePairMismatchesRoadKit.length === 0) {
+    lines.push('_(none)_');
+  } else {
+    lines.push('Road kit lane / shoulder pairs are drawn in 3-point perspective.');
+    lines.push('Left and right halves legitimately have different widths — this');
+    lines.push('section is documentation only, **not** a designer ask.');
+    lines.push('');
+    for (const m of sidePairMismatchesRoadKit) {
+      lines.push(`- \`${m.left.path}\` ${m.left.width}×${m.left.height} · \`${m.right.path}\` ${m.right.width}×${m.right.height}`);
+    }
+  }
+  lines.push('');
+
   lines.push(`## Suspicious aspect ratios (${aspectFlags.length})`);
   if (aspectFlags.length === 0) {
     lines.push('_(none — every known-category file has the expected aspect)_');
@@ -229,7 +272,8 @@ async function main() {
   lines.push(`- PNGs scanned: **${entries.length}**`);
   lines.push(`- Exact-content duplicate groups: **${duplicates.length}** (${duplicates.reduce((s, g) => s + g.length, 0)} files)`);
   lines.push(`- Stem dim mismatches: **${dimMismatches.length}**`);
-  lines.push(`- Side-pair dim mismatches: **${sidePairMismatches.length}**`);
+  lines.push(`- Side-pair dim mismatches: **${sidePairMismatches.length}** (designer task)`);
+  lines.push(`- Road-kit intentional asymmetry: **${sidePairMismatchesRoadKit.length}** (documented, no-action)`);
   lines.push(`- Aspect-ratio flags: **${aspectFlags.length}**`);
   lines.push('');
 

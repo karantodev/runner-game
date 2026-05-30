@@ -1,22 +1,22 @@
 # Asset Contact Sheets
 
-Generated 2026-05-30T19:29:56.912Z
+Generated 2026-05-30T20:01:43.378Z
 
 ## Coverage
 
 - PNG files discovered (all):                **440**
-- PNG files shown in contact sheets:         **383**
-- Coverage:                                  **87%**
+- PNG files shown in contact sheets:         **373**
+- Coverage:                                  **84.8%**
 
 ### Skipped folders (intentional)
-- `assets/_source/` — 43 files — archived / rejected designer batch
+- `assets/_source/` — 53 files — archived / rejected designer batch
 - `assets/player/_source/` — 14 files — archived / rejected designer batch
 
 ## Summary
 
-- Total PNG files: **383**
+- Total PNG files: **373**
 - Registered in gameConfig: **273**
-- Unregistered: **110**
+- Unregistered: **100**
 - Runtime-used: **159** / 279 keys (111 explicit + 48 dynamic)
 - Dead keys (no file): **6**
 - Exact duplicate groups (SHA-256): **1**
@@ -47,14 +47,13 @@ Generated 2026-05-30T19:29:56.912Z
 ### Pipes / planters / fences (7 cells)
 - [`08-pipes-planters-fences.png`](08-pipes-planters-fences.png)
 
-### Nature — trees / bushes / grass (20 cells)
+### Nature — trees / bushes / grass (18 cells)
 - [`09-nature-trees-bushes-grass.png`](09-nature-trees-bushes-grass.png)
 
-### Mushrooms / flowers / small decor (42 cells)
-- [`10-mushrooms-flowers-small-decor-page-01.png`](10-mushrooms-flowers-small-decor-page-01.png)
-- [`10-mushrooms-flowers-small-decor-page-02.png`](10-mushrooms-flowers-small-decor-page-02.png)
+### Mushrooms / flowers / small decor (35 cells)
+- [`10-mushrooms-flowers-small-decor.png`](10-mushrooms-flowers-small-decor.png)
 
-### Background — sky / clouds / mountains / castle (31 cells)
+### Background — sky / clouds / mountains / castle (30 cells)
 - [`11-background-sky-clouds-mountains-castle.png`](11-background-sky-clouds-mountains-castle.png)
 
 ### Effects — sparkles / dust / hit-flash / bursts (61 cells)
@@ -77,11 +76,10 @@ Generated 2026-05-30T19:29:56.912Z
 ### Exact duplicates (2 cells)
 - [`15-duplicates-exact.png`](15-duplicates-exact.png)
 
-### Unregistered assets (110 cells)
+### Unregistered assets (100 cells)
 - [`16-unregistered-assets-page-01.png`](16-unregistered-assets-page-01.png)
 - [`16-unregistered-assets-page-02.png`](16-unregistered-assets-page-02.png)
 - [`16-unregistered-assets-page-03.png`](16-unregistered-assets-page-03.png)
-- [`16-unregistered-assets-page-04.png`](16-unregistered-assets-page-04.png)
 
 ### Registered but unused (120 cells)
 - [`17-registered-unused-page-01.png`](17-registered-unused-page-01.png)
