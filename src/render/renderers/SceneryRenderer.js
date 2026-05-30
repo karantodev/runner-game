@@ -63,21 +63,25 @@ function remapLaneForBand(lane, band) {
 }
 import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
 import { getSceneryDraw, isSideAwareSceneryType } from './scenery/sceneryDispatch.js';
-import { ASSET_SEMANTICS } from '../../config/assetSemantics.js';
+import { ASSET_SEMANTICS, getCanonicalSemantic } from '../../config/assetSemantics.js';
 
-// v3.8.38 — Phase 3 composition overlay palette. One colour per
-// AssetSemantic.category so QA can read the scene at a glance.
+// v3.8.50 — Phase 8 canonical overlay palette. Keyed by canonical
+// role so the colour matches the spec (red=obstacle, yellow=collect,
+// green=powerup, blue=side-struct, gray=decor, purple=support).
 const COMPOSITION_COLORS = {
-  obstacle:   '#ff5050',
-  pickup:     '#ffd54a',
-  powerup:    '#5ab8ff',
-  scenery:    '#9ad17a',
-  decor:      '#9ad17a',
-  support:    '#7da66a',
-  platform:   '#a8d4ff',
-  landmark:   '#c78cff',
-  background: '#888',
-  unknown:    '#ff8030',
+  GAMEPLAY_OBSTACLE:  '#ff5050', // red
+  COLLECTIBLE:        '#ffd54a', // yellow
+  BONUS_POWERUP:      '#6ee06e', // green
+  SIDE_STRUCTURE:     '#5ab8ff', // blue
+  PLATFORM:           '#7fd0ff', // blue-light (platforms read as structure)
+  ROAD_DECOR:         '#a0a0a0', // gray
+  SIDE_DECOR_SMALL:   '#a0a0a0', // gray
+  SIDE_DECOR_LARGE:   '#9aa0a8', // gray-blue (slightly distinguish)
+  SUPPORT_FOUNDATION: '#b78cff', // purple
+  STACKABLE_TOP:      '#c39cff', // purple-light
+  LANDMARK:           '#ffb0ff', // magenta-pink (low-count, easy to spot)
+  BACKGROUND_ONLY:    '#666',    // dim gray
+  unknown:            '#ff8030', // orange — semantic missing
 };
 const ROLE_BADGE_LETTER = {
   'base':              'B',
@@ -94,13 +98,25 @@ function categoryFor(assetType) {
   return ASSET_SEMANTICS[assetType]?.category ?? 'unknown';
 }
 
-function compositionFilterAllows(category, filter) {
+// v3.8.50 — filter keyed by canonical role.
+function compositionFilterAllows(role, filter) {
   if (filter === 'all' || !filter) return true;
-  if (filter === 'obstacles') return category === 'obstacle';
-  if (filter === 'pickups')   return category === 'pickup' || category === 'powerup';
-  if (filter === 'decor')     return category === 'decor' || category === 'support' || category === 'scenery';
+  if (filter === 'obstacles') return role === 'GAMEPLAY_OBSTACLE';
+  if (filter === 'pickups')   return role === 'COLLECTIBLE' || role === 'BONUS_POWERUP';
+  if (filter === 'decor')     return role === 'SIDE_DECOR_SMALL' || role === 'SIDE_DECOR_LARGE' || role === 'ROAD_DECOR' || role === 'SUPPORT_FOUNDATION' || role === 'STACKABLE_TOP' || role === 'PLATFORM' || role === 'SIDE_STRUCTURE';
   if (filter === 'invalid')   return false; // handled per-entity
   return true;
+}
+
+// v3.8.50 — derive the runtime zone from lane sign (instead of just
+// using the canonical set of allowed zones). Lets the overlay show
+// where the entity ACTUALLY landed, not where it's allowed to.
+function runtimeZoneForLane(lane) {
+  if (lane === undefined || lane === null) return 'ROAD_CORE';
+  if (lane <= -1.5) return 'LEFT_SHOULDER';
+  if (lane >=  1.5) return 'RIGHT_SHOULDER';
+  if (Math.abs(lane) > 1.0) return 'ROAD_EDGE';
+  return 'ROAD_CORE';
 }
 
 /**
@@ -281,8 +297,10 @@ export class SceneryRenderer {
     // createScenery for annotated prefabs) feeds the role badge in
     // the composition overlay.
     this._currentItemRole = sprite.role ?? null;
+    this._currentItemLane = pos.lane;
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
+    this._currentItemLane = null;
     // v3.8.40 — Phase 6 record screen position for parent-child line
     // drawing. Only when the composition overlay is enabled.
     if (this._supportPositions && sprite.prefabId && sprite.itemId) {
@@ -476,42 +494,64 @@ export class SceneryRenderer {
   }
 
   /**
-   * v3.8.38 — semantic info badge for a scenery entity.
-   * Shows colour-coded category + assetType + zone + side + invalid
-   * marker. Filter via compositionFilter URL param to scope to a single
-   * category (obstacles / pickups / decor / invalid).
+   * v3.8.50 — Phase 8 canonical semantic badge. Five short lines per
+   * scenery entity so QA can see the FULL role/zone/side/support/
+   * collision contract at a glance. Colour matches spec scheme:
+   * red=obstacle, yellow=collect, green=powerup, blue=side-struct,
+   * gray=decor, purple=support.
+   *
+   * Filter via ?compositionFilter=obstacles|pickups|decor|invalid to
+   * scope the overlay to one bucket.
    */
   #drawCompositionLabel(assetType, x, y, scale, side, usedSideVariant) {
-    const semantic = ASSET_SEMANTICS[assetType];
-    const category = semantic?.category ?? 'unknown';
+    const canonical = getCanonicalSemantic(assetType);
     const filter = this._world?.config.debug?.compositionFilter ?? 'all';
-    const zone = side === -1 ? 'side-left' : 'side-right';
-    const zoneOk = !semantic || semantic.placementZones.includes(zone);
-    const invalid = !semantic || !zoneOk;
-    // Filter early — 'invalid' filter only shows entities that fail rules.
+    const runtimeZone = runtimeZoneForLane(this._currentItemLane ?? (side === -1 ? -2.0 : 2.0));
+    const role = canonical?.role ?? 'UNKNOWN';
+    const allowedZones = canonical?.allowedZones ?? [];
+    const zoneOk = !canonical || allowedZones.length === 0 || allowedZones.includes(runtimeZone);
+    const invalid = !canonical || !zoneOk;
     if (filter === 'invalid' && !invalid) return;
-    if (filter !== 'invalid' && !compositionFilterAllows(category, filter)) return;
-    const color = invalid ? COMPOSITION_COLORS.unknown : COMPOSITION_COLORS[category] ?? '#fff';
+    if (filter !== 'invalid' && !compositionFilterAllows(role, filter)) return;
+    const color = invalid ? COMPOSITION_COLORS.unknown : (COMPOSITION_COLORS[role] ?? '#fff');
     const ctx = this.ctx;
-    const labelY = Math.round(y - 152 * scale);
-    // v3.8.39 — Phase 5 role badge. Read from the per-entity Sprite
-    // component (added by createScenery for prefab items that declared a
-    // role). One-letter prefix in square brackets: B=base, S=support,
-    // T=topper, C=child, F=foreground, K=background, R=road-facing,
-    // L=loose. Missing role → no badge.
-    const role = this._currentItemRole;
-    const roleBadge = role ? `[${ROLE_BADGE_LETTER[role] ?? role[0].toUpperCase()}] ` : '';
-    const label = invalid
-      ? `${roleBadge}${category.toUpperCase()} · ${assetType} · ${zone} · INVALID`
-      : `${roleBadge}${category.toUpperCase()} · ${assetType} · ${zone}${semantic.orientationType === 'side-aware' ? (usedSideVariant ? ' · sideVar' : ' · fallback') : ''}`;
+    const prefabRole = this._currentItemRole;
+    const prefabBadge = prefabRole ? `[${ROLE_BADGE_LETTER[prefabRole] ?? prefabRole[0].toUpperCase()}]` : '';
+    const sideFacing = canonical?.sideFacing ?? '?';
+    const collision = canonical?.gameplayCollision ?? '?';
+    const support = canonical?.supportRules
+      ? (canonical.supportRules.canStandAlone
+          ? 'standalone'
+          : canonical.supportRules.requiresPlatform
+            ? 'needs-platform'
+            : 'needs-ground')
+      : '?';
+    const lines = [
+      `${prefabBadge} ${assetType}`.trim(),
+      `${role}${invalid ? ' · INVALID' : ''}`,
+      `zone: ${runtimeZone}${invalid && canonical ? ` (allowed: ${allowedZones.join('/')})` : ''}`,
+      `side: ${sideFacing}${canonical?.sideFacing && canonical.sideFacing !== 'neutral' ? (usedSideVariant ? ' · var' : ' · fb') : ''}`,
+      `coll: ${collision} · sup: ${support}`,
+    ];
     ctx.save();
     ctx.font = '10px monospace';
-    const tw = ctx.measureText(label).width;
+    let maxW = 0;
+    for (const l of lines) maxW = Math.max(maxW, ctx.measureText(l).width);
+    const lineH = 11;
+    const padX = 4;
+    const padY = 2;
+    const boxW = maxW + padX * 2;
+    const boxH = lineH * lines.length + padY * 2;
+    const top = Math.round(y - 152 * scale) - boxH;
+    const left = Math.round(x - boxW / 2);
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
-    ctx.fillRect(Math.round(x - tw / 2 - 4), labelY - 11, tw + 8, 14);
+    ctx.fillRect(left, top, boxW, boxH);
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
-    ctx.fillText(label, Math.round(x), labelY);
+    ctx.textBaseline = 'top';
+    for (let i = 0; i < lines.length; i += 1) {
+      ctx.fillText(lines[i], Math.round(x), top + padY + i * lineH);
+    }
     ctx.restore();
   }
 

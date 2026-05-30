@@ -23,7 +23,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { ASSET_CLASS_BY_TYPE, ASSET_SEMANTICS } from '../src/config/assetSemantics.js';
+import { ASSET_CLASS_BY_TYPE, ASSET_SEMANTICS, getCanonicalSemantic } from '../src/config/assetSemantics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -199,12 +199,12 @@ const GROUP_ORDER = [
 // ── Rendering ───────────────────────────────────────────────────────
 
 const CELL_W = 260;
-const CELL_H = 280;
+const CELL_H = 320; // v3.8.50 — +40px label area for 2 extra canonical lines
 const IMG_H = 200;
 const COLS = 6;
 const MARGIN = 12;
 const HEADER_H = 60;
-const PAGE_MAX_ROWS = 6; // 36 cells per page max
+const PAGE_MAX_ROWS = 5; // 30 cells per page max — taller cells
 
 function pagesOf(items, cellsPerPage) {
   const pages = [];
@@ -320,8 +320,9 @@ async function renderSheet(browser, { sheetId, title, cells }) {
           });
         }
 
-        // Label area: 4 lines.
+        // Label area: 6 lines (v3.8.50).
         const labelY = cellY + IMG_H + 12;
+        const LH = 14; // line-height
         ctx.font = '11px monospace';
         ctx.textAlign = 'left';
         // Line 1: filename or key.
@@ -331,13 +332,30 @@ async function renderSheet(browser, { sheetId, title, cells }) {
         // Line 2: dimensions + status.
         ctx.fillStyle = STATUS_COLOR[cell.status] ?? '#aaa';
         const sizeStr = cell.placeholder ? '—' : `${cell.width}×${cell.height}`;
-        ctx.fillText(`${sizeStr} · ${cell.status}`, cellX + 6, labelY + 14);
-        // Line 3: role/class.
+        ctx.fillText(`${sizeStr} · ${cell.status}`, cellX + 6, labelY + LH);
+        // Line 3: role · zones.
         ctx.fillStyle = '#7fa9c8';
-        ctx.fillText(cell.role ?? 'UNCLASSIFIED', cellX + 6, labelY + 28);
-        // Line 4: path.
+        const zonesStr = cell.canonical?.allowedZones?.length ? ` · ${cell.canonical.allowedZones.join('/')}` : '';
+        ctx.fillText(truncate((cell.role ?? 'UNCLASSIFIED') + zonesStr, 38), cellX + 6, labelY + LH * 2);
+        // Line 4: side facing.
+        if (cell.canonical?.sideFacing) {
+          ctx.fillStyle = '#c39cff';
+          ctx.fillText(`side: ${cell.canonical.sideFacing}`, cellX + 6, labelY + LH * 3);
+        }
+        // Line 5: sup + coll summary.
+        if (cell.canonical?.supportRules) {
+          const r = cell.canonical.supportRules;
+          const supTag =
+              r.canStandAlone ? 'standalone'
+            : r.requiresPlatform ? 'needs-platform'
+            : r.requiresGround ? 'needs-ground'
+            : '?';
+          ctx.fillStyle = '#9aa0a8';
+          ctx.fillText(`sup: ${supTag} · coll: ${cell.canonical.gameplayCollision}`, cellX + 6, labelY + LH * 4);
+        }
+        // Line 6: path.
         ctx.fillStyle = '#6b8294';
-        ctx.fillText(truncate(cell.relPath ?? cell.expectedPath ?? '', 38), cellX + 6, labelY + 42);
+        ctx.fillText(truncate(cell.relPath ?? cell.expectedPath ?? '', 38), cellX + 6, labelY + LH * 5);
       };
 
       const truncate = (s, n) => (s && s.length > n ? '…' + s.slice(-n + 1) : (s ?? ''));
@@ -410,6 +428,7 @@ function findSidePairs(entries) {
 async function renderSidePairsSheet(browser, pairs, sheetId = '14-side-aware-pairs', title = 'Side-aware pairs') {
   const cells = [];
   for (const p of pairs) {
+    const pairCanonical = canonicalFor(p.left.relPath);
     // Render LEFT cell.
     cells.push({
       key: `${path.basename(p.stem)}_left`,
@@ -419,6 +438,7 @@ async function renderSidePairsSheet(browser, pairs, sheetId = '14-side-aware-pai
       width: p.left.width, height: p.left.height,
       status: p.status,
       role: `${path.basename(p.stem).toUpperCase()} · LEFT`,
+      canonical: pairCanonical,
     });
     // Render RIGHT cell (placeholder when missing).
     if (p.right) {
@@ -430,6 +450,7 @@ async function renderSidePairsSheet(browser, pairs, sheetId = '14-side-aware-pai
         width: p.right.width, height: p.right.height,
         status: p.status,
         role: `${path.basename(p.stem).toUpperCase()} · RIGHT`,
+        canonical: pairCanonical,
       });
     } else {
       cells.push({
@@ -440,6 +461,7 @@ async function renderSidePairsSheet(browser, pairs, sheetId = '14-side-aware-pai
         placeholder: true,
         status: 'SIDE_PAIR_MISSING_RIGHT',
         role: `${path.basename(p.stem).toUpperCase()} · RIGHT`,
+        canonical: pairCanonical,
       });
     }
   }
@@ -470,6 +492,7 @@ async function renderDuplicatesSheet(browser, dupGroups) {
         width: e.width, height: e.height,
         status: 'DUPLICATE',
         role: `GROUP ${i + 1} · ${group.length} copies`,
+        canonical: canonicalFor(e.relPath),
       });
     }
   }
@@ -487,6 +510,7 @@ async function renderUnregisteredSheet(browser, entries, pathToKey) {
     width: e.width, height: e.height,
     status: 'UNREGISTERED',
     role: pathBucket(e.relPath),
+    canonical: canonicalFor(e.relPath),
   }));
   return renderSheet(browser, { sheetId: '16-unregistered-assets', title: 'Unregistered assets', cells });
 }
@@ -494,6 +518,14 @@ async function renderUnregisteredSheet(browser, entries, pathToKey) {
 function pathBucket(relPath) {
   const parts = relPath.split('/');
   return parts[1] ? parts[1].toUpperCase() : 'ROOT';
+}
+
+// v3.8.50 — lookup canonical for a relPath so contact-sheet cells can
+// always show full semantic context regardless of which builder path
+// constructed the cell.
+function canonicalFor(relPath) {
+  const stem = inferAssetTypeFromPath(relPath);
+  return stem ? getCanonicalSemantic(stem) : undefined;
 }
 
 async function renderRegisteredUnusedSheet(browser, entries, keyToPath, runtimeUsedTypes) {
@@ -511,6 +543,7 @@ async function renderRegisteredUnusedSheet(browser, entries, keyToPath, runtimeU
       width: e.width, height: e.height,
       status: 'REGISTERED_UNUSED',
       role: pathBucket(relPath),
+      canonical: canonicalFor(relPath),
     });
   }
   return renderSheet(browser, { sheetId: '17-registered-unused', title: 'Registered but unused (no runtime consumer)', cells });
@@ -531,6 +564,7 @@ async function renderMissingSheet(browser, entries, keyToPath) {
       width: 0, height: 0,
       status: 'MISSING',
       role: pathBucket(relPath),
+      canonical: canonicalFor(relPath),
     });
   }
   return renderSheet(browser, { sheetId: '18-missing-dead-keys-placeholders', title: 'Missing files / dead keys', cells });
@@ -653,10 +687,14 @@ async function main() {
     const key = pathToKey.get(e.relPath);
     const stemType = inferAssetTypeFromPath(e.relPath);
     const cls = stemType ? ASSET_CLASS_BY_TYPE[stemType] : null;
+    // v3.8.50 — pull canonical semantic so contact-sheet cells can
+    // render full role / zone / side / support context.
+    const canonical = stemType ? getCanonicalSemantic(stemType) : undefined;
     return {
       ...e,
       key,
       class: cls ?? 'UNCLASSIFIED',
+      canonical,
       group: groupForFile(e.relPath, key),
     };
   });
@@ -697,6 +735,7 @@ async function main() {
                 : 'REGISTERED_UNUSED')
               : 'UNREGISTERED',
             role: e.class,
+            canonical: e.canonical,
           }));
         if (cells.length === 0) continue;
         const sheets = await renderSheet(browser, { sheetId: g.id, title: g.title, cells });

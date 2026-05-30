@@ -742,6 +742,256 @@ export function getAssetClass(assetType) {
   return ASSET_CLASS_BY_TYPE[assetType];
 }
 
+// ────────────────────────────────────────────────────────────────────
+// v3.8.50 — Phase 8 canonical semantic layer.
+//
+// The brief asks for a strict, declarative semantic contract that
+// covers role / allowed zone / gameplay collision / side facing /
+// support rules / composition rules. Older fields (`category`,
+// `gameplayRole`, `placementZones`, `orientationType`, `supportType`,
+// `canSupportOthers`, `canStackOnTop`, `adjacencyRules`, `laneUsage`,
+// `collision`, `collectible`) stay intact so existing consumers
+// (`PlacementValidator`, `validatePrefab`, the in-game overlay) keep
+// working. The canonical view is COMPUTED on demand from those
+// existing fields, with a small per-asset override map for the
+// edge cases that can't be inferred (overhang vs jumpable obstacle,
+// road-facing structures, vertical decor that blocks readability,
+// exact maxStackHeight ints).
+//
+// Consumers:
+//   - scripts/validate-composition.mjs        — CLI validator
+//   - scripts/generate-semantic-registry.mjs  — designer doc
+//   - SceneryRenderer / GameplayRenderer      — ?debugComposition=1
+//   - scripts/generate-asset-contact-sheets.mjs — semantic labels
+// ────────────────────────────────────────────────────────────────────
+
+/** Canonical role enum (spec §1.role). */
+export const CANONICAL_ROLES = Object.freeze([
+  'GAMEPLAY_OBSTACLE',
+  'COLLECTIBLE',
+  'BONUS_POWERUP',
+  'ROAD_DECOR',
+  'SIDE_DECOR_SMALL',
+  'SIDE_DECOR_LARGE',
+  'SIDE_STRUCTURE',
+  'SUPPORT_FOUNDATION',
+  'STACKABLE_TOP',
+  'PLATFORM',
+  'LANDMARK',
+  'BACKGROUND_ONLY',
+  'UI_ONLY',         // reserved — UI/HUD assets are NOT in this catalog
+  'EFFECT_ONLY',     // reserved — particle/effect sheets are NOT in this catalog
+]);
+
+/** Canonical zone enum (spec §1.allowedZones). */
+export const CANONICAL_ZONES = Object.freeze([
+  'ROAD_CORE',          // the three lanes the player runs in
+  'ROAD_EDGE',          // immediately next to a lane (still inside collision distance)
+  'LEFT_SHOULDER',      // off-road, left of the road
+  'RIGHT_SHOULDER',     // off-road, right of the road
+  'FAR_BACKGROUND',     // sky / mountains / distant horizon
+  'HUD',                // reserved for UI_ONLY
+  'FULLSCREEN_EFFECT',  // reserved for EFFECT_ONLY
+]);
+
+/** Canonical gameplay-collision enum (spec §1.gameplayCollision). */
+export const GAMEPLAY_COLLISION_TYPES = Object.freeze([
+  'none',
+  'obstacle_jump',         // low obstacle — must JUMP over
+  'obstacle_duck',         // overhead obstacle — must DUCK under
+  'obstacle_lane_change',  // lane-blocking — must change lane
+  'collectible',
+  'powerup',
+  'support_only',          // structural piece on the shoulder, no player collision
+]);
+
+/** Canonical side-facing enum (spec §1.sideFacing). */
+export const SIDE_FACING_TYPES = Object.freeze([
+  'neutral',               // mirror-safe, no canonical direction
+  'left_only',             // only ever appears on left side
+  'right_only',            // only ever appears on right side
+  'pair_required',         // _left and _right halves both required, can't mirror
+  'road_facing_required',  // pair where the lit face MUST point toward the road
+]);
+
+/** Per-key overrides for fields that can't be inferred from legacy data. */
+const CANONICAL_OVERRIDES = Object.freeze({
+  // ── Obstacles — explicit jump vs duck distinction ─────────────────────
+  vine_barrier:          { gameplayCollision: 'obstacle_jump' },
+  spiky_bush_obstacle:   { gameplayCollision: 'obstacle_jump' },
+  dry_grass_obstacle:    { gameplayCollision: 'obstacle_jump' },
+  small_center_mushroom: { gameplayCollision: 'obstacle_jump' },
+  stone_obstacle:        { gameplayCollision: 'obstacle_jump' },
+  low_branch_overhang:   { gameplayCollision: 'obstacle_duck' },
+  spider_web_overhang:   { gameplayCollision: 'obstacle_duck' },
+
+  // ── Side structures — road-facing pair required ───────────────────────
+  stone_brick_single:    { sideFacing: 'road_facing_required', blocksRoadReadability: false },
+  stone_wall_low:        { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
+  stone_wall_stairs:     { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
+  planter_pot:           { sideFacing: 'road_facing_required', blocksRoadReadability: false },
+  green_pipe:            { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
+  purple_brick_single:   { sideFacing: 'road_facing_required', blocksRoadReadability: false },
+  question_block:        { sideFacing: 'neutral',              blocksRoadReadability: false },
+
+  // ── Foundations / platforms — exact maxStackHeight ────────────────────
+  grass_dirt_block:         { maxStackHeight: 2,  blocksRoadReadability: false },
+  grass_dirt_wall:          { maxStackHeight: 2,  blocksRoadReadability: true  },
+  grass_dirt_step:          { maxStackHeight: 1,  blocksRoadReadability: false, sideFacing: 'pair_required' },
+  grass_dirt_step_left:     { maxStackHeight: 1,  blocksRoadReadability: false, sideFacing: 'pair_required' },
+  grass_dirt_platform_long: { maxStackHeight: 1,  blocksRoadReadability: false, sideFacing: 'pair_required' },
+  floating_platform:        { maxStackHeight: 1,  blocksRoadReadability: false, sideFacing: 'pair_required' },
+  hanging_platform_vines:   { maxStackHeight: 0,  blocksRoadReadability: false, sideFacing: 'pair_required' },
+  purple_brick_platform_3:  { maxStackHeight: 1,  blocksRoadReadability: false, sideFacing: 'neutral' },
+
+  // ── Stackable tops — require platform/foundation ──────────────────────
+  mushroom_red_big:    { maxStackHeight: 0, blocksRoadReadability: true  },
+  mushroom_blue_big:   { maxStackHeight: 0, blocksRoadReadability: true  },
+
+  // ── Large vertical decor — readability flag + maxPerScreen ─────────────
+  // MIDGROUND_SCENERY uses tree_round / mushroom_red_big as silhouette
+  // anchors at varied depths; the legacy `maxCluster: 2` field captures
+  // "max contiguous repeats", not "max per screen". Use higher per-screen
+  // ceilings here so the density warning matches real intentional usage.
+  tree_round:                     { blocksRoadReadability: true,  maxStackHeight: 0, maxPerScreen: 6 },
+  bush_large:                     { blocksRoadReadability: false, maxStackHeight: 0, maxPerScreen: 4 },
+  bush_large_with_purple_flowers: { blocksRoadReadability: false, maxStackHeight: 0, maxPerScreen: 4 },
+  fence_wood_short:               { blocksRoadReadability: false, maxStackHeight: 0, sideFacing: 'pair_required', maxPerScreen: 6 },
+  leaf_clump_round:               { blocksRoadReadability: false, maxStackHeight: 0, maxPerScreen: 4 },
+
+  // ── Landmarks ─────────────────────────────────────────────────────────
+  castle_far:     { blocksRoadReadability: false },
+  greenhouse_far: { blocksRoadReadability: false },
+  player_farmer:  { blocksRoadReadability: false },
+});
+
+/** Map legacy `placementZones` strings → canonical zone names. */
+const PLACEMENT_ZONE_MAP = Object.freeze({
+  'road':       'ROAD_CORE',
+  'road-edge':  'ROAD_EDGE',
+  'side-left':  'LEFT_SHOULDER',
+  'side-right': 'RIGHT_SHOULDER',
+  'background': 'FAR_BACKGROUND',
+});
+
+/**
+ * Compute the canonical semantic view for an assetType. Pulls
+ * defaults from the existing AssetSemantic schema, then layers
+ * CANONICAL_OVERRIDES on top.
+ *
+ * @returns {{ key: string, role: string, allowedZones: string[],
+ *             gameplayCollision: string, sideFacing: string,
+ *             supportRules: object, compositionRules: object,
+ *             notes?: string } | undefined}
+ */
+export function getCanonicalSemantic(assetType) {
+  const semantic = ASSET_SEMANTICS[assetType];
+  if (!semantic) return undefined;
+  const role = ASSET_CLASS_BY_TYPE[assetType] ?? 'BACKGROUND_ONLY';
+  const allowedZones = [];
+  for (const z of semantic.placementZones) {
+    const mapped = PLACEMENT_ZONE_MAP[z];
+    if (mapped && !allowedZones.includes(mapped)) allowedZones.push(mapped);
+    if (z === 'both-sides') {
+      if (!allowedZones.includes('LEFT_SHOULDER'))  allowedZones.push('LEFT_SHOULDER');
+      if (!allowedZones.includes('RIGHT_SHOULDER')) allowedZones.push('RIGHT_SHOULDER');
+    }
+  }
+  // Default gameplayCollision derived from category + gameplayRole.
+  let gameplayCollision = 'none';
+  if (semantic.category === 'obstacle')      gameplayCollision = 'obstacle_jump'; // refined per-key below
+  else if (semantic.category === 'pickup')   gameplayCollision = 'collectible';
+  else if (semantic.category === 'powerup')  gameplayCollision = 'powerup';
+  else if (semantic.category === 'support' || semantic.category === 'platform') gameplayCollision = 'support_only';
+  // Default sideFacing derived from orientationType + canMirror.
+  let sideFacing = 'neutral';
+  if (semantic.orientationType === 'side-aware') sideFacing = 'pair_required';
+  else if (semantic.orientationType === 'left-facing')  sideFacing = 'left_only';
+  else if (semantic.orientationType === 'right-facing') sideFacing = 'right_only';
+  // Default supportRules. Legacy `supportType` covers six values; the
+  // semantics differ from the spec's `canStandAlone / requiresPlatform`
+  // wording, so map carefully:
+  //   'ground-only'     → canStandAlone (ground is universal), requiresGround
+  //   'free-decor'      → canStandAlone
+  //   'platform-only'   → canStandAlone (this asset IS a floating platform)
+  //   'support-required'→ requiresPlatform (needs an explicit host)
+  //   'pot-only'/'brick-only' → requiresPlatform (specific host kind)
+  const standsAloneTypes = new Set(['ground-only', 'free-decor', 'platform-only']);
+  const platformReqTypes = new Set(['support-required', 'pot-only', 'brick-only']);
+  const canStandAlone    = standsAloneTypes.has(semantic.supportType);
+  const requiresGround   = semantic.supportType === 'ground-only';
+  const requiresPlatform = platformReqTypes.has(semantic.supportType);
+  const canStackOn      = !!semantic.canStackOnTop;
+  const canSupport      = !!semantic.canSupportOthers;
+  let maxStackHeight = 0;
+  if (canSupport && canStackOn) maxStackHeight = 2;
+  else if (canStackOn) maxStackHeight = 1;
+  // Default compositionRules.
+  const adj = semantic.adjacencyRules ?? {};
+  const minSpacingSameType = adj.minSpacing ?? 0;
+  const minSpacingObstacle = semantic.category === 'obstacle' ? (adj.minSpacing ?? 0) : 0;
+  const maxPerScreen = adj.maxCluster ?? (semantic.category === 'decor' ? 6 : 3);
+  const densityWeight = semantic.decorativeWeight ?? 1;
+  const canOverlapDecor =
+       semantic.category === 'decor'
+    || semantic.category === 'background'
+    || semantic.category === 'scenery';
+  // Default blocksRoadReadability — true for large vertical structures.
+  const blocksRoadReadabilityDefault =
+       (semantic.category === 'support' && role === 'SIDE_STRUCTURE')
+    || role === 'SUPPORT_FOUNDATION' && semantic.canSupportOthers;
+  const overrides = CANONICAL_OVERRIDES[assetType] ?? {};
+  return Object.freeze({
+    key: assetType,
+    role,
+    allowedZones: Object.freeze(allowedZones),
+    gameplayCollision: overrides.gameplayCollision ?? gameplayCollision,
+    sideFacing: overrides.sideFacing ?? sideFacing,
+    supportRules: Object.freeze({
+      canStandAlone,
+      requiresGround,
+      requiresPlatform,
+      canStackOn,
+      canSupport,
+      maxStackHeight: overrides.maxStackHeight ?? maxStackHeight,
+    }),
+    compositionRules: Object.freeze({
+      minSpacingSameType,
+      minSpacingObstacle,
+      maxPerScreen: overrides.maxPerScreen ?? maxPerScreen,
+      densityWeight,
+      canOverlapDecor,
+      blocksRoadReadability: overrides.blocksRoadReadability ?? blocksRoadReadabilityDefault,
+    }),
+    notes: semantic.notes,
+  });
+}
+
+/** @returns {string | undefined} canonical role for `assetType` */
+export function getAssetRole(assetType) {
+  return ASSET_CLASS_BY_TYPE[assetType];
+}
+
+/** @returns {string[]} canonical zones for `assetType` */
+export function getAllowedZones(assetType) {
+  return getCanonicalSemantic(assetType)?.allowedZones ?? [];
+}
+
+/** @returns {object | undefined} canonical composition rules */
+export function getCompositionRules(assetType) {
+  return getCanonicalSemantic(assetType)?.compositionRules;
+}
+
+/** @returns {string[]} every canonical role name */
+export function listCanonicalRoles() {
+  return [...CANONICAL_ROLES];
+}
+
+/** @returns {string[]} every canonical zone name */
+export function listCanonicalZones() {
+  return [...CANONICAL_ZONES];
+}
+
 /** @returns {AssetSemantic | undefined} */
 export function getAssetSemantic(assetType) {
   return ASSET_SEMANTICS[assetType];
