@@ -1,52 +1,22 @@
 # Asset Cleanup Proposal
 
-Generated 2026-05-30T18:53:35.147Z.
+Generated 2026-05-30T19:29:56.920Z.
 
 **Nothing is removed automatically.** This is a decision surface.
 Each section names assets; the human reviewer marks approval.
 
 ## Safe to keep (no action)
 
-Buckets A + B + C. 60 explicit + 30 dynamic + 50 intentional-unused = 140 files. See production manifest.
+Buckets A + B + C. 60 explicit + 32 dynamic + 48 intentional-unused = 140 files. See production manifest.
 
-## Safe to archive after approval (bucket F + G, 90 files)
+## Safe to archive after approval (bucket F + G, 54 files)
 
 Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 
-### Duplicate non-canonical copies (34)
-- `assets/background/clouds/clouds.png` — same SHA as a canonical sibling
-- `assets/collectibles/orchid_gold/orchid_gold_main.png` — same SHA as a canonical sibling
-- `assets/effects/effect_gold_spark_burst.png` — same SHA as a canonical sibling
-- `assets/effects/effect_magic_circle_glow_01.png` — same SHA as a canonical sibling
-- `assets/effects/effect_star_burst_small_01.png` — same SHA as a canonical sibling
-- `assets/effects/effect_star_small_01.png` — same SHA as a canonical sibling
-- `assets/effects/sparkle/sparkle_05.png` — same SHA as a canonical sibling
-- `assets/effects/sparkle_01.png` — same SHA as a canonical sibling
-- `assets/effects/sparkle_03.png` — same SHA as a canonical sibling
-- `assets/effects/sparkle_04.png` — same SHA as a canonical sibling
-- `assets/platforms/platform_grass_small.png` — same SHA as a canonical sibling
-- `assets/platforms/platform_grass_small_01.png` — same SHA as a canonical sibling
-- `assets/platforms/platform_grass_vines.png` — same SHA as a canonical sibling
-- `assets/platforms/platform_hanging_vines.png` — same SHA as a canonical sibling
-- `assets/powerups/magic_circle_glow_01.png` — same SHA as a canonical sibling
-- `assets/powerups/magnet_gold_aura_01.png` — same SHA as a canonical sibling
-- `assets/powerups/medal_x2_gold_01.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_gold_star.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_magic_circle_glow.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_magnet_01.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_magnet_gold_aura.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_medal_x2_gold.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_multiplier_x2_medal_01.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_orchid_shield_glow.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_shield_orchid_01.png` — same SHA as a canonical sibling
-- `assets/powerups/powerup_star_gold_01.png` — same SHA as a canonical sibling
-- `assets/powerups/shield_orchid_glow_01.png` — same SHA as a canonical sibling
-- `assets/powerups/star_burst_gold_01.png` — same SHA as a canonical sibling
-- `assets/powerups/star_glint_small_01.png` — same SHA as a canonical sibling
-- `assets/powerups/star_gold_01.png` — same SHA as a canonical sibling
-- _(4 more)_
+### Duplicate non-canonical copies (1)
+- `assets/structures/question_block/question_block_04.png` — same SHA as a canonical sibling
 
-### Overdelivery (56)
+### Overdelivery (53)
 - `assets/collectibles/orchid_gold.png`
 - `assets/effects/dust/dust_burst_01.png`
 - `assets/effects/dust/dust_burst_02.png`
@@ -56,13 +26,10 @@ Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 - `assets/effects/dust/dust_cloud_02.png`
 - `assets/effects/dust/dust_puffs_01.png`
 - `assets/effects/dust/dust_smoke_01.png`
-- `assets/effects/effect_burst_gold_01.png`
+- `assets/effects/effect_gold_spark_burst.png`
 - `assets/effects/effect_small_star_burst.png`
 - `assets/effects/effect_small_star_glint.png`
-- `assets/effects/sparkle/sparkle_gold_01.png`
 - `assets/effects/sparkle_02.png`
-- `assets/platforms/platform_floating.png`
-- `assets/platforms/platform_grass_vines_01.png`
 - `assets/player/farmer_jump/player_farmer_jump_07.png`
 - `assets/player/farmer_jump/player_farmer_jump_08.png`
 - `assets/player/farmer_jump/player_farmer_jump_09.png`
@@ -77,7 +44,10 @@ Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 - `assets/player/farmer_run/player_farmer_run_10.png`
 - `assets/player/farmer_run/player_farmer_run_11.png`
 - `assets/player/farmer_run/player_farmer_run_12.png`
-- _(26 more)_
+- `assets/player/farmer_unfinished_batch/крючок_для_садоводства_в_стиле_пиксель_арт.png`
+- `assets/player/farmer_unfinished_batch/персонаж_в_прыжке_с_лопатой.png`
+- `assets/player/farmer_unfinished_batch/персонаж_с_лопатой_в_позе_наклона.png`
+- _(23 more)_
 
 ## Needs designer re-export (bucket E, 132)
 
@@ -101,10 +71,10 @@ Active or registered files with quality issues: oversized canvas, no alpha chann
 - `assets/collectibles/gold/gold_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_big.png` — 1035×936 · OVERSIZED_CANVAS
-- `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_03.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_04.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/collectibles/orchid_gold/orchid_gold_main.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/branches/decorative_branch_flowers_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/bush_bright_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/bush_flower_small_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -125,7 +95,7 @@ Active or registered files with quality issues: oversized canvas, no alpha chann
 - `assets/decor_small/plants/sprout_soil.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - _(92 more)_
 
-## Needs developer wiring (bucket D, 54)
+## Needs developer wiring (bucket D, 57)
 
 Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 
@@ -154,6 +124,7 @@ Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 - `assets/effects/magic/magic_glow_rainbow_01.png`
 - `assets/effects/magic/sparkle_01.png`
 - `assets/effects/magic/sparkle_02.png`
+- `assets/effects/sparkle/sparkle_gold_01.png`
 - `assets/effects/sparkles/sparkle_small_01.png`
 - `assets/effects/sparkles/sparkle_small_02.png`
 - `assets/effects/sparkles/sparkle_star_01.png`
@@ -168,8 +139,7 @@ Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 - `assets/pickups/aura/pickup_medal_x2_gold.png`
 - `assets/pickups/aura/pickup_shield_orchid_aura.png`
 - `assets/pickups/aura/pickup_star_gold_aura.png`
-- `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png`
-- _(14 more)_
+- _(17 more)_
 
 ## Needs designer to ship (bucket I, 6)
 
