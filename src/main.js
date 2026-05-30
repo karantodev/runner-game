@@ -481,6 +481,11 @@ const PLAYER_DEBUG_KEY_MAP = {
 if (debugEnabled) {
   const debugApi = createDebugApi();
   window.__ORCHID_DEBUG__ = debugApi;
+  // v3.8.41 — Phase 7 visual-QA. Expose the live game instance behind
+  // the same debug flag so capture scripts can read / poke world state
+  // directly (e.g., set Health.invulnerabilityFrames high so the
+  // autostart-driven player survives long-distance screenshots).
+  window.__ORCHID_GAME__ = game;
   installDebugPanel(debugApi);
   new PerformanceHUD(game, { pixelRatioChoice });
 

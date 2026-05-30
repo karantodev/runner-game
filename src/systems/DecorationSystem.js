@@ -213,8 +213,14 @@ export class DecorationSystem {
   }
 
   #buildWeightedChunks() {
+    // v3.8.41 — Phase 7 art-direction. Prefabs flagged proceduralOk:false
+    // (the four hero-layered-* compositions) live exclusively in
+    // HERO_LAYOUT's hand-placed anchor slots. Excluding them from the
+    // procedural pool prevents heavy hero clusters from landing on top
+    // of the curated near-foreground beats.
     const result = [];
     for (const chunk of SIDE_DECORATION_PREFABS) {
+      if (chunk.proceduralOk === false) continue;
       for (let i = 0; i < chunk.weight; i++) result.push(chunk);
     }
     return result;
