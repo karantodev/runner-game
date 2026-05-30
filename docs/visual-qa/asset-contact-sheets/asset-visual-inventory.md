@@ -1,15 +1,36 @@
 # Asset Visual Inventory
 
-Generated 2026-05-30T18:08:50.644Z
+Generated 2026-05-30T18:28:06.894Z
 Derived from the contact-sheet generator pass.
 
 ## Active assets (USED — referenced in src/)
-### Player frames (5)
+### Player frames (26)
 - `playerFarmerCrouch01` → assets/player/farmer_crouch/player_farmer_crouch_01.png
+- `playerFarmerCrouch02` → assets/player/farmer_crouch/player_farmer_crouch_02.png
+- `playerFarmerCrouch03` → assets/player/farmer_crouch/player_farmer_crouch_03.png
+- `playerFarmerCrouch04` → assets/player/farmer_crouch/player_farmer_crouch_04.png
 - `playerFarmerHit01` → assets/player/farmer_hit/player_farmer_hit_01.png
+- `playerFarmerHit02` → assets/player/farmer_hit/player_farmer_hit_02.png
+- `playerFarmerHit03` → assets/player/farmer_hit/player_farmer_hit_03.png
+- `playerFarmerHit04` → assets/player/farmer_hit/player_farmer_hit_04.png
 - `playerFarmerIdle01` → assets/player/farmer_idle/player_farmer_idle_01.png
+- `playerFarmerIdle02` → assets/player/farmer_idle/player_farmer_idle_02.png
+- `playerFarmerIdle03` → assets/player/farmer_idle/player_farmer_idle_03.png
+- `playerFarmerIdle04` → assets/player/farmer_idle/player_farmer_idle_04.png
 - `playerFarmerJump01` → assets/player/farmer_jump/player_farmer_jump_01.png
+- `playerFarmerJump02` → assets/player/farmer_jump/player_farmer_jump_02.png
+- `playerFarmerJump03` → assets/player/farmer_jump/player_farmer_jump_03.png
+- `playerFarmerJump04` → assets/player/farmer_jump/player_farmer_jump_04.png
+- `playerFarmerJump05` → assets/player/farmer_jump/player_farmer_jump_05.png
+- `playerFarmerJump06` → assets/player/farmer_jump/player_farmer_jump_06.png
 - `playerFarmerRun01` → assets/player/farmer_run/player_farmer_run_01.png
+- `playerFarmerRun02` → assets/player/farmer_run/player_farmer_run_02.png
+- `playerFarmerRun03` → assets/player/farmer_run/player_farmer_run_03.png
+- `playerFarmerRun04` → assets/player/farmer_run/player_farmer_run_04.png
+- `playerFarmerRun05` → assets/player/farmer_run/player_farmer_run_05.png
+- `playerFarmerRun06` → assets/player/farmer_run/player_farmer_run_06.png
+- `playerFarmerRun07` → assets/player/farmer_run/player_farmer_run_07.png
+- `playerFarmerRun08` → assets/player/farmer_run/player_farmer_run_08.png
 
 ### Obstacles (4)
 - `dryGrassObstacle` → assets/obstacles/dry_grass/dry_grass_obstacle.png
@@ -117,6 +138,28 @@ Derived from the contact-sheet generator pass.
 - `mountainsFarAlt` → assets/background/mountains_far_01.png
 - `backgroundSkyGradient` → assets/background/sky/sky_gradient.png
 - `backgroundSun` → assets/background/sun-glow.png
+
+### Effects — sparkles / dust / hit-flash / bursts (20)
+- `dustPuff01` → assets/effects/dust_puff/dust_puff_01.png
+- `dustPuff02` → assets/effects/dust_puff/dust_puff_02.png
+- `dustPuff03` → assets/effects/dust_puff/dust_puff_03.png
+- `dustPuff04` → assets/effects/dust_puff/dust_puff_04.png
+- `hitFlash01` → assets/effects/hit_flash/hit_flash_01.png
+- `hitFlash02` → assets/effects/hit_flash/hit_flash_02.png
+- `hitFlash03` → assets/effects/hit_flash/hit_flash_03.png
+- `hitFlash04` → assets/effects/hit_flash/hit_flash_04.png
+- `jumpDust01` → assets/effects/jump_dust/jump_dust_01.png
+- `jumpDust02` → assets/effects/jump_dust/jump_dust_02.png
+- `jumpDust03` → assets/effects/jump_dust/jump_dust_03.png
+- `jumpDust04` → assets/effects/jump_dust/jump_dust_04.png
+- `laneSwoosh01` → assets/effects/lane_swoosh/lane_swoosh_01.png
+- `laneSwoosh02` → assets/effects/lane_swoosh/lane_swoosh_02.png
+- `laneSwoosh03` → assets/effects/lane_swoosh/lane_swoosh_03.png
+- `laneSwoosh04` → assets/effects/lane_swoosh/lane_swoosh_04.png
+- `sparkle01` → assets/effects/sparkle/sparkle_01.png
+- `sparkle02` → assets/effects/sparkle/sparkle_02.png
+- `sparkle03` → assets/effects/sparkle/sparkle_03.png
+- `sparkle04` → assets/effects/sparkle/sparkle_04.png
 
 ### Unclassified (12)
 - `brickPurplePlatform3` → assets/blocks/brick-purple-platform-3.png
@@ -377,10 +420,13 @@ Derived from the contact-sheet generator pass.
 - assets/ui/panels/panel_long_blue.png
 - assets/ui/panels/score_panel_bg.png
 
-## Side-aware problems (3)
+## Side-aware scenery problems (1)
 - `assets/terrain/blocks/grass_dirt_step` — DIM MISMATCH: left 1086×1448 ≠ right 1254×1254
-- `assets/terrain/road/lane_tiles/road_lane` — DIM MISMATCH: left 526×2172 ≠ right 445×2172
-- `assets/terrain/road/shoulders/road_shoulder` — DIM MISMATCH: left 375×2047 ≠ right 278×2166
+
+## Road-kit pairs — asymmetric (informational, 2)
+Road tiles intentionally differ left/right for perspective; treated separately from scenery side-pairs.
+- `assets/terrain/road/lane_tiles/road_lane` — left 526×2172 / right 445×2172
+- `assets/terrain/road/shoulders/road_shoulder` — left 375×2047 / right 278×2166
 
 ## Missing critical (14)
 - `orchidBlueRare` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare.png`
@@ -400,7 +446,7 @@ Derived from the contact-sheet generator pass.
 
 ## Designer action list
 
-- **P0**: 3 side-pair dim mismatches need re-export
+- **P0**: 1 side-pair dim mismatches need re-export
 - **P0**: 15 exact-content duplicate groups — pick one canonical path per asset, archive the rest
 - **P1**: 0 side-aware pairs missing _right.png
 - **P1**: 14 dead-key files designer needs to ship
