@@ -795,6 +795,69 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
 });
 
 /**
+ * v3.8.43 — Phase 7c composition metadata for hero-tier prefabs.
+ *
+ * Each entry is the rule sheet for one prefab — zone it belongs in,
+ * compositional role, density policy, distance range, and clearance
+ * requirements. HERO_LAYOUT slots and (future) composition validators
+ * read this map; absent entries default to "free procedural decor"
+ * with no constraints.
+ *
+ * Fields:
+ *   zone               foreground | nearMid | mid | midFar | far | castleApproach
+ *   side               left | right | either
+ *   role               frame (anchors the scene) | structural (mid landmark) |
+ *                      filler (soft transition) | landmark (deep silhouette)
+ *   densityWeight      0-5 — how often this is acceptable on a screen
+ *   allowedDepthRange  [min, max] in world units
+ *   minSpacingFromSameType  world units between two of these on the same side
+ *   requiresSupport    true if all heavy items need a ground/parent
+ *   roadClearance      min lane distance from road centre (1.5 = road edge)
+ */
+export const PREFAB_COMPOSITION_METADATA = Object.freeze({
+  'foreground-left-anchor': {
+    zone: 'foreground', side: 'left', role: 'frame',
+    densityWeight: 1, allowedDepthRange: [16, 32],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'foreground-right-anchor': {
+    zone: 'foreground', side: 'right', role: 'frame',
+    densityWeight: 1, allowedDepthRange: [16, 32],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'fence-flower-row': {
+    zone: 'nearMid', side: 'either', role: 'filler',
+    densityWeight: 3, allowedDepthRange: [40, 60],
+    minSpacingFromSameType: 60, requiresSupport: false, roadClearance: 1.5,
+  },
+  'hero-layered-platform-qblocks': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [60, 90],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'corner-platform-mushroom-frame': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [70, 95],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'brick-corridor-segment': {
+    zone: 'midFar', side: 'either', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [95, 115],
+    minSpacingFromSameType: 50, requiresSupport: true, roadClearance: 1.6,
+  },
+  'leaf-forest-edge': {
+    zone: 'far', side: 'either', role: 'landmark',
+    densityWeight: 1, allowedDepthRange: [125, 155],
+    minSpacingFromSameType: 40, requiresSupport: false, roadClearance: 1.4,
+  },
+  'organic-meadow': {
+    zone: 'far', side: 'either', role: 'landmark',
+    densityWeight: 1, allowedDepthRange: [140, 165],
+    minSpacingFromSameType: 40, requiresSupport: false, roadClearance: 1.4,
+  },
+});
+
+/**
  * v3.8.21 — Deterministic HERO LAYOUT for the first ~150 m of every run.
  *
  * The user flagged: weighted-random prefab rotation sometimes lands a
@@ -856,17 +919,44 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
  *
  * Net change: 11 entries → 6. ~45% lower beat density.
  */
+/**
+ * v3.8.43 — Phase 7c richness restoration. Phase 7b's 6-entry layout
+ * went too far in the trim direction — the side band read as "empty
+ * grass field" instead of "intentional perspective corridor". v3 adds
+ * back two intermediate beats (a soft filler at near-mid 48m + a
+ * purple-brick mid-far at 108m) so each depth band has a composed
+ * landmark instead of a gap. Total: 6 → 8 entries.
+ *
+ * Composition variety across the layout:
+ *   ANCHOR LEFT  — mushroom + block + brick + flora
+ *   ANCHOR RIGHT — pipe + bush + brick + fence + flower
+ *   FILLER       — fence + flowers (low-density transition beat)
+ *   MID LEFT     — platform + qblocks + wall + mushroom topper
+ *   MID RIGHT    — platform + mushroom topper + brick + fence
+ *   MID-FAR LEFT — bricks + qblock + small flora (purple beat)
+ *   FAR RIGHT    — leaves cluster
+ *   FAR LEFT     — meadow + ground mushroom
+ *
+ * CASTLE APPROACH (155m+) stays deliberately empty so the road→castle
+ * axis remains the dominant visual line.
+ */
 export const HERO_LAYOUT = Object.freeze([
   // NEAR FOREGROUND — large anchors framing the corridor opening.
   { distance:  20, side: -1, prefabId: 'foreground-left-anchor',         scaleMultiplier: 1.00 },
   { distance:  30, side:  1, prefabId: 'foreground-right-anchor',        scaleMultiplier: 1.00 },
-  // MID — one structural beat per side, scaled smaller for perspective.
-  { distance:  60, side: -1, prefabId: 'hero-layered-platform-qblocks',  scaleMultiplier: 0.75 },
-  { distance:  80, side:  1, prefabId: 'corner-platform-mushroom-frame', scaleMultiplier: 0.72 },
+  // NEAR-MID — soft transition beat so the side band doesn't go quiet
+  // between the foreground anchor and the first mid structural.
+  { distance:  48, side:  1, prefabId: 'fence-flower-row',               scaleMultiplier: 0.85 },
+  // MID — structural beats per side, scaled smaller for perspective.
+  { distance:  68, side: -1, prefabId: 'hero-layered-platform-qblocks',  scaleMultiplier: 0.75 },
+  { distance:  88, side:  1, prefabId: 'corner-platform-mushroom-frame', scaleMultiplier: 0.72 },
+  // MID-FAR — purple-brick beat. Variety in the mid band so the
+  // corridor reads as composed architecture, not duplicate clusters.
+  { distance: 108, side: -1, prefabId: 'brick-corridor-segment',         scaleMultiplier: 0.55 },
   // FAR — tiny silhouettes only.
-  { distance: 130, side:  1, prefabId: 'leaf-forest-edge',               scaleMultiplier: 0.42 },
-  { distance: 150, side: -1, prefabId: 'organic-meadow',                 scaleMultiplier: 0.40 },
-  // CASTLE APPROACH (150m+) — deliberately empty. Road axis dominates.
+  { distance: 132, side:  1, prefabId: 'leaf-forest-edge',               scaleMultiplier: 0.42 },
+  { distance: 152, side: -1, prefabId: 'organic-meadow',                 scaleMultiplier: 0.40 },
+  // CASTLE APPROACH (155m+) — deliberately empty. Road axis dominates.
 ]);
 
 /**
