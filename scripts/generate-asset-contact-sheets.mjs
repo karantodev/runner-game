@@ -748,6 +748,11 @@ async function main() {
     await writeInventoryMarkdown(enriched, pathToKey, runtimeUsed);
     await writeProductionManifest(buckets, sourceFileCount, skippedFolders);
     await writeCleanupProposal(buckets, enriched, pathToKey);
+    // v3.8.46 — Phase 7e proposal docs (canonical dedup + unregistered
+    // decision list + dead-key path-mismatch bridges).
+    await writeDuplicateCleanupProposal(buckets);
+    await writeUnregisteredDecisionList(buckets);
+    await writeDeadKeyDecisionList(buckets);
   } finally {
     await browser.close();
   }
@@ -912,6 +917,115 @@ async function writeInventoryMarkdown(enriched, pathToKey, runtimeUsed) {
 }
 
 /**
+ * v3.8.46 — Phase 7e dead-key sub-classification. Each registered key
+ * that has no file on disk is one of:
+ *   PATH_MISMATCH_CAN_BRIDGE  — a file with the same stem lives at a
+ *                               different path; either move the file
+ *                               or update the gameConfig key.
+ *   MISSING_DESIGN            — no candidate file exists; designer
+ *                               needs to ship it.
+ *   DEPRECATED_KEY            — key uses a legacy stem the codebase
+ *                               has migrated away from (combo icons
+ *                               for v2, etc.).
+ *   FEATURE_NOT_IMPLEMENTED   — key is for a future power-up / pickup
+ *                               whose runtime hasn't been wired yet.
+ *
+ * Heuristic: search every on-disk PNG for one whose basename or
+ * basename-stem matches the registered key's expected basename / stem.
+ */
+function classifyDeadKey(key, expectedRelPath, enriched) {
+  const expectedBase = path.basename(expectedRelPath, '.png');
+  const expectedStem = expectedBase.replace(/_\d+$/, '');
+  const candidates = [];
+  for (const e of enriched) {
+    const baseName = path.basename(e.relPath, '.png');
+    if (baseName === expectedBase) { candidates.push(e); continue; }
+    if (baseName === expectedStem) { candidates.push(e); continue; }
+    // Compact form (pickup_magnet vs magnet) — try both directions.
+    if (baseName.toLowerCase() === `pickup_${expectedStem}`.toLowerCase()) { candidates.push(e); continue; }
+    if (`pickup_${baseName}`.toLowerCase() === expectedStem.toLowerCase()) { candidates.push(e); continue; }
+  }
+  if (candidates.length > 0) {
+    return { decision: 'PATH_MISMATCH_CAN_BRIDGE', candidate: candidates[0].relPath };
+  }
+  // Heuristic stems for known buckets.
+  if (/^icon(Combo|Heart)/.test(key)) return { decision: 'DEPRECATED_KEY' };
+  if (/Anim\d+$|Sheet$|anim$/i.test(key)) return { decision: 'MISSING_DESIGN' };
+  // Default — designer-side ship.
+  return { decision: 'MISSING_DESIGN' };
+}
+
+/**
+ * v3.8.46 — duplicate canonical selection. For each SHA group pick
+ * the file whose path scores highest on the canonical-rank heuristic:
+ *   pickups/<feature>/        +30
+ *   collectibles/<feature>/   +25
+ *   effects/<effect-name>/    +30
+ *   ui/                       +20
+ *   structures/ or terrain/   +20
+ *   bare assets/<bucket>/foo  -10  (orphan at the bucket root)
+ *   assets/powerups/*.png      -5  (powerups/ root is the WIP dumping ground)
+ *
+ * Tie-break: shorter path > alphabetical first.
+ */
+function canonicalScore(relPath) {
+  let s = 0;
+  if (/^assets\/pickups\/[^/]+\//.test(relPath))      s += 30;
+  if (/^assets\/effects\/[^/]+\//.test(relPath))      s += 30;
+  if (/^assets\/collectibles\/[^/]+\//.test(relPath)) s += 25;
+  if (/^assets\/ui\//.test(relPath))                  s += 20;
+  if (/^assets\/structures\//.test(relPath))          s += 20;
+  if (/^assets\/terrain\//.test(relPath))             s += 20;
+  // Penalties for orphan-at-bucket-root patterns.
+  if (/^assets\/[^/]+\/[^/]+\.png$/.test(relPath))    s -= 10;
+  if (/^assets\/powerups\/[^/]+\.png$/.test(relPath)) s -= 5;
+  // Bonus for stems with no _NN trailing — canonical doesn't carry a
+  // frame number when the file is supposed to be a single asset.
+  if (!/_\d{1,3}\.png$/.test(relPath))                s += 2;
+  return s;
+}
+function pickCanonical(group, pathToKey) {
+  const sorted = [...group].sort((a, b) => {
+    // v3.8.46 — registered paths always beat unregistered ones. If
+    // gameConfig points at one of the dupes, that's already the file
+    // the engine loads; archiving its sibling is the cheapest move.
+    const aReg = pathToKey?.has(a.relPath) ? 1 : 0;
+    const bReg = pathToKey?.has(b.relPath) ? 1 : 0;
+    if (aReg !== bReg) return bReg - aReg;
+    const sd = canonicalScore(b.relPath) - canonicalScore(a.relPath);
+    if (sd !== 0) return sd;
+    if (a.relPath.length !== b.relPath.length) return a.relPath.length - b.relPath.length;
+    return a.relPath.localeCompare(b.relPath);
+  });
+  return { canonical: sorted[0], archive: sorted.slice(1) };
+}
+
+/**
+ * v3.8.46 — unregistered finer classification.
+ */
+function classifyUnregisteredSubType(entry, dirSiblingCount) {
+  const rel = entry.relPath;
+  // Alt variants (suffix or path stem signals).
+  if (/_alt\.png$/i.test(rel) || /_v\d+\.png$/i.test(rel)) return 'ALT_VARIANT';
+  // Misc / hourglass / potion / shield-sign / etc. = future-feature
+  // signals we don't have a runtime consumer for yet.
+  if (/\/misc[A-Z_]/.test(rel) || /hourglass|potionEmerald|shieldSign|magic_circle/i.test(rel)) return 'FUTURE_FEATURE';
+  // Player WIP batches.
+  if (/farmer_(remaining|unfinished)_batch/.test(rel)) return 'SOURCE_ONLY';
+  // Effects/powerups duplicate stem in wrong category.
+  if (/assets\/effects\/.*_star_/.test(rel) && /^star_(small_burst|glint|burst_gold)/.test(path.basename(rel))) {
+    return 'WRONG_CATEGORY';
+  }
+  // High-resolution source-only assets.
+  if (entry.width >= 1024 && entry.height >= 1024) return 'SOURCE_ONLY';
+  // No alpha channel on a non-background asset → designer fix.
+  if (entry.qualityFlags?.includes('NO_TRANSPARENCY') && !/background/.test(rel)) return 'DESIGNER_FIX_REQUIRED';
+  // Folder with many siblings → likely overdelivery.
+  if (dirSiblingCount >= 6) return 'ALT_VARIANT';
+  return 'PENDING_WIRE';
+}
+
+/**
  * v3.8.45 — Phase 7d production buckets. Every PNG receives exactly
  * one bucket label (A-J). Used downstream by writeProductionManifest +
  * writeCleanupProposal so the team has a single decision table for
@@ -971,13 +1085,39 @@ function classifyBuckets(enriched, pathToKey, usedExplicit, usedDynamic) {
     else buckets.D_UNREGISTERED_PENDING_WIRE.push(e);
   }
 
-  // Missing dead keys — keys without a file on disk.
+  // Missing dead keys — keys without a file on disk. v3.8.46 splits
+  // each into PATH_MISMATCH_CAN_BRIDGE / MISSING_DESIGN /
+  // DEPRECATED_KEY / FEATURE_NOT_IMPLEMENTED via classifyDeadKey.
   const fileSet = new Set(enriched.map((e) => e.relPath));
   for (const [relPath, key] of pathToKey) {
     if (!fileSet.has(relPath)) {
-      buckets.I_MISSING_DEAD_KEY.push({ key, relPath, expectedPath: relPath });
+      const { decision, candidate } = classifyDeadKey(key, relPath, enriched);
+      buckets.I_MISSING_DEAD_KEY.push({ key, relPath, expectedPath: relPath, decision, candidate });
     }
   }
+
+  // v3.8.46 — duplicate canonical selection. Pick a canonical path per
+  // SHA group; non-canonical copies stay in F bucket but each carries
+  // its canonical sibling reference for the cleanup proposal.
+  const dupGroupsCanonical = [];
+  for (const g of dupGroups) {
+    const { canonical, archive } = pickCanonical(g, pathToKey);
+    dupGroupsCanonical.push({ canonical, archive });
+  }
+  buckets._dupGroupsCanonical = dupGroupsCanonical;
+
+  // v3.8.46 — unregistered finer sub-classification. Tag each D / G
+  // entry with a subType so the unregistered decision doc has the
+  // right action per row.
+  const dirCounts = new Map();
+  for (const e of enriched) {
+    const dir = path.dirname(e.relPath);
+    dirCounts.set(dir, (dirCounts.get(dir) ?? 0) + 1);
+  }
+  for (const e of [...buckets.D_UNREGISTERED_PENDING_WIRE, ...buckets.G_OVERDELIVERY_REJECT]) {
+    e.subType = classifyUnregisteredSubType(e, dirCounts.get(path.dirname(e.relPath)) ?? 0);
+  }
+
   return buckets;
 }
 
@@ -1097,6 +1237,132 @@ async function writeCleanupProposal(buckets, enriched, pathToKey) {
   lines.push('- Road-kit pairs (`assets/terrain/road/`) flagged as asymmetric — intentional perspective.');
   lines.push('- Background-only layers > 512 px — large canvas is expected.');
   lines.push('');
+  await fs.writeFile(out, lines.join('\n'));
+  console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
+}
+
+/**
+ * v3.8.46 — duplicate cleanup proposal. One entry per SHA group with
+ * the canonical path the engine should keep + the archive list.
+ */
+async function writeDuplicateCleanupProposal(buckets) {
+  const out = path.join(ROOT, 'docs/asset-duplicate-cleanup-proposal.md');
+  const groups = buckets._dupGroupsCanonical ?? [];
+  const lines = [];
+  lines.push('# Asset Duplicate Cleanup Proposal');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('');
+  lines.push('Per SHA-256 group: one canonical path is selected by the canonical-rank');
+  lines.push('heuristic (`pickups/<feature>/` > `effects/<name>/` > `ui/` > `structures/`).');
+  lines.push('Non-canonical copies are proposed for archive at');
+  lines.push('`assets/_source/rejected_YYYY_MM_DD/duplicates/<group-id>/`.');
+  lines.push('');
+  lines.push(`Total duplicate groups: **${groups.length}**`);
+  lines.push('');
+  for (let i = 0; i < groups.length; i += 1) {
+    const { canonical, archive } = groups[i];
+    lines.push(`## Group #${i + 1} — ${canonical.width}×${canonical.height} (${1 + archive.length} copies)`);
+    lines.push('');
+    lines.push(`- **Keep (canonical)**: \`${canonical.relPath}\``);
+    if (archive.length) {
+      lines.push('- **Archive**:');
+      for (const a of archive) lines.push(`  - \`${a.relPath}\``);
+    }
+    lines.push('');
+  }
+  lines.push('## Action');
+  lines.push('After approval, move archive entries to `_source/rejected_YYYY_MM_DD/duplicates/` —');
+  lines.push('do NOT delete. Designer may want to recover.');
+  await fs.writeFile(out, lines.join('\n'));
+  console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
+}
+
+/**
+ * v3.8.46 — unregistered decision list. Each unregistered PNG (D + G
+ * buckets) carries a subType (set in classifyBuckets); this doc
+ * groups them by subType for the team's hand-off.
+ */
+async function writeUnregisteredDecisionList(buckets) {
+  const out = path.join(ROOT, 'docs/asset-unregistered-decision-list.md');
+  const all = [...buckets.D_UNREGISTERED_PENDING_WIRE, ...buckets.G_OVERDELIVERY_REJECT];
+  const byType = new Map();
+  for (const e of all) {
+    const t = e.subType ?? 'PENDING_WIRE';
+    if (!byType.has(t)) byType.set(t, []);
+    byType.get(t).push(e);
+  }
+  const ORDER = ['PENDING_WIRE', 'ALT_VARIANT', 'FUTURE_FEATURE', 'DESIGNER_FIX_REQUIRED', 'DUPLICATE_REJECT', 'SOURCE_ONLY', 'WRONG_CATEGORY'];
+  const lines = [];
+  lines.push('# Asset Unregistered Decision List');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('');
+  lines.push(`Every unregistered PNG receives one decision subType. Total: **${all.length}**.`);
+  lines.push('');
+  const TITLES = {
+    PENDING_WIRE: 'PENDING_WIRE — register in gameConfig + wire a consumer',
+    ALT_VARIANT: 'ALT_VARIANT — alternative art, do not wire unless needed',
+    FUTURE_FEATURE: 'FUTURE_FEATURE — feature not yet implemented; keep but don\'t wire',
+    DESIGNER_FIX_REQUIRED: 'DESIGNER_FIX_REQUIRED — quality issue (oversized, no alpha, wrong canvas)',
+    DUPLICATE_REJECT: 'DUPLICATE_REJECT — exact-content dupe; archive after canonical selection',
+    SOURCE_ONLY: 'SOURCE_ONLY — high-res source / WIP batch; move to _source/',
+    WRONG_CATEGORY: 'WRONG_CATEGORY — file lives in the wrong subfolder for its semantic',
+  };
+  for (const t of ORDER) {
+    const list = byType.get(t) ?? [];
+    lines.push(`## ${TITLES[t] ?? t} (${list.length})`);
+    lines.push('');
+    for (const e of list.slice(0, 40)) {
+      lines.push(`- \`${e.relPath}\` — ${e.width}×${e.height}${e.qualityFlags?.length ? ` · ${e.qualityFlags.join(', ')}` : ''}`);
+    }
+    if (list.length > 40) lines.push(`- _(${list.length - 40} more)_`);
+    lines.push('');
+  }
+  await fs.writeFile(out, lines.join('\n'));
+  console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
+}
+
+/**
+ * v3.8.46 — dead-key decision list. Splits the I bucket into
+ * PATH_MISMATCH_CAN_BRIDGE / MISSING_DESIGN / DEPRECATED_KEY /
+ * FEATURE_NOT_IMPLEMENTED with action per row.
+ */
+async function writeDeadKeyDecisionList(buckets) {
+  const out = path.join(ROOT, 'docs/asset-dead-key-decisions.md');
+  const groups = new Map();
+  for (const item of buckets.I_MISSING_DEAD_KEY) {
+    const t = item.decision ?? 'MISSING_DESIGN';
+    if (!groups.has(t)) groups.set(t, []);
+    groups.get(t).push(item);
+  }
+  const lines = [];
+  lines.push('# Asset Dead-Key Decisions');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('');
+  lines.push('Every registered key whose path has no file is one of:');
+  lines.push('');
+  lines.push('- **PATH_MISMATCH_CAN_BRIDGE** — file exists at a different path. Either move');
+  lines.push('  the file to the canonical path OR update the gameConfig key. **Designer is NOT needed.**');
+  lines.push('- **MISSING_DESIGN** — no candidate found. Designer to ship.');
+  lines.push('- **DEPRECATED_KEY** — legacy stem. Remove the gameConfig entry.');
+  lines.push('- **FEATURE_NOT_IMPLEMENTED** — key for a future feature, no runtime consumer.');
+  lines.push('');
+  const ORDER = ['PATH_MISMATCH_CAN_BRIDGE', 'DEPRECATED_KEY', 'FEATURE_NOT_IMPLEMENTED', 'MISSING_DESIGN'];
+  for (const t of ORDER) {
+    const list = groups.get(t) ?? [];
+    lines.push(`## ${t} (${list.length})`);
+    lines.push('');
+    for (const item of list) {
+      if (t === 'PATH_MISMATCH_CAN_BRIDGE') {
+        lines.push(`- \`${item.key}\` — expected \`${item.relPath}\` — candidate \`${item.candidate}\``);
+      } else {
+        lines.push(`- \`${item.key}\` — expected \`${item.relPath}\``);
+      }
+    }
+    lines.push('');
+  }
   await fs.writeFile(out, lines.join('\n'));
   console.log(`[contact-sheets] wrote ${path.relative(ROOT, out)}`);
 }

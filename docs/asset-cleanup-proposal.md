@@ -1,6 +1,6 @@
 # Asset Cleanup Proposal
 
-Generated 2026-05-30T18:28:06.899Z.
+Generated 2026-05-30T18:42:39.805Z.
 
 **Nothing is removed automatically.** This is a decision surface.
 Each section names assets; the human reviewer marks approval.

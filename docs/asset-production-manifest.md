@@ -1,11 +1,11 @@
 # Asset Production Manifest
 
-Generated 2026-05-30T18:28:06.896Z.
+Generated 2026-05-30T18:42:39.804Z.
 
 Every PNG receives exactly one production bucket. Sum equals
 the total scanned (excluding `_source/` which is bucket **H**).
 
-- Total entries classified: **430**
+- Total entries classified: **445**
 - Files archived in `_source/` (bucket H, listed in skipped): **24**
 
 ## A — ACTIVE_RUNTIME (explicit src/ consumer) (59)
@@ -400,6 +400,24 @@ the total scanned (excluding `_source/` which is bucket **H**).
 
 ## J — UNCLASSIFIED_BLOCKER (no ASSET_CLASS_BY_TYPE entry) (0)
 
+
+## undefined (15)
+
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
+- `undefined` — undefined×undefined
 
 ## Skipped folders (bucket H — already archived)
 
