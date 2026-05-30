@@ -1,8 +1,8 @@
 # Asset Unregistered Decision List
 
-Generated 2026-05-30T18:42:39.806Z.
+Generated 2026-05-30T18:53:35.164Z.
 
-Every unregistered PNG receives one decision subType. Total: **115**.
+Every unregistered PNG receives one decision subType. Total: **110**.
 
 ## PENDING_WIRE — register in gameConfig + wire a consumer (10)
 
@@ -17,9 +17,8 @@ Every unregistered PNG receives one decision subType. Total: **115**.
 - `assets/decor/small/plants/sprout_soil.png` — 32×24
 - `assets/obstacles/mushroom_small/mushroom_small_red.png` — 48×48
 
-## ALT_VARIANT — alternative art, do not wire unless needed (15)
+## ALT_VARIANT — alternative art, do not wire unless needed (14)
 
-- `assets/collectibles/orchid_blue_rare.png` — 48×48
 - `assets/player/farmer_jump/player_farmer_jump_07.png` — 64×96
 - `assets/player/farmer_jump/player_farmer_jump_08.png` — 64×96
 - `assets/player/farmer_jump/player_farmer_jump_09.png` — 64×96
@@ -60,9 +59,8 @@ Every unregistered PNG receives one decision subType. Total: **115**.
 ## DUPLICATE_REJECT — exact-content dupe; archive after canonical selection (0)
 
 
-## SOURCE_ONLY — high-res source / WIP batch; move to _source/ (74)
+## SOURCE_ONLY — high-res source / WIP batch; move to _source/ (70)
 
-- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/bushes/bush_large.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/bushes/bush_large_flowers.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/fence/fence_corner.png` — 1484×1060 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -86,9 +84,6 @@ Every unregistered PNG receives one decision subType. Total: **115**.
 - `assets/pickups/aura/pickup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_shield_orchid_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_star_gold_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_magnet.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_score_x2.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_shield.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -102,7 +97,11 @@ Every unregistered PNG receives one decision subType. Total: **115**.
 - `assets/structures/greenhouse/greenhouse_near.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/ui/cards/tool_shovel_card.png` — 1402×1122 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- _(34 more)_
+- `assets/effects/dust/dust_burst_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/dust/dust_burst_02.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/dust/dust_burst_03.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/effects/dust/dust_burst_04.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- _(30 more)_
 
 ## WRONG_CATEGORY — file lives in the wrong subfolder for its semantic (0)
 

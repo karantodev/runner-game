@@ -1,6 +1,6 @@
 # Asset Visual Inventory
 
-Generated 2026-05-30T18:42:39.803Z
+Generated 2026-05-30T18:53:35.142Z
 Derived from the contact-sheet generator pass.
 
 ## Active assets (USED — referenced in src/)
@@ -38,11 +38,16 @@ Derived from the contact-sheet generator pass.
 - `spiderWebOverhang` → assets/obstacles/overhangs/spider_web_overhang.png
 - `vineBarrierFull` → assets/obstacles/vines/vine_barrier_full.png
 
-### Collectibles (4)
+### Collectibles (9)
 - `lifeHeart` → assets/collectibles/life-heart.png
+- `orchidBlueRareHalo` → assets/collectibles/orchid_blue/orchid_blue_rare_halo.png
+- `orchidBlueRare` → assets/collectibles/orchid_blue_rare.png
 - `orchidGoldBig` → assets/collectibles/orchid_gold/orchid_gold_big.png
 - `orchidGoldMain` → assets/collectibles/orchid_gold/orchid_gold_main.png
 - `sprout` → assets/collectibles/sprout.png
+- `pickupMagnet` → assets/pickups/pickup_magnet.png
+- `pickupScoreX2` → assets/pickups/pickup_score_x2.png
+- `pickupShield` → assets/pickups/pickup_shield.png
 
 ### Side structures — blocks (20)
 - `grassDirtPlatformLong` → assets/structures/platforms/grass_dirt_platform_long.png
@@ -175,14 +180,12 @@ Derived from the contact-sheet generator pass.
 - `miscPotionEmerald` → assets/misc/potion_emerald.png
 - `miscShieldSign` → assets/misc/sign_wooden_shield.png
 
-## Unregistered (145)
+## Unregistered (140)
 ### BACKGROUND (2)
 - assets/background/clouds/clouds.png — 1960×403
 - assets/background/mountains/mountains-far.png — 1672×168
 
-### COLLECTIBLES (3)
-- assets/collectibles/orchid_blue/orchid_blue_rare_halo.png — 1254×1254
-- assets/collectibles/orchid_blue_rare.png — 48×48
+### COLLECTIBLES (1)
 - assets/collectibles/orchid_gold.png — 1254×1254
 
 ### DECOR (18)
@@ -241,14 +244,11 @@ Derived from the contact-sheet generator pass.
 ### OBSTACLES (1)
 - assets/obstacles/mushroom_small/mushroom_small_red.png — 48×48
 
-### PICKUPS (7)
+### PICKUPS (4)
 - assets/pickups/aura/pickup_magnet_aura.png — 1254×1254
 - assets/pickups/aura/pickup_medal_x2_gold.png — 1254×1254
 - assets/pickups/aura/pickup_shield_orchid_aura.png — 1254×1254
 - assets/pickups/aura/pickup_star_gold_aura.png — 1254×1254
-- assets/pickups/pickup_magnet.png — 1254×1254
-- assets/pickups/pickup_score_x2.png — 1254×1254
-- assets/pickups/pickup_shield.png — 1254×1254
 
 ### PLATFORMS (6)
 - assets/platforms/platform_floating.png — 1448×1086
@@ -428,31 +428,23 @@ Road tiles intentionally differ left/right for perspective; treated separately f
 - `assets/terrain/road/lane_tiles/road_lane` — left 526×2172 / right 445×2172
 - `assets/terrain/road/shoulders/road_shoulder` — left 375×2047 / right 278×2166
 
-## Missing critical (14)
-- `orchidBlueRare` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare.png`
-- `orchidBlueRareHalo` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png`
+## Missing critical (6)
 - `orchidGoldSparkle01` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png`
 - `orchidGoldSparkle02` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png`
 - `orchidGoldSparkle03` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png`
 - `orchidGoldSparkle04` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png`
 - `orchidGoldCollect05` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_05.png`
 - `orchidGoldCollect06` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_06.png`
-- `pickupMagnet` → expected at `assets/pickups/magnet/magnet.png`
-- `pickupShield` → expected at `assets/pickups/shield/shield.png`
-- `pickupScoreX2` → expected at `assets/pickups/score_x2/score_x2.png`
-- `iconComboX2` → expected at `assets/ui/icons/icon_combo_x2.png`
-- `iconComboX3` → expected at `assets/ui/icons/icon_combo_x3.png`
-- `iconComboX5` → expected at `assets/ui/icons/icon_combo_x5.png`
 
 ## Designer action list
 
 - **P0**: 1 side-pair dim mismatches need re-export
 - **P0**: 15 exact-content duplicate groups — pick one canonical path per asset, archive the rest
 - **P1**: 0 side-aware pairs missing _right.png
-- **P1**: 14 dead-key files designer needs to ship
+- **P1**: 6 dead-key files designer needs to ship
 
 ## Developer action list
 
-- wire: 285 registered keys lack a runtime consumer
+- wire: 282 registered keys lack a runtime consumer
 - classify: files in `unclassified` group need ASSET_CLASS_BY_TYPE entry
 - reject (move to _source/): files in duplicate groups beyond the canonical copy
