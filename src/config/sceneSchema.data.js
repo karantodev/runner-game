@@ -693,6 +693,54 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'mushroom_red_big',     laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 0.40, variant: 'red', yOffset: -120 },
       ],
   },
+
+  // ── v3.8.42 Phase 7b — Foreground anchor prefabs ─────────────────────────
+  // Two large, hand-composed compositions used exclusively as HERO_LAYOUT's
+  // NEAR-FOREGROUND anchors. Heavier than the previous hero-layered-* set
+  // (block + topper + support + flora at intentional scales), and offset
+  // far enough from the road centre that they frame the scene without
+  // touching the gameplay corridor. proceduralOk:false so they never land
+  // by random roll.
+
+  {
+    id: 'foreground-left-anchor',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Outer block + mushroom topper — the dominant left mass.
+      { id: 'block_outer', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 1.10, variant: 0 },
+      { id: 'mushroom_top', role: 'topper', parentId: 'block_outer', anchor: 'top', zLayer: 20,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist: 0.0, scale: 0.58, variant: 'red', yOffset: -140 },
+      // Inner brick — smaller, closer to road, reinforces perspective.
+      { id: 'brick_inner', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.78, variant: 0 },
+      // Front flora — fills the bottom-left corner.
+      { id: 'flower_front', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist:  1.0, scale: 0.50 },
+      { id: 'tuft_front', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.78, dist:  1.7, scale: 0.50 },
+    ],
+  },
+  {
+    id: 'foreground-right-anchor',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Pipe landmark + bush behind — the dominant right mass.
+      { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'green_pipe', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist: 0.0, scale: 1.08 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: -0.7, scale: 0.68 },
+      // Inner brick + fence — small, close to road.
+      { id: 'brick_inner', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  1.5, scale: 0.74, variant: 1 },
+      { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.06, dist:  1.8, scale: 0.80 },
+      { id: 'flower_front', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.48, dist:  1.2, scale: 0.34 },
+    ],
+  },
 ]);
 
 /**
@@ -741,6 +789,9 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   'fence-flower-row':                 'fence-row',
   'platform-high-cliff':              'vertical-landmark',
   'step-left-with-mushroom':          'step-feature',
+  // v3.8.42 — Phase 7b foreground anchors.
+  'foreground-left-anchor':           'hero-landmark',
+  'foreground-right-anchor':          'hero-landmark',
 });
 
 /**
@@ -766,44 +817,56 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
  *   > 150  → handed off to weighted random
  */
 /**
- * v3.8.41 — Phase 7 visual art-direction pass. The previous 14-entry
- * layout placed two heavy heros at distance 12/16 (right at the
- * player's feet), then four more heavy beats by distance 38. With the
- * road foreshortening, that read as "wall of stuff at the bottom".
+ * v3.8.42 — Phase 7b aggressive recomposition. The Phase 7 v2 layout
+ * (11 entries) still felt like dense procedural scattering. v3 cuts to
+ * the brief's "4-6 hand-composed hero clusters" target and adds a
+ * `scaleMultiplier` per entry so each depth zone has a different visual
+ * weight — driving perspective through scale, not just position.
  *
- * V2 spreads the depth rhythm into 5 explicit zones:
+ *   NEAR FOREGROUND  (20-30m)  — 1 anchor per side, scale 1.0.
+ *                                Hand-composed foreground-*-anchor
+ *                                prefabs lean against the road frame
+ *                                without crossing into the gameplay
+ *                                corridor.
+ *   MID              (60-80m)  — 1 structural per side, scale 0.75.
+ *                                Reused hero-layered-platform-qblocks +
+ *                                corner-platform-mushroom-frame, scaled
+ *                                down so they read smaller than the
+ *                                near anchors (perspective sells the
+ *                                depth).
+ *   FAR              (130-150m)— tiny silhouettes only, scale 0.40.
+ *                                Soft organic-meadow + leaf-forest-edge.
+ *   CASTLE APPROACH  (150m+)   — DELIBERATELY EMPTY. No HERO_LAYOUT
+ *                                entries, no procedural fill before
+ *                                ~200m (see DecorationSystem). The
+ *                                road→castle axis must own this band.
  *
- *   NEAR FOREGROUND  (14-24m)  — 2 large anchors, framing the road,
- *                                NOT blocking the gameplay corridor.
- *   NEAR-MID         (38-58m)  — one structural beat per side,
- *                                alternating L/R for a clear cadence.
- *   MID              (78-118m) — smaller blocks/platforms alternating,
- *                                lighter than the near beats.
- *   FAR              (140-170m)— tiny silhouettes only — soft flora
- *                                or fence rows, no heavy clutter.
- *   CASTLE APPROACH  (185m+)   — minimal density so the road→castle
- *                                axis stays dominant.
+ * Removed vs Phase 7 v2 (5 entries dropped):
+ *   - brick-corridor-segment @ 82       (left brick clutter)
+ *   - long-platform-with-mushroom @ 100 (mid mushroom repeat)
+ *   - fence-flower-row @ 118            (mid fence noise)
+ *   - fence-flower-row @ 188            (castle-approach noise)
+ *   - large-bush-garden @ 196           (castle-approach noise)
+ * Replaced (2 entries swapped to new foreground anchors):
+ *   - hero-layered-corner-brick @ 16  → foreground-left-anchor @ 20
+ *   - hero-layered-pipe-landmark @ 22 → foreground-right-anchor @ 30
+ * Repositioned + rescaled (2 entries):
+ *   - hero-layered-platform-qblocks 42 → 60 @ 0.75
+ *   - corner-platform-mushroom-frame 58 → 80 @ 0.75
  *
- * Net change: 14 entries → 11. ~20% lower beat density + clearer
- * left/right alternation + explicit "no heavy clutter near castle".
+ * Net change: 11 entries → 6. ~45% lower beat density.
  */
 export const HERO_LAYOUT = Object.freeze([
-  // NEAR FOREGROUND — two anchors that read as the corridor's front frame.
-  { distance:  16, side: -1, prefabId: 'hero-layered-corner-brick' },     // LEFT  anchor
-  { distance:  22, side:  1, prefabId: 'hero-layered-pipe-landmark' },    // RIGHT pipe landmark
-  // NEAR-MID — strong structural beat per side, alternating.
-  { distance:  42, side: -1, prefabId: 'hero-layered-platform-qblocks' }, // LEFT  qblock beat
-  { distance:  58, side:  1, prefabId: 'corner-platform-mushroom-frame' },// RIGHT platform+mushroom
-  // MID — lighter blocks/platforms; alternating; max one mushroom per side.
-  { distance:  82, side: -1, prefabId: 'brick-corridor-segment' },        // LEFT  mid brick
-  { distance: 100, side:  1, prefabId: 'long-platform-with-mushroom' },   // RIGHT mid platform
-  { distance: 118, side: -1, prefabId: 'fence-flower-row' },              // LEFT  soft mid accent
-  // FAR — tiny silhouettes only, no heavy structures.
-  { distance: 142, side:  1, prefabId: 'leaf-forest-edge' },              // RIGHT soft leaves
-  { distance: 162, side: -1, prefabId: 'organic-meadow' },                // LEFT  soft meadow
-  // CASTLE APPROACH — minimal density. One small accent on each side.
-  { distance: 188, side:  1, prefabId: 'fence-flower-row' },              // RIGHT minimal
-  { distance: 196, side: -1, prefabId: 'large-bush-garden' },             // LEFT  background bush
+  // NEAR FOREGROUND — large anchors framing the corridor opening.
+  { distance:  20, side: -1, prefabId: 'foreground-left-anchor',         scaleMultiplier: 1.00 },
+  { distance:  30, side:  1, prefabId: 'foreground-right-anchor',        scaleMultiplier: 1.00 },
+  // MID — one structural beat per side, scaled smaller for perspective.
+  { distance:  60, side: -1, prefabId: 'hero-layered-platform-qblocks',  scaleMultiplier: 0.75 },
+  { distance:  80, side:  1, prefabId: 'corner-platform-mushroom-frame', scaleMultiplier: 0.72 },
+  // FAR — tiny silhouettes only.
+  { distance: 130, side:  1, prefabId: 'leaf-forest-edge',               scaleMultiplier: 0.42 },
+  { distance: 150, side: -1, prefabId: 'organic-meadow',                 scaleMultiplier: 0.40 },
+  // CASTLE APPROACH (150m+) — deliberately empty. Road axis dominates.
 ]);
 
 /**
@@ -845,70 +908,62 @@ export const HERO_ROAD_SEQUENCE = Object.freeze([
   { offsetInCycle: 96, kind: 'reward-cluster', lane: 0, count: 4 },
 ]);
 
+/**
+ * v3.8.42 — Phase 7b aggressive trim. Previous list was 34 entries
+ * (17 per side) placing a structure every ~12 distance units, which
+ * dominated the corridor visually regardless of HERO_LAYOUT changes.
+ *
+ * Trimmed to 17 entries total (9 left, 8 right) — every-other
+ * structure dropped, no near-distance (< 70m) heavy clutter. Trees
+ * stay at varied depths as silhouette anchors. Single mid mushroom
+ * + single qblock per side max.
+ *
+ * Removed (per side, near to far):
+ *   LEFT  18 block, 31 qblock, 42 wall, 54 block, 78 qblock,
+ *         119 brick, 174 block-2nd-variant.
+ *   RIGHT 18 block, 31 qblock, 42 wall, 78 qblock, 104 fence,
+ *         157 block, 168 block-2nd-variant.
+ */
 export const MIDGROUND_SCENERY = Object.freeze([
-  // ── Left: structures pulled tight to road (lane ≈-2.18…-2.28), trees at lane ≈-3.04…-3.10 ──
-  // variant 1=cube01, 2=cube02, 3=column_tall for grass_dirt_block
+  // ── Left: trees as silhouettes, structures only at mid-far depths ──
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.08, distance: 184, scale: 1.02, variant: 0, yOffset: -12 },
   { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance: 174, scale: 1.04, variant: 1, yOffset: 0 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance: 174, scale: 0.96, variant: 2, yOffset: -50 },
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.98, distance: 163, scale: 1.02, variant: 0, yOffset: 0 },
-  { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.96, distance: 154, scale: 1.00, variant: 0, yOffset: -110 },
   { assetType: 'mushroom_red_big', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.82, distance: 143, scale: 0.98, variant: 'red', yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.10, distance: 131, scale: 0.90, variant: 0, yOffset: -10 },
-  { assetType: 'purple_brick_single', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.92, distance: 119, scale: 0.88, variant: 1, yOffset: 0 },
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance: 104, scale: 0.88, variant: 0, yOffset: 0 },
   { assetType: 'floating_platform', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.96, distance:  91, scale: 1.10, variant: 0, yOffset: -35 },
-  { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.92, distance:  78, scale: 0.92, variant: 0, yOffset: -52 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.06, distance:  65, scale: 0.84, variant: 0, yOffset: -8 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.90, distance:  54, scale: 0.90, variant: 3, yOffset: 0 },
-  { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance:  42, scale: 0.86, variant: 0, yOffset: 0 },
-  { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.92, distance:  31, scale: 0.80, variant: 0, yOffset: -52 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.88, distance:  18, scale: 0.80, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.04, distance:  12, scale: 0.70, variant: 0, yOffset: -6 },
-  // ── Right: asymmetric mix — more walls left, more cubes/pipes right ──
+  // ── Right: same trim, mirrored ──
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.96, distance: 188, scale: 1.04, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.10, distance: 178, scale: 1.00, variant: 0, yOffset: -12 },
   { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance: 168, scale: 1.02, variant: 2, yOffset: 0 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance: 168, scale: 0.94, variant: 0, yOffset: -50 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.96, distance: 157, scale: 0.92, variant: 2, yOffset: 0 },
   { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.94, distance: 145, scale: 0.96, variant: 0, yOffset: -95 },
   { assetType: 'mushroom_red_big', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.84, distance: 131, scale: 0.92, variant: 'red', yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.08, distance: 119, scale: 0.86, variant: 0, yOffset: -10 },
-  { assetType: 'fence_wood_short', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.98, distance: 104, scale: 0.90, yOffset: 0 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.90, distance:  91, scale: 0.88, variant: 1, yOffset: 0 },
-  { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance:  78, scale: 0.58, variant: 0, yOffset: -52 },
   { assetType: 'hanging_platform_vines', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance:  65, scale: 0.82, yOffset: 0 },
-  { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.06, distance:  54, scale: 0.78, variant: 0, yOffset: -8 },
-  { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.96, distance:  42, scale: 0.86, variant: 1, yOffset: 0 },
-  { assetType: 'question_block',   zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.90, distance:  31, scale: 0.52, variant: 0, yOffset: -52 },
-  { assetType: 'grass_dirt_block', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.94, distance:  18, scale: 0.74, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.04, distance:  12, scale: 0.66, variant: 0, yOffset: -6 },
 ]);
 
+/**
+ * v3.8.42 — Phase 7b foreground trim. Previous frame placed walls
+ * + qblocks + blocks at distance 3-28 right under the camera. Result:
+ * thick visual rail walking with the player. Now: trees + small
+ * shoulder flora only. Walls/blocks/qblocks removed — HERO_LAYOUT's
+ * foreground anchors at distance 20-30 carry the structural framing.
+ */
 export const FOREGROUND_FRAME_SCENERY = Object.freeze([
-  // Left frame: walls brought tight to road (lane ≈-2.22…-2.26); trees stay wide
-  { assetType: 'grass_dirt_wall',     zone: SCENE_ZONES.STRUCTURE_LEFT,  lane: -1.94, distance: 28, scale: 0.78, variant: 1, yOffset: 0 },
+  // Left frame — trees as silhouette anchors only.
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_LEFT,     lane: -3.16, distance: 20, scale: 0.84, variant: 0, yOffset: -6 },
-  { assetType: 'question_block',      zone: SCENE_ZONES.STRUCTURE_LEFT,  lane: -1.96, distance: 16, scale: 0.58, variant: 0, yOffset: -52 },
-  { assetType: 'grass_dirt_block',    zone: SCENE_ZONES.STRUCTURE_LEFT,  lane: -1.92, distance:  8, scale: 0.68, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_LEFT,     lane: -3.22, distance:  3, scale: 0.76, variant: 0, yOffset: -4 },
-  // Left shoulder — small flowers/grass between road edge and walls
+  // Left shoulder — small flowers / grass between road edge and frame.
   { assetType: 'yellow_flower_small', zone: SCENE_ZONES.SHOULDER_LEFT,   lane: -2.36, distance: 15, scale: 0.48, variant: 0 },
   { assetType: 'grass_tuft',          zone: SCENE_ZONES.SHOULDER_LEFT,   lane: -2.40, distance: 10, scale: 0.44 },
-  { assetType: 'purple_flower_single',zone: SCENE_ZONES.SHOULDER_LEFT,   lane: -2.34, distance:  6, scale: 0.40 },
-  // Right frame: brought tight to road; trees stay wide
-  { assetType: 'grass_dirt_wall',     zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.94,  distance: 28, scale: 0.70, variant: 0, yOffset: 0 },
+  // Right frame — symmetrical.
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.16,  distance: 20, scale: 0.84, variant: 0, yOffset: -6 },
-  { assetType: 'grass_dirt_block',    zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.96,  distance: 16, scale: 0.66, variant: 0, yOffset: 0 },
-  { assetType: 'grass_dirt_block',    zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92,  distance:  8, scale: 0.62, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.22,  distance:  3, scale: 0.76, variant: 0, yOffset: -4 },
-  // Right shoulder — mirrored, slightly varied
+  // Right shoulder.
   { assetType: 'grass_tuft',          zone: SCENE_ZONES.SHOULDER_RIGHT,  lane: 2.38,  distance: 13, scale: 0.46 },
   { assetType: 'yellow_flower_small', zone: SCENE_ZONES.SHOULDER_RIGHT,  lane: 2.36,  distance:  8, scale: 0.44, variant: 1 },
-  { assetType: 'purple_flower_single',zone: SCENE_ZONES.SHOULDER_RIGHT,  lane: 2.42,  distance:  5, scale: 0.38 },
-  // Small foreground accent mushrooms — kept as historical entries even
-  // though SceneryRenderer.#foregroundFrame now filters non-trees out;
-  // removing would risk breaking any tooling that walks this list.
-  { assetType: 'mushroom_red_big', zone: SCENE_ZONES.NATURE_LEFT,  lane: -2.42, distance: 6, scale: 0.78, variant: 'red',    yOffset: 0 },
-  { assetType: 'mushroom_red_big', zone: SCENE_ZONES.NATURE_RIGHT, lane:  2.46, distance: 5, scale: 0.72, variant: 'purple', yOffset: 0 },
 ]);
