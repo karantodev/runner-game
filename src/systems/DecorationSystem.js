@@ -1,6 +1,6 @@
 import { createScenery } from '../ecs/factories.js';
 import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
-import { HERO_LAYOUT, SIDE_DECORATION_PREFABS } from '../config/sceneSchema.data.js';
+import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID } from '../config/sceneSchema.data.js';
 
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
@@ -55,6 +55,11 @@ export class DecorationSystem {
     this.nextLeft = 0;
     this.nextRight = 3.6;
     this.lastChunk = { '-1': null, '1': null };
+    // v3.8.38 — Phase 4 intent tracking. Avoids consecutive prefabs of
+    // the same intent on the same side (e.g., two 'support-stack' beats
+    // in a row) so the procedural fill reads as a varied corridor
+    // instead of a repeated single composition style.
+    this.lastIntent = { '-1': null, '1': null };
   }
 
   /**
@@ -176,9 +181,20 @@ export class DecorationSystem {
   }
 
   #pickChunk(side) {
+    // v3.8.38 — Phase 4 intent variety. Up to 4 re-rolls to avoid both
+    // the same prefab id AND the same intent as the last chunk on this
+    // side. Falls back to whatever we picked if 4 attempts can't find a
+    // distinct intent (small prefab pools, edge case).
+    const key = String(side);
+    const lastId = this.lastChunk[key];
+    const lastIntent = this.lastIntent[key];
     let chunk = this.rng.choice(this.weightedChunks);
-    const last = this.lastChunk[String(side)];
-    for (let i = 0; i < 4 && chunk.id === last; i++) chunk = this.rng.choice(this.weightedChunks);
+    for (let i = 0; i < 4; i++) {
+      const intent = PREFAB_INTENT_BY_ID[chunk.id];
+      if (chunk.id !== lastId && intent !== lastIntent) break;
+      chunk = this.rng.choice(this.weightedChunks);
+    }
+    this.lastIntent[key] = PREFAB_INTENT_BY_ID[chunk.id] ?? null;
     return chunk;
   }
 

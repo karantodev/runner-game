@@ -1,4 +1,29 @@
 import { getCollectibleSpec } from '../../ecs/collectibleTypes.js';
+import { ASSET_SEMANTICS } from '../../config/assetSemantics.js';
+
+// v3.8.38 — Phase 3 composition overlay palette + helpers. One colour
+// per AssetSemantic.category so QA can read the scene at a glance.
+const COMPOSITION_COLORS = {
+  obstacle:   '#ff5050',
+  pickup:     '#ffd54a',
+  powerup:    '#5ab8ff',
+  scenery:    '#9ad17a',
+  decor:      '#9ad17a',
+  support:    '#7da66a',
+  platform:   '#a8d4ff',
+  landmark:   '#c78cff',
+  background: '#888',
+  unknown:    '#ff8030',
+};
+const COMPOSITION_SEMANTICS = ASSET_SEMANTICS;
+const COMPOSITION_FILTER_FN = (category, filter) => {
+  if (filter === 'all' || !filter) return true;
+  if (filter === 'obstacles') return category === 'obstacle';
+  if (filter === 'pickups')   return category === 'pickup' || category === 'powerup';
+  if (filter === 'decor')     return category === 'decor' || category === 'support' || category === 'scenery';
+  if (filter === 'invalid')   return false;
+  return true;
+};
 
 /**
  * In-lane gameplay items: obstacles (vine, overhang, single-lane hazards)
@@ -35,6 +60,45 @@ export class GameplayRenderer {
       if ('Hitbox' in e.components) this.#obstacleEntity(e, world.scrollOffset, world);
       else if (!e.components.CollectibleData.collected) this.#collectibleEntity(e, world);
     }
+
+    // v3.8.38 — Phase 3 composition overlay pass. Drawn after all
+    // entities so labels sit on top of the scene. Walks the same queue;
+    // honours compositionFilter URL param + ?debugComposition flag.
+    if (world.config.debug?.showComposition) {
+      this.#drawCompositionOverlay(queue, world);
+    }
+  }
+
+  #drawCompositionOverlay(queue, world) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const filter = world.config.debug?.compositionFilter ?? 'all';
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    for (const entity of queue) {
+      const sprite = entity.components.Sprite;
+      const pos = entity.components.Position;
+      const assetType = sprite.assetType ?? sprite.type;
+      const semantic = COMPOSITION_SEMANTICS[assetType];
+      const category = semantic?.category ?? 'unknown';
+      const invalid = !semantic;
+      if (filter === 'invalid' && !invalid) continue;
+      if (filter !== 'invalid' && !COMPOSITION_FILTER_FN(category, filter)) continue;
+      const proj = p.project(pos.lane, pos.distance);
+      if (!proj || proj.sy < 60 || proj.sy > p.height - 20) continue;
+      const color = invalid ? '#ff8030' : COMPOSITION_COLORS[category] ?? '#fff';
+      const role = semantic?.gameplayRole ?? '?';
+      const label = `${category.toUpperCase()} · ${role} · ${assetType}`;
+      const tw = ctx.measureText(label).width;
+      const lx = Math.round(proj.sx);
+      const ly = Math.round(proj.sy - 90 * (proj.scale || 1));
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.fillRect(lx - tw / 2 - 4, ly - 11, tw + 8, 14);
+      ctx.fillStyle = color;
+      ctx.fillText(label, lx, ly);
+    }
+    ctx.restore();
   }
 
   // ── Collectibles ────────────────────────────────────────────────────────────

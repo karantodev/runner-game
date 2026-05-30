@@ -39,6 +39,7 @@ const GAME_CONFIG = path.join(ROOT, 'src/config/gameConfig.js');
 const SCENE_SCHEMA = path.join(ROOT, 'src/config/sceneSchema.js');
 const REPORT_OUT = path.join(ROOT, 'docs/asset-audit-report.md');
 const ACTION_LIST_OUT = path.join(ROOT, 'docs/asset-semantic-action-list.md');
+const MISSING_ART_OUT = path.join(ROOT, 'docs/asset-missing-art-list.md');
 
 /**
  * Walk a directory recursively and return relative file paths from ROOT.
@@ -511,6 +512,113 @@ async function main() {
   });
   await fs.writeFile(ACTION_LIST_OUT, actionMd);
   console.log(`[audit] wrote ${path.relative(ROOT, ACTION_LIST_OUT)}`);
+
+  // v3.8.38 — Phase 4 missing-art / reject-art list. Derives the list
+  // from ASSET_SEMANTICS (what the engine claims it needs) rather than
+  // from intuition. Designer hand-off doc, not engineering reference.
+  const missingMd = buildMissingArtList({
+    semanticReport,
+    deadKeys,
+    unregClassified,
+    keys,
+  });
+  await fs.writeFile(MISSING_ART_OUT, missingMd);
+  console.log(`[audit] wrote ${path.relative(ROOT, MISSING_ART_OUT)}`);
+}
+
+/**
+ * v3.8.38 — Phase 4 missing-art / reject-art derivation. Walks the
+ * semantic registry to surface assetTypes that declare side-aware art
+ * but don't have both _left and _right keys registered; also collects
+ * the established DO-NOT-RECREATE list from deprecated + overdelivery
+ * buckets.
+ */
+function buildMissingArtList({ deadKeys, unregClassified, keys }) {
+  // For side-pair detection, look up registered gameConfig keys that
+  // include "Left" or "Right" suffix. We don't try to reverse-engineer
+  // every assetType convention; we just list semantic entries that say
+  // they need side art and surface what the registry has today.
+  const camelToSnake = (s) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase()).replace(/^_/, '');
+  const registeredKeysByLowerCamel = new Map();
+  for (const k of keys.keys()) registeredKeysByLowerCamel.set(k.toLowerCase(), k);
+  const sideAwareMissing = [];
+  for (const [assetType, s] of Object.entries(ASSET_SEMANTICS)) {
+    if (s.orientationType !== 'side-aware') continue;
+    // Build candidate camelCase root from snake_case assetType.
+    const camel = assetType.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const leftKey  = `${camel}Left`.toLowerCase();
+    const rightKey = `${camel}Right`.toLowerCase();
+    const hasLeft  = registeredKeysByLowerCamel.has(leftKey);
+    const hasRight = registeredKeysByLowerCamel.has(rightKey);
+    if (!hasLeft || !hasRight) {
+      sideAwareMissing.push({ assetType, hasLeft, hasRight });
+    }
+  }
+  const overdelivery = unregClassified.filter((u) => u.kind === 'DESIGNER_OVERDELIVERY');
+  const deprecated = deadKeys.filter((d) => d.kind === 'DEPRECATED');
+  const missingDesign = deadKeys.filter((d) => d.kind === 'ANIM_PENDING_DESIGNER');
+  const pathMismatch = deadKeys.filter((d) => d.kind === 'PATH_MISMATCH');
+
+  const lines = [];
+  lines.push('# Asset Missing-Art / Reject-Art List');
+  lines.push('');
+  lines.push(`Generated ${new Date().toISOString()}.`);
+  lines.push('Derived from `ASSET_SEMANTICS` + audit buckets. Designer hand-off doc.');
+  lines.push('');
+
+  lines.push(`## ✅ A — NO NEED / DUPLICATE / REJECT (${overdelivery.length + deprecated.length})`);
+  lines.push('Don\'t draw or re-export these. Move new arrivals at the same path to `_source/`.');
+  lines.push('');
+  if (overdelivery.length) {
+    lines.push(`### Overdelivery — STOP LIST (${overdelivery.length})`);
+    for (const u of overdelivery.slice(0, 30)) lines.push(`- ${u.path}`);
+    if (overdelivery.length > 30) lines.push(`- _(${overdelivery.length - 30} more — see asset-audit-report.md)_`);
+    lines.push('');
+  }
+  if (deprecated.length) {
+    lines.push(`### Deprecated keys (${deprecated.length})`);
+    for (const d of deprecated) lines.push(`- \`${d.key}\` → \`${d.path}\``);
+    lines.push('');
+  }
+
+  lines.push(`## 🟡 B — MISSING CRITICAL (${sideAwareMissing.length + missingDesign.length + pathMismatch.length})`);
+  lines.push('Engine declares these are needed; either no file ships, or the side-aware');
+  lines.push('pair is incomplete. Priority order: side-pair gaps first, then dead keys.');
+  lines.push('');
+  if (sideAwareMissing.length) {
+    lines.push(`### Missing side-aware pairs (${sideAwareMissing.length})`);
+    lines.push('Each entry below declares `orientationType: \'side-aware\'` in `assetSemantics.js`.');
+    lines.push('Engine needs BOTH `<key>Left` and `<key>Right` registered + on disk.');
+    lines.push('');
+    for (const s of sideAwareMissing) {
+      const need = [!s.hasLeft && 'Left', !s.hasRight && 'Right'].filter(Boolean).join(' + ');
+      lines.push(`- \`${s.assetType}\` — missing: **${need}**`);
+    }
+    lines.push('');
+  }
+  if (missingDesign.length) {
+    lines.push(`### Waiting on designer (${missingDesign.length})`);
+    for (const d of missingDesign) lines.push(`- \`${d.key}\` → expected at \`${d.path}\``);
+    lines.push('');
+  }
+  if (pathMismatch.length) {
+    lines.push(`### Engine path migration needed (${pathMismatch.length})`);
+    for (const d of pathMismatch) lines.push(`- \`${d.key}\` → \`${d.path}\``);
+    lines.push('');
+  }
+
+  // Low-priority optional bucket — files designer over-shipped but
+  // that COULD be alt-style accents if engine ever uses them.
+  const altVariant = unregClassified.filter((u) => u.kind === 'ALT_VARIANT');
+  lines.push(`## 🟢 C — LOW PRIORITY OPTIONAL (${altVariant.length})`);
+  lines.push('Alt-style variants on disk without an engine consumer. Could enrich variety');
+  lines.push('in a future composition-template pass; not blocking gameplay today.');
+  lines.push('');
+  for (const u of altVariant.slice(0, 15)) lines.push(`- ${u.path}`);
+  if (altVariant.length > 15) lines.push(`- _(${altVariant.length - 15} more)_`);
+  lines.push('');
+
+  return lines.join('\n');
 }
 
 /**

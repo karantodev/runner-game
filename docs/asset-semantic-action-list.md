@@ -1,6 +1,6 @@
 # Asset Semantic Action List
 
-Generated 2026-05-29T23:21:03.074Z.
+Generated 2026-05-29T23:31:35.138Z.
 Phase 1 of the World Asset Semantics + Placement Rules task.
 
 Buckets are *decision surfaces*, not auto-deletes — they tell the team

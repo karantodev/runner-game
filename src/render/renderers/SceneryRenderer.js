@@ -63,6 +63,35 @@ function remapLaneForBand(lane, band) {
 }
 import { FOREGROUND_FRAME_SCENERY, MIDGROUND_SCENERY } from '../../config/sceneSchema.data.js';
 import { getSceneryDraw, isSideAwareSceneryType } from './scenery/sceneryDispatch.js';
+import { ASSET_SEMANTICS } from '../../config/assetSemantics.js';
+
+// v3.8.38 — Phase 3 composition overlay palette. One colour per
+// AssetSemantic.category so QA can read the scene at a glance.
+const COMPOSITION_COLORS = {
+  obstacle:   '#ff5050',
+  pickup:     '#ffd54a',
+  powerup:    '#5ab8ff',
+  scenery:    '#9ad17a',
+  decor:      '#9ad17a',
+  support:    '#7da66a',
+  platform:   '#a8d4ff',
+  landmark:   '#c78cff',
+  background: '#888',
+  unknown:    '#ff8030',
+};
+
+function categoryFor(assetType) {
+  return ASSET_SEMANTICS[assetType]?.category ?? 'unknown';
+}
+
+function compositionFilterAllows(category, filter) {
+  if (filter === 'all' || !filter) return true;
+  if (filter === 'obstacles') return category === 'obstacle';
+  if (filter === 'pickups')   return category === 'pickup' || category === 'powerup';
+  if (filter === 'decor')     return category === 'decor' || category === 'support' || category === 'scenery';
+  if (filter === 'invalid')   return false; // handled per-entity
+  return true;
+}
 
 /**
  * All non-gameplay world geometry: the static midground/foreground prefab
@@ -88,6 +117,10 @@ export class SceneryRenderer {
     // v3.8.16 — pull the debug flag once per frame instead of reading
     // it inside #drawSceneryType (called for every scenery entity).
     this._showSideLabels = !!world.config.debug?.showSides;
+    // v3.8.38 — keep a world ref for the composition overlay so the
+    // per-entity dispatch doesn't have to thread world through every
+    // private method.
+    this._world = world;
     // v3.8.17 — when the side-matrix debug overlay is on, skip the
     // dynamic scenery rendering entirely and draw the test grid
     // instead. Sky / mountains / road / castle still render in their
@@ -365,6 +398,43 @@ export class SceneryRenderer {
     if (this._showSideLabels && isSideAwareSceneryType(assetType)) {
       this.#drawSideLabel(assetType, x, y, scale, side, usedSideVariant, usedFallback);
     }
+    // v3.8.38 — Phase 3 composition overlay. Independent of ?debugSides.
+    if (this._world?.config.debug?.showComposition) {
+      this.#drawCompositionLabel(assetType, x, y, scale, side, usedSideVariant);
+    }
+  }
+
+  /**
+   * v3.8.38 — semantic info badge for a scenery entity.
+   * Shows colour-coded category + assetType + zone + side + invalid
+   * marker. Filter via compositionFilter URL param to scope to a single
+   * category (obstacles / pickups / decor / invalid).
+   */
+  #drawCompositionLabel(assetType, x, y, scale, side, usedSideVariant) {
+    const semantic = ASSET_SEMANTICS[assetType];
+    const category = semantic?.category ?? 'unknown';
+    const filter = this._world?.config.debug?.compositionFilter ?? 'all';
+    const zone = side === -1 ? 'side-left' : 'side-right';
+    const zoneOk = !semantic || semantic.placementZones.includes(zone);
+    const invalid = !semantic || !zoneOk;
+    // Filter early — 'invalid' filter only shows entities that fail rules.
+    if (filter === 'invalid' && !invalid) return;
+    if (filter !== 'invalid' && !compositionFilterAllows(category, filter)) return;
+    const color = invalid ? COMPOSITION_COLORS.unknown : COMPOSITION_COLORS[category] ?? '#fff';
+    const ctx = this.ctx;
+    const labelY = Math.round(y - 152 * scale);
+    const label = invalid
+      ? `${category.toUpperCase()} · ${assetType} · ${zone} · INVALID`
+      : `${category.toUpperCase()} · ${assetType} · ${zone}${semantic.orientationType === 'side-aware' ? (usedSideVariant ? ' · sideVar' : ' · fallback') : ''}`;
+    ctx.save();
+    ctx.font = '10px monospace';
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(Math.round(x - tw / 2 - 4), labelY - 11, tw + 8, 14);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, Math.round(x), labelY);
+    ctx.restore();
   }
 
   /** v3.8.16 — warn-once on missing side-variant. */
