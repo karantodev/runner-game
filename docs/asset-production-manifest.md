@@ -1,14 +1,14 @@
 # Asset Production Manifest
 
-Generated 2026-05-30T18:42:39.804Z.
+Generated 2026-05-30T18:53:35.145Z.
 
 Every PNG receives exactly one production bucket. Sum equals
 the total scanned (excluding `_source/` which is bucket **H**).
 
-- Total entries classified: **445**
+- Total entries classified: **437**
 - Files archived in `_source/` (bucket H, listed in skipped): **24**
 
-## A — ACTIVE_RUNTIME (explicit src/ consumer) (59)
+## A — ACTIVE_RUNTIME (explicit src/ consumer) (60)
 
 - `assets/background/castle-distant.png` — 772×923
 - `assets/background/clouds/cloud-01.png` — 427×283
@@ -35,6 +35,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/collectibles/flower-purple-cluster.png` — 319×332
 - `assets/collectibles/flower-yellow-small.png` — 193×206
 - `assets/collectibles/life-heart.png` — 64×64
+- `assets/collectibles/orchid_blue_rare.png` — 48×48
 - `assets/collectibles/sprout.png` — 32×40
 - `assets/environment/cloud-large.png` — 431×287
 - `assets/environment/dry-grass.png` — 128×128
@@ -156,10 +157,9 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/ui/tools/tool_shovel_full.png` — 64×80
 - `assets/ui/tools/tool_shovel_handle.png` — 48×64
 
-## D — UNREGISTERED_PENDING_WIRE (58)
+## D — UNREGISTERED_PENDING_WIRE (54)
 
 - `assets/background/mountains/mountains-far.png` — 1672×168
-- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/bushes/bush_large.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/bushes/bush_large_flowers.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/fence/fence_corner.png` — 1484×1060 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -198,9 +198,6 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/pickups/aura/pickup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_shield_orchid_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_star_gold_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_magnet.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_score_x2.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/pickups/pickup_shield.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/02_stilnyy_pikselnyy_personazh_v_dvizhenii.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/player/farmer_remaining_batch/03_fermer_v_pikselnom_stile.png` — 1024×1536 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -217,7 +214,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/ui/hud/hud_panel_long.png` — 2172×724 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/ui/hud/hud_panel_vines.png` — 2172×724 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 
-## E — DESIGNER_FIX_REQUIRED (128)
+## E — DESIGNER_FIX_REQUIRED (132)
 
 - `assets/background/castle_far_01.png` — 1254×1254 · NO_TRANSPARENCY
 - `assets/background/cloud_large_01.png` — 1774×887 · NO_TRANSPARENCY
@@ -235,6 +232,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/collectibles/gold/gold_flower_glow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/gold/gold_flower_glow_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/gold/gold_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_big.png` — 1035×936 · OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -278,8 +276,7 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/effects/sparkle/sparkle_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/sparkle/sparkle_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/speed_line/speed_line.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/environment/fence-wood-short.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- _(68 more)_
+- _(72 more)_
 
 ## F — DUPLICATE_REJECT (non-canonical SHA copies) (34)
 
@@ -318,9 +315,8 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/ui/panels/panel_long_blue.png` — 1964×516 · OVERSIZED_CANVAS
 - `assets/ui/panels/score_panel_bg.png` — 1964×516 · OVERSIZED_CANVAS
 
-## G — OVERDELIVERY_REJECT (above brief count) (57)
+## G — OVERDELIVERY_REJECT (above brief count) (56)
 
-- `assets/collectibles/orchid_blue_rare.png` — 48×48
 - `assets/collectibles/orchid_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_burst_01.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/dust/dust_burst_02.png` — 1448×1086 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -381,22 +377,14 @@ the total scanned (excluding `_source/` which is bucket **H**).
 ## H — ARCHIVE_SOURCE_ONLY (`_source/`) (0)
 
 
-## I — MISSING_DEAD_KEY (registered key has no file) (14)
+## I — MISSING_DEAD_KEY (registered key has no file) (6)
 
-- `orchidBlueRare` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare.png`
-- `orchidBlueRareHalo` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png`
 - `orchidGoldSparkle01` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png`
 - `orchidGoldSparkle02` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png`
 - `orchidGoldSparkle03` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png`
 - `orchidGoldSparkle04` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png`
 - `orchidGoldCollect05` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_05.png`
 - `orchidGoldCollect06` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_06.png`
-- `pickupMagnet` → expected at `assets/pickups/magnet/magnet.png`
-- `pickupShield` → expected at `assets/pickups/shield/shield.png`
-- `pickupScoreX2` → expected at `assets/pickups/score_x2/score_x2.png`
-- `iconComboX2` → expected at `assets/ui/icons/icon_combo_x2.png`
-- `iconComboX3` → expected at `assets/ui/icons/icon_combo_x3.png`
-- `iconComboX5` → expected at `assets/ui/icons/icon_combo_x5.png`
 
 ## J — UNCLASSIFIED_BLOCKER (no ASSET_CLASS_BY_TYPE entry) (0)
 

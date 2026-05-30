@@ -1,6 +1,6 @@
 # Asset Dead-Key Decisions
 
-Generated 2026-05-30T18:42:39.808Z.
+Generated 2026-05-30T18:53:35.165Z.
 
 Every registered key whose path has no file is one of:
 
@@ -10,19 +10,11 @@ Every registered key whose path has no file is one of:
 - **DEPRECATED_KEY** — legacy stem. Remove the gameConfig entry.
 - **FEATURE_NOT_IMPLEMENTED** — key for a future feature, no runtime consumer.
 
-## PATH_MISMATCH_CAN_BRIDGE (5)
+## PATH_MISMATCH_CAN_BRIDGE (0)
 
-- `orchidBlueRare` — expected `assets/collectibles/orchid_blue_rare/orchid_blue_rare.png` — candidate `assets/collectibles/orchid_blue_rare.png`
-- `orchidBlueRareHalo` — expected `assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png` — candidate `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png`
-- `pickupMagnet` — expected `assets/pickups/magnet/magnet.png` — candidate `assets/pickups/pickup_magnet.png`
-- `pickupShield` — expected `assets/pickups/shield/shield.png` — candidate `assets/pickups/pickup_shield.png`
-- `pickupScoreX2` — expected `assets/pickups/score_x2/score_x2.png` — candidate `assets/pickups/pickup_score_x2.png`
 
-## DEPRECATED_KEY (3)
+## DEPRECATED_KEY (0)
 
-- `iconComboX2` — expected `assets/ui/icons/icon_combo_x2.png`
-- `iconComboX3` — expected `assets/ui/icons/icon_combo_x3.png`
-- `iconComboX5` — expected `assets/ui/icons/icon_combo_x5.png`
 
 ## FEATURE_NOT_IMPLEMENTED (0)
 

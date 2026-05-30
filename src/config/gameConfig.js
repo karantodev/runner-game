@@ -485,8 +485,13 @@ export const GAME_CONFIG = Object.freeze({
     orchidGoldStar:      './assets/collectibles/gold/gold_star_01.png',
     // v3.1: rare blue orchid — high-value pickup (~25 base score). Designer
     // delivers a single high-detail PNG; renderer auto-scales by depth.
-    orchidBlueRare:      './assets/collectibles/orchid_blue_rare/orchid_blue_rare.png',
-    orchidBlueRareHalo:  './assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png',
+    // v3.8.47 — Phase 7f engine bridge. Previous paths expected nested
+    // `orchid_blue_rare/` folder; designer shipped the files flat under
+    // `collectibles/` (rare top-level) and beside the orchid_blue
+    // sequence (halo). Pointing the keys at the on-disk locations is
+    // a one-line fix vs asking designer to relocate two files.
+    orchidBlueRare:      './assets/collectibles/orchid_blue_rare.png',
+    orchidBlueRareHalo:  './assets/collectibles/orchid_blue/orchid_blue_rare_halo.png',
     orchidGoldSparkle01: './assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png',
     orchidGoldSparkle02: './assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png',
     orchidGoldSparkle03: './assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png',
@@ -629,9 +634,14 @@ export const GAME_CONFIG = Object.freeze({
     goldSparkSingle:           './assets/effects/gold/gold_spark_01.png',
 
     // ── Pickup sprites — new v3.1 power-ups ──────────────────────────────
-    pickupMagnet:     './assets/pickups/magnet/magnet.png',
-    pickupShield:     './assets/pickups/shield/shield.png',
-    pickupScoreX2:    './assets/pickups/score_x2/score_x2.png',
+    // v3.8.47 — Phase 7f engine bridge. Designer shipped the three
+    // power-up icons as `assets/pickups/pickup_<feature>.png` (flat).
+    // The previous nested-folder paths produced PATH_MISMATCH dead
+    // keys. Updating the keys is safer than moving the files (no
+    // directory churn, no risk to other tooling).
+    pickupMagnet:     './assets/pickups/pickup_magnet.png',
+    pickupShield:     './assets/pickups/pickup_shield.png',
+    pickupScoreX2:    './assets/pickups/pickup_score_x2.png',
     // v3.6 designer-delivered misc props re-purposed as power-up icons /
     // bonus decor. Renderers consult the canonical pickupX key first and
     // fall back to these when the v3 sheets aren't shipped.
@@ -653,9 +663,10 @@ export const GAME_CONFIG = Object.freeze({
     hudPanelLong:       './assets/ui/panels/hud_panel_long.png',
     panelGameOver:      './assets/ui/panels/panel_game_over.png',
     iconOrchidCurrency: './assets/ui/icons/icon_orchid_currency.png',
-    iconComboX2:        './assets/ui/icons/icon_combo_x2.png',
-    iconComboX3:        './assets/ui/icons/icon_combo_x3.png',
-    iconComboX5:        './assets/ui/icons/icon_combo_x5.png',
+    // v3.8.47 — Phase 7f. Removed three iconComboX2/X3/X5 keys: the
+    // combo HUD migrated to a procedural badge in EffectsRenderer (the
+    // ×N popup above the player) v3.8.25, leaving these icon PNGs
+    // dead. No src/ consumer remained — audit flagged them DEPRECATED.
     buttonRetry:        './assets/ui/buttons/button_retry.png',
     buttonMenuBack:     './assets/ui/buttons/button_menu_back.png',
     // v3.8 designer delivery — HUD pixel icons, multiplier banners,

@@ -1,15 +1,15 @@
 # Asset Cleanup Proposal
 
-Generated 2026-05-30T18:42:39.805Z.
+Generated 2026-05-30T18:53:35.147Z.
 
 **Nothing is removed automatically.** This is a decision surface.
 Each section names assets; the human reviewer marks approval.
 
 ## Safe to keep (no action)
 
-Buckets A + B + C. 59 explicit + 30 dynamic + 50 intentional-unused = 139 files. See production manifest.
+Buckets A + B + C. 60 explicit + 30 dynamic + 50 intentional-unused = 140 files. See production manifest.
 
-## Safe to archive after approval (bucket F + G, 91 files)
+## Safe to archive after approval (bucket F + G, 90 files)
 
 Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 
@@ -46,8 +46,7 @@ Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 - `assets/powerups/star_gold_01.png` — same SHA as a canonical sibling
 - _(4 more)_
 
-### Overdelivery (57)
-- `assets/collectibles/orchid_blue_rare.png`
+### Overdelivery (56)
 - `assets/collectibles/orchid_gold.png`
 - `assets/effects/dust/dust_burst_01.png`
 - `assets/effects/dust/dust_burst_02.png`
@@ -77,9 +76,10 @@ Move to `assets/_source/rejected_YYYY_MM_DD/` after sign-off.
 - `assets/player/farmer_run/player_farmer_run_09.png`
 - `assets/player/farmer_run/player_farmer_run_10.png`
 - `assets/player/farmer_run/player_farmer_run_11.png`
-- _(27 more)_
+- `assets/player/farmer_run/player_farmer_run_12.png`
+- _(26 more)_
 
-## Needs designer re-export (bucket E, 128)
+## Needs designer re-export (bucket E, 132)
 
 Active or registered files with quality issues: oversized canvas, no alpha channel, or side-pair dimension mismatch.
 
@@ -99,6 +99,7 @@ Active or registered files with quality issues: oversized canvas, no alpha chann
 - `assets/collectibles/gold/gold_flower_glow_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/gold/gold_flower_glow_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/gold/gold_star_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
+- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_big.png` — 1035×936 · OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/collectibles/orchid_gold/orchid_gold_collect_02.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -122,15 +123,13 @@ Active or registered files with quality issues: oversized canvas, no alpha chann
 - `assets/decor_small/grass/grass_tuft_large.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor_small/grass/grass_tuft_small.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor_small/plants/sprout_soil.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/effects/collect_burst/collect_burst_01.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- _(88 more)_
+- _(92 more)_
 
-## Needs developer wiring (bucket D, 58)
+## Needs developer wiring (bucket D, 54)
 
 Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 
 - `assets/background/mountains/mountains-far.png`
-- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png`
 - `assets/decor/large/bushes/bush_large.png`
 - `assets/decor/large/bushes/bush_large_flowers.png`
 - `assets/decor/large/fence/fence_corner.png`
@@ -169,26 +168,19 @@ Files on disk with no `gameConfig.assets` key. Add a key OR move to `_source/`.
 - `assets/pickups/aura/pickup_medal_x2_gold.png`
 - `assets/pickups/aura/pickup_shield_orchid_aura.png`
 - `assets/pickups/aura/pickup_star_gold_aura.png`
-- _(18 more)_
+- `assets/player/farmer_remaining_batch/01_sadovyy_truzhenik_v_piksel_arte.png`
+- _(14 more)_
 
-## Needs designer to ship (bucket I, 14)
+## Needs designer to ship (bucket I, 6)
 
 Keys registered without a file. Either ship the file or remove the key.
 
-- `orchidBlueRare` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare.png`
-- `orchidBlueRareHalo` → expected at `assets/collectibles/orchid_blue_rare/orchid_blue_rare_halo.png`
 - `orchidGoldSparkle01` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png`
 - `orchidGoldSparkle02` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png`
 - `orchidGoldSparkle03` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png`
 - `orchidGoldSparkle04` → expected at `assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png`
 - `orchidGoldCollect05` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_05.png`
 - `orchidGoldCollect06` → expected at `assets/collectibles/orchid_gold/orchid_gold_collect_06.png`
-- `pickupMagnet` → expected at `assets/pickups/magnet/magnet.png`
-- `pickupShield` → expected at `assets/pickups/shield/shield.png`
-- `pickupScoreX2` → expected at `assets/pickups/score_x2/score_x2.png`
-- `iconComboX2` → expected at `assets/ui/icons/icon_combo_x2.png`
-- `iconComboX3` → expected at `assets/ui/icons/icon_combo_x3.png`
-- `iconComboX5` → expected at `assets/ui/icons/icon_combo_x5.png`
 
 ## Needs semantic classification (bucket J, 0)
 
