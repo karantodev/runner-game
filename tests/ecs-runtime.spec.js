@@ -154,6 +154,24 @@ for (const seed of [1, 42, 99, 123, 777]) {
   });
 }
 
+// v3.8.40 — Phase 6 strict + composition multi-seed sweep. Each seed
+// runs with strict placement + composition debug enabled; the run must
+// finish with both violation counters at zero. Catches any seed-only
+// regression where strict mode would drop a hero/cycle item.
+for (const seed of [1, 42, 99, 123, 777]) {
+  test(`strict composition — seed=${seed} runs clean under ?enforcePlacement=1&debugComposition=1`, async ({ page }) => {
+    test.setTimeout(45_000);
+    await page.goto(`/dev.html?debug=1&seed=${seed}&enforcePlacement=1&debugComposition=1`);
+    await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+    await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
+    await page.waitForTimeout(1200);
+    const state = await page.evaluate(() => window.__ORCHID_DEBUG__.getState());
+    expect(['playing', 'starting'], `world state @ seed=${seed}`).toContain(state.worldState);
+    expect(state.placementViolations, `placement violations @ seed=${seed}`).toBe(0);
+    expect(state.compositionViolations, `composition violations @ seed=${seed}`).toBe(0);
+  });
+}
+
 test('strict enforcement — ?enforcePlacement=1 drops violations and finishes the run', async ({ page }) => {
   // v3.8.39 — sanity test for strict mode. With enforcement on, both
   // SpawnSystem and DecorationSystem skip violating spawns instead of

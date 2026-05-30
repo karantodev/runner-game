@@ -1,6 +1,6 @@
 # Asset Missing-Art / Reject-Art List
 
-Generated 2026-05-30T04:13:04.294Z.
+Generated 2026-05-30T04:44:08.540Z.
 Derived from `ASSET_SEMANTICS` + audit buckets. Designer hand-off doc.
 
 ## ✅ A — NO NEED / DUPLICATE / REJECT (23)
@@ -67,47 +67,6 @@ Engine needs BOTH `<key>Left` and `<key>Right` registered + on disk.
 - `pickupShield` → `assets/pickups/shield/shield.png`
 - `pickupScoreX2` → `assets/pickups/score_x2/score_x2.png`
 
-## 🟡 D — NEEDS PREFAB SLOT (33) / NEEDS DESIGNER FIX (0)
-Phase 5 introduced explicit `role` / `parentId` / `anchor` slots in
-SIDE_DECORATION_PREFABS. The following prefabs are still loose item arrays —
-they spawn fine in warn mode but won't survive strict mode if a future
-change makes their support graph fail validation. Annotate progressively.
-
-### Prefabs needing slot annotation (33)
-- `cliff-flower-meadow`
-- `grass-wall-mushroom`
-- `pipe-vine-garden`
-- `blockstack-platform`
-- `brick-corridor-segment`
-- `qblock-floating-cluster`
-- `wall-and-mushroom-grove`
-- `pipe-with-flowers`
-- `pipe-mushroom-platform`
-- `dense-platform-trio`
-- `fence-bush-corner`
-- `long-platform-with-mushroom`
-- `long-platform-question-stack`
-- `platform-pipe-flowers`
-- `wall-stack-near`
-- `corner-platform-mushroom-frame`
-- `platform-qblock-stack`
-- `pipe-stairs-flower-bed`
-- `tall-block-stack-vertical`
-- `fence-flower-row`
-- `platform-high-cliff`
-- `organic-meadow`
-- `leaf-forest-edge`
-- `blue-mushroom-grove`
-- `large-bush-garden`
-- `hanging-platform-garden`
-- `big-bush-wall`
-- `block-mushroom-on-top`
-- `block-flower-on-top`
-- `block-grass-on-top`
-- `block-sprout-on-top`
-- `block-flower-builtin`
-- `step-left-with-mushroom`
-
 ## 🟢 E — LOW PRIORITY OPTIONAL (35)
 Alt-style variants on disk without an engine consumer. Could enrich variety
 in a future composition-template pass; not blocking gameplay today.
@@ -128,3 +87,75 @@ in a future composition-template pass; not blocking gameplay today.
 - assets/effects/trails/light_sweep_01.png
 - assets/effects/trails/light_trail_motion_01.png
 - _(20 more)_
+
+## 📦 F — READY TO DELETE / ARCHIVE (20)
+Same files as bucket A; called out separately so an archival sweep has
+a single target list. Move to `assets/_source/rejected_*` rather than
+deleting outright — the designer may want to revisit.
+
+## ✅ G — ACTIVE USED IN GAME (25)
+AssetTypes referenced by at least one prefab / HERO_LAYOUT / scenery
+frame today. Deletion-protected for the foreseeable future.
+
+- `bush_large`
+- `bush_large_with_purple_flowers`
+- `bush_with_purple_flowers`
+- `dry_grass_obstacle`
+- `fence_wood_short`
+- `floating_platform`
+- `grass_dirt_block`
+- `grass_dirt_platform_long`
+- `grass_dirt_step_left`
+- `grass_dirt_wall`
+- `grass_tuft`
+- `grass_tuft_large`
+- `grass_tuft_small`
+- `green_pipe`
+- `hanging_platform_vines`
+- `leaf_clump_round`
+- `leaf_clump_small`
+- `mushroom_blue_big`
+- `mushroom_red_big`
+- `purple_brick_single`
+- `purple_flower_single`
+- `question_block`
+- `sprout_soil`
+- `tree_round`
+- `yellow_flower_small`
+
+### Registered but not used by any prefab (32)
+In `assetSemantics.js` but not referenced by current scene/prefab data.
+Either wire into a prefab or remove the semantic entry.
+
+- `castle_far`
+- `cloud_large`
+- `forest_far`
+- `golden_flower`
+- `grass_dirt_step`
+- `greenhouse_far`
+- `heart_full`
+- `low_branch_overhang`
+- `meadow_far`
+- `mountains_far`
+- `mountains_mid`
+- `planter_pot`
+- `player_farmer`
+- `power_double_pickup`
+- `power_magnet_pickup`
+- `power_mushroom_pickup`
+- `power_shield_pickup`
+- `purple_brick_platform_3`
+- `rare_orchid_pickup`
+- `road_lane_tile`
+- `road_perspective_lines`
+- `sky_gradient`
+- `small_center_mushroom`
+- `speed_tree_pickup`
+- `spider_web_overhang`
+- `spiky_bush_obstacle`
+- `stone_brick_single`
+- `stone_obstacle`
+- `stone_wall_low`
+- `stone_wall_stairs`
+- `vine_barrier`
+- `wheat_tuft`

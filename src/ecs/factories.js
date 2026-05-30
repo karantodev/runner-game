@@ -135,10 +135,18 @@ export function createScenery(registry, opts) {
     // badges per entity.
     role = null,
     prefabId = null,
+    // v3.8.40 — Phase 6 itemId + parentItemId + zLayer for the parent-
+    // child line overlay and render-order tie-break.
+    itemId = null,
+    parentItemId = null,
+    zLayer = 0,
   } = opts;
   const sprite = Sprite(type, assetType, variant, scale, yOffset);
   sprite.role = role;
   sprite.prefabId = prefabId ?? chunkId;
+  sprite.itemId = itemId;
+  sprite.parentItemId = parentItemId;
+  sprite.zLayer = zLayer;
   return registry.create()
     .add('Position', Position(lane, distance))
     .add('Sprite', sprite)
