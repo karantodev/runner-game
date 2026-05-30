@@ -110,6 +110,16 @@ const compositionFilter = params.get('compositionFilter');
 if (compositionFilter && ['all', 'obstacles', 'pickups', 'decor', 'invalid'].includes(compositionFilter)) {
   Object.defineProperty(GAME_CONFIG.debug, 'compositionFilter', { value: compositionFilter, writable: false, configurable: true });
 }
+// v3.8.51 — `?showCompositionGroups=1` adds dashed bounding boxes
+// around each prefab group, labelled with prefab id + depth band +
+// side + entity density. Only takes effect when showComposition is
+// also on.
+if (params.get('showCompositionGroups') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'showCompositionGroups', { value: true, writable: false, configurable: true });
+  // Convenience: implicitly turn on the semantic badge when group
+  // boxes are requested — they're useless without it.
+  Object.defineProperty(GAME_CONFIG.debug, 'showComposition', { value: true, writable: false, configurable: true });
+}
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
 // verify scale stays constant across states.

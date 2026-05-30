@@ -1,6 +1,6 @@
 # Asset Visual Inventory
 
-Generated 2026-05-30T20:57:52.079Z
+Generated 2026-05-30T22:08:41.863Z
 Derived from the contact-sheet generator pass.
 
 ## Active assets (USED — referenced in src/)

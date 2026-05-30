@@ -741,6 +741,128 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.48, dist:  1.2, scale: 0.34 },
     ],
   },
+  // ── v3.8.51 Phase 9 — Garden Corridor Reference clusters ───────────────
+  // Five hand-composed clusters with strong signature elements (purple
+  // brick, green pipe, question block, mushroom, stone step). These are
+  // the primary clusters wired through HERO_LAYOUT. proceduralOk:false so
+  // they only ever appear at hand-composed depths — never as procedural
+  // fill mistakes.
+  {
+    id: 'garden_foreground_left_platform_cluster',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Foundation block — the visual platform the cluster sits on.
+      { id: 'platform_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: -2.00, dist: 0.0, scale: 1.06, variant: 0 },
+      // Mushroom topper — child of base.
+      { id: 'mushroom_top', role: 'topper', parentId: 'platform_base', anchor: 'top', zLayer: 12,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: -2.00, dist: 0.0, scale: 0.54, variant: 'red', yOffset: -64 },
+      // Signature purple brick — visible accent behind the platform.
+      { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -2.22, dist: -1.4, scale: 0.78, variant: 0 },
+      // Fence — frames the platform front.
+      { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: -1.86, dist:  1.6, scale: 0.80 },
+      // Shoulder flora.
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: -1.62, dist: -0.8, scale: 0.46 },
+      { id: 'tuft_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: -1.55, dist:  1.1, scale: 0.42 },
+    ],
+  },
+  {
+    id: 'garden_foreground_right_pipe_cluster',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Pipe — the signature right-side landmark. Anchored to its own
+      // grass-dirt base so it doesn't read as floating.
+      { id: 'pipe_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: 0.2, scale: 0.92, variant: 0 },
+      // Pipe sits adjacent to the grass_dirt_block at the same dist —
+      // no graph parenting (green_pipe.allowedParents = ['ground'] in
+      // the semantic registry; visual layering achieved through lane
+      // proximity + yOffset for a slight lift above the soil).
+      { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 12,
+        assetType: 'green_pipe', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: 0.0, scale: 1.04, yOffset: -10 },
+      // Background bush mass for visual weight.
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: -1.2, scale: 0.72 },
+      // Signature small purple brick behind pipe.
+      { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist:  1.6, scale: 0.72, variant: 1 },
+      // Shoulder flora.
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist: -0.6, scale: 0.36 },
+      { id: 'tuft_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.64, dist:  1.0, scale: 0.42 },
+    ],
+  },
+  {
+    id: 'garden_mid_left_purple_wall_cluster',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Two-brick wall row — clear "wall" silhouette in the mid band.
+      { id: 'brick_a', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -1.92, dist:  0.0, scale: 0.94, variant: 0 },
+      { id: 'brick_b', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -1.92, dist: -1.2, scale: 0.94, variant: 1 },
+      // Question block — visually floats ABOVE the brick row via
+      // yOffset. No graph parenting (question_block.allowedParents =
+      // ['ground'] in the semantic registry; QBLOCK_FLOATING validator
+      // accepts proximity to a structural sibling instead).
+      { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: -1.94, dist: -0.5, scale: 0.78, yOffset: -52 },
+      // Tree behind for nature-band depth.
+      { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: -2.94, dist:  0.6, scale: 0.78, yOffset: -8 },
+      // Single flower on shoulder.
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: -1.56, dist:  0.7, scale: 0.34 },
+    ],
+  },
+  {
+    id: 'garden_mid_right_stone_step_cluster',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Stone step — signature side structure.
+      { id: 'step', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_step', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 0.96 },
+      // Foundation block behind the step — visual support / volume.
+      { id: 'block_support', role: 'support', anchor: 'ground', zLayer: 9,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.92, variant: 1 },
+      // Mushroom topper on the support block.
+      { id: 'mushroom_top', role: 'topper', parentId: 'block_support', anchor: 'top', zLayer: 12,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.52, variant: 'red', yOffset: -60 },
+      // Bush accent on shoulder.
+      { id: 'bush_front', role: 'loose-decor', anchor: 'ground', zLayer: 6,
+        assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: 0.8, scale: 0.62 },
+      // Single flower for shoulder fill.
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.52, dist: 1.6, scale: 0.40 },
+    ],
+  },
+  {
+    id: 'garden_far_castle_approach_cluster',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Symmetric tiny silhouettes — both sides, very small scale, no
+      // structures. Keeps the castle-approach band from looking empty
+      // without competing with the castle silhouette.
+      { id: 'tuft_left', role: 'loose-decor', anchor: 'ground', zLayer: 4,
+        assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: -1.74, dist:  0.0, scale: 0.34 },
+      { id: 'leaf_left', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane: -1.66, dist: -0.9, scale: 0.40 },
+      { id: 'tuft_right', role: 'loose-decor', anchor: 'ground', zLayer: 4,
+        assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane:  1.74, dist:  0.0, scale: 0.34 },
+      { id: 'leaf_right', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane:  1.66, dist:  0.9, scale: 0.40 },
+    ],
+  },
 ]);
 
 /**
@@ -855,7 +977,129 @@ export const PREFAB_COMPOSITION_METADATA = Object.freeze({
     densityWeight: 1, allowedDepthRange: [140, 165],
     minSpacingFromSameType: 40, requiresSupport: false, roadClearance: 1.4,
   },
+  // v3.8.51 Phase 9 — Garden Corridor Reference cluster metadata.
+  'garden_foreground_left_platform_cluster': {
+    zone: 'foreground', side: 'left', role: 'frame',
+    densityWeight: 1, allowedDepthRange: [12, 32],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'garden_foreground_right_pipe_cluster': {
+    zone: 'foreground', side: 'right', role: 'frame',
+    densityWeight: 1, allowedDepthRange: [18, 38],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'garden_mid_left_purple_wall_cluster': {
+    zone: 'mid', side: 'left', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [60, 140],
+    minSpacingFromSameType: 50, requiresSupport: true, roadClearance: 1.7,
+  },
+  'garden_mid_right_stone_step_cluster': {
+    zone: 'mid', side: 'right', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [70, 130],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'garden_far_castle_approach_cluster': {
+    zone: 'far', side: 'either', role: 'landmark',
+    densityWeight: 1, allowedDepthRange: [155, 200],
+    minSpacingFromSameType: 25, requiresSupport: false, roadClearance: 1.4,
+  },
 });
+
+/**
+ * v3.8.51 — Phase 9 Garden Corridor Reference theme.
+ *
+ * Declarative theme constant. The default visual composition for the
+ * current game. Owns:
+ *   - heroLayoutPrefabs: the set of prefab IDs HERO_LAYOUT is allowed
+ *     to reference. Tests enforce membership.
+ *   - procedural:        curated subset of SIDE_DECORATION_PREFABS that
+ *     procedural fill (DecorationSystem, distance > 200m) is allowed
+ *     to pick from. Filters out generic clusters that don't match the
+ *     garden look.
+ *   - palette:           designer-facing notes on signature elements
+ *     and zone targets per depth band.
+ */
+export const THEMES = Object.freeze({
+  GARDEN_CORRIDOR_REFERENCE: Object.freeze({
+    heroLayoutPrefabs: Object.freeze([
+      'garden_foreground_left_platform_cluster',
+      'garden_foreground_right_pipe_cluster',
+      'garden_mid_left_purple_wall_cluster',
+      'garden_mid_right_stone_step_cluster',
+      'garden_far_castle_approach_cluster',
+      'fence-flower-row',
+      'hero-layered-platform-qblocks',
+      'corner-platform-mushroom-frame',
+      'brick-corridor-segment',
+      'leaf-forest-edge',
+      'organic-meadow',
+    ]),
+    procedural: Object.freeze([
+      // Procedural pool — garden-aesthetic clusters only. Excludes any
+      // prefab that doesn't use a signature element (purple_brick,
+      // green_pipe, question_block, mushroom, fence) or that reads as
+      // generic flower-scatter.
+      'cliff-flower-meadow',
+      'grass-wall-mushroom',
+      'pipe-vine-garden',
+      'blockstack-platform',
+      'brick-corridor-segment',
+      'qblock-floating-cluster',
+      'wall-and-mushroom-grove',
+      'pipe-with-flowers',
+      'pipe-mushroom-platform',
+      'dense-platform-trio',
+      'fence-bush-corner',
+      'long-platform-with-mushroom',
+      'long-platform-question-stack',
+      'platform-pipe-flowers',
+      'wall-stack-near',
+      'platform-qblock-stack',
+      'pipe-stairs-flower-bed',
+      'tall-block-stack-vertical',
+      'fence-flower-row',
+      'hanging-platform-garden',
+      'big-bush-wall',
+    ]),
+    palette: Object.freeze({
+      signatureSideStructure: ['purple_brick_single', 'green_pipe', 'stone_wall_low', 'fence_wood_short'],
+      signatureStackable:     ['mushroom_red_big', 'mushroom_blue_big', 'question_block'],
+      signaturePlatform:      ['floating_platform', 'hanging_platform_vines', 'grass_dirt_platform_long'],
+      signatureBackground:    ['tree_round', 'bush_large_with_purple_flowers'],
+      signatureFlora:         ['yellow_flower_small', 'purple_flower_single', 'grass_tuft', 'grass_tuft_large'],
+      signatureGameplay:      ['vine_barrier', 'dry_grass_obstacle', 'golden_flower', 'rare_orchid_pickup'],
+    }),
+  }),
+});
+
+/**
+ * v3.8.51 — Phase 9 explicit depth bands.
+ *
+ * Range = [minDistance, maxDistance) in world-distance units. HERO_LAYOUT
+ * entries must respect maxClustersPerSide per band per side; the
+ * validator enforces it. `targetScale` is a HINT for designers tuning
+ * scaleMultiplier in HERO_LAYOUT — not enforced.
+ */
+export const DEPTH_BANDS = Object.freeze({
+  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 1, targetScale: 1.00, roadClearanceMin: 1.7 },
+  NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 0.80, roadClearanceMin: 1.5 },
+  // MID is the corridor band — spec calls for "smaller repeated corridor
+  // beats" so 3 clusters per side fits the dense-but-readable target.
+  MID:              { range: [ 80, 150], maxClustersPerSide: 3, targetScale: 0.55, roadClearanceMin: 1.6 },
+  // CASTLE_APPROACH is the longest band (70m). Allows 2 small clusters
+  // per side — one symmetric tiny accent ~165/175 + one fade-in
+  // background landmark ~195/210 — without competing with the castle.
+  CASTLE_APPROACH:  { range: [150, 220], maxClustersPerSide: 2, targetScale: 0.40, roadClearanceMin: 1.4 },
+  FAR:              { range: [220, 999], maxClustersPerSide: 1, targetScale: 0.30, roadClearanceMin: 1.2 },
+});
+
+/** Resolve a world distance to a DEPTH_BANDS key. */
+export function bandForDistance(distance) {
+  for (const [name, b] of Object.entries(DEPTH_BANDS)) {
+    if (distance >= b.range[0] && distance < b.range[1]) return name;
+  }
+  return 'FAR';
+}
 
 /**
  * v3.8.21 — Deterministic HERO LAYOUT for the first ~150 m of every run.
@@ -940,23 +1184,45 @@ export const PREFAB_COMPOSITION_METADATA = Object.freeze({
  * CASTLE APPROACH (155m+) stays deliberately empty so the road→castle
  * axis remains the dominant visual line.
  */
+/**
+ * v3.8.51 — Phase 9 Garden Corridor Reference layout (14 entries).
+ *
+ * Density-tuned for the reference look: every depth band has a
+ * composed cluster on at least one side. Signature elements (purple
+ * brick, green pipe, mushroom, question block, stone step) appear
+ * within the first 90m so the foreground frame reads immediately.
+ *
+ *   FOREGROUND  (0–30)    2 hand-composed garden anchors
+ *   NEAR        (30–80)   2 transition filler + 2 structural mid prefabs
+ *   MID         (80–150)  4 structural beats with rhythm reuse
+ *   CASTLE_APPR (150–220) 2 symmetric tiny side accents (no large mass)
+ *   FAR         (220+)    2 background landmarks for silhouette only
+ *
+ * 215m+ is deliberately empty for the road→castle axis (preserved).
+ */
 export const HERO_LAYOUT = Object.freeze([
-  // NEAR FOREGROUND — large anchors framing the corridor opening.
-  { distance:  20, side: -1, prefabId: 'foreground-left-anchor',         scaleMultiplier: 1.00 },
-  { distance:  30, side:  1, prefabId: 'foreground-right-anchor',        scaleMultiplier: 1.00 },
-  // NEAR-MID — soft transition beat so the side band doesn't go quiet
-  // between the foreground anchor and the first mid structural.
-  { distance:  48, side:  1, prefabId: 'fence-flower-row',               scaleMultiplier: 0.85 },
-  // MID — structural beats per side, scaled smaller for perspective.
-  { distance:  68, side: -1, prefabId: 'hero-layered-platform-qblocks',  scaleMultiplier: 0.75 },
-  { distance:  88, side:  1, prefabId: 'corner-platform-mushroom-frame', scaleMultiplier: 0.72 },
-  // MID-FAR — purple-brick beat. Variety in the mid band so the
-  // corridor reads as composed architecture, not duplicate clusters.
-  { distance: 108, side: -1, prefabId: 'brick-corridor-segment',         scaleMultiplier: 0.55 },
-  // FAR — tiny silhouettes only.
-  { distance: 132, side:  1, prefabId: 'leaf-forest-edge',               scaleMultiplier: 0.42 },
-  { distance: 152, side: -1, prefabId: 'organic-meadow',                 scaleMultiplier: 0.40 },
-  // CASTLE APPROACH (155m+) — deliberately empty. Road axis dominates.
+  // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
+  { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.00 },
+  { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.00 },
+  // NEAR — fence-flower transition beats per side, then structural.
+  { distance:  42, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.85 },
+  { distance:  52, side:  1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.82 },
+  // NEAR/MID — signature structural clusters.
+  { distance:  70, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.78 },
+  { distance:  82, side:  1, prefabId: 'garden_mid_right_stone_step_cluster',     scaleMultiplier: 0.75 },
+  // MID — existing strong prefabs as rhythm beats.
+  { distance: 100, side: -1, prefabId: 'hero-layered-platform-qblocks',           scaleMultiplier: 0.65 },
+  { distance: 112, side:  1, prefabId: 'corner-platform-mushroom-frame',          scaleMultiplier: 0.62 },
+  // MID — second purple-wall beat + brick-corridor for visual rhythm.
+  { distance: 130, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.50 },
+  { distance: 142, side:  1, prefabId: 'brick-corridor-segment',                  scaleMultiplier: 0.48 },
+  // CASTLE_APPROACH — symmetric tiny accents only.
+  { distance: 165, side: -1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.40 },
+  { distance: 175, side:  1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.38 },
+  // FAR — low-detail silhouettes.
+  { distance: 195, side: -1, prefabId: 'leaf-forest-edge',                        scaleMultiplier: 0.34 },
+  { distance: 210, side:  1, prefabId: 'organic-meadow',                          scaleMultiplier: 0.32 },
+  // 215m+ — deliberately empty. Road axis dominates.
 ]);
 
 /**

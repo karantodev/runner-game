@@ -1,6 +1,6 @@
 import { createScenery } from '../ecs/factories.js';
 import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
-import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID } from '../config/sceneSchema.data.js';
+import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID, THEMES } from '../config/sceneSchema.data.js';
 
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
@@ -227,13 +227,23 @@ export class DecorationSystem {
 
   #buildWeightedChunks() {
     // v3.8.41 — Phase 7 art-direction. Prefabs flagged proceduralOk:false
-    // (the four hero-layered-* compositions) live exclusively in
-    // HERO_LAYOUT's hand-placed anchor slots. Excluding them from the
-    // procedural pool prevents heavy hero clusters from landing on top
-    // of the curated near-foreground beats.
+    // (the four hero-layered-* compositions + Phase 9 garden_* clusters)
+    // live exclusively in HERO_LAYOUT's hand-placed anchor slots.
+    // Excluding them from the procedural pool prevents heavy hero
+    // clusters from landing on top of the curated near-foreground beats.
+    //
+    // v3.8.51 — Phase 9 theme-pool filter. Procedural fill at
+    // distance > 200m is now restricted to the curated subset declared
+    // by THEMES[scene.theme].procedural. Generic flower-scatter prefabs
+    // that don't use a signature element are excluded so the far band
+    // still reads as a garden corridor, not a meadow.
+    const themeKey = this.config?.scene?.theme ?? 'GARDEN_CORRIDOR_REFERENCE';
+    const themePool = THEMES[themeKey]?.procedural;
+    const themeAllowed = themePool ? new Set(themePool) : null;
     const result = [];
     for (const chunk of SIDE_DECORATION_PREFABS) {
       if (chunk.proceduralOk === false) continue;
+      if (themeAllowed && !themeAllowed.has(chunk.id)) continue;
       for (let i = 0; i < chunk.weight; i++) result.push(chunk);
     }
     return result;
