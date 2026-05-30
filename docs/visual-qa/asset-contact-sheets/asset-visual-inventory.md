@@ -1,6 +1,6 @@
 # Asset Visual Inventory
 
-Generated 2026-05-30T19:29:56.916Z
+Generated 2026-05-30T20:01:43.385Z
 Derived from the contact-sheet generator pass.
 
 ## Active assets (USED — referenced in src/)
@@ -185,14 +185,11 @@ Derived from the contact-sheet generator pass.
 - `miscPotionEmerald` → assets/misc/potion_emerald.png
 - `miscShieldSign` → assets/misc/sign_wooden_shield.png
 
-## Unregistered (110)
-### BACKGROUND (1)
-- assets/background/mountains/mountains-far.png — 1672×168
-
+## Unregistered (100)
 ### COLLECTIBLES (1)
 - assets/collectibles/orchid_gold.png — 1254×1254
 
-### DECOR (18)
+### DECOR (10)
 - assets/decor/large/bushes/bush_large.png — 1536×1024
 - assets/decor/large/bushes/bush_large_flowers.png — 1536×1024
 - assets/decor/large/fence/fence_corner.png — 1484×1060
@@ -203,14 +200,6 @@ Derived from the contact-sheet generator pass.
 - assets/decor/large/mushrooms/mushroom_red_big.png — 1161×1355
 - assets/decor/large/trees/tree_round.png — 1122×1402
 - assets/decor/large/trees/tree_tall.png — 923×1704
-- assets/decor/small/bushes/bush_small.png — 56×48
-- assets/decor/small/bushes/bush_small_flowers.png — 56×48
-- assets/decor/small/flowers/flower_violet_cluster.png — 32×32
-- assets/decor/small/flowers/flower_yellow_decor.png — 24×24
-- assets/decor/small/grass/grass_tuft_large.png — 40×28
-- assets/decor/small/grass/grass_tuft_small.png — 24×16
-- assets/decor/small/leaves/leaf_clump_round.png — 40×32
-- assets/decor/small/plants/sprout_soil.png — 32×24
 
 ### EFFECTS (28)
 - assets/effects/bursts/light_burst_gradient_01.png — 1672×941
@@ -241,9 +230,6 @@ Derived from the contact-sheet generator pass.
 - assets/effects/trails/light_sweep_01.png — 1672×941
 - assets/effects/trails/light_trail_motion_01.png — 1536×1024
 - assets/effects/trails/light_trail_yellow_01.png — 1536×1024
-
-### OBSTACLES (1)
-- assets/obstacles/mushroom_small/mushroom_small_red.png — 48×48
 
 ### PICKUPS (4)
 - assets/pickups/aura/pickup_magnet_aura.png — 1254×1254

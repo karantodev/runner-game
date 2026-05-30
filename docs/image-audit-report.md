@@ -1,98 +1,16 @@
 # Image Audit Report
 
-Generated 2026-05-30T16:57:11.269Z.
-Scanned 416 PNGs under `assets/` (excluding `_source/`).
+Generated 2026-05-30T19:55:12.782Z.
+Scanned 373 PNGs under `assets/` (excluding `_source/`).
 
-## Exact duplicates (15 groups)
-Files with identical SHA-256 content hash. Pick one canonical
-location, point the engine at it, and archive the rest to `_source/`.
-
-### Group (2 copies — 1960×403)
-- `assets/background/clouds/cloud_large.png`
-- `assets/background/clouds/clouds.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png`
-- `assets/effects/effect_magic_circle_glow_01.png`
-- `assets/powerups/magic_circle_glow_01.png`
-- `assets/powerups/powerup_magic_circle_glow.png`
-
-### Group (2 copies — 1254×1254)
-- `assets/collectibles/orchid_gold/orchid_gold_collect_01.png`
-- `assets/collectibles/orchid_gold/orchid_gold_main.png`
-
-### Group (2 copies — 1448×1086)
-- `assets/effects/dust_puff/dust_puff_03.png`
-- `assets/effects/sparkle/sparkle_05.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/effects/effect_burst_gold_01.png`
-- `assets/effects/effect_gold_spark_burst.png`
-- `assets/effects/sparkle_04.png`
-- `assets/powerups/star_burst_gold_01.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/effects/effect_small_star_burst.png`
-- `assets/effects/effect_star_small_01.png`
-- `assets/effects/sparkle_01.png`
-- `assets/powerups/star_gold_small_01.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/effects/effect_small_star_glint.png`
-- `assets/effects/effect_star_burst_small_01.png`
-- `assets/effects/sparkle_03.png`
-- `assets/powerups/star_glint_small_01.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/effects/sparkle_02.png`
-- `assets/powerups/powerup_gold_star.png`
-- `assets/powerups/powerup_star_gold_01.png`
-- `assets/powerups/star_gold_01.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/pickups/pickup_magnet.png`
-- `assets/powerups/magnet_gold_aura_01.png`
-- `assets/powerups/powerup_magnet_01.png`
-- `assets/powerups/powerup_magnet_gold_aura.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/pickups/pickup_score_x2.png`
-- `assets/powerups/medal_x2_gold_01.png`
-- `assets/powerups/powerup_medal_x2_gold.png`
-- `assets/powerups/powerup_multiplier_x2_medal_01.png`
-
-### Group (4 copies — 1254×1254)
-- `assets/pickups/pickup_shield.png`
-- `assets/powerups/powerup_orchid_shield_glow.png`
-- `assets/powerups/powerup_shield_orchid_01.png`
-- `assets/powerups/shield_orchid_glow_01.png`
-
-### Group (3 copies — 1448×1086)
-- `assets/platforms/platform_floating.png`
-- `assets/platforms/platform_grass_small.png`
-- `assets/platforms/platform_grass_small_01.png`
-
-### Group (3 copies — 1448×1086)
-- `assets/platforms/platform_grass_vines.png`
-- `assets/platforms/platform_grass_vines_01.png`
-- `assets/platforms/platform_hanging_vines.png`
-
-### Group (2 copies — 1254×1254)
-- `assets/structures/question_block/question_block_02.png`
-- `assets/structures/question_block/question_block_04.png`
-
-### Group (3 copies — 1964×516)
-- `assets/ui/panels/lives_panel_bg.png`
-- `assets/ui/panels/panel_long_blue.png`
-- `assets/ui/panels/score_panel_bg.png`
-
+## Exact duplicates (0 groups)
+_(none — every PNG has unique content)_
 
 ## Stem-family dimension inconsistencies (13)
 Files sharing a stem (e.g., `player_farmer_run_*`) but with
 different `width×height`. Re-export to a canonical canvas.
 
 ### `assets/collectibles/orchid_gold/orchid_gold_collect`
-- `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — 1254×1254
 - `assets/collectibles/orchid_gold/orchid_gold_collect_02.png` — 1254×1254
 - `assets/collectibles/orchid_gold/orchid_gold_collect_03.png` — 1254×1254
 - `assets/collectibles/orchid_gold/orchid_gold_collect_04.png` — 1254×1254
@@ -126,7 +44,6 @@ different `width×height`. Re-export to a canonical canvas.
 - `assets/effects/sparkle/sparkle_02.png` — 1254×1254
 - `assets/effects/sparkle/sparkle_03.png` — 16×16
 - `assets/effects/sparkle/sparkle_04.png` — 16×16
-- `assets/effects/sparkle/sparkle_05.png` — 1448×1086
 
 ### `assets/structures/platforms/grass_dirt_platform_long`
 - `assets/structures/platforms/grass_dirt_platform_long.png` — 1361×274
@@ -184,8 +101,8 @@ flowers tall. An outlier likely means the file is mis-named.
 
 ## Summary
 
-- PNGs scanned: **416**
-- Exact-content duplicate groups: **15** (49 files)
+- PNGs scanned: **373**
+- Exact-content duplicate groups: **0** (0 files)
 - Stem dim mismatches: **13**
 - Side-pair dim mismatches: **3**
 - Aspect-ratio flags: **3**

@@ -1,12 +1,12 @@
 # Asset Production Manifest
 
-Generated 2026-05-30T19:29:56.918Z.
+Generated 2026-05-30T20:01:43.388Z.
 
 Every PNG receives exactly one production bucket. Sum equals
 the total scanned (excluding `_source/` which is bucket **H**).
 
-- Total entries classified: **390**
-- Files archived in `_source/` (bucket H, listed in skipped): **57**
+- Total entries classified: **380**
+- Files archived in `_source/` (bucket H, listed in skipped): **67**
 
 ## A — ACTIVE_RUNTIME (explicit src/ consumer) (60)
 
@@ -157,9 +157,8 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/ui/tools/tool_shovel_full.png` — 64×80
 - `assets/ui/tools/tool_shovel_handle.png` — 48×64
 
-## D — UNREGISTERED_PENDING_WIRE (57)
+## D — UNREGISTERED_PENDING_WIRE (47)
 
-- `assets/background/mountains/mountains-far.png` — 1672×168
 - `assets/decor/large/bushes/bush_large.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/bushes/bush_large_flowers.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/fence/fence_corner.png` — 1484×1060 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -170,14 +169,6 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/decor/large/mushrooms/mushroom_red_big.png` — 1161×1355 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/trees/tree_round.png` — 1122×1402 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/decor/large/trees/tree_tall.png` — 923×1704 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/decor/small/bushes/bush_small.png` — 56×48
-- `assets/decor/small/bushes/bush_small_flowers.png` — 56×48
-- `assets/decor/small/flowers/flower_violet_cluster.png` — 32×32
-- `assets/decor/small/flowers/flower_yellow_decor.png` — 24×24
-- `assets/decor/small/grass/grass_tuft_large.png` — 40×28
-- `assets/decor/small/grass/grass_tuft_small.png` — 24×16
-- `assets/decor/small/leaves/leaf_clump_round.png` — 40×32
-- `assets/decor/small/plants/sprout_soil.png` — 32×24
 - `assets/effects/bursts/light_burst_gradient_01.png` — 1672×941 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/bursts/light_burst_sun_01.png` — 1672×941 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/light/light_streak_01.png` — 2172×724 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -194,7 +185,6 @@ the total scanned (excluding `_source/` which is bucket **H**).
 - `assets/effects/trails/light_sweep_01.png` — 1672×941 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/trails/light_trail_motion_01.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/effects/trails/light_trail_yellow_01.png` — 1536×1024 · NO_TRANSPARENCY, OVERSIZED_CANVAS
-- `assets/obstacles/mushroom_small/mushroom_small_red.png` — 48×48
 - `assets/pickups/aura/pickup_magnet_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_medal_x2_gold.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
 - `assets/pickups/aura/pickup_shield_orchid_aura.png` — 1254×1254 · NO_TRANSPARENCY, OVERSIZED_CANVAS
@@ -362,5 +352,5 @@ the total scanned (excluding `_source/` which is bucket **H**).
 
 ## Skipped folders (bucket H — already archived)
 
-- `assets/_source/` — 43 files — archived / rejected designer batch
+- `assets/_source/` — 53 files — archived / rejected designer batch
 - `assets/player/_source/` — 14 files — archived / rejected designer batch

@@ -4,6 +4,68 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ---
 
+## 🎯 ACTIVE DESIGNER ASKS — 2026-05-30 (curation pass, 7 files)
+
+Companion doc: [`asset-curation-next-actions.md`](./asset-curation-next-actions.md).
+
+After the duplicate-archive PR (33 files → `_source/rejected_2026_05_30/`)
+and the PENDING_WIRE curation pass (10 alt-art files → `_source/future/`),
+the audit now lists exactly **7 real designer asks**. Everything else is
+either delivered, intentional, or out-of-scope (`_source/`).
+
+### 🟥 P0 — Missing orchid_gold animation frames (6 files)
+
+Six `gameConfig` keys point at orchid_gold sparkle / collect frames that
+**do not exist on disk** and have no path-safe alternate. Every frame
+**must** be drawn from scratch on the canonical 96 × 96 RGBA canvas
+(matching the already-delivered `orchid_gold_collect_07.png` /
+`orchid_gold_collect_08.png` siblings).
+
+**Shared spec for all 6 frames:**
+- **Canvas:** 96 × 96 px
+- **Format:** PNG, RGBA, **transparent background** (PNG color type 6 — no white/black flat)
+- **Padding:** centred sprite, 2-4 px breathing room from canvas edge
+- **Style continuity:** match `orchid_gold_collect_07.png` and `_08.png` (same hue, outline weight, palette)
+- ❌ **Do NOT re-use** the legacy 1254×1254 `collect_02/03/04.png` or `main.png` — those are oversized RGB flats (color type 2) and will be rejected by the audit.
+
+| # | Path on disk | File name | Canvas | Purpose in game |
+|---|---|---|---|---|
+| 1 | `assets/collectibles/orchid_gold/` | `orchid_gold_sparkle_01.png` | 96 × 96 RGBA | Idle-shimmer frame **1/4** orbiting an un-collected gold orchid |
+| 2 | `assets/collectibles/orchid_gold/` | `orchid_gold_sparkle_02.png` | 96 × 96 RGBA | Idle-shimmer frame **2/4** (slight phase shift from #1) |
+| 3 | `assets/collectibles/orchid_gold/` | `orchid_gold_sparkle_03.png` | 96 × 96 RGBA | Idle-shimmer frame **3/4** |
+| 4 | `assets/collectibles/orchid_gold/` | `orchid_gold_sparkle_04.png` | 96 × 96 RGBA | Idle-shimmer frame **4/4** — closes the loop back to #1 |
+| 5 | `assets/collectibles/orchid_gold/` | `orchid_gold_collect_05.png` | 96 × 96 RGBA | Pickup-burst frame **5/6** — petals / specks at ~85% travel |
+| 6 | `assets/collectibles/orchid_gold/` | `orchid_gold_collect_06.png` | 96 × 96 RGBA | Pickup-burst frame **6/6** — residual fade, closes the pickup |
+
+### 🟥 P0 — Side-pair scenery re-export (1 pair = 2 files)
+
+The terrain `grass_dirt_step` side-aware pair ships at two different
+oversized canvases — the engine renders both halves through the same
+dispatcher at the same target scale, so the mismatched half visibly
+pops on the wrong side. Both halves need a clean re-export to the same
+canonical canvas as the rest of the terrain-block family.
+
+| Side | Path | Current dims | Target dims | Format |
+|---|---|---|---|---|
+| LEFT | `assets/terrain/blocks/grass_dirt_step_left.png` | **1086 × 1448** | **168 × 168** | PNG RGBA, transparent BG |
+| RIGHT | `assets/terrain/blocks/grass_dirt_step_right.png` | **1254 × 1254** | **168 × 168** | PNG RGBA, transparent BG |
+
+- **Both halves identical canvas size** — same as `grass_dirt_block_left/right` (168 × 168 RGBA).
+- **Anchor:** sprite centred; step diagonal meets exactly at the canvas inner edge so left + right tile seamlessly side-by-side.
+- ❌ **No code workaround** — the engine will NOT rescale one half to mask the mismatch.
+
+> Distinct from road kit: `assets/terrain/road/**` lane / shoulder pairs
+> are intentionally asymmetric (3-point perspective). They show in the
+> image audit under "Road-kit intentional asymmetry" and are **not** a
+> designer task.
+
+### 🟩 Not a designer task — already resolved on engine side
+
+- **PENDING_WIRE (10 alt-art files)** — moved to `assets/_source/future/`. Same concepts (bush, flower, tuft, mushroom_small, mountains-far) already exist at canonical paths.
+- **Group #14 (question_block_02 / _04 SHA-equal)** — runtime-required intentional duplicate, allowlisted in `scripts/audit-images.mjs`.
+
+---
+
 ## 📌 DESIGNER HANDOFF — READ THIS FIRST (1 minute)
 
 ### ✅ DO THIS NEXT (in this order)
