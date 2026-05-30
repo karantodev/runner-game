@@ -32,7 +32,8 @@ import { fileURLToPath } from 'node:url';
 // audit fails loudly if the registry file breaks parse.
 import { ASSET_SEMANTICS, validatePrefab } from '../src/config/assetSemantics.js';
 // v3.8.39 — Phase 5 prefab slot coverage check.
-import { SIDE_DECORATION_PREFABS } from '../src/config/sceneSchema.data.js';
+// v3.8.40 — Phase 6 active-asset derivation (G bucket).
+import { SIDE_DECORATION_PREFABS, HERO_LAYOUT, MIDGROUND_SCENERY } from '../src/config/sceneSchema.data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -669,7 +670,48 @@ function buildMissingArtList({ deadKeys, unregClassified, keys }) {
   if (altVariant.length > 15) lines.push(`- _(${altVariant.length - 15} more)_`);
   lines.push('');
 
+  // v3.8.40 — Phase 6 F + G buckets: archive vs active-in-game.
+  const { activeAssets, registryUnused } = derivePrefabUsage();
+  lines.push(`## 📦 F — READY TO DELETE / ARCHIVE (${overdelivery.length})`);
+  lines.push('Same files as bucket A; called out separately so an archival sweep has');
+  lines.push('a single target list. Move to `assets/_source/rejected_*` rather than');
+  lines.push('deleting outright — the designer may want to revisit.');
+  lines.push('');
+
+  lines.push(`## ✅ G — ACTIVE USED IN GAME (${activeAssets.size})`);
+  lines.push('AssetTypes referenced by at least one prefab / HERO_LAYOUT / scenery');
+  lines.push('frame today. Deletion-protected for the foreseeable future.');
+  lines.push('');
+  for (const t of [...activeAssets].sort()) lines.push(`- \`${t}\``);
+  lines.push('');
+  if (registryUnused.length) {
+    lines.push(`### Registered but not used by any prefab (${registryUnused.length})`);
+    lines.push('In `assetSemantics.js` but not referenced by current scene/prefab data.');
+    lines.push('Either wire into a prefab or remove the semantic entry.');
+    lines.push('');
+    for (const t of registryUnused.sort()) lines.push(`- \`${t}\``);
+    lines.push('');
+  }
+
   return lines.join('\n');
+}
+
+/**
+ * v3.8.40 — Phase 6 active-in-game asset derivation. Walks every
+ * SIDE_DECORATION_PREFAB item + HERO_LAYOUT prefab + MIDGROUND_SCENERY
+ * entry, collects the assetTypes they reference. Anything in the
+ * semantic registry NOT in that set is "registered but not used".
+ */
+function derivePrefabUsage() {
+  const activeAssets = new Set();
+  for (const p of SIDE_DECORATION_PREFABS) for (const it of p.items) activeAssets.add(it.assetType);
+  for (const h of HERO_LAYOUT) {
+    const p = SIDE_DECORATION_PREFABS.find((x) => x.id === h.prefabId);
+    if (p) for (const it of p.items) activeAssets.add(it.assetType);
+  }
+  for (const s of MIDGROUND_SCENERY) activeAssets.add(s.assetType);
+  const registryUnused = Object.keys(ASSET_SEMANTICS).filter((k) => !activeAssets.has(k));
+  return { activeAssets, registryUnused };
 }
 
 /**

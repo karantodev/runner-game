@@ -175,6 +175,11 @@ export class DecorationSystem {
         // hasn't been annotated yet.
         role: item.role ?? null,
         prefabId: chunk.id,
+        // v3.8.40 — Phase 6 item identity + zLayer for parent-child
+        // line drawing + render-order tie-break.
+        itemId: item.id ?? null,
+        parentItemId: item.parentId ?? null,
+        zLayer: item.zLayer ?? 0,
       });
     }
   }

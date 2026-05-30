@@ -107,6 +107,13 @@ export const Sprite = (type, assetType, variant = null, visualScale = 1, yOffset
   // badge. null when the entity wasn't spawned from an annotated prefab.
   role: null,
   prefabId: null,
+  // v3.8.40 — Phase 6 prefab item id + parent + render-order zLayer.
+  // Used by the composition overlay to draw parent-child support lines
+  // and by SceneryRenderer to break z-sort ties (higher zLayer draws on
+  // top). null/0 when the entity has no slot annotation.
+  itemId: null,
+  parentItemId: null,
+  zLayer: 0,
 });
 
 // Particles & score popups live in their own pool-backed systems

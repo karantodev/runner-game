@@ -768,5 +768,37 @@ export function validatePrefab(prefab, side) {
       });
     }
   }
+  // v3.8.40 — Phase 6 spatial overlap check. Two structural items
+  // (role: base / support) that occupy roughly the same lane AND
+  // distance — without an explicit parent-child relationship — are
+  // visually overlapping. Warning, not error, because the existing
+  // catalog has a few intentional stacks (e.g., grass_dirt_block
+  // stacked via yOffset) that legitimately share the same (lane, dist).
+  for (let i = 0; i < prefab.items.length; i += 1) {
+    for (let j = i + 1; j < prefab.items.length; j += 1) {
+      const a = prefab.items[i];
+      const b = prefab.items[j];
+      const semA = ASSET_SEMANTICS[a.assetType];
+      const semB = ASSET_SEMANTICS[b.assetType];
+      if (!semA || !semB) continue;
+      const aStruct = a.role === 'base' || a.role === 'support';
+      const bStruct = b.role === 'base' || b.role === 'support';
+      if (!aStruct || !bStruct) continue;
+      // Parent-child relationships are explicit stacks; not overlaps.
+      if (a.parentId === b.id || b.parentId === a.id) continue;
+      const laneClose = Math.abs((a.lane ?? 0) - (b.lane ?? 0)) < 0.1;
+      const distClose = Math.abs((a.dist ?? 0) - (b.dist ?? 0)) < 0.5;
+      if (laneClose && distClose) {
+        warnings.push({
+          kind: 'SPATIAL_OVERLAP',
+          prefab: prefab.id,
+          itemA: a.id ?? a.assetType,
+          itemB: b.id ?? b.assetType,
+          lane: a.lane,
+          dist: a.dist,
+        });
+      }
+    }
+  }
   return { ok: errors.length === 0, errors, warnings };
 }

@@ -131,6 +131,11 @@ export class SceneryRenderer {
     // per-entity dispatch doesn't have to thread world through every
     // private method.
     this._world = world;
+    // v3.8.40 — Phase 6 parent-child line drawing. Per-frame map of
+    // (prefabId + itemId) → screen position, built as items render.
+    // After the entire scenery pass we walk it once to draw lines from
+    // each child to its parent.
+    this._supportPositions = world.config.debug?.showComposition ? new Map() : null;
     // v3.8.17 — when the side-matrix debug overlay is on, skip the
     // dynamic scenery rendering entirely and draw the test grid
     // instead. Sky / mountains / road / castle still render in their
@@ -167,6 +172,8 @@ export class SceneryRenderer {
     for (const e of organic) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
 
     this.#foregroundFrame(world);
+    // v3.8.40 — Phase 6 parent-child support lines pass.
+    this.#drawSupportLines();
   }
 
   // ── Static prefab layers ────────────────────────────────────────────────────
@@ -276,6 +283,55 @@ export class SceneryRenderer {
     this._currentItemRole = sprite.role ?? null;
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
+    // v3.8.40 — Phase 6 record screen position for parent-child line
+    // drawing. Only when the composition overlay is enabled.
+    if (this._supportPositions && sprite.prefabId && sprite.itemId) {
+      const key = `${sprite.prefabId}/${sprite.itemId}`;
+      this._supportPositions.set(key, {
+        x: Math.round(p.sx), y: Math.round(y),
+        parent: sprite.parentItemId ? `${sprite.prefabId}/${sprite.parentItemId}` : null,
+      });
+    }
+  }
+
+  /**
+   * v3.8.40 — Phase 6 second-pass parent-child line drawing. Called
+   * from render() after every scenery item has been drawn so the lines
+   * sit on top of the scene. Lines are drawn only when both endpoints
+   * are visible (item.x/y present in the per-frame position map).
+   */
+  #drawSupportLines() {
+    if (!this._supportPositions) return;
+    const ctx = this.ctx;
+    const filter = this._world?.config.debug?.compositionFilter ?? 'all';
+    // Only show lines when filter is 'all' or 'support' — keeps other
+    // filter views uncluttered.
+    if (filter !== 'all' && filter !== 'support') return;
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    for (const [, info] of this._supportPositions) {
+      if (!info.parent) continue;
+      const parent = this._supportPositions.get(info.parent);
+      if (!parent) {
+        // Parent missing visually — draw a red marker so QA notices.
+        ctx.strokeStyle = 'rgba(255,80,80,0.85)';
+        ctx.beginPath();
+        ctx.moveTo(info.x - 6, info.y - 6);
+        ctx.lineTo(info.x + 6, info.y + 6);
+        ctx.moveTo(info.x + 6, info.y - 6);
+        ctx.lineTo(info.x - 6, info.y + 6);
+        ctx.stroke();
+        continue;
+      }
+      // Cyan line from child centre to parent centre.
+      ctx.strokeStyle = 'rgba(80, 220, 255, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(info.x, info.y);
+      ctx.lineTo(parent.x, parent.y);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   #intrudesOnGameplayCorridor(x, scale) {
@@ -575,5 +631,14 @@ export class SceneryRenderer {
 }
 
 function byDistanceComponent(a, b) {
-  return b.components.Position.distance - a.components.Position.distance;
+  // v3.8.40 — Phase 6 z-layer tie-break. Far → near remains the primary
+  // ordering; entities at the same depth tier sort by Sprite.zLayer
+  // ascending so background-accent draws before base, base before
+  // topper, topper before foreground-accent. Matches the role enum's
+  // implicit depth ordering.
+  const distDiff = b.components.Position.distance - a.components.Position.distance;
+  if (Math.abs(distDiff) > 0.05) return distDiff;
+  const zA = a.components.Sprite?.zLayer ?? 0;
+  const zB = b.components.Sprite?.zLayer ?? 0;
+  return zA - zB;
 }
