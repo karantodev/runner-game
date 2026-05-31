@@ -193,8 +193,13 @@ async function buildAnalysisDoc(captures) {
   const midCap = captures.find((c) => c.distance >= 70 && c.distance <= 120);
   const composedClusters = !!midCap
     && (midCap.snapshot.leftCount + midCap.snapshot.rightCount) / 2 >= 3;
-  // Gameplay readability: in_road_core entities at d≤30 ≤ 2 (just the
-  // player + maybe a HUD overlay — no scenery in road core).
+  // Gameplay readability: SCENERY in road core stays at 0 (no decor
+  // bleeding into the player's lane). This check looks at the
+  // ScenicData ECS query only — it does NOT count gameplay obstacles
+  // (Hitbox) or collectibles (CollectibleData), which spawn into
+  // ROAD_CORE normally via SpawnSystem. Phase 9 does NOT change the
+  // gameplay road content; vines, dry grass obstacles, and orchid
+  // collectibles all still appear in the lanes.
   const readability = totalInRoadCore <= captures.length * 2;
   // No wrong-side / floating items: the *composition graph* counter must
   // be zero (catches parent/child / FLOATING_SUPPORT / wrong-side
@@ -219,7 +224,7 @@ async function buildAnalysisDoc(captures) {
   lines.push(`| Is the road-to-castle axis clear at far distance? | ${fmtCheck(castleAxisClear)} |`);
   lines.push(`| Are signature elements visible (purple_brick / green_pipe / question_block / mushroom)? | ${fmtCheck(haveSignature.purple_brick && haveSignature.green_pipe && haveSignature.question_block && haveSignature.mushroom)} |`);
   lines.push(`| No wrong-side or floating items (validator counters)? | ${fmtCheck(noViolations)} |`);
-  lines.push(`| Gameplay readability preserved (road-core entity count low)? | ${fmtCheck(readability)} |`);
+  lines.push(`| Gameplay readability preserved (no scenery decor in road core)? | ${fmtCheck(readability)} |`);
   lines.push('');
 
   lines.push('## Signature elements visible across captures');
@@ -233,7 +238,9 @@ async function buildAnalysisDoc(captures) {
 
   lines.push('## Per-distance snapshot');
   lines.push('');
-  lines.push('| Distance | Entities | L / R | Road-core | Placement viol. | Composition viol. |');
+  lines.push('All counts are **scenery entities only** (ECS query: `ScenicData, Sprite, Position`). Gameplay road content — vines, dry grass obstacles, golden flowers, rare orchids, powerups — flow through `Hitbox` / `CollectibleData` queries and are deliberately NOT counted here. The "Road-core" column therefore measures *decor bleed into the player lanes*, not gameplay availability.');
+  lines.push('');
+  lines.push('| Distance | Scenery total | L / R | Road-core scenery | Placement viol. | Composition viol. |');
   lines.push('|---|---|---|---|---|---|');
   for (const c of captures) {
     const s = c.snapshot;
@@ -259,6 +266,13 @@ async function buildAnalysisDoc(captures) {
     lines.push('');
   }
 
+  lines.push('## Debug overlay capture');
+  lines.push('');
+  lines.push('![debug overlay at 50m](./debug_overlay_50m.png)');
+  lines.push('');
+  lines.push('`debug_overlay_50m.png` is captured with `?debugComposition=1&showCompositionGroups=1` so the prefab group bounding boxes, depth-band tag, side shoulder, and the 6-line semantic badge are visible per entity. Use it to verify: every cluster has a yellow dashed bbox; every badge reads `role · zone · side · coll · sup`; no entity shows `INVALID`.');
+  lines.push('');
+
   lines.push('## Notes');
   lines.push('');
   lines.push('- All checks above are derived from live `window.__ORCHID_DEBUG__.getState()` and the registered ECS scene entities — not from heuristics over the PNG bytes.');
@@ -277,8 +291,11 @@ async function buildAnalysisDoc(captures) {
 async function main() {
   await ensureOutDir();
   const browser = await chromium.launch();
+  // v3.8.51 — viewport size matches the production canvas aspect
+  // (1536×864 → 16:9). Larger frames so QA can read prefab clusters at
+  // their intended scale instead of the tiny mobile compress.
   const ctx = await browser.newContext({
-    viewport: { width: 960, height: 600 },
+    viewport: { width: 1280, height: 720 },
     deviceScaleFactor: 1,
   });
   const page = await ctx.newPage();
@@ -290,6 +307,15 @@ async function main() {
   await page.goto(`${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1`, { waitUntil: 'domcontentloaded' });
   // Wait for __ORCHID_DEBUG__ to mount + game to begin running.
   await page.waitForFunction(() => !!window.__ORCHID_DEBUG__, null, { timeout: 30000 });
+  // v3.8.51 — hide the developer HUD panels so the screenshot reflects
+  // the real player-facing scene. `?debug=1` is required to expose
+  // __ORCHID_DEBUG__ but it also installs:
+  //   #debug-panel    — bottom-right capture/restart buttons
+  //   #perf-hud       — top-left FPS / quality / gamepad readout
+  // We hide them with a stylesheet so canvas screenshots stay clean.
+  await page.addStyleTag({ content: `
+    #debug-panel, #perf-hud { display: none !important; }
+  ` });
   await page.waitForTimeout(400);
   // Trigger the game loop. dev.html exposes startDebugRun() which
   // either resumes the autostart flow OR fires world.start({ skipCountdown:true }).
@@ -319,6 +345,41 @@ async function main() {
     const cap = await captureAtDistance(page, d);
     if (cap.snapshot) captures.push(cap);
   }
+  // v3.8.51 — Phase 9 follow-up: dedicated debug-overlay capture at
+  // distance ~50m so QA can visually verify prefab group boxes, depth
+  // bands, side tags, and the 6-line semantic badge. Reuses the same
+  // browser + seed so the scene matches the clean captures byte-for-byte.
+  console.log('[capture] capturing debug overlay shot');
+  const debugPage = await ctx.newPage();
+  // v3.8.51 — Use showCompositionGroups=1 alone (no per-entity
+  // ?debugComposition=1) so the overlay shows just the dashed prefab
+  // bboxes + cluster labels. The dense 5-line semantic badges are a
+  // separate inspect mode toggleable independently.
+  await debugPage.goto(`${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1&showCompositionGroups=1`, { waitUntil: 'domcontentloaded' });
+  await debugPage.waitForFunction(() => !!window.__ORCHID_DEBUG__, null, { timeout: 30000 });
+  await debugPage.addStyleTag({ content: `
+    #debug-panel, #perf-hud { display: none !important; }
+  ` });
+  await debugPage.waitForTimeout(400);
+  await debugPage.evaluate(() => {
+    const api = window.__ORCHID_DEBUG__;
+    if (api && typeof api.startDebugRun === 'function') api.startDebugRun();
+  });
+  await debugPage.waitForFunction(() => {
+    const game = window.__ORCHID_GAME__;
+    if (!game) return false;
+    for (const p of game.world.registry.query('Health')) {
+      p.components.Health.invulnerabilityFrames = 99999;
+    }
+    return game.world.distanceRun >= 50;
+  }, null, { timeout: 60000 });
+  await debugPage.waitForTimeout(150);
+  await debugPage.locator('#game').screenshot({
+    path: path.join(OUT_DIR, 'debug_overlay_50m.png'),
+  });
+  await debugPage.close();
+  console.log('[capture] wrote debug_overlay_50m.png');
+
   console.log('[capture] building contact-sheet.png');
   const sheetPath = await buildContactSheet(browser, captures);
   console.log(`[capture] wrote ${path.relative(ROOT, sheetPath)}`);

@@ -326,7 +326,11 @@ export class SceneryRenderer {
       // Approximate sprite footprint — use a fixed cell sized by scale.
       const halfW = Math.round(32 * scale);
       const halfH = Math.round(64 * scale);
-      const groupKey = `${sprite.prefabId}#${pos.distance.toFixed(0)}#${pos.lane > 0 ? 'R' : 'L'}`;
+      // Bucket distances coarsely (20m) so all items of one prefab
+      // share a key. Per-item distance varies by ±2m within a cluster
+      // due to dist offsets — finer granularity over-splits the bbox.
+      const distBucket = Math.round(pos.distance / 20) * 20;
+      const groupKey = `${sprite.prefabId}#${distBucket}#${pos.lane > 0 ? 'R' : 'L'}`;
       const existing = this._groupBoxes.get(groupKey);
       if (existing) {
         existing.minX = Math.min(existing.minX, sx - halfW);

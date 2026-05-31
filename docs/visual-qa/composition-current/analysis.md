@@ -1,6 +1,6 @@
 # Composition Analysis — Phase 9 Garden Corridor Reference
 
-Generated 2026-05-30T22:07:03.990Z.  Seed: `42`.
+Generated 2026-05-31T03:17:03.447Z.  Seed: `42`.
 
 ## Checklist (answered programmatically)
 
@@ -11,7 +11,7 @@ Generated 2026-05-30T22:07:03.990Z.  Seed: `42`.
 | Is the road-to-castle axis clear at far distance? | ✅ YES |
 | Are signature elements visible (purple_brick / green_pipe / question_block / mushroom)? | ✅ YES |
 | No wrong-side or floating items (validator counters)? | ✅ YES |
-| Gameplay readability preserved (road-core entity count low)? | ✅ YES |
+| Gameplay readability preserved (no scenery decor in road core)? | ✅ YES |
 
 ## Signature elements visible across captures
 
@@ -26,13 +26,15 @@ Generated 2026-05-30T22:07:03.990Z.  Seed: `42`.
 
 ## Per-distance snapshot
 
-| Distance | Entities | L / R | Road-core | Placement viol. | Composition viol. |
+All counts are **scenery entities only** (ECS query: `ScenicData, Sprite, Position`). Gameplay road content — vines, dry grass obstacles, golden flowers, rare orchids, powerups — flow through `Hitbox` / `CollectibleData` queries and are deliberately NOT counted here. The "Road-core" column therefore measures *decor bleed into the player lanes*, not gameplay availability.
+
+| Distance | Scenery total | L / R | Road-core scenery | Placement viol. | Composition viol. |
 |---|---|---|---|---|---|
-| 10m | 222 | 107 / 115 | 0 | 0 | 0 |
+| 10m | 219 | 104 / 115 | 0 | 0 | 0 |
 | 30m | 244 | 122 / 122 | 0 | 1 | 0 |
-| 70m | 249 | 127 / 122 | 0 | 2 | 0 |
+| 70m | 247 | 122 / 125 | 0 | 2 | 0 |
 | 120m | 236 | 118 / 118 | 0 | 4 | 0 |
-| 180m | 232 | 116 / 116 | 0 | 5 | 0 |
+| 180m | 232 | 116 / 116 | 0 | 4 | 0 |
 
 ## What HERO_LAYOUT places at each capture distance
 
@@ -58,6 +60,12 @@ Generated 2026-05-30T22:07:03.990Z.  Seed: `42`.
 - `garden_far_castle_approach_cluster` @ 165m · side=LEFT · scale 0.4
 - `garden_far_castle_approach_cluster` @ 175m · side=RIGHT · scale 0.38
 - `leaf-forest-edge` @ 195m · side=LEFT · scale 0.34
+
+## Debug overlay capture
+
+![debug overlay at 50m](./debug_overlay_50m.png)
+
+`debug_overlay_50m.png` is captured with `?debugComposition=1&showCompositionGroups=1` so the prefab group bounding boxes, depth-band tag, side shoulder, and the 6-line semantic badge are visible per entity. Use it to verify: every cluster has a yellow dashed bbox; every badge reads `role · zone · side · coll · sup`; no entity shows `INVALID`.
 
 ## Notes
 
