@@ -36,8 +36,12 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist: -1.8, scale: 0.44 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.48, dist: 1.3, scale: 0.30 },
-      { id: 'dry_grass', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'dry_grass_obstacle', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: 2.1, scale: 0.43 },
+      // v3.8.51 — replaced 'dry_grass_obstacle' shoulder decor with
+      // canonical SIDE_DECOR_SMALL 'grass_tuft_large'. The asset is
+      // visually similar but unambiguously decor in the semantic
+      // registry, resolving the OBSTACLE_AS_DECOR validator finding.
+      { id: 'shoulder_tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: 2.1, scale: 0.43 },
     ],
   },
   {
@@ -560,8 +564,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'mushroom_blue_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.76, dist: 0.2, scale: 0.62 },
       { id: 'leaf', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'leaf_clump_round', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist: -1.1, scale: 0.52 },
-      { id: 'dry_grass', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'dry_grass_obstacle', laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist: 1.5, scale: 0.48 },
+      // v3.8.51 — see grass-wall-mushroom: 'dry_grass_obstacle' replaced
+      // with semantically-unambiguous 'grass_tuft_large' decor.
+      { id: 'shoulder_tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist: 1.5, scale: 0.48 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: 1.58, dist: -1.9, scale: 0.42 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,

@@ -112,13 +112,12 @@ if (compositionFilter && ['all', 'obstacles', 'pickups', 'decor', 'invalid'].inc
 }
 // v3.8.51 — `?showCompositionGroups=1` adds dashed bounding boxes
 // around each prefab group, labelled with prefab id + depth band +
-// side + entity density. Only takes effect when showComposition is
-// also on.
+// side + entity density. Independent from the per-entity semantic
+// badge (?debugComposition=1) so QA can pick: bboxes only, badges
+// only, or both. Default presentation when this flag is on alone is
+// LESS noisy than the full per-entity overlay.
 if (params.get('showCompositionGroups') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showCompositionGroups', { value: true, writable: false, configurable: true });
-  // Convenience: implicitly turn on the semantic badge when group
-  // boxes are requested — they're useless without it.
-  Object.defineProperty(GAME_CONFIG.debug, 'showComposition', { value: true, writable: false, configurable: true });
 }
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
