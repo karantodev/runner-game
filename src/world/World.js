@@ -443,10 +443,10 @@ export class World {
     const width = this.projection.width;
     const height = this.projection.height;
     return [
-      { x: width * 0.18, y: height * 0.118, widthPx: 190, speed: 0.24, key: 'backgroundCloud01' },
-      { x: width * 0.38, y: height * 0.088, widthPx: 162, speed: 0.21, key: 'backgroundCloud02' },
-      { x: width * 0.56, y: height * 0.150, widthPx: 118, speed: 0.18, key: 'backgroundCloud03' },
-      { x: width * 0.82, y: height * 0.118, widthPx: 184, speed: 0.23, key: 'backgroundCloud01' },
+      { x: width * 0.18, y: height * 0.118, widthPx: 190, speed: 0.24, key: 'backgroundCloud03' },
+      { x: width * 0.38, y: height * 0.088, widthPx: 162, speed: 0.21, key: 'backgroundCloud04' },
+      { x: width * 0.56, y: height * 0.150, widthPx: 118, speed: 0.18, key: 'backgroundCloud05' },
+      { x: width * 0.82, y: height * 0.118, widthPx: 184, speed: 0.23, key: 'backgroundCloud06' },
       { x: width * 0.24, y: height * 0.218, widthPx: 112, speed: 0.16, key: 'backgroundCloud04' },
       { x: width * 0.71, y: height * 0.224, widthPx: 98,  speed: 0.14, key: 'backgroundCloud05' },
       { x: width * 0.88, y: height * 0.200, widthPx: 86,  speed: 0.18, key: 'backgroundCloud06' },
