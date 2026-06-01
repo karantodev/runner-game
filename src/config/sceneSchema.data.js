@@ -178,7 +178,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   },
   {
     id: 'dense-platform-trio',
-    weight: 3,
+    // v4.6 — reference-match (P2): third-widest structural span (2.8 units,
+    // block→brick across dist -1.4..+1.4). Weight 3→5 so mid-width spans
+    // back up the two continuous-wall prefabs and tighten the gaps further.
+    weight: 5,
     items: [
       { id: 'block_a', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 1.00, variant: 1 },
@@ -392,11 +395,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // LAYERED #1 — corner hero with foreground brick + mid platform +
     // outer tree shadow + cascade of flowers.
     id: 'hero-layered-corner-brick',
-    weight: 5,
-    // v3.8.41 — Phase 7. Heavy hero compositions stay out of the
-    // procedural weighted pool so they can't accidentally land on
-    // top of HERO_LAYOUT's curated anchors.
-    proceduralOk: false,
+    weight: 3,
+    // v4.5 — opened for procedural pool at reduced weight (5→3) so the
+    // 3-tier layout appears in the mid corridor without dominating.
+    proceduralOk: true,
     // v3.8.39 — Phase 5 structured slots. INNER tier is two
     // ground-anchored bricks; MID tier is a platform with a mushroom
     // topper; OUTER tier is loose foreground/background framing.
@@ -483,8 +485,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // depth. Question block over the mid brick. The "purple/brick beat"
     // the user wants more of.
     id: 'hero-layered-brick-cascade',
-    weight: 4,
-    proceduralOk: false,
+    weight: 3,
+    // v4.5 — opened for procedural pool at reduced weight (4→3).
+    proceduralOk: true,
     items: [
       // INNER bricks
       { id: 'brick_inner_a', role: 'base', anchor: 'ground',
@@ -636,6 +639,62 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.85, dist: -1.9, scale: 0.44 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'sprout_soil',         laneBand: LANE_BANDS.SHOULDER,  lane: 1.42, dist:  2.2, scale: 0.28 },
+    ],
+  },
+
+  // ── v4.5 continuous-wall prefabs ────────────────────────────────────────────
+  // Three-block span + tree background — at spacing 10 these overlap the
+  // adjacent clusters slightly, creating the continuous side-wall look of the
+  // reference image. dist range [-3.2, +3.2] covers ~6.4 world units so gaps
+  // between cluster spawns are filled even with slight jitter.
+
+  {
+    id: 'wall-continuous-3block',
+    // v4.6 — reference-match (P2): widest dist-spanning structural prefab
+    // (6.4 units). Weight 6→9 so consecutive procedural structural spawns
+    // (spacing ~10) are more often this span and overlap into a continuous
+    // corridor instead of leaving ~8-unit gaps.
+    weight: 9,
+    items: [
+      { id: 'block_a', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -3.2, scale: 0.98, variant: 0 },
+      { id: 'block_b', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 1 },
+      { id: 'block_c', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  3.2, scale: 0.96, variant: 2 },
+      { id: 'mushroom', role: 'topper', parentId: 'block_b', anchor: 'top', zLayer: 20,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 0.50, variant: 'red', yOffset: -130 },
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -2.0, scale: 0.44 },
+      { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.46, dist:  1.5, scale: 0.30 },
+      { id: 'tree', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist: 0.0, scale: 0.80, yOffset: -10 },
+    ],
+  },
+  {
+    // Wall anchors the near edge; a floating platform with q-block hovers at
+    // mid depth; a purple brick fills the outer frame. Three distinct height
+    // levels — reads as the stacked "world" from the reference.
+    id: 'elevated-platform-wall',
+    // v4.6 — reference-match (P2): second-widest structural span (4.8 units).
+    // Weight 5→8 to reinforce wide overlapping spans in the rotation.
+    weight: 8,
+    items: [
+      { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 1.02, variant: 0 },
+      { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -2.8, scale: 0.88, variant: 0 },
+      { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -2.8, scale: 0.82, yOffset: -160 },
+      { id: 'brick_back', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  2.0, scale: 0.80, variant: 1 },
+      { id: 'tree', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist: -1.0, scale: 0.76, yOffset: -8 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist:  1.4, scale: 0.48 },
+      { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist: -1.6, scale: 0.44 },
     ],
   },
 
@@ -1084,6 +1143,13 @@ export const THEMES = Object.freeze({
       'brick-corridor-segment',
       'leaf-forest-edge',
       'organic-meadow',
+      // v4.5 — new continuous-wall prefabs used in HERO_LAYOUT gap-fills.
+      'wall-continuous-3block',
+      'elevated-platform-wall',
+      // v4.6 — reference-match (P3a): fence/bush prefab used for the
+      // right-corner foreground framing (left corner uses fence-flower-row,
+      // already listed above).
+      'fence-bush-corner',
     ]),
     procedural: Object.freeze([
       // Procedural pool — garden-aesthetic clusters only. Excludes any
@@ -1113,6 +1179,11 @@ export const THEMES = Object.freeze({
       'big-bush-wall',
       // v4.0 — scatter flora filler.
       'scatter-violet-tuft',
+      // v4.5 — continuous-wall clusters + unlocked hero-layered compositions.
+      'wall-continuous-3block',
+      'elevated-platform-wall',
+      'hero-layered-corner-brick',
+      'hero-layered-brick-cascade',
     ]),
     palette: Object.freeze({
       signatureSideStructure: ['purple_brick_single', 'green_pipe', 'stone_wall_low', 'fence_wood_short'],
@@ -1134,11 +1205,18 @@ export const THEMES = Object.freeze({
  * scaleMultiplier in HERO_LAYOUT — not enforced.
  */
 export const DEPTH_BANDS = Object.freeze({
-  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 1, targetScale: 1.00, roadClearanceMin: 1.7 },
+  // v4.6 — reference-match (P3a): 1→2 so each bottom corner carries both a
+  // garden anchor cluster AND a low fence/bush framing prefab (the
+  // reference frames the foreground corners with fences + bushes).
+  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 2, targetScale: 1.00, roadClearanceMin: 1.7 },
   NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 0.80, roadClearanceMin: 1.5 },
   // MID is the corridor band — spec calls for "smaller repeated corridor
   // beats" so 3 clusters per side fits the dense-but-readable target.
-  MID:              { range: [ 80, 150], maxClustersPerSide: 3, targetScale: 0.55, roadClearanceMin: 1.6 },
+  // v4.6 — reference-match (P2): both sides were already at the cap of 3,
+  // so it was the limiting factor preventing a continuous mid corridor.
+  // 3→4 opens one slot/side for a wide continuous-wall beat in the largest
+  // gap (still spread across a 70-unit band — continuous-feeling, not solid).
+  MID:              { range: [ 80, 150], maxClustersPerSide: 4, targetScale: 0.55, roadClearanceMin: 1.6 },
   // CASTLE_APPROACH is the longest band (70m). Allows 2 small clusters
   // per side — one symmetric tiny accent ~165/175 + one fade-in
   // background landmark ~195/210 — without competing with the castle.
@@ -1254,20 +1332,37 @@ export function bandForDistance(distance) {
  * 215m+ is deliberately empty for the road→castle axis (preserved).
  */
 export const HERO_LAYOUT = Object.freeze([
+  // v4.6 — reference-match (P3a): symmetric low fence/bush corner framing
+  // anchoring the bottom corners (like the reference). Distinct prefabs so
+  // the corners aren't a mirror-identical copy: left fence+flowers,
+  // right fence+bush. Nearest-entry scale ~0.95-1.05.
+  { distance:  15, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.00 },
+  { distance:  22, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 0.98 },
   // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
   { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.00 },
   { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.00 },
   // NEAR — fence-flower transition beats per side, then structural.
   { distance:  42, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.85 },
   { distance:  52, side:  1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.82 },
+  // v4.5 — gap-fill: right side had no NEAR entry between 52 and 82.
+  // NEAR right: 52 (1/2) → adding second at 63 fills the visual hole.
+  { distance:  63, side:  1, prefabId: 'wall-continuous-3block',                  scaleMultiplier: 0.82 },
   // NEAR/MID — signature structural clusters.
   { distance:  70, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.78 },
   { distance:  82, side:  1, prefabId: 'garden_mid_right_stone_step_cluster',     scaleMultiplier: 0.75 },
   // MID — existing strong prefabs as rhythm beats.
+  // v4.6 — reference-match (P2): MID continuity beats filling the largest
+  // per-side gaps (left 80→100, right 82→112) with wide continuous-span
+  // walls so the mid corridor reads near-continuous, not clustered.
+  { distance:  88, side: -1, prefabId: 'elevated-platform-wall',                  scaleMultiplier: 0.70 },
+  { distance:  97, side:  1, prefabId: 'wall-continuous-3block',                  scaleMultiplier: 0.68 },
   { distance: 100, side: -1, prefabId: 'hero-layered-platform-qblocks',           scaleMultiplier: 0.65 },
   { distance: 112, side:  1, prefabId: 'corner-platform-mushroom-frame',          scaleMultiplier: 0.62 },
   // MID — second purple-wall beat + brick-corridor for visual rhythm.
   { distance: 130, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.50 },
+  // v4.5 — gap-fill: left side had no MID entry between 100 and 130.
+  // MID left: 100 (1/3), 130 (2/3) → adding third at 118.
+  { distance: 118, side: -1, prefabId: 'elevated-platform-wall',                  scaleMultiplier: 0.58 },
   { distance: 142, side:  1, prefabId: 'brick-corridor-segment',                  scaleMultiplier: 0.48 },
   // CASTLE_APPROACH — symmetric tiny accents only.
   { distance: 165, side: -1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.40 },
@@ -1342,6 +1437,10 @@ export const MIDGROUND_SCENERY = Object.freeze([
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.10, distance: 131, scale: 0.90, variant: 0, yOffset: -10 },
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance: 104, scale: 0.88, variant: 0, yOffset: 0 },
   { assetType: 'floating_platform', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.96, distance:  91, scale: 1.10, variant: 0, yOffset: -35 },
+  // v4.6 — reference-match (P3b): low hedge bridging the 20→131 treeline
+  // gap so the far silhouette reads continuous. A bush (not a tree) keeps
+  // the v4.3 anti-forest-wall thinning intact — low mass, no canopy.
+  { assetType: 'bush_large_with_purple_flowers', zone: SCENE_ZONES.NATURE_LEFT, lane: -3.02, distance: 78, scale: 0.90 },
   // v4.3 — P3 reference-match: removed left tree @65 (too close to @131,
   // doubled the treeline density) and left tree @12 (foreground already
   // framed by FOREGROUND_FRAME_SCENERY; two overlapping near-trees read
@@ -1354,6 +1453,10 @@ export const MIDGROUND_SCENERY = Object.freeze([
   { assetType: 'mushroom_red_big', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.84, distance: 131, scale: 0.92, variant: 'red', yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.08, distance: 119, scale: 0.86, variant: 0, yOffset: -10 },
   { assetType: 'hanging_platform_vines', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance:  65, scale: 0.82, yOffset: 0 },
+  // v4.6 — reference-match (P3b): mirror low hedge bridging the right
+  // 20→119 treeline gap. Bush, not tree — continuous low silhouette
+  // without reintroducing the forest wall.
+  { assetType: 'bush_large_with_purple_flowers', zone: SCENE_ZONES.NATURE_RIGHT, lane: 3.02, distance: 72, scale: 0.90 },
   // v4.3 — P3 reference-match: removed right tree @12 — mirrors left
   // side trim; FOREGROUND_FRAME_SCENERY handles the close-camera treeline.
 ]);
