@@ -21,11 +21,16 @@ export class EntityRegistry {
     this._nextId = 1;
     this._list = [];
     this._byId = new Map();
+    this._free = [];
+    this._poolLimit = 512;
   }
 
   /** Create a fresh entity and register it. */
   create() {
-    const e = new Entity(this._nextId++);
+    const id = this._nextId++;
+    const e = this._free.length > 0
+      ? this._free.pop().reset(id)
+      : new Entity(id);
     this._list.push(e);
     this._byId.set(e.id, e);
     return e;
@@ -92,6 +97,7 @@ export class EntityRegistry {
       if (keep && !keep(e)) e.alive = false;
       if (!e.alive) {
         this._byId.delete(e.id);
+        if (this._free.length < this._poolLimit) this._free.push(e);
         continue;
       }
       this._list[w++] = e;
@@ -101,6 +107,9 @@ export class EntityRegistry {
 
   /** Drop every entity. Used on world.reset(). */
   clear() {
+    for (let i = 0; i < this._list.length && this._free.length < this._poolLimit; i += 1) {
+      this._free.push(this._list[i]);
+    }
     this._list.length = 0;
     this._byId.clear();
     this._nextId = 1;
@@ -111,5 +120,10 @@ export class EntityRegistry {
     let n = 0;
     for (const e of this._list) if (e.alive) n += 1;
     return n;
+  }
+
+  /** Diagnostics: pooled entities ready for reuse. */
+  get freeCount() {
+    return this._free.length;
   }
 }

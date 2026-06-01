@@ -24,6 +24,16 @@ const BAND_ALPHA_BIAS = Object.freeze({
   [LANE_BANDS.NATURE]: 0.78,
 });
 
+// v4.8 — flora contact-shadow tuning (see #drawFloraShadow).
+// MIN_SCALE bounds how many flora get a shadow: only the near/large slice
+// (final draw scale above this) qualifies, so the cost stays a handful of
+// ellipses per frame instead of one per carpet speck.
+const FLORA_SHADOW_MIN_SCALE = 0.14;
+// Base footprint half-width in px at scale 1; multiplied by widthScale and
+// the sprite's final scale to size the ellipse to the planted flora.
+const FLORA_SHADOW_BASE_PX = 46;
+const TWO_PI = Math.PI * 2;
+
 /**
  * v4.7 — the two low-flora bands share the same soft treatment: small
  * size bias, near-camera alpha fade and scatter size/flip variation.
@@ -168,6 +178,15 @@ export class SceneryRenderer {
     // v3.8.16 — pull the debug flag once per frame instead of reading
     // it inside #drawSceneryType (called for every scenery entity).
     this._showSideLabels = !!world.config.debug?.showSides;
+    // v4.8 — resolve the flora contact-shadow config ONCE per frame so the
+    // per-sprite path (#sceneryEntity, ~1k calls) only reads cached fields.
+    // The fill colour never changes, so set ctx.fillStyle once here too —
+    // each shadow draw then only touches globalAlpha (mirrors the no-
+    // save/restore alpha handling in #drawSceneryType, keeping the recent
+    // per-sprite state-stack optimisation intact).
+    const floraShadowCfg = world.config.visual?.juice?.floraShadow;
+    this._floraShadow = floraShadowCfg?.enabled ? floraShadowCfg : null;
+    if (this._floraShadow) this.ctx.fillStyle = 'rgb(30, 18, 8)';
     // v3.8.38 — keep a world ref for the composition overlay so the
     // per-entity dispatch doesn't have to thread world through every
     // private method.
@@ -362,6 +381,12 @@ export class SceneryRenderer {
     this._currentItemRole = sprite.role ?? null;
     this._currentItemLane = pos.lane;
     this._currentPrefabId = sprite.prefabId ?? null;
+    // v4.8 — contact shadow under near ground-flora, drawn BEFORE the
+    // sprite so it sits underneath the planted flower/tuft. Gated on band
+    // + near-size so only the readable foreground carpet pays the cost.
+    if (this._floraShadow && isLowFloraBand(scenic.laneBand)) {
+      this.#drawFloraShadow(Math.round(p.sx), Math.round(y), scale, alpha);
+    }
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
     this._currentItemLane = null;
@@ -405,6 +430,44 @@ export class SceneryRenderer {
         });
       }
     }
+  }
+
+  /**
+   * v4.8 — cheap contact shadow for a single ground-flora sprite. Draws a
+   * filled squashed ellipse at the sprite BASE (x, y already pixel-snapped
+   * + bottom-anchored) so the flower/tuft reads as planted in the grass.
+   *
+   * Perf contract (do NOT regress the recent scenery optimisation):
+   *  - NO ctx.save()/restore(), NO gradient, NO shadowBlur. fillStyle is set
+   *    once per frame in render(); here we only touch globalAlpha and reset
+   *    it to 1 — same direct-alpha discipline as #drawSceneryType.
+   *  - One ellipse path + one fill per shadow.
+   *  - Count is BOUNDED by FLORA_SHADOW_MIN_SCALE: only near/large flora
+   *    (final draw scale above the gate) get a shadow; far carpet specks
+   *    are skipped, so a handful of shadows draw per frame, not ~1k.
+   */
+  #drawFloraShadow(x, y, scale, alpha) {
+    // Gate on the FINAL projected scale so only foreground flora qualify.
+    // Final flora scale ≈ p.scale · visualScale · sizeBias · scatterScale,
+    // which sits around 0.10–0.25 for near flora and decays toward 0 with
+    // distance — 0.14 keeps the readable near slice (~d<20) and drops the
+    // tiny background carpet.
+    if (scale < FLORA_SHADOW_MIN_SCALE) return;
+    const cfg = this._floraShadow;
+    // Inherit the sprite's own fade so the shadow can't out-live a flower
+    // that's fading in/out at the near or corridor edge.
+    const a = (cfg.alpha ?? 0.18) * alpha;
+    if (a <= 0.01) return;
+    // Width from the sprite footprint; height a few px so it stays a thin
+    // ground contact, not a blob. Both pixel-floored so it never vanishes.
+    const radiusX = Math.max(2, (cfg.widthScale ?? 0.7) * FLORA_SHADOW_BASE_PX * scale);
+    const radiusY = Math.max(1.5, radiusX * 0.32);
+    const ctx = this.ctx;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radiusX, radiusY, 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   /**
@@ -497,7 +560,10 @@ export class SceneryRenderer {
     // spreading into a new one. This runs for every scenery sprite (~1k/frame),
     // so the spread was a per-sprite allocation feeding gen-0 GC churn.
     const projected = this.projection.projectVisual(lane, distance);
-    const amount = layer === LAYERS.MIDGROUND_TERRAIN ? PARALLAX.midground : PARALLAX.foreground;
+    const allowParallax = world.adaptiveQuality?.tier?.parallax !== false;
+    const amount = allowParallax
+      ? (layer === LAYERS.MIDGROUND_TERRAIN ? PARALLAX.midground : PARALLAX.foreground)
+      : 0;
     projected.sx += parallaxOffset(this.projection, world.scrollOffset, amount, distance * 0.02);
     return projected;
   }

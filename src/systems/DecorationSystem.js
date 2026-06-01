@@ -2,6 +2,12 @@ import { createScenery } from '../ecs/factories.js';
 import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
 import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID, THEMES } from '../config/sceneSchema.data.js';
 
+const HERO_GAP_FILL_PREFABS = Object.freeze([
+  'wall-continuous-3block',
+  'elevated-platform-wall',
+  'fence-flower-row',
+]);
+
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
     grass_dirt_block: 'terrainBlock',
@@ -48,6 +54,9 @@ export class DecorationSystem {
     this.weightedChunks = this.#buildWeightedChunks();
     // v3.8.21 — index prefabs by id for HERO_LAYOUT lookups.
     this.prefabsById = new Map(SIDE_DECORATION_PREFABS.map((p) => [p.id, p]));
+    this.heroGapFillPrefabs = HERO_GAP_FILL_PREFABS
+      .map((id) => this.prefabsById.get(id))
+      .filter(Boolean);
     this.reset();
   }
 
@@ -88,6 +97,7 @@ export class DecorationSystem {
     // we placed per side so the procedural loop continues from there.
     let lastHeroDistLeft = start - spacing;
     let lastHeroDistRight = start - spacing;
+    const heroEntriesBySide = { '-1': [], '1': [] };
     for (const entry of HERO_LAYOUT) {
       const prefab = this.prefabsById.get(entry.prefabId);
       if (!prefab) continue;
@@ -96,9 +106,12 @@ export class DecorationSystem {
       // perspective reads as actual depth instead of "everything is the
       // same size at different positions".
       this.#spawnChunk(world, entry.side, entry.distance, prefab, entry.scaleMultiplier ?? 1);
+      heroEntriesBySide[String(entry.side)].push(entry);
       if (entry.side < 0) lastHeroDistLeft  = Math.max(lastHeroDistLeft,  entry.distance);
       else                 lastHeroDistRight = Math.max(lastHeroDistRight, entry.distance);
     }
+    this.#fillHeroGaps(world, -1, heroEntriesBySide['-1']);
+    this.#fillHeroGaps(world, 1, heroEntriesBySide['1']);
 
     // Phase 2 — procedural variation past the hero stretch. Step from
     // the last hero distance + spacing so we don't overlap the hand-
@@ -115,6 +128,34 @@ export class DecorationSystem {
     }
     for (let distance = procStartRight; distance < maxDist; distance += spacing) {
       this.#spawnSideChunk(world, 1, distance + 3.4 + this.rng.range(-0.7, 0.7));
+    }
+  }
+
+  /**
+   * Fill large authored-layout gaps with a small deterministic rotation of
+   * transition prefabs. This keeps the opening corridor dense while the
+   * anchor clusters remain intentionally asymmetric and art-directed.
+   */
+  #fillHeroGaps(world, side, entries) {
+    if (this.heroGapFillPrefabs.length === 0 || entries.length < 2) return;
+    const maxGap = this.config.spawn.sideDecorHeroMaxGap ?? 16;
+    const sorted = [...entries].sort((a, b) => a.distance - b.distance);
+    let fillIndex = side < 0 ? 0 : 1;
+    for (let i = 1; i < sorted.length; i += 1) {
+      const from = sorted[i - 1].distance;
+      const to = sorted[i].distance;
+      const gap = to - from;
+      if (gap <= maxGap) continue;
+      const fillCount = Math.floor(gap / maxGap);
+      for (let n = 1; n <= fillCount; n += 1) {
+        const distance = from + gap * (n / (fillCount + 1));
+        // Castle-approach accents stay deliberately sparse.
+        if (distance >= 150) continue;
+        const prefab = this.heroGapFillPrefabs[fillIndex % this.heroGapFillPrefabs.length];
+        const scaleMultiplier = distance < 45 ? 0.86 : distance < 90 ? 0.72 : 0.56;
+        this.#spawnChunk(world, side, distance, prefab, scaleMultiplier);
+        fillIndex += 1;
+      }
     }
   }
 

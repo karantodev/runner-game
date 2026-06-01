@@ -309,6 +309,11 @@ export const GAME_CONFIG = Object.freeze({
     // ── Juice: grounding shadow, run dust, collect bloom.
     juice: {
       playerShadow: { enabled: true, alpha: 0.28, widthScale: 0.92 },
+      // v4.8 — soft contact shadows under near ground-flora so the carpet
+      // reads as planted, not floating. Subtle: low alpha, narrow ellipse.
+      // Only the nearest/largest flora get one (see SceneryRenderer scale
+      // gate) so the cost stays bounded across the ~1k-sprite carpet.
+      floraShadow: { enabled: true, alpha: 0.18, widthScale: 0.7 },
       runDust: { enabled: true, rate: 0.5 },
       collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
     },
@@ -366,6 +371,9 @@ export const GAME_CONFIG = Object.freeze({
     sideDecorSpacing: 15.0,
     sideDecorJitter: 0.45,
     sideDecorNearCullDistance: -5.5,
+    // Curated opening groups are supplemented when a per-side gap exceeds
+    // this threshold. Keeps both side walls continuous without mirroring.
+    sideDecorHeroMaxGap: 16,
     // v4.6 — reference-match: dense shoulder flora carpet — second
     // decoration channel parallel to sideDecor. Much tighter spacing than
     // sideDecorSpacing (15) so the green shoulders read as a continuous

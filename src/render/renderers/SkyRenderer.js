@@ -62,13 +62,6 @@ export class SkyRenderer {
     ctx.fillStyle = g.skyDepth;
     ctx.fillRect(0, 0, width, skyH);
 
-    // v3.8.8 — haze rect widened to match the gradient's new fade-in/out
-    // extents (was horizonY-12..+164; now -40..+200). The gradient itself
-    // now fades to alpha 0 at both ends, so the rect no longer reads as
-    // a hard "atmospheric stripe".
-    ctx.fillStyle = g.haze;
-    ctx.fillRect(0, horizonY - 40, width, 240);
-
     // ── Sun ─────────────────────────────────────────────────────────
     // v4.0: larger, warmer, more visible sun. Sprite path unchanged;
     // procedural fallback upgraded from pale yellow to warm golden corona
