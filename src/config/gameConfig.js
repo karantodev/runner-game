@@ -16,6 +16,12 @@ export const GAME_CONFIG = Object.freeze({
   projection: {
     horizonRatio: 0.33,
     roadVanishOffsetRatio: 0.068,
+    // v4.9 — render-only fake perspective. The playable lane model stays
+    // straight, but the visible corridor now aims a little to the right like
+    // the reference composition. `roadCurveStrengthRatio` adds a restrained
+    // mid-depth bow so the shift reads as a garden path, not a skewed poster.
+    roadVanishXOffsetRatio: 0.018,
+    roadCurveStrengthRatio: 0.006,
     // v3.8.3 — perspective overhaul:
     //   groundRatio 0.975 — road reaches bottom of canvas
     //   focal 58       — same dramatic perspective as v3.7.2
@@ -434,7 +440,6 @@ export const GAME_CONFIG = Object.freeze({
     backgroundCloud05: './assets/background/clouds/cloud-05.png',
     backgroundCloud06: './assets/background/clouds/cloud-06.png',
     // Environment props
-    cloudLarge: './assets/environment/cloud-large.png',
     mushroomRed: './assets/environment/mushroom-red.png',
     mushroomPurple: './assets/environment/mushroom-purple.png',
     mushroomBlue: './assets/environment/mushroom-blue.png',
@@ -450,9 +455,7 @@ export const GAME_CONFIG = Object.freeze({
     questionBlock: './assets/blocks/question-block-yellow.png',
     brickPurpleSingle: './assets/blocks/brick-purple-single.png',
     brickPurplePlatform3: './assets/blocks/brick-purple-platform-3.png',
-    pipeGreen: './assets/blocks/pipe-green.png',
     vineCoiled: './assets/blocks/vine-coiled.png',
-    bushSpiky: './assets/blocks/bush-spiky.png',
 
     // Structures (new high-quality sprites)
     purpleBrick01: './assets/structures/bricks/purple_brick_01.png',
@@ -590,7 +593,6 @@ export const GAME_CONFIG = Object.freeze({
     // ── Collectible — golden orchid + halo + sparkle + collect burst ─────
     orchidGoldMain:      './assets/collectibles/orchid_gold/orchid_gold_main.png',
     orchidGoldBig:       './assets/collectibles/orchid_gold/orchid_gold_big.png',
-    orchidGoldHalo:      './assets/collectibles/orchid_gold/orchid_gold_halo.png',
     // v3.6 designer-delivered alt collectible sprites (gold/ folder).
     // emblem = flat icon for HUD; glow = halo fallback; star = bonus spark.
     orchidGoldEmblem:    './assets/collectibles/gold/gold_flower_emblem_01.png',
