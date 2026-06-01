@@ -27,6 +27,27 @@ export class EffectsRenderer {
      */
     this.comboPulse = 0;
     this.comboPulseMultiplier = 0;
+
+    /**
+     * v4.0 — collect flash/bloom state. Bumped to 1 on flower:collected
+     * (wired in render() via world.collectFlash). Decays over ~8 frames.
+     * Controlled by visual.juice.collectFlash.{enabled, bloom}.
+     */
+    this.collectFlash = 0;
+    /** Screen-x of the last collect event (follows the player). */
+    this.collectFlashX = 0;
+    this.collectFlashY = 0;
+  }
+
+  /**
+   * v4.0 — trigger a collect flash. Called by World after flower:collected.
+   * @param {number} x  screen-space X
+   * @param {number} y  screen-space Y
+   */
+  triggerCollectFlash(x, y) {
+    this.collectFlash = 1;
+    this.collectFlashX = x;
+    this.collectFlashY = y;
   }
 
   /**
@@ -265,18 +286,26 @@ export class EffectsRenderer {
       // UP as it decays so the pickup-reward read is "score+1×N rising
       // from where you collected it", not "huge label blocking the
       // horizon".
+      // v4.1 — P0 reference-match: badge must float ABOVE the player's head,
+      // never occlude the torso. Two fixes:
+      //   (1) Font capped at 24–26 px (was 36–44 px) — reads as a brief
+      //       multiplier popup, not a large HUD element.
+      //   (2) upward offset increased 240 → 320 px above feet so the badge
+      //       clears the ~96-px canonical sprite head at all body scales.
+      //       Rise-and-fade drift kept identical (additional (1-a)*80 lift).
       if (this.comboPulseMultiplier > 0) {
         const playerLaneX = world.player?.components.LaneState.laneX ?? 0;
         const playerY = world.player?.components.VerticalState.y ?? 0;
         const popX = this.projection.width / 2 + playerLaneX * this.projection.visualLaneWidth;
-        // Anchor: ~240 px above the player's feet, then lifts another
+        // Anchor: ~320 px above the player's feet (was 240), then lifts another
         // ~80 px as alpha decays so it visually drifts up while fading.
-        const popY = this.projection.groundY + playerY - 240 - (1 - a) * 80;
+        const popY = this.projection.groundY + playerY - 320 - (1 - a) * 80;
         ctx.save();
         ctx.globalAlpha = a;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const fontSize = Math.round(36 + (1 - a) * 8);
+        // Font: 24 px at peak (a=1) → 26 px at tail (a→0). Was 36–44 px.
+        const fontSize = Math.round(24 + (1 - a) * 2);
         ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
         ctx.strokeStyle = 'rgba(122, 74, 8, 0.85)';
         ctx.lineWidth = 4;
@@ -304,6 +333,67 @@ export class EffectsRenderer {
       ctx.fillStyle = '#ff6464';
       ctx.fillRect(0, 0, this.projection.width, this.projection.height);
     }
+    ctx.globalAlpha = 1;
+
+    // v4.0 — collect bloom flash. Radial bloom at the collect position,
+    // gated by visual.juice.collectFlash.enabled.
+    // Decay happens here each frame so it's framerate-independent.
+    if (this.collectFlash > 0) {
+      this.#drawCollectBloom(world);
+      this.collectFlash = Math.max(0, this.collectFlash - 0.14);
+    }
+  }
+
+  /**
+   * v4.0 — brief radial white bloom at the player's screen position on
+   * flower collect. Uses globalCompositeOperation='lighter' for the
+   * additive bloom glow — save/restore isolates composite changes.
+   * Controlled by visual.juice.collectFlash.{enabled, bloom}.
+   */
+  #drawCollectBloom(world) {
+    const flashCfg = world.config.visual?.juice?.collectFlash;
+    if (!flashCfg?.enabled) return;
+    if (world.config.debug?.disableFullScreenEffects) return;
+
+    const t = this.collectFlash;           // 1→0 over ~7 frames
+    const bloomStrength = flashCfg.bloom ?? 0.6;
+    const ctx = this.ctx;
+    const W = this.projection.width;
+    const H = this.projection.height;
+
+    // Centre the bloom at the collect X/Y (set by triggerCollectFlash).
+    const cx = this.collectFlashX || W / 2;
+    const cy = this.collectFlashY || this.projection.groundY - 80;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Inner hot-white burst — tight radius, fast fade.
+    const innerR = 60 + (1 - t) * 40;
+    const innerAlpha = t * bloomStrength * 0.55;
+    const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
+    inner.addColorStop(0,    `rgba(255, 248, 220, ${innerAlpha.toFixed(3)})`);
+    inner.addColorStop(0.45, `rgba(255, 230, 120, ${(innerAlpha * 0.5).toFixed(3)})`);
+    inner.addColorStop(1,    'rgba(255, 200, 60, 0)');
+    ctx.fillStyle = inner;
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer soft halo — wider, dimmer, lingers slightly longer.
+    if (t > 0.3) {
+      const outerR = 120 + (1 - t) * 80;
+      const outerAlpha = (t - 0.3) * bloomStrength * 0.22;
+      const outer = ctx.createRadialGradient(cx, cy, innerR * 0.4, cx, cy, outerR);
+      outer.addColorStop(0,   `rgba(255, 240, 160, ${outerAlpha.toFixed(3)})`);
+      outer.addColorStop(1,   'rgba(255, 210, 80, 0)');
+      ctx.fillStyle = outer;
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
 

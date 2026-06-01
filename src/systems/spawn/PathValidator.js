@@ -1,30 +1,29 @@
-// Min world-unit gap required to physically switch one lane.
-// At base speed 0.9: 8 units ≈ 9 frames ≈ 150 ms (reaction + lane travel).
-const LANE_SWITCH_UNITS = 8;
+import { GAME_CONFIG } from '../../config/gameConfig.js';
+import { getObstacleRule, obstacleSpansAllLanes } from '../../ecs/obstacleRules.js';
 
-// World units the player stays airborne after jumping a vine.
-// Derived from vy=-16.5 / gravity=0.95 → ~34.7 frames; at base speed 0.9 ≈ 31 world units.
-// Using 34 as the nominal ceiling to stay conservative across speeds.
-const JUMP_AIRBORNE_UNITS = 34;
-
-// World units the player stays crouched after a tap (matches Player config's
-// crouch.minHoldFrames = 26 at base speed 0.9 → ~23 units; round up to 24
-// to stay forgiving against fractional simulation rounding).
-const CROUCH_HELD_UNITS = 24;
+// The current lane interpolation reaches a safe offset in roughly nine frames
+// at base speed. Scale the required world distance with speed so validation
+// remains frame-accurate when the runner accelerates.
+const BASE_LANE_SWITCH_UNITS = 8;
 
 export class PathValidator {
-  isSolvable(pattern) {
-    return this.#simulate(pattern).solvable;
+  constructor(config = GAME_CONFIG) {
+    this.config = config;
+  }
+
+  isSolvable(pattern, options = {}) {
+    return this.#simulate(pattern, options).solvable;
   }
 
   // Returns { solvable, rejectionReason, finalStates }
-  analyze(pattern) {
-    return this.#simulate(pattern);
+  analyze(pattern, options = {}) {
+    return this.#simulate(pattern, options);
   }
 
-  // ── Simulation ───────────────────────────────────────────────────────────────
+  // ── Simulation ─────────────────────────────────────────────────────────────
 
-  #simulate(pattern) {
+  #simulate(pattern, { speed = this.config.gameplay.startSpeed } = {}) {
+    const timing = this.#timing(speed);
     const obstacles = pattern.items
       .filter(i => i.kind === 'obstacle')
       .sort((a, b) => a.offset - b.offset);
@@ -34,13 +33,7 @@ export class PathValidator {
     }
 
     // State: { lane, airborne, landAt, crouching, crouchUntil, posAt }
-    //   lane         — current lane (-1 / 0 / 1)
-    //   airborne     — player is in the air (cannot duck)
-    //   landAt       — pattern offset when player lands (only meaningful when airborne)
-    //   crouching    — player is ducking
-    //   crouchUntil  — pattern offset at which the duck expires (meaningful when crouching)
-    //   posAt        — pattern offset when this state was established;
-    //                  -Infinity = before the pattern → unlimited lane freedom
+    // posAt = -Infinity means the player can enter the pattern from any lane.
     let states = [-1, 0, 1].map(lane => ({
       lane, airborne: false, landAt: -Infinity,
       crouching: false, crouchUntil: -Infinity,
@@ -49,95 +42,81 @@ export class PathValidator {
 
     for (const obs of obstacles) {
       const next = [];
+      const rule = getObstacleRule(obs.type);
+      const allLanes = obstacleSpansAllLanes(obs.type, obs.allLanes);
 
       for (const s of states) {
         const isAirborne = s.airborne && s.landAt > obs.offset;
         const isCrouching = s.crouching && s.crouchUntil > obs.offset;
-
-        // How many lane switches can the player make by the time this obstacle arrives?
-        // posAt = -Infinity → elapsed = Infinity → shift = 2 (all lanes reachable).
         const elapsed = obs.offset - s.posAt;
-        const shift = Math.min(2, isFinite(elapsed) ? Math.floor(elapsed / LANE_SWITCH_UNITS) : 2);
-        const reachable = [-1, 0, 1].filter(l => Math.abs(l - s.lane) <= shift);
+        const shift = Math.min(
+          2,
+          Number.isFinite(elapsed) ? Math.floor(elapsed / timing.laneSwitchUnits) : 2,
+        );
+        const reachable = [-1, 0, 1].filter(lane => Math.abs(lane - s.lane) <= shift);
 
-        if (obs.type === 'overhang') {
-          // Overhead barrier across all 3 lanes.
-          // Jumping into it = collision; lane-switch doesn't help (spans the road).
+        if (rule.clearBy === 'crouch') {
+          // Overhead hazards span the road. Jumping into one is not recoverable.
           if (isAirborne) continue;
-          if (isCrouching) {
-            for (const l of reachable) {
-              next.push({
-                lane: l, airborne: false, landAt: -Infinity,
-                crouching: true, crouchUntil: s.crouchUntil,
-                posAt: obs.offset,
-              });
-            }
-          } else {
-            // On the ground, not crouched → must duck right now.
-            for (const l of reachable) {
-              next.push({
-                lane: l, airborne: false, landAt: -Infinity,
-                crouching: true, crouchUntil: obs.offset + CROUCH_HELD_UNITS,
-                posAt: obs.offset,
-              });
-            }
+          for (const lane of reachable) {
+            next.push({
+              lane, airborne: false, landAt: -Infinity,
+              crouching: true,
+              crouchUntil: isCrouching ? s.crouchUntil : obs.offset + timing.crouchHeldUnits,
+              posAt: obs.offset,
+            });
           }
-        } else if (obs.allLanes) {
-          // Vine — must be airborne. Cannot duck under a vine.
-          if (isAirborne) {
-            for (const l of reachable) {
-              next.push({
-                lane: l, airborne: true, landAt: s.landAt,
-                crouching: false, crouchUntil: -Infinity,
-                posAt: obs.offset,
-              });
-            }
-          } else if (isCrouching) {
-            // Locked in a crouch when a vine arrives → cannot jump out fast enough.
-            // (Jump from crouch is gated by minHoldFrames; if the duck has not
-            // expired yet this branch dies.)
+          continue;
+        }
+
+        if (allLanes) {
+          // A full-width ground hazard can only be cleared by jumping.
+          if (rule.clearBy !== 'jump' || isCrouching) continue;
+          for (const lane of reachable) {
+            next.push({
+              lane,
+              airborne: true,
+              landAt: isAirborne ? s.landAt : obs.offset + timing.jumpAirborneUnits,
+              crouching: false,
+              crouchUntil: -Infinity,
+              posAt: obs.offset,
+            });
+          }
+          continue;
+        }
+
+        for (const lane of reachable) {
+          if (lane !== obs.lane) {
+            // Dodge by occupying another lane. Preserve any active action.
+            next.push({
+              lane,
+              airborne: isAirborne,
+              landAt: isAirborne ? s.landAt : -Infinity,
+              crouching: isCrouching,
+              crouchUntil: isCrouching ? s.crouchUntil : -Infinity,
+              posAt: obs.offset,
+            });
             continue;
-          } else {
-            for (const l of reachable) {
-              next.push({
-                lane: l, airborne: true, landAt: obs.offset + JUMP_AIRBORNE_UNITS,
-                crouching: false, crouchUntil: -Infinity,
-                posAt: obs.offset,
-              });
-            }
           }
-        } else {
-          for (const l of reachable) {
-            if (l !== obs.lane) {
-              // Dodge by being in a different lane — keep airborne / crouch state.
-              next.push({
-                lane: l,
-                airborne: isAirborne,
-                landAt: isAirborne ? s.landAt : -Infinity,
-                crouching: isCrouching,
-                crouchUntil: isCrouching ? s.crouchUntil : -Infinity,
-                posAt: obs.offset,
-              });
-            } else if (isAirborne) {
-              // Same lane as obstacle but still airborne — cleared by the jump.
-              next.push({
-                lane: l, airborne: true, landAt: s.landAt,
-                crouching: false, crouchUntil: -Infinity,
-                posAt: obs.offset,
-              });
-            }
-            // l === obs.lane AND grounded → state eliminated (crouch doesn't clear ground hazards).
+
+          if (rule.clearBy === 'jump' && !isCrouching) {
+            // Same-lane ground hazards can be jumped in runtime, including
+            // ordinary wheat, bush, stone, wall, and mushroom obstacles.
+            next.push({
+              lane,
+              airborne: true,
+              landAt: isAirborne ? s.landAt : obs.offset + timing.jumpAirborneUnits,
+              crouching: false,
+              crouchUntil: -Infinity,
+              posAt: obs.offset,
+            });
           }
         }
       }
 
       states = this.#dedup(next);
       if (states.length === 0) {
-        const label = obs.type === 'overhang'
-          ? 'overhang'
-          : obs.allLanes
-            ? 'vine'
-            : `${obs.type ?? 'obstacle'} in lane ${obs.lane}`;
+        const label = allLanes ? obs.type : `${obs.type ?? 'obstacle'} in lane ${obs.lane}`;
         return {
           solvable: false,
           rejectionReason: `No valid path at offset ${obs.offset} (${label})`,
@@ -147,6 +126,17 @@ export class PathValidator {
     }
 
     return { solvable: true, rejectionReason: null, finalStates: states };
+  }
+
+  #timing(speed) {
+    const cfg = this.config;
+    const startSpeed = cfg.gameplay.startSpeed;
+    const jumpAirborneFrames = Math.ceil((-2 * cfg.player.jumpVelocity) / cfg.player.gravity);
+    return {
+      laneSwitchUnits: BASE_LANE_SWITCH_UNITS * speed / startSpeed,
+      jumpAirborneUnits: jumpAirborneFrames * speed,
+      crouchHeldUnits: cfg.player.crouch.minHoldFrames * speed,
+    };
   }
 
   #dedup(states) {

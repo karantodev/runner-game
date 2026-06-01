@@ -1,6 +1,34 @@
 import { getCollectibleSpec } from '../../ecs/collectibleTypes.js';
 import { ASSET_SEMANTICS, getCanonicalSemantic } from '../../config/assetSemantics.js';
 
+// v4.0 — Reusable per-frame scratch for obstacle tint pass.
+// One OffscreenCanvas per GameplayRenderer instance, created lazily.
+// Avoids per-frame allocation in the hot path.
+let _tintCanvas = null;
+let _tintCtx = null;
+function _getTintCtx(w, h) {
+  if (!_tintCanvas || _tintCanvas.width < w || _tintCanvas.height < h) {
+    try {
+      _tintCanvas = new OffscreenCanvas(Math.max(w, 256), Math.max(h, 256));
+    } catch (_) {
+      // OffscreenCanvas unavailable (e.g. Node smoke-test). Return null;
+      // caller must guard.
+      return null;
+    }
+    _tintCtx = _tintCanvas.getContext('2d');
+  }
+  return _tintCtx;
+}
+
+// v4.4 — pull the alpha channel out of a css color so the obstacle outline
+// stamp honours the strength baked into config (`rgba(20,12,40,0.55)` → 0.55).
+// Opaque / non-rgba colors fall back to fully opaque.
+function _cssAlpha(color) {
+  if (typeof color !== 'string') return 1;
+  const m = color.match(/rgba?\([^)]*?,\s*([\d.]+)\s*\)/);
+  return m ? Math.max(0, Math.min(1, parseFloat(m[1]))) : 1;
+}
+
 // v3.8.50 — Phase 8 canonical overlay palette. Keyed by canonical
 // role (spec scheme: red/yellow/green/blue/gray/purple).
 const COMPOSITION_COLORS = {
@@ -49,19 +77,39 @@ export class GameplayRenderer {
     // for every render call. Entities themselves carry `kind` + `distance`
     // already, so we can push refs directly.
     this._renderQueue = [];
+    // Flower halos share one cached offscreen sprite per colour. Building
+    // two radial gradients for every visible orchid every frame was one
+    // of the hottest Canvas paths once the breadcrumb trail became dense.
+    this._flowerGlowCache = new Map();
   }
 
   render(world) {
+    // v4.0 — cache config sub-objects for the duration of this frame so
+    // drawer functions can read them via `self._glowCfg` without per-entity
+    // property traversal. Assigned directly to `this`; reset to null after
+    // the loop so stale refs don't leak across frames.
+    this._glowCfg = world.config?.visual?.enabled
+      ? (world.config.visual.collectibles?.glow ?? null)
+      : null;
+
     const queue = this._renderQueue;
     queue.length = 0;
-    for (const e of world.registry.query('Position', 'Sprite', 'Hitbox')) queue.push(e);
-    for (const e of world.registry.query('Position', 'Sprite', 'CollectibleData')) queue.push(e);
+    for (const e of world.registry.query('Position', 'Sprite', 'Hitbox')) {
+      const d = e.components.Position.distance;
+      if (d >= -6 && d <= 180) queue.push(e);
+    }
+    for (const e of world.registry.query('Position', 'Sprite', 'CollectibleData')) {
+      const d = e.components.Position.distance;
+      if (d >= -6 && d <= 118) queue.push(e);
+    }
     queue.sort(byDistanceComponent);
 
     for (const e of queue) {
       if ('Hitbox' in e.components) this.#obstacleEntity(e, world.scrollOffset, world);
       else if (!e.components.CollectibleData.collected) this.#collectibleEntity(e, world);
     }
+
+    this._glowCfg = null;  // prevent stale ref across frames
 
     // v3.8.38 — Phase 3 composition overlay pass. Drawn after all
     // entities so labels sit on top of the scene. Walks the same queue;
@@ -136,14 +184,12 @@ export class GameplayRenderer {
   #collectibleEntity(entity, world) {
     const pos = entity.components.Position;
     const data = entity.components.CollectibleData;
-    // v3.8.14 — clean far-gate approach. Collectibles past distance 90
-    // are well inside the road's tile-fade-out zone (FAR_VISIBLE=84) and
-    // sit visually near the castle gate. Skipping them keeps the final
-    // approach to the gate clear, and players still have ~90 world-units
-    // of warning before any pickup. distance 70-90 fades smoothly so
-    // pickups don't pop in.
-    if (pos.distance > 90) return;
-    const distanceFadeT = pos.distance > 70 ? Math.max(0, 1 - (pos.distance - 70) / 20) : 1;
+    // v4.2 — P2 reference-match: extend far-gate 90 → 118 so the orchid
+    // trail reaches toward the castle (road is visible to ~120). Fade
+    // window shifted to 98→118 (was 70→90) — flowers appear gradually
+    // rather than popping in. Near flowers are unaffected.
+    if (pos.distance > 118) return;
+    const distanceFadeT = pos.distance > 98 ? Math.max(0, 1 - (pos.distance - 98) / 20) : 1;
     const p = this.projection.projectVisual(pos.lane, pos.distance);
     const yOffset = data.high ? -86 : -40;
     const wobble = Math.sin(data.t) * 4 * p.scale;
@@ -225,6 +271,172 @@ export class GameplayRenderer {
     ctx.restore();
   }
 
+  /**
+   * v4.4 — Flower/collectible halo drawn with globalCompositeOperation='source-over'
+   * (was 'lighter' in v4.0) so a dense line of halos stays as discrete warm auras
+   * instead of stacking additively into one blown-out gold band.
+   * Reads from GAME_CONFIG.visual.collectibles.glow when available.
+   *
+   * @param {number} x  — screen x (already projected + jitter)
+   * @param {number} y  — screen y
+   * @param {number} scale — projection scale
+   * @param {number} t  — time in seconds for pulse animation (data.t)
+   * @param {string} color — hex / css color string
+   * @param {number} spriteHalfSize — half-width of the sprite in screen px
+   * @param {object} [glowCfg] — optional GAME_CONFIG.visual.collectibles.glow
+   */
+  drawFlowerGlow(x, y, scale, t, color, spriteHalfSize, glowCfg) {
+    const ctx = this.ctx;
+    const radiusScale = glowCfg?.radiusScale ?? 1.12;
+    const pulse       = glowCfg?.pulse       ?? 0.10;
+    const radius = spriteHalfSize * radiusScale * (1 + Math.sin(t * 3.1) * pulse);
+    let glow = this._flowerGlowCache.get(color);
+    if (!glow) {
+      const size = 128;
+      glow = typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(size, size)
+        : (() => { const c = document.createElement('canvas'); c.width = size; c.height = size; return c; })();
+      const glowCtx = glow.getContext('2d');
+      const center = size / 2;
+      const grad = glowCtx.createRadialGradient(center, center, 0, center, center, center);
+      grad.addColorStop(0, color);
+      grad.addColorStop(0.28, color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      glowCtx.globalAlpha = 0.72;
+      glowCtx.fillStyle = grad;
+      glowCtx.fillRect(0, 0, size, size);
+      this._flowerGlowCache.set(color, glow);
+    }
+    ctx.save();
+    // v4.4 — reference-match: tighter non-additive flower glow so the trail reads as discrete blooms.
+    // 'source-over' (was 'lighter') stops a line of halos summing into a blown-out band;
+    // alpha + radius are pulled in so each orchid keeps a soft warm aura instead of a smear.
+    ctx.globalCompositeOperation = 'source-over';
+    // ~0.16 target; min() keeps it tight even if config dials glow alpha lower.
+    ctx.globalAlpha = Math.min(glowCfg?.alpha ?? 0.28, 0.16);
+    const tightRadius = radius * 0.7;
+    ctx.drawImage(glow, x - tightRadius, y - tightRadius, tightRadius * 2, tightRadius * 2);
+    ctx.restore();
+  }
+
+  /**
+   * v4.1 — P0 reference-match: soft elliptical contact shadow under the
+   * obstacle foot. Replaces the old bounding-box fillRect + strokeRect which
+   * painted an ugly rectangular purple box over every sprite's transparent
+   * corners. A contact shadow is sprite-agnostic (no per-pixel work) and
+   * grounds the obstacle on the road without any visible rectangle.
+   *
+   * The shadow is centred at (cx, cy) — the foot-y returned by projectVisual.
+   * halfW drives the ellipse x-radius; shadow depth is fixed at 0.28 × halfW.
+   * The existing `obstacleCfg` object gates the draw (same guard as before);
+   * per-property `tint`/`outline` sub-objects are no longer read here since
+   * we no longer use a box-fill approach — the shadow is always a dark oval.
+   *
+   * @param {number} cx — horizontal centre of the obstacle in screen px
+   * @param {number} cy — foot y (sy from projectVisual)
+   * @param {number} halfW — half-width in screen px (used for ellipse rx)
+   * @param {number} halfH — half-height in screen px (unused visually; kept
+   *                         for call-site stability)
+   * @param {object} obstacleCfg — GAME_CONFIG.visual.obstacles (presence gates draw)
+   */
+  #drawObstacleTintOverlay(cx, cy, halfW, halfH, _obstacleCfg) {
+    const ctx = this.ctx;
+    // v4.1 — P0 reference-match: soft contact shadow — radial gradient oval
+    // on the road surface under the sprite. rx matches sprite half-width so
+    // it stays proportional at every depth. ry is 28% of rx (flat perspective
+    // read on the ground plane). Alpha 0.38 keeps it readable without
+    // darkening the road noticeably for well-lit sprites.
+    const rx = halfW;
+    const ry = halfW * 0.28;
+    ctx.save();
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    grad.addColorStop(0,   'rgba(10,6,20,0.38)');
+    grad.addColorStop(0.5, 'rgba(10,6,20,0.18)');
+    grad.addColorStop(1,   'rgba(10,6,20,0)');
+    ctx.fillStyle = grad;
+    ctx.scale(1, ry / rx);   // squash circle → ellipse (no matrix alloc)
+    ctx.beginPath();
+    ctx.arc(cx, cy * (rx / ry), rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * v4.4 — reference-match: cool tint + silhouette outline on obstacles for road separation.
+   *
+   * Draws a sprite-keyed obstacle with (1) a sprite-following dark OUTLINE
+   * stamped in 4 directions behind it (mirrors the PlayerRenderer technique —
+   * `filter:'brightness(0)'` keeps the real alpha shape, so the edge hugs the
+   * silhouette, NOT a rectangle) and (2) a cool-purple TINT scoped to the
+   * sprite's own pixels.
+   *
+   * The tint is composited on an offscreen scratch with `source-atop` so it
+   * stays inside the sprite's alpha — tinting the bounding rect directly with
+   * `source-atop` on the main canvas would wash the textured road behind it
+   * (the very rectangular smudge v4.1 removed). Falls back to a plain blit
+   * when the scratch / OffscreenCanvas is unavailable (e.g. Node smoke-test).
+   *
+   * Replicates `SpriteRenderer.draw` geometry exactly (bottom anchor, integer
+   * snap) so outline + tint align pixel-for-pixel with the real sprite, and
+   * returns the same boolean so caller fallbacks (`if (!draw) paint…`) hold.
+   *
+   * @returns {boolean} true if the sprite drew, false if the asset was missing
+   */
+  #drawObstacleSpriteWithFx(key, cx, baseY, targetWidth, obstacleCfg) {
+    const image = this.assets.get(key);
+    if (!image || !image.naturalWidth) return false;
+
+    const ctx = this.ctx;
+    const height = targetWidth * (image.naturalHeight / image.naturalWidth);
+    // Match SpriteRenderer's snapped bottom-anchored rect 1:1.
+    const dx = Math.round(cx - targetWidth / 2);
+    const dy = Math.round(baseY - height);
+    const dw = Math.round(targetWidth);
+    const dh = Math.round(height);
+
+    const outlineCfg = obstacleCfg?.outline;
+    const tintCfg = obstacleCfg?.tint;
+
+    // (1) Silhouette outline behind the sprite — 4-direction brightness(0) stamp.
+    if (outlineCfg?.enabled) {
+      const o = Math.max(1, outlineCfg.width ?? 2);
+      ctx.save();
+      ctx.filter = 'brightness(0)';
+      ctx.globalAlpha = _cssAlpha(outlineCfg.color);
+      ctx.drawImage(image, dx - o, dy, dw, dh);
+      ctx.drawImage(image, dx + o, dy, dw, dh);
+      ctx.drawImage(image, dx, dy - o, dw, dh);
+      ctx.drawImage(image, dx, dy + o, dw, dh);
+      ctx.restore();
+    }
+
+    // (2) Cool tint scoped to the sprite alpha, composited offscreen so the
+    // road behind the sprite is never touched.
+    if (tintCfg?.enabled) {
+      const tctx = _getTintCtx(dw, dh);
+      if (tctx) {
+        tctx.save();
+        tctx.clearRect(0, 0, dw, dh);
+        tctx.imageSmoothingEnabled = false;  // local scratch ctx, not the frame ctx
+        tctx.globalCompositeOperation = 'source-over';
+        tctx.globalAlpha = 1;
+        tctx.drawImage(image, 0, 0, dw, dh);
+        tctx.globalCompositeOperation = 'source-atop';  // tint hugs sprite alpha only
+        tctx.globalAlpha = tintCfg.strength ?? 0.20;
+        tctx.fillStyle = tintCfg.color ?? '#7a4fd0';
+        tctx.fillRect(0, 0, dw, dh);
+        tctx.restore();
+        ctx.drawImage(tctx.canvas, 0, 0, dw, dh, dx, dy, dw, dh);
+        return true;
+      }
+      // No offscreen scratch available — fall through to a plain blit so the
+      // obstacle still renders (untinted) rather than vanishing.
+    }
+
+    ctx.drawImage(image, dx, dy, dw, dh);
+    return true;
+  }
+
   // ── Obstacles ───────────────────────────────────────────────────────────────
 
   #obstacleEntity(entity, scrollOffset, world) {
@@ -243,15 +455,43 @@ export class GameplayRenderer {
 
     const p = this.projection.projectVisual(pos.lane, pos.distance);
     if (box.warning) this.#warningPulse(p.sx, p.sy - 58 * p.scale, p.scale, world.timeAlive);
-    if (assetType === 'spiky_bush_obstacle' || box.type === 'bush') this.paint.bush(p.sx, p.sy, p.scale);
-    if (assetType === 'dry_grass_obstacle' || box.type === 'wheat') {
-      if (!this.sprites.draw('dryGrassObstacle', p.sx, p.sy, 130 * p.scale)) this.paint.wheat(p.sx, p.sy, p.scale);
+
+    // v4.4 — reference-match: cool tint + silhouette outline on obstacles for road separation.
+    // Resolved up-front so the sprite-keyed draws below can route through the
+    // fx helper. Null when the visual system is off → helper plain-blits.
+    const obstacleCfg = world.config?.visual?.obstacles;
+    const fxCfg = world.config?.visual?.enabled ? obstacleCfg : null;
+
+    // v4.0 — track which draw path fires so we know sprite dimensions
+    // for the tint overlay. All variants share the same overlay call below.
+    let spriteHalfW = 65 * p.scale;  // conservative default
+    let spriteHalfH = 48 * p.scale;
+
+    if (assetType === 'spiky_bush_obstacle' || box.type === 'bush') {
+      this.paint.bush(p.sx, p.sy, p.scale);   // painter path — no sprite fx (see #drawObstacleSpriteWithFx)
+      spriteHalfW = 55 * p.scale; spriteHalfH = 44 * p.scale;
     }
-    if (assetType === 'purple_brick_single' || box.type === 'wall') this.paint.wallBlock(p.sx, p.sy, p.scale, 1, sprite.variant === 2 ? 2 : 1);
+    if (assetType === 'dry_grass_obstacle' || box.type === 'wheat') {
+      // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
+      if (!this.#drawObstacleSpriteWithFx('dryGrassObstacle', p.sx, p.sy, 130 * p.scale, fxCfg)) this.paint.wheat(p.sx, p.sy, p.scale);
+      spriteHalfW = 65 * p.scale; spriteHalfH = 40 * p.scale;
+    }
+    if (assetType === 'purple_brick_single' || box.type === 'wall') {
+      this.paint.wallBlock(p.sx, p.sy, p.scale, 1, sprite.variant === 2 ? 2 : 1);  // painter path — no sprite fx
+      spriteHalfW = 50 * p.scale; spriteHalfH = 52 * p.scale;
+    }
     if (assetType === 'small_center_mushroom' || box.type === 'mushroom') {
-      if (!this.sprites.draw('mushroomSmallRed', p.sx, p.sy, 140 * p.scale)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
+      // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
+      if (!this.#drawObstacleSpriteWithFx('mushroomSmallRed', p.sx, p.sy, 140 * p.scale, fxCfg)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
+      spriteHalfW = 58 * p.scale; spriteHalfH = 58 * p.scale;
     }
     // (the legacy `stone` type has no sprite + no paint backend; intentionally a no-op now)
+
+    // v4.1 — P0 reference-match: contact shadow for obstacle readability.
+    // Guard: only when visual system enabled and obstacle config present.
+    if (fxCfg) {
+      this.#drawObstacleTintOverlay(p.sx, p.sy, spriteHalfW, spriteHalfH, obstacleCfg);
+    }
   }
 
   #vine(distance, scrollOffset, warning = false) {
@@ -334,8 +574,13 @@ export class GameplayRenderer {
     const key = assetType === 'spider_web_overhang' ? 'spiderWebOverhang' : 'lowBranchOverhang';
     const image = this.assets.get(key);
 
-    const headroom = 132 * scale;
-    const overhangTopY = p1.sy - headroom - 110 * scale;
+    // v4.3 — P3 reference-match: anchor the branch bottom at head height
+    // above the road contact so it always hangs overhead. Old code anchored
+    // the TOP and drew downward, causing the tall branch to extend below the
+    // road at close range and drape through the player's torso. Now we pin
+    // the BOTTOM at (p1.sy - headroom) and grow UPWARD by drawH.
+    const headroom = 150 * scale;          // branch lowest point ~head height above road
+    const overhangBottomY = p1.sy - headroom;
 
     ctx.save();
     ctx.globalAlpha = 0.26;
@@ -349,10 +594,14 @@ export class GameplayRenderer {
       const aspect = image.naturalHeight / image.naturalWidth;
       const drawW = roadW;
       const drawH = drawW * aspect;
+      const overhangTopY = overhangBottomY - drawH;   // grow UPWARD into the sky
       // imageSmoothingEnabled is set false once per frame in RenderSystem.
       ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
     } else {
-      this.#paintOverhangFallback(cx, overhangTopY, roadW, scale, assetType);
+      // Pass topY computed from the same bottom anchor so the fallback's
+      // lowest rendered pixel also sits at overhangBottomY.
+      const fallbackH = (26 + 88) * scale;  // trunkH + leafH from #paintOverhangFallback
+      this.#paintOverhangFallback(cx, overhangBottomY - fallbackH, roadW, scale, assetType);
     }
   }
 
@@ -498,7 +747,15 @@ export class GameplayRenderer {
 }
 
 function byDistanceComponent(a, b) {
-  return b.components.Position.distance - a.components.Position.distance;
+  const depthOrder = b.components.Position.distance - a.components.Position.distance;
+  if (depthOrder !== 0) return depthOrder;
+  return gameplayPriority(a) - gameplayPriority(b) || a.id - b.id;
+}
+
+function gameplayPriority(entity) {
+  // Obstacles render after collectibles at the same depth so collision
+  // silhouettes stay readable when authored or procedural content aligns.
+  return 'Hitbox' in entity.components ? 1 : 0;
 }
 
 /**
@@ -553,18 +810,31 @@ const COLLECTIBLE_DRAWERS = {
     self.paint.flower(x, y, scale * 1.95 * pop);
   },
 
-  flower(self, x, y, scale, pop, _r, data) {
-    // v3.8.5 — bump orchid base 52 → 60. Reference shows golden flowers
-    // as crisp, unmistakable markers; at 52 the mid-depth flowers were
-    // getting lost in road texture. 60 keeps depth scaling honest
-    // (still shrinks at distance) while giving near pickups proper
-    // weight and presence.
+  flower(self, x, y, scale, pop, r, data) {
+    // Keep the flower readable without turning the whole center lane into
+    // a permanent bloom strip.
     const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
-    const w = 60 * scale * pop * szMod;
+    const w = 82 * scale * pop * szMod;
+
+    // v4.0 — warm golden halo drawn BEFORE the sprite so it sits behind
+    // the orchid. v4.4: drawFlowerGlow now uses a tight 'source-over' halo
+    // (no longer additive) so a dense trail reads as discrete blooms. Config
+    // overrides the registry glowColor if visual system is active. data.t
+    // drives the pulse animation.
+    const glowCfg  = self._glowCfg;   // injected by render() setup below
+    const glowColor = glowCfg?.flowerColor ?? r.glowColor ?? '#ffcf3a';
+    if (!glowCfg || glowCfg.enabled !== false) {
+      self.drawFlowerGlow(x, y, scale, data.t, glowColor, w * 0.5, glowCfg);
+    }
+
+    // v4.5 — the designer's orchid_gold art is now at canonical 96px (the
+    // 1254² "flame-noise" source that forced the v4.4 workaround was
+    // downscaled), so the real orchid is the primary sprite again.
+    // goldenFlowerBig / Small stay as ordered fallbacks.
     if (self.sprites.draw('orchidGoldMain', x, y, w)) return;
+    const flowerKey = scale > 0.5 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
+    if (self.sprites.draw(flowerKey, x, y, w)) return;
     if (self.sprites.draw('orchidGoldBig', x, y, w * 0.9)) return;
-    const legacyKey = scale > 0.55 ? 'goldenFlowerBig' : 'goldenFlowerSmall';
-    if (self.sprites.draw(legacyKey, x, y, 72 * scale * pop * szMod)) return;
     self.paint.flower(x, y, scale * 1.65 * pop);
   },
 };

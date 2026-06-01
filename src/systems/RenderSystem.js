@@ -11,6 +11,7 @@ import { SceneryRenderer } from '../render/renderers/SceneryRenderer.js';
 import { GameplayRenderer } from '../render/renderers/GameplayRenderer.js';
 import { PlayerRenderer } from '../render/renderers/PlayerRenderer.js';
 import { EffectsRenderer } from '../render/renderers/EffectsRenderer.js';
+import { VoxelBlockRenderer } from '../render/renderers/scenery/VoxelBlockRenderer.js';
 
 /**
  * Composition root for rendering. Owns the canvas + drawing dependencies
@@ -30,7 +31,7 @@ export class RenderSystem {
    * @param {HTMLCanvasElement} canvas
    * @param {import('../core/AssetManager.js').AssetManager} assets
    * @param {import('../world/Projection.js').Projection} projection
-   * @param {{ pixelRatio?: number, roadStyle?: 'procedural' | 'tiles' }} [options]
+   * @param {{ pixelRatio?: number, roadStyle?: 'procedural' | 'tiles' | 'kit', blockStyle?: 'sprite' | 'voxel' }} [options]
    */
   constructor(canvas, assets, projection, options = {}) {
     this.canvas = canvas;
@@ -40,7 +41,8 @@ export class RenderSystem {
     this.pixelRatio = Math.max(1, options.pixelRatio ?? 1);
     this.roadStyle = ['procedural', 'tiles', 'kit'].includes(options.roadStyle)
       ? options.roadStyle
-      : 'procedural';
+      : 'kit';
+    this.blockStyle = options.blockStyle === 'voxel' ? 'voxel' : 'sprite';
 
     // Resize the backing store to logical * pixelRatio. The projection
     // and renderers keep operating in logical units; setTransform() in
@@ -53,6 +55,7 @@ export class RenderSystem {
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
     this.gradients = new GradientCache(this.ctx, projection);
+    this.voxelBlocks = new VoxelBlockRenderer(this.ctx, { style: this.blockStyle });
 
     const deps = {
       ctx: this.ctx,
@@ -61,6 +64,7 @@ export class RenderSystem {
       sprites: this.sprites,
       paint: this.paint,
       gradients: this.gradients,
+      voxelBlocks: this.voxelBlocks,
       pixelRatio: this.pixelRatio,
       roadStyle: this.roadStyle,
     };
@@ -97,6 +101,20 @@ export class RenderSystem {
     return next;
   }
 
+  /**
+   * Swap modular scenery blocks between delivered 2D sprites and the
+   * Canvas-only 3D-like voxel renderer. Gameplay entities are untouched.
+   */
+  setBlockStyle(style) {
+    this.blockStyle = this.voxelBlocks.setStyle(style);
+    console.info(`[RenderSystem] blockStyle → ${this.blockStyle}`);
+    return this.blockStyle;
+  }
+
+  toggleBlockStyle() {
+    return this.setBlockStyle(this.voxelBlocks.enabled ? 'sprite' : 'voxel');
+  }
+
   render(world) {
     const ctx = this.ctx;
     const dpr = this.pixelRatio;
@@ -121,7 +139,136 @@ export class RenderSystem {
       this.pipeline.render(world);
     }
 
+    // v4.0 — Post-process color grade: warm/cool overlay + vignette.
+    // Applied AFTER the pipeline paints the full frame but BEFORE the
+    // transform reset so the overlays sit in logical coordinates (same
+    // space as the rest of the frame). Guard: visual.enabled AND
+    // visual.grade.enabled — if either is off, zero overhead.
+    const vCfg = world.config.visual;
+    if (vCfg?.enabled
+        && vCfg?.grade?.enabled
+        && world.adaptiveQuality?.tier?.postProcessGrade !== false) {
+      this.#applyColorGrade(ctx, this.projection, vCfg.grade);
+    }
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /**
+   * v4.0 — Post-process color grade overlay pass.
+   *
+   * Cheap pipeline (no per-frame allocation after first frame):
+   *   1. Warm→Cool vertical gradient with 'overlay' composite — punches
+   *      highlights warm and shadows cool without changing luminance.
+   *   2. Radial vignette with 'multiply' composite — darkens corners.
+   *   3. ctx.filter saturate/contrast/brightness applied to an offscreen
+   *      copy, then drawn back — done once on the offscreen canvas that
+   *      is lazily allocated and reused every frame.
+   *
+   * Pixel-art safety: imageSmoothingEnabled is restored to false after
+   * the filter pass (the offscreen draw temporarily needs the value
+   * unchanged — we explicitly set false before drawing back).
+   *
+   * All operations wrapped in save/restore so globalAlpha,
+   * globalCompositeOperation, and filter are never left dirty.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {import('../world/Projection.js').Projection} p
+   * @param {object} grade  — world.config.visual.grade
+   */
+  #applyColorGrade(ctx, p, grade) {
+    const W = p.width;
+    const H = p.height;
+
+    // ── 1. Warm (top) → cool (bottom) overlay pass ──────────────────
+    if (grade.warmCool?.enabled) {
+      const wc = grade.warmCool;
+      // Lazy-init the warm/cool gradient. Invalidated on resize but
+      // the canvas logical size never changes at runtime in this game.
+      if (!this._wcGradient || this._wcGradientH !== H) {
+        this._wcGradient = ctx.createLinearGradient(0, 0, 0, H);
+        this._wcGradient.addColorStop(0.00, wc.warm);
+        this._wcGradient.addColorStop(0.55, 'rgba(0,0,0,0)');
+        this._wcGradient.addColorStop(1.00, wc.cool);
+        this._wcGradientH = H;
+      }
+      ctx.save();
+      ctx.globalAlpha = wc.strength;
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = this._wcGradient;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // ── 2. Vignette — radial darkening at corners ────────────────────
+    if (grade.vignette?.enabled) {
+      if (!this._vigGradient || this._vigW !== W || this._vigH !== H) {
+        const cx = W / 2;
+        const cy = H / 2;
+        const inner = Math.min(W, H) * 0.30;
+        const outer = Math.hypot(cx, cy);
+        this._vigGradient = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+        this._vigGradient.addColorStop(0,    'rgba(0,0,0,0)');
+        this._vigGradient.addColorStop(0.60, 'rgba(0,0,0,0)');
+        this._vigGradient.addColorStop(1.00, `rgba(0,0,0,${grade.vignette.strength})`);
+        this._vigW = W;
+        this._vigH = H;
+      }
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = this._vigGradient;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // ── 3. Saturate / contrast / brightness via ctx.filter ──────────
+    // Strategy: draw the current canvas onto an offscreen copy with a
+    // filter string, then copy it back over itself with 'copy'. This
+    // is a single GPU blit — cheap. The offscreen canvas is lazily
+    // allocated once and reused every frame (no per-frame allocation).
+    const sat = grade.saturate ?? 1;
+    const con = grade.contrast ?? 1;
+    const bri = grade.brightness ?? 1;
+    const filterNeeded = (sat !== 1 || con !== 1 || bri !== 1);
+    if (filterNeeded) {
+      // Operate in RAW DEVICE PIXELS with an identity transform. This
+      // makes the grade correct under HiDPI (canvas.width = logical*dpr)
+      // and immune to the active camera-shake translate — both of which
+      // would otherwise make the logical-space blit sample the wrong
+      // region or leave a transparent edge under 'copy'. The outer
+      // render() resets the transform to identity right after we return,
+      // so leaving it identity here is safe; we still save/restore.
+      const DW = ctx.canvas.width;
+      const DH = ctx.canvas.height;
+      if (!this._gradeCanvas || this._gradeCanvas.width !== DW || this._gradeCanvas.height !== DH) {
+        this._gradeCanvas = (typeof OffscreenCanvas !== 'undefined')
+          ? new OffscreenCanvas(DW, DH)
+          : (() => { const c = document.createElement('canvas'); c.width = DW; c.height = DH; return c; })();
+        this._gradeCtx = this._gradeCanvas.getContext('2d');
+      }
+      const oc = this._gradeCtx;
+      // Copy the main canvas into the offscreen with the filter (1:1,
+      // device-pixel exact).
+      oc.save();
+      oc.setTransform(1, 0, 0, 1, 0, 0);
+      oc.filter = `saturate(${sat}) contrast(${con}) brightness(${bri})`;
+      oc.imageSmoothingEnabled = false;
+      oc.clearRect(0, 0, DW, DH);
+      oc.drawImage(ctx.canvas, 0, 0);
+      oc.restore();
+      // Stamp the grade back onto the main canvas — 'copy' replaces pixels
+      // with no alpha compositing math (one cheap blit).
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'copy';
+      ctx.imageSmoothingEnabled = false;
+      ctx.filter = 'none';
+      ctx.drawImage(this._gradeCanvas, 0, 0);
+      ctx.restore();
+      // Restore pixel-art flag — pipeline already set it to false, but
+      // save/restore may have popped it to a different value.
+      ctx.imageSmoothingEnabled = false;
+    }
   }
 
   /**

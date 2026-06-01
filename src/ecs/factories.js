@@ -13,6 +13,7 @@ import {
   Sprite,
   VerticalState,
 } from './components.js';
+import { obstacleSpansAllLanes } from './obstacleRules.js';
 
 const OBSTACLE_DEFAULT_ASSET = {
   vine: 'vine_barrier',
@@ -54,7 +55,7 @@ export function createPlayer(registry, config) {
 
 /**
  * Build an obstacle entity. `type` chooses default asset + collision rules;
- * `assetType` can override the visual; `overhang` is forced to allLanes.
+ * `assetType` can override the visual; full-width hazards are forced to allLanes.
  *
  * @param {import('./EntityRegistry.js').EntityRegistry} registry
  * @param {{
@@ -76,7 +77,7 @@ export function createObstacle(registry, opts) {
     variant = null,
     allLanes = false,
   } = opts;
-  const allLanesEffective = type === 'overhang' ? true : allLanes;
+  const allLanesEffective = obstacleSpansAllLanes(type, allLanes);
   return registry.create()
     .add('Position', Position(lane, distance))
     .add('Hitbox', Hitbox(type, lane, allLanesEffective))
@@ -153,4 +154,3 @@ export function createScenery(registry, opts) {
     .add('ScenicData', ScenicData(laneBand, zone, chunkId))
     .add('Scrollable', Scrollable());
 }
-

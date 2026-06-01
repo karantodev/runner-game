@@ -1,8 +1,12 @@
 import { createCollectible, createObstacle } from '../ecs/factories.js';
 import { HERO_ROAD_CYCLE_LENGTH, HERO_ROAD_SEQUENCE } from '../config/sceneSchema.data.js';
+// v4.2 — P2 reference-match: import the three hero cycle templates so each
+// stamp can rotate to a different rhythm, eliminating autopilot repetition.
+import { HERO_ROAD_CYCLES } from './spawn/heroCycles.data.js';
 import { DifficultyDirector } from './spawn/DifficultyDirector.js';
 import { PatternLibrary } from './spawn/PatternLibrary.js';
 import { PathValidator } from './spawn/PathValidator.js';
+import { RoadSpawnLedger } from './spawn/RoadSpawnLedger.js';
 
 const SPAWN_LOG_CAPACITY = 24;
 const LANE_TRIPLET = Object.freeze([-1, 0, 1]);
@@ -47,7 +51,8 @@ export class SpawnSystem {
     this.rng = rng;
     this.director = new DifficultyDirector(rng, skill);
     this.library = new PatternLibrary(rng);
-    this.validator = new PathValidator();
+    this.validator = new PathValidator(config);
+    this.roadLedger = new RoadSpawnLedger();
     // v3.8.37 — Phase 2 placement enforcement. Optional so legacy
     // unit-test paths constructing SpawnSystem standalone don't break.
     this.placement = placement;
@@ -72,13 +77,38 @@ export class SpawnSystem {
    */
   #spawnObstacle(world, opts) {
     const assetType = opts.assetType ?? OBSTACLE_DEFAULT_ASSET_MIRROR[opts.type] ?? 'stone_obstacle';
-    if (!this.#allowed(assetType, { zone: 'road', distance: opts.distance })) return null;
-    return createObstacle(world.registry, opts);
+    const worldDistance = world.worldDistanceTotal ?? 0;
+    const absoluteDistance = opts.absoluteDistance
+      ?? (worldDistance + opts.distance);
+    if (!this.#allowed(assetType, { zone: 'road', distance: absoluteDistance })) return null;
+    if (!this.roadLedger.reserveObstacle({
+      ...opts,
+      distance: absoluteDistance,
+    })) return null;
+    const { absoluteDistance: _absoluteDistance, sourceId: _sourceId, ...factoryOpts } = opts;
+    return createObstacle(world.registry, {
+      ...factoryOpts,
+      distance: absoluteDistance - worldDistance,
+    });
   }
   #spawnCollectible(world, opts) {
     const assetType = opts.assetType ?? COLLECTIBLE_DEFAULT_ASSET_MIRROR[opts.type] ?? 'golden_flower';
-    if (!this.#allowed(assetType, { zone: 'road', distance: opts.distance })) return null;
-    return createCollectible(world.registry, opts);
+    const worldDistance = world.worldDistanceTotal ?? 0;
+    const absoluteDistance = opts.absoluteDistance
+      ?? (worldDistance + opts.distance);
+    if (!this.#allowed(assetType, { zone: 'road', distance: absoluteDistance })) return null;
+    const reservation = this.roadLedger.reserveCollectible({
+      ...opts,
+      distance: absoluteDistance,
+    });
+    if (!reservation) return null;
+    const { absoluteDistance: _absoluteDistance, sourceId: _sourceId, ...factoryOpts } = opts;
+    const entity = createCollectible(world.registry, {
+      ...factoryOpts,
+      distance: absoluteDistance - worldDistance,
+    });
+    this.roadLedger.attachCollectible(reservation, entity);
+    return entity;
   }
 
   reset() {
@@ -104,6 +134,19 @@ export class SpawnSystem {
     // CYCLE_LENGTH every time a cycle goes off-camera so the rhythm is
     // continuous.
     this.heroCycleOrigin = 0;
+
+    // v4.2 — P2 reference-match: tracks which of the three HERO_ROAD_CYCLES
+    // templates is stamped next. Incremented per stamp so the player never
+    // sees the same 105-unit rhythm back-to-back.
+    this._heroCycleIndex = 0;
+
+    // v4.0 — center-trail breadcrumb cursor. Tracks the next world-distance
+    // at which a center-lane orchid should be emitted. Initialised to 0
+    // so the very first frame can fill the visible corridor.
+    this._centerTrailNext = 0;
+    this._patternSerial = 0;
+    this.roadLedger.reset();
+    this.spawnLog.length = 0;
   }
 
   /**
@@ -117,6 +160,9 @@ export class SpawnSystem {
    */
   prepopulate(world) {
     const cycles = 4;  // covers projection.maxDistance (~420)
+    // v4.2 — P2 reference-match: reset cycle index so every run starts at
+    // Template A (familiar opening), then rotates through B and C.
+    this._heroCycleIndex = 0;
     for (let i = 0; i < cycles; i += 1) {
       this.#stampHeroCycle(world, i * HERO_ROAD_CYCLE_LENGTH, i === 0);
     }
@@ -126,39 +172,98 @@ export class SpawnSystem {
     // cycle is the BASELINE; procedural is variation.
     this.nextPattern = 60;
     this.nextOrchid  = 200;  // orchid duty carried by hero cycles
+
+    // v4.0 — fill the visible corridor with the center breadcrumb trail
+    // on startup so the player immediately sees the leading line of orchids.
+    // #fillCenterTrail caps each call at runLength flowers, so loop until
+    // the cursor reaches the spawn horizon — guarantees a full line on
+    // frame 1 (the per-frame top-up in update() only matters thereafter).
+    const startHorizon = this.projection.maxDistance;
+    let guard = 0;
+    while (this._centerTrailNext < startHorizon && guard < 200) {
+      this.#fillCenterTrail(world, this._centerTrailNext, startHorizon);
+      guard += 1;
+    }
   }
 
   /**
-   * Stamp one full HERO_ROAD_SEQUENCE cycle at the given origin distance.
+   * Stamp one hero-road cycle at the given origin distance.
    *
-   * v3.8.35 — `firstCycle` skips the all-lane vine in the opening cycle
-   * so the player doesn't see four perspective-stacked vines lined up
-   * before their first input. The vine slot is replaced with an extra
-   * flower-line so the rhythm beat isn't lost; vines kick in on cycle 2
-   * (distance ≥ 165) when the player has learnt the controls.
+   * v3.8.35 — `firstCycle` skips all-lane vines in the opening cycle so
+   * the player doesn't see perspective-stacked vines before first input.
+   * The vine slot is replaced with a flower-arc; vines kick in on cycle 2
+   * (distance ≥ HERO_ROAD_CYCLE_LENGTH) when the player knows the controls.
+   *
+   * v4.2 — P2 reference-match: selects from HERO_ROAD_CYCLES[_heroCycleIndex
+   * % 3] so the three templates rotate A → B → C → A, preventing the player
+   * from memorising one fixed sequence. _heroCycleIndex is incremented after
+   * each stamp.
+   *
+   * v4.2 — P2 reference-match: FIX 5 — also pushes nextPattern out by at
+   * least HERO_ROAD_CYCLE_LENGTH / 2 so procedural patterns cannot
+   * double-stack a second vine into the hero window.
    */
   #stampHeroCycle(world, originDistance, firstCycle = false) {
-    for (const entry of HERO_ROAD_SEQUENCE) {
-      if (firstCycle && entry.kind === 'vine-with-rewards') {
-        this.#spawnHeroRoadEntry(world, {
-          kind: 'flower-arc',
-          fromLane: -1,
-          toLane: 1,
-          count: 5,
-          distance: originDistance + entry.offsetInCycle,
-        });
-        continue;
+    const sourceId = `hero:${originDistance}`;
+    // v4.2 — P2 reference-match: FIX 5 — first hazard guard. The very
+    // first stamp originates at distance 0; ensure no obstacle from the
+    // hero sequence fires before obstacleStartDistance (≈92 from config).
+    const startGuard = firstCycle
+      ? (this.config.spawn.obstacleStartDistance ?? 92)
+      : 0;
+
+    // v4.2 — P2 reference-match: rotate templates so each stamp uses a
+    // different cycle rhythm.
+    const sequence = HERO_ROAD_CYCLES[this._heroCycleIndex % HERO_ROAD_CYCLES.length];
+    this._heroCycleIndex += 1;
+
+    for (const entry of sequence) {
+      const absoluteDist = originDistance + entry.offsetInCycle;
+
+      if (firstCycle) {
+        // v3.8.35 — vines replaced by flower-arc on the opening cycle so
+        // the player doesn't face a perspective-stacked wall of vines.
+        if (entry.kind === 'vine-with-rewards') {
+          this.#spawnHeroRoadEntry(world, {
+            kind: 'flower-arc',
+            fromLane: -1,
+            toLane: 1,
+            count: 5,
+            distance: absoluteDist,
+            sourceId,
+          });
+          continue;
+        }
+
+        // v4.2 — P2 reference-match: FIX 5 — any ground hazard whose
+        // absolute position falls before obstacleStartDistance is replaced
+        // with a reward cluster so the opening run has time to breathe.
+        const isGroundHazard = entry.kind === 'jump-obstacle'
+          || entry.kind === 'overhang-duck';
+        if (isGroundHazard && absoluteDist < startGuard) {
+          this.#spawnHeroRoadEntry(world, {
+            kind: 'reward-cluster',
+            lane: 0,
+            count: 3,
+            distance: absoluteDist,
+            sourceId,
+          });
+          continue;
+        }
       }
+
       this.#spawnHeroRoadEntry(world, {
         ...entry,
-        distance: originDistance + entry.offsetInCycle,
+        distance: absoluteDist,
+        sourceId,
       });
     }
   }
 
   /** Dispatcher for HERO_ROAD_LAYOUT entries. */
   #spawnHeroRoadEntry(world, entry) {
-    const dist = entry.distance;
+    const dist = entry.distance - (world.worldDistanceTotal ?? 0);
+    const sourceId = entry.sourceId;
     switch (entry.kind) {
       case 'flower-line': {
         const count = entry.count ?? 3;
@@ -166,7 +271,7 @@ export class SpawnSystem {
         for (let i = 0; i < count; i += 1) {
           this.#spawnCollectible(world, {
             type: 'flower', lane: entry.lane ?? 0,
-            distance: dist + i * spacing, high: false,
+            distance: dist + i * spacing, high: false, sourceId,
           });
         }
         return;
@@ -180,7 +285,7 @@ export class SpawnSystem {
           const lane = from + t * (to - from);
           this.#spawnCollectible(world, {
             type: 'flower', lane,
-            distance: dist + i * 7, high: false,
+            distance: dist + i * 7, high: false, sourceId,
           });
         }
         return;
@@ -189,7 +294,7 @@ export class SpawnSystem {
         entry.lanes.forEach((lane, i) => {
           this.#spawnCollectible(world, {
             type: 'flower', lane,
-            distance: dist + i * 8, high: false,
+            distance: dist + i * 8, high: false, sourceId,
           });
         });
         return;
@@ -205,15 +310,53 @@ export class SpawnSystem {
           const laneJitter = (i % 2 === 0) ? 0 : 0.12;
           this.#spawnCollectible(world, {
             type: 'flower', lane: lane + laneJitter,
-            distance: dist + i * 4, high: false,
+            distance: dist + i * 4, high: false, sourceId,
           });
         }
         return;
       }
       case 'jump-obstacle': {
+        const hazardLane = entry.lane ?? 0;
+        // v4.2 — P2 reference-match: telegraph two flowers in the SAME lane
+        // ≈16 and ≈9 units ahead of the obstacle (mirroring the vine approach
+        // trail) so the player is guided to the hazard lane before they must
+        // react. Keeps solvability: flowers mark the jump path, not a wall.
+        this.#spawnCollectible(world, {
+          type: 'flower', lane: hazardLane,
+          distance: dist - 16, high: false, sourceId,
+        });
+        this.#spawnCollectible(world, {
+          type: 'flower', lane: hazardLane,
+          distance: dist - 9, high: false, sourceId,
+        });
         this.#spawnObstacle(world, {
-          type: 'wheat', lane: entry.lane ?? 0,
+          type: 'wheat', lane: hazardLane,
+          distance: dist, sourceId,
+        });
+        return;
+      }
+      case 'overhang-duck': {
+        // v4.2 — P2 reference-match: Template C duck beat. Spawn an overhang
+        // (allLanes) and emit the same approach-trail + exit-reward pattern
+        // used by vine-with-rewards so the duck cue is readable.
+        this.#spawnObstacle(world, {
+          type: 'overhang',
+          assetType: 'low_branch_overhang',
           distance: dist,
+          allLanes: true,
+          sourceId,
+        });
+        // Approach: 3 flowers before the overhang (same offsets as vine).
+        [26, 18, 10].forEach((offset) => {
+          this.#spawnCollectible(world, {
+            type: 'flower', lane: 0,
+            distance: dist - offset, high: false, sourceId,
+          });
+        });
+        // Exit: one flower after the player clears the duck window.
+        this.#spawnCollectible(world, {
+          type: 'flower', lane: 0,
+          distance: dist + 8, high: false, sourceId,
         });
         return;
       }
@@ -221,10 +364,10 @@ export class SpawnSystem {
         const lane = entry.lane ?? 0;
         this.#spawnObstacle(world, {
           type: 'vine', lane, distance: dist,
-          allLanes: true,
+          allLanes: true, sourceId,
         });
-        this.#spawnRewardApproach(world, dist, lane);
-        this.#spawnRewardExit(world, dist, lane);
+        this.#spawnRewardApproach(world, dist, lane, sourceId);
+        this.#spawnRewardExit(world, dist, lane, sourceId);
         return;
       }
       default:
@@ -235,11 +378,26 @@ export class SpawnSystem {
   update(world, delta) {
     if (world.state !== 'playing') return;
     const travel = world.speed * delta;
+    const worldDistance = world.worldDistanceTotal ?? 0;
+    this.roadLedger.advance(worldDistance);
     this.nextPattern -= travel;
     this.nextOrchid  -= travel;
     this.nextLife    -= travel;
     this.nextPowerUp -= travel;
     this.nextRare    -= travel;
+
+    // v3.8.23 — keep the hero cycle ahead of the player. Compare the
+    // next cycle's origin to the player's monotonic road distance.
+    // Stamp hero content before procedural content so it owns its
+    // authored rhythm when two producers would otherwise overlap.
+    while (this.heroCycleOrigin - worldDistance < this.projection.maxDistance) {
+      this.#stampHeroCycle(world, this.heroCycleOrigin);
+      this.heroCycleOrigin += HERO_ROAD_CYCLE_LENGTH;
+      // v4.2 — P2 reference-match: FIX 5 coordination — push nextPattern
+      // out so procedural patterns cannot inject a second vine into the hero
+      // cycle window. Half a cycle is the minimum safe gap.
+      this.nextPattern = Math.max(this.nextPattern, HERO_ROAD_CYCLE_LENGTH / 2);
+    }
 
     if (this.nextPattern <= 0) this.#tickPattern(world);
     if (this.nextOrchid <= 0) this.#tickOrchid(world);
@@ -247,22 +405,75 @@ export class SpawnSystem {
     if (this.nextPowerUp <= 0) this.#tickPowerUp(world);
     if (this.nextRare <= 0) this.#tickRare(world);
 
-    // v3.8.23 — keep the hero cycle ahead of the player. Compare the
-    // next cycle's origin to the player's accumulated scrollOffset
-    // (world progress in distance units). When the player closes in
-    // on it (within maxDistance), stamp a fresh cycle further out.
-    if (this.heroCycleOrigin - world.scrollOffset < this.projection.maxDistance) {
-      this.#stampHeroCycle(world, this.heroCycleOrigin);
-      this.heroCycleOrigin += HERO_ROAD_CYCLE_LENGTH;
+    // v4.0 — continuously extend the center breadcrumb trail so it always
+    // reaches the spawn horizon. _centerTrailNext is a world-distance
+    // absolute value; spawn ahead of the current scroll horizon.
+    const horizon = worldDistance + this.projection.maxDistance;
+    // v4.2 — P2 reference-match: FIX 4 — changed if → while so a high
+    // player speed that outruns the per-call runLength cap still fills
+    // the full horizon in one update tick rather than leaving gaps.
+    while (this._centerTrailNext < horizon) {
+      this.#fillCenterTrail(world, this._centerTrailNext, horizon);
     }
   }
 
   // ── Private ─────────────────────────────────────────────────────────────────
 
+  /**
+   * v4.0 — center breadcrumb trail.
+   *
+   * Emits a straight line of golden orchids on lane 0 from `fromDist` to
+   * `toDist` at fixed world-distance intervals (spacing from config).
+   * Advances `_centerTrailNext` so subsequent calls never duplicate.
+   *
+   * Design intent:
+   *   - Visual "conveyor belt" of gold — leads the player's eye toward the
+   *     horizon, exactly as in the reference (breadcrumb line).
+   *   - Only fires when GAME_CONFIG.visual.collectibles.centerTrail.enabled.
+   *   - runLength throttle: emits at most `runLength` flowers per call so
+   *     we never flood the registry in one tick.
+   *   - Skips obstacle windows and duplicate collectible slots through the
+   *     shared road ledger. PathValidator is not involved because center
+   *     orchids do not affect solvability.
+   *   - Determinism: no RNG consumed — step is constant — so replay is safe.
+   */
+  #fillCenterTrail(world, fromDist, toDist) {
+    const trailCfg = world.config?.visual?.collectibles?.centerTrail;
+    if (!trailCfg?.enabled) {
+      // Still advance cursor so we don't loop forever when disabled.
+      this._centerTrailNext = toDist;
+      return;
+    }
+    const spacing   = trailCfg.spacing   ?? 7;
+    const runLength = trailCfg.runLength  ?? 6;
+
+    // Align start to next grid step from fromDist.
+    let cursor = Math.ceil(fromDist / spacing) * spacing;
+    let emitted = 0;
+
+    while (cursor <= toDist && emitted < runLength) {
+      this.#spawnCollectible(world, {
+        type: 'flower',
+        lane: 0,
+        distance: cursor - (world.worldDistanceTotal ?? 0),
+        absoluteDistance: cursor,
+        sourceId: 'center-trail',
+        high: false,
+      });
+      cursor += spacing;
+      emitted++;
+    }
+    // Advance to where the next call should start (even if runLength capped us).
+    this._centerTrailNext = cursor;
+  }
+
   #tickPattern(world) {
     const diff = this.director.get(world);
     this.lastDifficulty = diff;
     const snap = world.powerUpSystem.snapshot();
+    const sourceId = `pattern:${this._patternSerial++}`;
+    const baseDistance = this.projection.maxDistance;
+    const absoluteBaseDistance = (world.worldDistanceTotal ?? 0) + baseDistance;
 
     let pattern;
     if (snap.splitClonesActive) {
@@ -273,12 +484,16 @@ export class SpawnSystem {
       // comes from tighter patternSpacing (DifficultyDirector).
       const libraryLevel = Math.min(4, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
       pattern = this.library.pick(libraryLevel);
-      if (!this.validator.isSolvable(pattern)) {
+      if (!this.validator.isSolvable(pattern, { speed: world.speed })) {
         pattern = this.library.pickFallback();
       }
     }
 
-    this.#spawnPattern(world, pattern, this.projection.maxDistance);
+    if (!this.roadLedger.canReservePattern(pattern.items, absoluteBaseDistance, sourceId)) {
+      pattern = this.library.pickFallback();
+    }
+
+    this.#spawnPattern(world, pattern, baseDistance, sourceId);
     this.#logSpawn(pattern, diff, world);
 
     const hasVine = pattern.items.some(i => i.kind === 'obstacle' && i.type === 'vine');
@@ -289,9 +504,8 @@ export class SpawnSystem {
       // also drop a continuation trail so the player sees the reward
       // exit. Uses the pattern's mid lane (or center) for placement.
       const vineLane = this.#patternVineLane(pattern) ?? 0;
-      const vineBase = this.projection.maxDistance;
-      this.#spawnRewardApproach(world, vineBase, vineLane);
-      this.#spawnRewardExit(world, vineBase, vineLane);
+      this.#spawnRewardApproach(world, baseDistance, vineLane, sourceId);
+      this.#spawnRewardExit(world, baseDistance, vineLane, sourceId);
     }
     this.nextOrchid = Math.max(this.nextOrchid, hasVine ? 68 : 30);
     // v3.8.8 Tier-3 — post-vine spacing 96 → 140 so the next obstacle
@@ -313,12 +527,13 @@ export class SpawnSystem {
    * at increasing height so the visual path slopes up to a jump cue.
    * Distances: 26, 18, 10 BEFORE the vine.
    */
-  #spawnRewardApproach(world, vineDist, lane) {
+  #spawnRewardApproach(world, vineDist, lane, sourceId = 'reward') {
     [26, 18, 10].forEach((offset) => {
       this.#spawnCollectible(world, {
         type: 'flower',
         lane,
         distance: vineDist - offset,
+        sourceId,
         high: false,
       });
     });
@@ -328,11 +543,12 @@ export class SpawnSystem {
    * "Exit trail" — a single orchid right after the vine in the same
    * lane, so the player sees their landing rewarded.
    */
-  #spawnRewardExit(world, vineDist, lane) {
+  #spawnRewardExit(world, vineDist, lane, sourceId = 'reward') {
     this.#spawnCollectible(world, {
       type: 'flower',
       lane,
       distance: vineDist + 8,
+      sourceId,
       high: false,
     });
   }
@@ -402,7 +618,7 @@ export class SpawnSystem {
     );
   }
 
-  #spawnPattern(world, pattern, baseDistance) {
+  #spawnPattern(world, pattern, baseDistance, sourceId) {
     for (const item of pattern.items) {
       const distance = baseDistance + item.offset;
       if (item.kind === 'obstacle') {
@@ -412,6 +628,7 @@ export class SpawnSystem {
           lane: item.lane ?? 0,
           allLanes: item.allLanes ?? false,
           distance,
+          sourceId,
           variant: item.variant ?? null,
         });
       } else if (item.kind === 'flower') {
@@ -419,6 +636,7 @@ export class SpawnSystem {
           type: 'flower',
           lane: item.lane,
           distance,
+          sourceId,
           high: item.high ?? false,
         });
       }
@@ -523,7 +741,7 @@ export class SpawnSystem {
 
   #logSpawn(pattern, diff, world) {
     if (!this.config.debug.allowLocalTools) return;
-    const analysis = this.validator.analyze(pattern);
+    const analysis = this.validator.analyze(pattern, { speed: world.speed });
     const entry = {
       id:       pattern.id,
       d:        diff.level,

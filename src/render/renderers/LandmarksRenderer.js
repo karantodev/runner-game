@@ -144,12 +144,48 @@ export class LandmarksRenderer {
     // genuinely "in the distance", not a foreground sticker. Global alpha
     // reduced 0.96 → 0.88 so the castle absorbs a touch of atmospheric
     // haze instead of reading as a crisp cutout.
+    //
+    // v4.0 — depth desaturation on the castle sprite. If visual.depth is
+    // enabled, draw the castle then overlay a semi-transparent grey+blue
+    // tint to push it into atmospheric haze. Uses the farDesaturate /
+    // farDarken config values scaled to a mild landmark strength (0.55/0.40)
+    // — less than far mountains so the castle stays readable as a focal
+    // point but clearly reads as "distant".
+    const depthCfgL = world.config?.visual?.depth ?? {};
+    const lmDesat = (depthCfgL.farDesaturate ?? 0.16) * 0.55;
+    const lmDark  = (depthCfgL.farDarken     ?? 0.12) * 0.40;
+    const visualOnL = world.config?.visual?.enabled !== false;
+
     ctx.globalAlpha = 0.88;
     const landmarkDrawn =
       this.sprites.draw('castleFarAlt',      castleX, castleBaseY, width * 0.122, 'bottom')
       || this.sprites.draw('backgroundCastle', castleX, castleBaseY, width * 0.105, 'bottom')
       || this.sprites.draw('greenhouseFar',  castleX, castleBaseY, width * 0.105, 'bottom');
     ctx.restore();
+
+    // v4.0 — atmospheric depth overlay on the castle area.
+    // Approximate bounding box: castleWidthPx wide, ~1.4× tall, bottom at castleBaseY.
+    if (landmarkDrawn && visualOnL && (lmDesat > 0 || lmDark > 0)) {
+      const cH = castleWidthPx * 1.4;
+      const cX = castleX - castleWidthPx / 2;
+      const cY = castleBaseY - cH;
+      const ctx2 = this.ctx;
+      ctx2.save();
+      ctx2.globalCompositeOperation = 'source-over';
+      if (lmDesat > 0) {
+        // Slight cool-blue tint for atmospheric haze depth.
+        ctx2.globalAlpha = lmDesat;
+        ctx2.fillStyle = 'rgba(160,190,220,1)';
+        ctx2.fillRect(cX, cY, castleWidthPx, cH);
+      }
+      if (lmDark > 0) {
+        ctx2.globalAlpha = lmDark;
+        ctx2.fillStyle = 'rgba(0,0,0,1)';
+        ctx2.fillRect(cX, cY, castleWidthPx, cH);
+      }
+      ctx2.restore();
+    }
+
     if (!landmarkDrawn) {
       const flagWave = world.config.gameFeel.ambientMotion ? Math.sin(world.timeAlive * 0.09) : 0;
       this.#castle(castleX, gateY + 18, flagWave);

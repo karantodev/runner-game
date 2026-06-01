@@ -95,6 +95,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.4, scale: 0.42 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.46, dist: -1.9, scale: 0.30 },
+      // v4.2 — P2 reference-match: tree band behind the structure cluster.
+      { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist: 8.0, scale: 0.72, yOffset: -10 },
     ],
   },
   {
@@ -127,6 +130,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.58, dist:  1.4, scale: 0.44 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.42, dist: -2.0, scale: 0.30 },
+      // v4.2 — P2 reference-match: tree band behind the structure cluster.
+      { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist: 8.0, scale: 0.74, yOffset: -10 },
     ],
   },
   // v3.8.6 Tier-2 composition pass — new cluster prefabs.
@@ -150,6 +156,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.78, dist:  1.6, scale: 0.42 },
       { id: 'flower_c', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist: -1.8, scale: 0.30 },
+      // v4.3 — P3 reference-match: tree removed — pipe is already a strong
+      // landmark; a tree here contributed to the wall-of-forest effect.
     ],
   },
   {
@@ -221,6 +229,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small',      laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist: -1.6, scale: 0.32 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft',               laneBand: LANE_BANDS.SHOULDER,  lane: 1.78, dist:  1.7, scale: 0.42 },
+      // v4.3 — P3 reference-match: tree removed — mushroom topper already
+      // provides visual height; adding a tree crowded the silhouette band.
     ],
   },
   {
@@ -253,6 +263,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.52, dist:  1.2, scale: 0.46 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.40, dist: -1.9, scale: 0.30 },
+      // v4.3 — P3 reference-match: tree removed — bush already fills the
+      // background-accent slot; a tree on top read as forest clutter.
     ],
   },
   {
@@ -271,6 +283,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist:  1.4, scale: 0.32 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'sprout_soil',      laneBand: LANE_BANDS.SHOULDER, lane: 1.42, dist: -1.8, scale: 0.30 },
+      // v4.3 — P3 reference-match: tree removed — wall + fence + brick
+      // already compose a dense structural cluster; tree added to the
+      // forest-wall effect without contributing readable depth.
     ],
   },
 
@@ -410,7 +425,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // LAYERED #2 — mid-depth platform hero with elevated question blocks.
     // v3.8.22 — qblock scales bumped (0.86/0.80 → 1.05/0.96) and yOffset
     // pushed up (-180/-120 → -215/-150) so they read as clearly visible
-    // arcade beats per the user's request "qblocks выше и крупнее".
+    // arcade beats per the user's request "qblocks higher and bigger".
     id: 'hero-layered-platform-qblocks',
     weight: 4,
     proceduralOk: false,
@@ -700,6 +715,29 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       ],
   },
 
+  // ── v4.0 Scatter flora patches ────────────────────────────────────────────
+  // Pure SHOULDER clusters — no STRUCTURE items so the validator has nothing
+  // to object to. Used to fill gaps between structural beats with small
+  // organic life matching the reference (violets + grass tufts in the
+  // foreground). Weight 4 so they appear frequently but yield to heavier
+  // structural beats in the procedural rotation.
+  {
+    id: 'scatter-violet-tuft',
+    weight: 4,
+    items: [
+      { id: 'violet_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist:  0.0, scale: 0.50 },
+      { id: 'violet_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.54, dist: -1.4, scale: 0.40 },
+      { id: 'tuft_a',   role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_small',     laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist:  1.2, scale: 0.44 },
+      { id: 'yellow_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small',  laneBand: LANE_BANDS.SHOULDER, lane: 1.42, dist:  2.0, scale: 0.30 },
+      { id: 'tuft_b',   role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft',           laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -2.2, scale: 0.42 },
+    ],
+  },
+
   // ── v3.8.42 Phase 7b — Foreground anchor prefabs ─────────────────────────
   // Two large, hand-composed compositions used exclusively as HERO_LAYOUT's
   // NEAR-FOREGROUND anchors. Heavier than the previous hero-layered-* set
@@ -759,22 +797,26 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: false,
     items: [
       // Foundation block — the visual platform the cluster sits on.
+      // v4.2 — P2 reference-match: lanes flipped to positive so side * lane
+      // mirrors correctly (HERO_LAYOUT side:-1 → mirroredLane = -1 * +2.00 = -2.00,
+      // placing the cluster on the LEFT as intended). Previously negative lanes
+      // caused double-negation and the cluster rendered on the right side.
       { id: 'platform_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: -2.00, dist: 0.0, scale: 1.06, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: 0.0, scale: 1.06, variant: 0 },
       // Mushroom topper — child of base.
       { id: 'mushroom_top', role: 'topper', parentId: 'platform_base', anchor: 'top', zLayer: 12,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: -2.00, dist: 0.0, scale: 0.54, variant: 'red', yOffset: -64 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: 0.0, scale: 0.54, variant: 'red', yOffset: -64 },
       // Signature purple brick — visible accent behind the platform.
       { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -2.22, dist: -1.4, scale: 0.78, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist: -1.4, scale: 0.78, variant: 0 },
       // Fence — frames the platform front.
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: -1.86, dist:  1.6, scale: 0.80 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  1.6, scale: 0.80 },
       // Shoulder flora.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: -1.62, dist: -0.8, scale: 0.46 },
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: -0.8, scale: 0.46 },
       { id: 'tuft_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: -1.55, dist:  1.1, scale: 0.42 },
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.55, dist:  1.1, scale: 0.42 },
     ],
   },
   {
@@ -821,9 +863,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // accepts proximity to a structural sibling instead).
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
         assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: -1.94, dist: -0.5, scale: 0.78, yOffset: -52 },
-      // Tree behind for nature-band depth.
+      // v4.2 — P2 reference-match: pushed +8 beyond structural items (dist 0.0/−1.2)
+      // so the tree sorts clearly behind the wall cluster and avoids z-fighting.
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
-        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: -2.94, dist:  0.6, scale: 0.78, yOffset: -8 },
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: -2.94, dist:  8.6, scale: 0.78, yOffset: -8 },
       // Single flower on shoulder.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: -1.56, dist:  0.7, scale: 0.34 },
@@ -920,6 +963,8 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   // v3.8.42 — Phase 7b foreground anchors.
   'foreground-left-anchor':           'hero-landmark',
   'foreground-right-anchor':          'hero-landmark',
+  // v4.0 — scatter flora patches.
+  'scatter-violet-tuft':              'flora-mix',
 });
 
 /**
@@ -1066,6 +1111,8 @@ export const THEMES = Object.freeze({
       'fence-flower-row',
       'hanging-platform-garden',
       'big-bush-wall',
+      // v4.0 — scatter flora filler.
+      'scatter-violet-tuft',
     ]),
     palette: Object.freeze({
       signatureSideStructure: ['purple_brick_single', 'green_pipe', 'stone_wall_low', 'fence_wood_short'],
@@ -1295,8 +1342,10 @@ export const MIDGROUND_SCENERY = Object.freeze([
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.10, distance: 131, scale: 0.90, variant: 0, yOffset: -10 },
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.94, distance: 104, scale: 0.88, variant: 0, yOffset: 0 },
   { assetType: 'floating_platform', zone: SCENE_ZONES.STRUCTURE_LEFT, lane: -1.96, distance:  91, scale: 1.10, variant: 0, yOffset: -35 },
-  { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.06, distance:  65, scale: 0.84, variant: 0, yOffset: -8 },
-  { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_LEFT,    lane: -3.04, distance:  12, scale: 0.70, variant: 0, yOffset: -6 },
+  // v4.3 — P3 reference-match: removed left tree @65 (too close to @131,
+  // doubled the treeline density) and left tree @12 (foreground already
+  // framed by FOREGROUND_FRAME_SCENERY; two overlapping near-trees read
+  // as a forest wall).
   // ── Right: same trim, mirrored ──
   { assetType: 'grass_dirt_wall',  zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.96, distance: 188, scale: 1.04, variant: 1, yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.10, distance: 178, scale: 1.00, variant: 0, yOffset: -12 },
@@ -1305,7 +1354,8 @@ export const MIDGROUND_SCENERY = Object.freeze([
   { assetType: 'mushroom_red_big', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.84, distance: 131, scale: 0.92, variant: 'red', yOffset: 0 },
   { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.08, distance: 119, scale: 0.86, variant: 0, yOffset: -10 },
   { assetType: 'hanging_platform_vines', zone: SCENE_ZONES.STRUCTURE_RIGHT, lane: 1.92, distance:  65, scale: 0.82, yOffset: 0 },
-  { assetType: 'tree_round',       zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.04, distance:  12, scale: 0.66, variant: 0, yOffset: -6 },
+  // v4.3 — P3 reference-match: removed right tree @12 — mirrors left
+  // side trim; FOREGROUND_FRAME_SCENERY handles the close-camera treeline.
 ]);
 
 /**
@@ -1316,15 +1366,16 @@ export const MIDGROUND_SCENERY = Object.freeze([
  * foreground anchors at distance 20-30 carry the structural framing.
  */
 export const FOREGROUND_FRAME_SCENERY = Object.freeze([
-  // Left frame — trees as silhouette anchors only.
+  // Left frame — single tree as silhouette anchor at distance 20.
+  // v4.3 — P3 reference-match: removed distance-3 trees on both sides;
+  // the very-close-camera tree combined with MIDGROUND near trees read
+  // as overlapping forest rather than a spare treeline frame.
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_LEFT,     lane: -3.16, distance: 20, scale: 0.84, variant: 0, yOffset: -6 },
-  { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_LEFT,     lane: -3.22, distance:  3, scale: 0.76, variant: 0, yOffset: -4 },
   // Left shoulder — small flowers / grass between road edge and frame.
   { assetType: 'yellow_flower_small', zone: SCENE_ZONES.SHOULDER_LEFT,   lane: -2.36, distance: 15, scale: 0.48, variant: 0 },
   { assetType: 'grass_tuft',          zone: SCENE_ZONES.SHOULDER_LEFT,   lane: -2.40, distance: 10, scale: 0.44 },
   // Right frame — symmetrical.
   { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.16,  distance: 20, scale: 0.84, variant: 0, yOffset: -6 },
-  { assetType: 'tree_round',          zone: SCENE_ZONES.NATURE_RIGHT,    lane: 3.22,  distance:  3, scale: 0.76, variant: 0, yOffset: -4 },
   // Right shoulder.
   { assetType: 'grass_tuft',          zone: SCENE_ZONES.SHOULDER_RIGHT,  lane: 2.38,  distance: 13, scale: 0.46 },
   { assetType: 'yellow_flower_small', zone: SCENE_ZONES.SHOULDER_RIGHT,  lane: 2.36,  distance:  8, scale: 0.44, variant: 1 },

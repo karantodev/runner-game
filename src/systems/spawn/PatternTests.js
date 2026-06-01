@@ -1,6 +1,9 @@
 import { PatternLibrary } from './PatternLibrary.js';
 import { PathValidator } from './PathValidator.js';
 import { DifficultyDirector } from './DifficultyDirector.js';
+import { RoadSpawnLedger } from './RoadSpawnLedger.js';
+import { HERO_ROAD_CYCLES } from './heroCycles.data.js';
+import { GAME_CONFIG } from '../../config/gameConfig.js';
 
 // ── Known-impossible fixture used to confirm the validator catches failures ──
 
@@ -8,9 +11,8 @@ const KNOWN_IMPOSSIBLE = {
   id: '_test_impossible',
   difficulty: 0,
   items: [
-    { kind: 'obstacle', lane: -1, type: 'wall',     offset: 0 },
-    { kind: 'obstacle', lane: 0,  type: 'mushroom', variant: 'red', offset: 0 },
-    { kind: 'obstacle', lane: 1,  type: 'wheat',    offset: 0 },
+    { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
+    { kind: 'obstacle', type: 'overhang', offset: 0 },
   ],
 };
 
@@ -35,7 +37,7 @@ const OVERHANG_SOLO = {
 };
 
 // Overhang immediately followed by a vine — duck under, stand up, then jump.
-// The vine arrives well after the crouch expires (24 units), so this must
+// The vine arrives well after the crouch expires (14 frames), so this must
 // stay solvable.
 const OVERHANG_THEN_VINE = {
   id: '_test_overhang_then_vine',
@@ -47,7 +49,7 @@ const OVERHANG_THEN_VINE = {
 };
 
 // Pathologically tight: overhang immediately followed by a vine 6 units later.
-// The player is locked in the crouch (24-unit dwell) when the vine arrives,
+// The player is locked in the crouch (14-frame dwell) when the vine arrives,
 // cannot jump in time, so this MUST be rejected.
 const OVERHANG_THEN_VINE_IMPOSSIBLE = {
   id: '_test_overhang_vine_impossible',
@@ -66,6 +68,8 @@ const SPEED_TIERS = [
   { label: 'late',       score: 100, timeAlive: 1200, speed: 1.35 },
   { label: 'expert',     score: 150, timeAlive: 2000, speed: 1.58 },
   { label: 'burst',      score: 50,  timeAlive: 600,  speed: 1.42, speedBurstActive: true },
+  { label: 'late-max',   score: 600, timeAlive: 5000, speed: 2.55 },
+  { label: 'burst-max',  score: 600, timeAlive: 5000, speed: 4.03, speedBurstActive: true },
   { label: 'split-mid',  score: 50,  timeAlive: 600,  speed: 1.10, splitClonesActive: true },
 ];
 
@@ -77,7 +81,7 @@ const SPEED_TIERS = [
  */
 export function runPatternTests() {
   const library   = new PatternLibrary();
-  const validator = new PathValidator();
+  const validator = new PathValidator(GAME_CONFIG);
   const director  = new DifficultyDirector();
 
   const results = { passed: 0, failed: 0, failures: [] };
@@ -100,7 +104,7 @@ export function runPatternTests() {
     results.passed++;
   } else {
     results.failed++;
-    results.failures.push({ test: 'known-impossible fixture', reason: 'validator did not reject 3-lane simultaneous block' });
+    results.failures.push({ test: 'known-impossible fixture', reason: 'validator did not reject simultaneous jump-and-duck hazards' });
   }
 
   // ── 3. Vine airborne clear must succeed ────────────────────────────────────
@@ -153,7 +157,10 @@ export function runPatternTests() {
         const level = snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level;
         pattern = library.pick(level);
       }
-      if (!validator.isSolvable(pattern)) failed++;
+      if (!validator.isSolvable(pattern, { speed: tier.speed })) {
+        pattern = library.pickFallback();
+      }
+      if (!validator.isSolvable(pattern, { speed: tier.speed })) failed++;
     }
 
     if (failed === 0) {
@@ -165,6 +172,76 @@ export function runPatternTests() {
         reason: `${failed} of ${spawnsPerTier} patterns failed validation`,
       });
     }
+  }
+
+  // ── 5. Authored hero cycles stay fair at maximum speed burst ──────────────
+
+  const maxBurstSpeed = (
+    GAME_CONFIG.gameplay.startSpeed + GAME_CONFIG.gameplay.maxSpeedBonus
+  ) * GAME_CONFIG.powerUps.speedBurst.speedMultiplier;
+  HERO_ROAD_CYCLES.forEach((cycle, index) => {
+    const items = cycle.flatMap((entry) => {
+      if (entry.kind === 'vine-with-rewards') {
+        return [{ kind: 'obstacle', type: 'vine', allLanes: true, offset: entry.offsetInCycle }];
+      }
+      if (entry.kind === 'overhang-duck') {
+        return [{ kind: 'obstacle', type: 'overhang', allLanes: true, offset: entry.offsetInCycle }];
+      }
+      if (entry.kind === 'jump-obstacle') {
+        return [{ kind: 'obstacle', type: 'wheat', lane: entry.lane ?? 0, offset: entry.offsetInCycle }];
+      }
+      return [];
+    });
+    const analysis = validator.analyze({ items }, { speed: maxBurstSpeed });
+    if (analysis.solvable) {
+      results.passed++;
+    } else {
+      results.failed++;
+      results.failures.push({
+        test: `hero cycle ${index} @ max burst`,
+        reason: analysis.rejectionReason,
+      });
+    }
+  });
+
+  // ── 6. Cross-producer road reservation ledger ─────────────────────────────
+
+  const ledger = new RoadSpawnLedger();
+  const heroVine = ledger.reserveObstacle({
+    type: 'vine', allLanes: true, lane: 0, distance: 480, sourceId: 'hero:420',
+  });
+  const proceduralVine = ledger.reserveObstacle({
+    type: 'vine', allLanes: true, lane: 0, distance: 480.52, sourceId: 'pattern:0',
+  });
+  if (heroVine && !proceduralVine) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'road ledger vine overlap', reason: 'cross-producer vine collision was not rejected' });
+  }
+
+  const collectibleLedger = new RoadSpawnLedger();
+  const reservation = collectibleLedger.reserveCollectible({ lane: 0, distance: 100 });
+  const collectible = { alive: true };
+  collectibleLedger.attachCollectible(reservation, collectible);
+  const obstacleReserved = collectibleLedger.reserveObstacle({
+    type: 'wheat', lane: 0, distance: 100, sourceId: 'hero:0',
+  });
+  if (obstacleReserved && collectible.alive === false) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'road ledger collectible eviction', reason: 'obstacle did not evict an overlapping collectible' });
+  }
+
+  const duplicateLedger = new RoadSpawnLedger();
+  const firstFlower = duplicateLedger.reserveCollectible({ lane: 0, distance: 42 });
+  const duplicateFlower = duplicateLedger.reserveCollectible({ lane: 0.01, distance: 42.04 });
+  if (firstFlower && !duplicateFlower) {
+    results.passed++;
+  } else {
+    results.failed++;
+    results.failures.push({ test: 'road ledger collectible dedupe', reason: 'near-identical collectible slots were both reserved' });
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

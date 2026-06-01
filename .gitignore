@@ -3,3 +3,29 @@ test-results/
 playwright-report/
 tmp/
 .DS_Store
+
+# Designer working files + asset backups — the engine never reads assets/_source/.
+# Keeps the ~300 MB of oversized originals (backed up by scripts/optimize-assets.mjs)
+# local-only so they don't bloat the repo. 54 legacy _source files are already
+# tracked from earlier; run `git rm -r --cached assets/_source` to slim those too.
+assets/_source/
+
+# Generated docs — written by scripts/{audit-assets,audit-images,generate-asset-
+# contact-sheets,generate-semantic-registry,validate-composition,capture-composition-
+# pass}.mjs. No script READS them; they regenerate on demand. Kept out of git so the
+# committed docs are only the hand-authored living set (brief, dev-guide, road-kit,
+# style-audit, CHANGELOG, visual-qa). Re-run the matching script to refresh locally.
+docs/asset-audit-report.md
+docs/asset-semantic-action-list.md
+docs/asset-missing-art-list.md
+docs/asset-semantic-registry.md
+docs/asset-production-manifest.md
+docs/asset-cleanup-proposal.md
+docs/asset-duplicate-cleanup-proposal.md
+docs/asset-unregistered-decision-list.md
+docs/asset-dead-key-decisions.md
+docs/image-audit-report.md
+docs/composition-validation-report.md
+docs/visual-qa/asset-contact-sheets/README.md
+docs/visual-qa/asset-contact-sheets/asset-visual-inventory.md
+docs/visual-qa/composition-current/analysis.md

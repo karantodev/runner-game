@@ -28,7 +28,10 @@ export const COLLECTIBLE_REGISTRY = Object.freeze({
   flower: {
     event: 'flower:collected',
     runStatField: 'orchidsCollectedThisRun',
-    render: { kind: 'flower' },
+    // v4.0 — glow params read by GameplayRenderer from GAME_CONFIG.visual.collectibles.glow.
+    // glowColor / size here are the DATA-LAYER defaults; GameplayRenderer overrides
+    // them with the live config values so A/B-toggling visual.enabled works.
+    render: { kind: 'flower', glowColor: '#ffcf3a', size: 60 },
   },
   'rare-orchid': {
     event: 'rare:collected',

@@ -106,6 +106,10 @@ export class PlayerRenderer {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
+    // v4.0 — pre-allocated scratch for shadow gradient (no per-frame object).
+    // null until first use; reused every frame after that.
+    this._shadowGrad = null;
+    this._shadowGradW = 0;
   }
 
   render(world) {
@@ -119,6 +123,10 @@ export class PlayerRenderer {
     const invulnAlpha = health.invulnerabilityFrames > 0
       ? (Math.floor(health.invulnerabilityFrames / 6) % 2 === 0 ? 0.62 : 1)
       : 1;
+
+    // v4.0 — grounding shadow ellipse. Drawn BEFORE trail and body so
+    // it sits underneath everything. Reads visual.juice.playerShadow.
+    this.#drawGroundShadow(world, lane.laneX);
 
     // Motion-trail ghosts behind the player (drawn back-to-front: oldest
     // ghost has the lowest life, draw first so newer trails sit on top).
@@ -134,6 +142,56 @@ export class PlayerRenderer {
       this.#playerBody(world, laneX, 0.42 * invulnAlpha, true);
     }
     this.#playerBody(world, lane.laneX, invulnAlpha, false);
+  }
+
+  /**
+   * v4.0 — soft grounding shadow ellipse.
+   * Controlled by visual.juice.playerShadow {enabled, alpha, widthScale}.
+   * Drawn BEFORE the body; save/restore isolates ctx state.
+   */
+  #drawGroundShadow(world, laneX) {
+    const shadowCfg = world.config.visual?.juice?.playerShadow;
+    if (!shadowCfg?.enabled) return;
+
+    const p = this.projection;
+    const vert = world.player.components.VerticalState;
+    const ctx = this.ctx;
+
+    const footX = Math.round(p.width / 2 + laneX * p.visualLaneWidth);
+    const bottomMargin = world.config.player.bottomMargin ?? 0;
+    const footY = Math.round(p.groundY - bottomMargin);
+
+    // As the player rises, the shadow fades and shrinks.
+    const airFraction = Math.max(0, Math.min(1, -vert.y / 100));
+    const alphaScale = 1 - airFraction * 0.55;
+    const sizeScale  = 1 - airFraction * 0.30;
+
+    const bodyScale = (p.height / 720) * 1.23;
+    const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
+    const halfW = Math.round(
+      CANONICAL_PLAYER.w * pixelScale * (shadowCfg.widthScale ?? 0.92) * sizeScale * 0.5
+    );
+    const halfH = Math.max(3, Math.round(halfW * 0.20));
+    const baseAlpha = (shadowCfg.alpha ?? 0.28) * alphaScale;
+    if (baseAlpha <= 0.01 || halfW <= 0) return;
+
+    ctx.save();
+    // Flatten the circle into an ellipse via Y-scale.
+    const yRatio = halfH / halfW;
+    ctx.scale(1, yRatio);
+    const scaledFootY = footY / yRatio;
+
+    // Radial gradient: dark opaque centre → transparent rim.
+    const grad = ctx.createRadialGradient(footX, scaledFootY, 0, footX, scaledFootY, halfW);
+    grad.addColorStop(0,    `rgba(30, 18, 8, ${baseAlpha})`);
+    grad.addColorStop(0.60, `rgba(30, 18, 8, ${(baseAlpha * 0.45).toFixed(3)})`);
+    grad.addColorStop(1,    'rgba(30, 18, 8, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(footX, scaledFootY, halfW, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   /**
@@ -325,6 +383,26 @@ export class PlayerRenderer {
     ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate(tilt);
     ctx.scale(squash, stretch);
+
+    // v4.1 — P0 reference-match: sprite-following dark outline (NOT a box).
+    // Stamp the sprite as a black silhouette (filter brightness(0) keeps the
+    // alpha shape) offset in 4 directions behind the main draw, so the dark
+    // edge hugs the farmer's real silhouette and separates him from busy
+    // backgrounds after the full-frame grade — with no rectangular smudge in
+    // the sprite's transparent areas. Skipped for split-clones so their
+    // purple wash stays clean. Cheap: 4 drawImage calls for one sprite/frame.
+    if (!isClone) {
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.55;
+      ctx.filter = 'brightness(0)';
+      const o = 2;
+      ctx.drawImage(spriteImg, drawLeft - o, drawTop, drawW, drawH);
+      ctx.drawImage(spriteImg, drawLeft + o, drawTop, drawW, drawH);
+      ctx.drawImage(spriteImg, drawLeft, drawTop - o, drawW, drawH);
+      ctx.drawImage(spriteImg, drawLeft, drawTop + o, drawW, drawH);
+      ctx.restore();
+    }
+
     ctx.drawImage(spriteImg, drawLeft, drawTop, drawW, drawH);
 
     if (isClone) {

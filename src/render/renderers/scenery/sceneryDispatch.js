@@ -12,6 +12,7 @@
  * @typedef {{
  *   sprites: import('../../SpriteRenderer.js').SpriteRenderer,
  *   paint:   import('../../PixelPainter.js').PixelPainter,
+ *   voxelBlocks: import('./VoxelBlockRenderer.js').VoxelBlockRenderer,
  * }} SceneryDrawDeps
  *
  * @typedef {(deps: SceneryDrawDeps, x: number, y: number, scale: number, variant: any) => void} SceneryDrawFn
@@ -40,6 +41,12 @@ function tryDraw({ sprites }, keys, x, y, width, fallback) {
   }
   if (fallback) fallback({ sprites });
   return false;
+}
+
+function drawByHeight({ sprites }, key, x, y, height) {
+  const image = sprites.assets.get(key);
+  if (!image?.naturalWidth || !image.naturalHeight) return false;
+  return sprites.draw(key, x, y, height * (image.naturalWidth / image.naturalHeight));
 }
 
 // ── Structural wall elements ─────────────────────────────────────────────────
@@ -85,6 +92,10 @@ const SIDE_MAPPING_BY_TYPE = new Map([
   ['stone_wall_low',     'swapped'],
   ['stone_wall_stairs',  'swapped'],
   ['planter_pot',        'swapped'],
+  ['grass_dirt_platform_long', 'swapped'],
+  ['purple_brick_single',      'swapped'],
+  ['hanging_platform_vines',   'swapped'],
+  ['fence_wood_short',         'swapped'],
 ]);
 let globalSwap = false;
 
@@ -112,7 +123,14 @@ function SIDE_KEY_FOR(side, type) {
 // variant is attempted. If it draws, return true. Otherwise return false
 // and the renderer falls back per its policy (NO mirror flip for side-
 // aware types — see SceneryRenderer.#drawSceneryType).
-register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, scale, variant, side) => {
+register(['grass_dirt_block', 'terrainBlock'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawCube(x, y, scale, {
+      material: 'grass',
+      side,
+      variant,
+    });
+  }
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`grassDirtBlock${SIDE_KEY_FOR(side, 'grass_dirt_block')}`, x, y, 185 * scale);
   }
@@ -124,22 +142,72 @@ register(['grass_dirt_block', 'grass_dirt_step', 'terrainBlock'], (deps, x, y, s
   return false;
 });
 
+// The shipped step pair has different source-canvas aspect ratios.
+// Drawing both by a shared visual height keeps left/right placements
+// stable while still using the correct road-facing art.
+register(['grass_dirt_step'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawSteps(x, y, scale, {
+      material: 'grass',
+      side,
+      variant,
+    });
+  }
+  if (side === -1 || side === 1) {
+    return drawByHeight(deps, `grassDirtStep${SIDE_KEY_FOR(side, 'grass_dirt_step')}`, x, y, 205 * scale);
+  }
+  tryDraw(deps, ['grassDirtStepLeft'], x, y, 154 * scale,
+    () => deps.paint.terrainBlock(x, y, scale, variant ?? 3));
+  return false;
+});
+
 // v3.8 — explicit left-facing step. SceneryRenderer auto-mirrors via
 // canvas-flip when lane > 0, so right-side spawns get a flipped step
 // without needing a separate _right asset.
 register(['grass_dirt_step_left', 'grassDirtStepLeft'], (deps, x, y, scale) => {
+  if (deps.voxelBlocks?.enabled) {
+    deps.voxelBlocks.drawSteps(x, y, scale, { material: 'grass', side: -1 });
+    return;
+  }
   tryDraw(deps, ['grassDirtStepLeft'], x, y, 200 * scale,
     () => deps.paint.terrainBlock(x, y, scale, 3));
 });
 
 // v3.8 — long platform variant.
-register(['grass_dirt_platform_long', 'grassDirtPlatformLong'], (deps, x, y, scale) => {
+register(['grass_dirt_platform_long', 'grassDirtPlatformLong'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawPlatform(x, y, scale, {
+      material: 'grass',
+      side,
+      variant,
+      units: 4,
+    });
+  }
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`grassDirtPlatformLong${SIDE_KEY_FOR(side, 'grass_dirt_platform_long')}`, x, y, 290 * scale);
+  }
   tryDraw(deps, ['grassDirtPlatformLong2', 'grassDirtPlatformLong'], x, y, 290 * scale,
     () => deps.paint.platform(x, y, scale, 0));
+  return false;
 });
 
 register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs'], (deps, x, y, scale, variant, side) => {
   const v = variant ?? 0;
+  if (deps.voxelBlocks?.enabled) {
+    if (v % 2 === 1) {
+      return deps.voxelBlocks.drawSteps(x, y, scale, {
+        material: 'stone',
+        side,
+        variant: v,
+      });
+    }
+    return deps.voxelBlocks.drawPlatform(x, y, scale, {
+      material: 'stone',
+      side,
+      variant: v,
+      units: 2,
+    });
+  }
   const stoneKey  = v % 2 === 0 ? 'stoneWallLow'  : 'stoneWallStairs';
   // v3.8.34 — side-aware variant pass. Variant index selects low vs stairs
   // (matching the existing legacy fallback chain), then SIDE_KEY_FOR picks
@@ -154,17 +222,60 @@ register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs']
   return false;
 });
 
-register(['purple_brick_single', 'blockStack', 'stone_brick_single'], (deps, x, y, scale, variant, side) => {
+// v4.3 — P3 reference-match: purple_brick_single / blockStack must render the
+// purple brick sprite, not the gray stone that previously appeared first in the
+// shared fallback chain. Split into two registrations so each type uses its
+// own sprite preference without cross-contaminating the gray stone path.
+register(['purple_brick_single', 'blockStack'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawCube(x, y, scale, {
+      material: 'purple',
+      side,
+      variant,
+      width: 78,
+      height: 62,
+      depth: 15,
+      topRise: 12,
+    });
+  }
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`purpleBrickSingle${SIDE_KEY_FOR(side, 'purple_brick_single')}`, x, y, 110 * scale);
+  }
+  tryDraw(deps, ['purpleBrick01', 'brickPurpleSingle', 'stoneBrickSingle'], x, y, 110 * scale,
+    () => deps.paint.wallBlock(x, y, scale, variant === 2 ? 3 : 1, 1));
+  return false;
+});
+
+register(['stone_brick_single'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawCube(x, y, scale, {
+      material: 'stone',
+      side,
+      variant,
+      width: 78,
+      height: 62,
+      depth: 15,
+      topRise: 12,
+    });
+  }
   // v3.8.34 — side-aware variant pass.
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`stoneBrickSingle${SIDE_KEY_FOR(side, 'stone_brick_single')}`, x, y, 110 * scale);
   }
-  tryDraw(deps, ['stoneBrickSingle', 'purpleBrick01'], x, y, 110 * scale,
+  tryDraw(deps, ['stoneBrickSingle'], x, y, 110 * scale,
     () => deps.paint.wallBlock(x, y, scale, variant === 2 ? 3 : 1, 1));
   return false;
 });
 
 register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawPlatform(x, y, scale, {
+      material: 'grass',
+      side,
+      variant,
+      units: 4,
+    });
+  }
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`platformFloating${SIDE_KEY_FOR(side, 'floating_platform')}`, x, y, 290 * scale);
   }
@@ -176,6 +287,10 @@ register(['floating_platform', 'platform'], (deps, x, y, scale, variant, side) =
 
 register(['question_block', 'questionBlock'], (deps, x, y, scale) => {
   const yShifted = y - 62 * scale;
+  if (deps.voxelBlocks?.enabled) {
+    deps.voxelBlocks.drawQuestionCube(x, yShifted, scale);
+    return;
+  }
   // 4-frame idle bounce when designer ships animated question block.
   // Frame picked off performance.now() so the loop has no per-entity state.
   const animFrame = (Math.floor(performance.now() / 166) & 3) + 1;
@@ -183,8 +298,16 @@ register(['question_block', 'questionBlock'], (deps, x, y, scale) => {
     () => deps.paint.questionBlock(x, yShifted, scale));
 });
 
-// Legacy 'green_pipe' / 'pipe' redirects to planter_pot per v3 brief.
-register(['green_pipe', 'pipe', 'planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
+// v4.3 — P3 reference-match: green_pipe / pipe should render the actual pipe
+// sprite so the reference's green pipe appears. planter_pot / planterPot keep
+// the planter sprite with side-aware variant support as before.
+register(['green_pipe', 'pipe'], (deps, x, y, scale) => {
+  tryDraw(deps, ['pipeGreenSprite', 'planterPot'], x, y, 130 * scale,
+    () => deps.paint.pipe(x, y, scale));
+  return false;
+});
+
+register(['planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
   // v3.8.34 — side-aware variant pass.
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`planterPot${SIDE_KEY_FOR(side, 'planter_pot')}`, x, y, 130 * scale);
@@ -194,13 +317,21 @@ register(['green_pipe', 'pipe', 'planter_pot', 'planterPot'], (deps, x, y, scale
   return false;
 });
 
-register(['fence_wood_short', 'fence'], (deps, x, y, scale) => {
+register(['fence_wood_short', 'fence'], (deps, x, y, scale, variant, side) => {
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`fenceWoodSprite${SIDE_KEY_FOR(side, 'fence_wood_short')}`, x, y, 220 * scale);
+  }
   tryDraw(deps, ['fenceWoodSprite'], x, y, 220 * scale,
     () => deps.paint.fence(x, y, scale));
+  return false;
 });
 
-register(['hanging_platform_vines', 'hangingPlatform'], (deps, x, y, scale) => {
+register(['hanging_platform_vines', 'hangingPlatform'], (deps, x, y, scale, variant, side) => {
+  if (side === -1 || side === 1) {
+    return deps.sprites.draw(`platformHangingVines${SIDE_KEY_FOR(side, 'hanging_platform_vines')}`, x, y, 280 * scale);
+  }
   tryDraw(deps, ['platformHangingVines', 'hangingPlatformVines'], x, y, 280 * scale);
+  return false;
 });
 
 // ── Large organic / flora ────────────────────────────────────────────────────
@@ -288,7 +419,11 @@ export function getSceneryDraw(assetType) {
  */
 const SIDE_AWARE_TYPES = new Set([
   'grass_dirt_block', 'grass_dirt_step', 'terrainBlock',
+  'grass_dirt_platform_long',
+  'purple_brick_single', 'blockStack',
   'floating_platform', 'platform',
+  'hanging_platform_vines', 'hangingPlatform',
+  'fence_wood_short', 'fence',
   // v3.8.34 — P1 Golden Rule batch.
   'stone_brick_single', 'stone_wall_low', 'stone_wall_stairs', 'planter_pot',
 ]);

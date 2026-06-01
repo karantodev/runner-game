@@ -94,10 +94,17 @@ function bucketByCategory(files) {
 
 /** Detect _left/_right side-aware pairs and orphans. */
 function classifySideAware(files) {
+  // Road-kit divider names describe the lane interval they occupy, not
+  // alternate left/right views of one sprite. Treating center_right as a
+  // side-pair suffix creates a false designer task for lane_divider_center.
+  const nonPairBases = new Set([
+    'assets/terrain/road/kit/lane_divider_center',
+  ]);
   const sideAware = new Map(); // base name (no _left/_right) -> { left, right }
   for (const f of files) {
     const base = f.replace(/_left\.png$/i, '').replace(/_right\.png$/i, '');
     if (base === f) continue; // not a side-aware file
+    if (nonPairBases.has(base)) continue;
     if (!sideAware.has(base)) sideAware.set(base, { left: null, right: null });
     const entry = sideAware.get(base);
     if (/_left\.png$/i.test(f)) entry.left = f;
@@ -565,13 +572,22 @@ function buildMissingArtList({ deadKeys, unregClassified, keys }) {
   // every assetType convention; we just list semantic entries that say
   // they need side art and surface what the registry has today.
   const camelToSnake = (s) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase()).replace(/^_/, '');
+  // A few legacy config roots predate the semantic registry naming scheme.
+  // Keep the exceptions explicit so the designer hand-off reflects the
+  // registered runtime keys instead of reporting already shipped pairs.
+  const sideAwareConfigRoots = new Map([
+    ['floating_platform', 'platformFloating'],
+    ['hanging_platform_vines', 'platformHangingVines'],
+    ['fence_wood_short', 'fenceWoodSprite'],
+  ]);
   const registeredKeysByLowerCamel = new Map();
   for (const k of keys.keys()) registeredKeysByLowerCamel.set(k.toLowerCase(), k);
   const sideAwareMissing = [];
   for (const [assetType, s] of Object.entries(ASSET_SEMANTICS)) {
     if (s.orientationType !== 'side-aware') continue;
     // Build candidate camelCase root from snake_case assetType.
-    const camel = assetType.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const camel = sideAwareConfigRoots.get(assetType)
+      ?? assetType.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
     const leftKey  = `${camel}Left`.toLowerCase();
     const rightKey = `${camel}Right`.toLowerCase();
     const hasLeft  = registeredKeysByLowerCamel.has(leftKey);

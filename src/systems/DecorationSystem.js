@@ -78,7 +78,10 @@ export class DecorationSystem {
    */
   prepopulate(world) {
     const start = this.config.spawn.decorStartDistance;
-    const spacing = this.config.spawn.sideDecorSpacing;
+    // v4.0 — apply decorMultiplier at prepopulate time so the initial
+    // visible corridor matches the runtime density.
+    const decorMult = world?.config?.visual?.density?.decorMultiplier ?? 1;
+    const spacing = Math.max(8, this.config.spawn.sideDecorSpacing / Math.max(0.5, decorMult));
     const maxDist = this.projection.maxDistance + 24;
 
     // Phase 1 — hero entries, jitterless. Track the furthest distance
@@ -122,11 +125,11 @@ export class DecorationSystem {
 
     if (this.nextLeft <= 0) {
       this.#spawnSideChunk(world, -1, this.projection.maxDistance + this.rng.range(0, 8));
-      this.nextLeft = this.#nextSpacing();
+      this.nextLeft = this.#nextSpacing(world);
     }
     if (this.nextRight <= 0) {
       this.#spawnSideChunk(world, 1, this.projection.maxDistance + this.rng.range(0, 8));
-      this.nextRight = this.#nextSpacing();
+      this.nextRight = this.#nextSpacing(world);
     }
   }
 
@@ -197,8 +200,18 @@ export class DecorationSystem {
     }
   }
 
-  #nextSpacing() {
-    return this.config.spawn.sideDecorSpacing + this.rng.range(-this.config.spawn.sideDecorJitter, this.config.spawn.sideDecorJitter);
+  /**
+   * v4.0 — spacing accounts for visual.density.decorMultiplier.
+   * decorMultiplier > 1 → shorter interval → denser side decor.
+   * Safe range enforced: spacing won't go below 8 world-units to avoid
+   * z-fighting between adjacent clusters.
+   */
+  #nextSpacing(world) {
+    const base = this.config.spawn.sideDecorSpacing;
+    const jitter = this.rng.range(-this.config.spawn.sideDecorJitter, this.config.spawn.sideDecorJitter);
+    const multiplier = world?.config?.visual?.density?.decorMultiplier ?? 1;
+    const spacing = (base + jitter) / Math.max(0.5, multiplier);
+    return Math.max(8, spacing);
   }
 
   #resolveVariant(variant, type) {

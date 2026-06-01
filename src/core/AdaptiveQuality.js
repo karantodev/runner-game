@@ -21,10 +21,10 @@
  *   0 — Low:    everything stripped (chunky frame survival mode)
  */
 const TIERS = Object.freeze([
-  { id: 0, label: 'Low',   parallax: false, particles: false, cameraShake: false, scorePopups: false, ambientMotion: false, particleCapPct: 0.20 },
-  { id: 1, label: 'Mid',   parallax: false, particles: true,  cameraShake: false, scorePopups: false, ambientMotion: false, particleCapPct: 0.45 },
-  { id: 2, label: 'High',  parallax: true,  particles: true,  cameraShake: true,  scorePopups: false, ambientMotion: true,  particleCapPct: 0.75 },
-  { id: 3, label: 'Ultra', parallax: true,  particles: true,  cameraShake: true,  scorePopups: true,  ambientMotion: true,  particleCapPct: 1.00 },
+  { id: 0, label: 'Low',   parallax: false, particles: false, cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, particleCapPct: 0.20 },
+  { id: 1, label: 'Mid',   parallax: false, particles: true,  cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, particleCapPct: 0.45 },
+  { id: 2, label: 'High',  parallax: true,  particles: true,  cameraShake: true,  scorePopups: false, ambientMotion: true,  postProcessGrade: true,  particleCapPct: 0.75 },
+  { id: 3, label: 'Ultra', parallax: true,  particles: true,  cameraShake: true,  scorePopups: true,  ambientMotion: true,  postProcessGrade: true,  particleCapPct: 1.00 },
 ]);
 
 const DEGRADE_FRAMETIME_MS = 22;   // ≈ 45 fps
