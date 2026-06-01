@@ -94,8 +94,9 @@ export class AssetManager {
 }
 
 /**
- * If the four corner pixels are opaque near-white, treat the image as
- * "lost alpha" and flood-fill the white background away.
+ * If the image border is predominantly opaque near-white, treat the image
+ * as "lost alpha" and flood-fill the white background away, then de-fringe
+ * any anti-aliased edge pixels.
  *
  * Returns either:
  *   - the original Image (if no white bg detected or processing failed)
@@ -120,9 +121,10 @@ function removeWhiteBackgroundIfNeeded(img) {
   catch { return img; }  // CORS-tainted (cross-origin asset) → leave alone.
   const px = data.data;
 
-  if (!hasOpaqueWhiteCorners(px, W, H)) return img;
+  if (!hasMostlyWhiteBorder(px, W, H)) return img;
 
   floodFillWhiteFromEdges(px, W, H);
+  defringeEdgePixels(px, W, H);
   ctx.putImageData(data, 0, 0);
 
   // Duck-type canvas as an Image so SpriteRenderer's interface holds.
@@ -134,19 +136,30 @@ function removeWhiteBackgroundIfNeeded(img) {
   return canvas;
 }
 
-/** Near-white opaque corner test — single pixel sample per corner. */
-function hasOpaqueWhiteCorners(px, W, H) {
-  return (
-    isNearWhiteOpaque(px, 0, 0, W) &&
-    isNearWhiteOpaque(px, W - 1, 0, W) &&
-    isNearWhiteOpaque(px, 0, H - 1, W) &&
-    isNearWhiteOpaque(px, W - 1, H - 1, W)
-  );
-}
-
-function isNearWhiteOpaque(px, x, y, W) {
-  const i = (y * W + x) * 4;
-  return px[i] > 235 && px[i + 1] > 235 && px[i + 2] > 235 && px[i + 3] > 200;
+/**
+ * Border white-ratio test — sample all four edges and require that ≥ 70%
+ * of opaque border pixels are near-white. More robust than checking only
+ * the four corner pixels (catches sprites where content bleeds to a corner
+ * or where corners are slightly below the old 235 threshold).
+ */
+function hasMostlyWhiteBorder(px, W, H) {
+  let white = 0;
+  let colored = 0;
+  const check = (i) => {
+    if (px[i + 3] < 100) return; // mostly transparent — skip
+    if (px[i] > 220 && px[i + 1] > 220 && px[i + 2] > 220) white += 1;
+    else colored += 1;
+  };
+  for (let x = 0; x < W; x += 1) {
+    check(x * 4);                       // top row
+    check((x + (H - 1) * W) * 4);      // bottom row
+  }
+  for (let y = 1; y < H - 1; y += 1) {
+    check(y * W * 4);                   // left col
+    check((y * W + W - 1) * 4);        // right col
+  }
+  const total = white + colored;
+  return total > 0 && white / total >= 0.7;
 }
 
 /**
@@ -156,6 +169,9 @@ function isNearWhiteOpaque(px, x, y, W) {
  *
  * Uses typed-array stack to avoid recursion + a Uint8Array visited
  * bitmap so the cost is O(N) for any image size up to 2048×2048.
+ *
+ * Threshold lowered from 230 → 200 to also erase anti-aliased fringe
+ * pixels that are still near-white but not pure white.
  */
 function floodFillWhiteFromEdges(px, W, H) {
   const visited = new Uint8Array(W * H);
@@ -165,12 +181,12 @@ function floodFillWhiteFromEdges(px, W, H) {
 
   // Seed with every border pixel.
   for (let x = 0; x < W; x += 1) {
-    stack[sp++] = x;            // top row
+    stack[sp++] = x;                // top row
     stack[sp++] = x + (H - 1) * W; // bottom row
   }
   for (let y = 1; y < H - 1; y += 1) {
-    stack[sp++] = y * W;             // left col
-    stack[sp++] = y * W + (W - 1);   // right col
+    stack[sp++] = y * W;            // left col
+    stack[sp++] = y * W + (W - 1); // right col
   }
 
   while (sp > 0) {
@@ -178,7 +194,7 @@ function floodFillWhiteFromEdges(px, W, H) {
     if (visited[idx]) continue;
     const pi = idx * 4;
     // Non-white encountered → leave this pixel opaque, stop the wave.
-    if (px[pi] < 230 || px[pi + 1] < 230 || px[pi + 2] < 230) continue;
+    if (px[pi] < 200 || px[pi + 1] < 200 || px[pi + 2] < 200) continue;
     visited[idx] = 1;
     px[pi + 3] = 0;
     const x = idx % W;
@@ -187,5 +203,45 @@ function floodFillWhiteFromEdges(px, W, H) {
     if (x - 1 >= 0) stack[sp++] = idx - 1;
     if (y + 1 < H) stack[sp++] = idx + W;
     if (y - 1 >= 0) stack[sp++] = idx - W;
+  }
+}
+
+/**
+ * Alpha-matte the one-pixel ring of pixels adjacent to transparent (BFS-cleared)
+ * pixels. Only affects pixels with all channels ≥ 190 (near-white fringe);
+ * colored sprite content is left untouched.
+ *
+ * Uses the white-background matting formula: given a pixel composited on white,
+ *   α_new = 1 − min(R,G,B)/255
+ *   C_orig = clamp((C − 255·(1−α_new)) / α_new, 0, 255)
+ */
+function defringeEdgePixels(px, W, H) {
+  const total = W * H;
+  for (let idx = 0; idx < total; idx += 1) {
+    const pi = idx * 4;
+    if (px[pi + 3] === 0) continue; // already transparent
+
+    const r = px[pi], g = px[pi + 1], b = px[pi + 2];
+    const minCh = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if (minCh < 190) continue; // clearly colored — not a white fringe
+
+    const x = idx % W;
+    const y = (idx / W) | 0;
+    const hasTransparentNeighbor = (
+      (x > 0     && px[(idx - 1) * 4 + 3] === 0) ||
+      (x < W - 1 && px[(idx + 1) * 4 + 3] === 0) ||
+      (y > 0     && px[(idx - W) * 4 + 3] === 0) ||
+      (y < H - 1 && px[(idx + W) * 4 + 3] === 0)
+    );
+    if (!hasTransparentNeighbor) continue;
+
+    const newA = 1 - minCh / 255;
+    if (newA < 0.04) { px[pi + 3] = 0; continue; }
+
+    const bg = 255 * (1 - newA);
+    px[pi    ] = Math.min(255, Math.max(0, ((r - bg) / newA) | 0));
+    px[pi + 1] = Math.min(255, Math.max(0, ((g - bg) / newA) | 0));
+    px[pi + 2] = Math.min(255, Math.max(0, ((b - bg) / newA) | 0));
+    px[pi + 3] = Math.round(newA * 255);
   }
 }
