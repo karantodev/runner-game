@@ -133,7 +133,12 @@ const POWER_LABELS = Object.freeze({
   'score-x2':    { text: '×2 SCORE', color: '#ffd54a' },
 });
 
-const PLAYER_FOCAL_PUNCH = 14;
+// v4.7 — power-up activation keeps a focal punch (rare, deliberate, tied to
+// an explicit player action), softened 14→5 so even it doesn't lurch the far
+// side scenery hard. The FREQUENT running-time punches (milestone / speed-tier
+// / near-miss) were removed — with focal=58 they rescaled the side trees on
+// every event and read as a periodic "acceleration" stutter while running.
+const PLAYER_FOCAL_PUNCH = 5;
 
 export class EffectsSystem {
   constructor(config, eventBus, projection) {
@@ -192,7 +197,8 @@ export class EffectsSystem {
     if (!w) return;
     const cfg = w.config.gameplay.nearMiss;
     this.#shake(cfg.shakeAmount);
-    this.projection.focalImpulse = Math.max(this.projection.focalImpulse, cfg.focalImpulse);
+    // v4.7 — no FOV punch here: focalImpulse rescaled the far side scenery
+    // (trees lurched closer then settled) and read as a stutter while running.
     this.#popupAtLane({ ...POPUPS.nearMiss, text: `NEAR MISS +${cfg.bonusScore}` }, laneX, kind === 'jump');
     this.#burstAt('nearMiss', laneX, { yOffset: -70 });
   }
@@ -210,7 +216,7 @@ export class EffectsSystem {
     const w = this.world;
     if (!w) return;
     this.#shake(2.6);
-    this.projection.focalImpulse = Math.max(this.projection.focalImpulse, 6);
+    // v4.7 — FOV punch removed (see #onNearMiss): it lurched the side trees.
     const laneX = w.player?.components.LaneState.laneX ?? 0;
     this.#popupAtLane({ text: `SPEED +${tier}`, color: '#a7ff7e' }, laneX, true);
   }
@@ -225,7 +231,8 @@ export class EffectsSystem {
     const w = this.world;
     if (!w) return;
     this.#shake(4.0);
-    this.projection.focalImpulse = Math.max(this.projection.focalImpulse, 8);
+    // v4.7 — FOV punch removed (see #onNearMiss): the milestone fires often
+    // (every 50/100/250/500/... score) so this was the main periodic lurch.
     const laneX = w.player?.components.LaneState.laneX ?? 0;
     this.#burstAt('nearMiss', laneX, { yOffset: -90 });
     this.#popupAtLane({ text: `MILESTONE +${score}`, color: '#ffd54a' }, laneX, true);
