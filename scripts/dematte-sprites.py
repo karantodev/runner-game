@@ -30,6 +30,30 @@ BFS_THRESHOLD = 200
 # De-fringe: only matte edge pixels where all channels are ≥ this
 DEFRINGE_MIN = 190
 
+# Safety guard: if BFS would clear more than this fraction of all pixels,
+# the sprite likely has white CONTENT (e.g. clouds) — skip it.
+MAX_CLEAR_RATIO = 0.55
+
+# Sprites whose content is white/near-white and cannot be de-matted by BFS.
+# These are skipped unconditionally to prevent cloud-body destruction.
+EXCLUDE_PATHS: set[str] = {
+    "background/cloud_large_01.png",
+    "background/cloud_medium_01.png",
+    "background/cloud_small_01.png",
+    "background/clouds/cloud_medium.png",
+    "background/clouds/cloud_small.png",
+    # The cloud-01 through cloud-06 sprites are already properly transparent
+    # and don't need processing, but we add them as an extra safeguard.
+    "background/clouds/cloud-01.png",
+    "background/clouds/cloud-02.png",
+    "background/clouds/cloud-03.png",
+    "background/clouds/cloud-04.png",
+    "background/clouds/cloud-05.png",
+    "background/clouds/cloud-06.png",
+    "background/clouds/cloud_large.png",
+    "environment/cloud-large.png",
+}
+
 
 # ---------------------------------------------------------------------------
 # Core algorithm
@@ -145,6 +169,11 @@ def _has_scipy() -> bool:
 
 def process_image(path: Path) -> bool:
     """Return True if the file was modified."""
+    # Hard exclusion list — sprites with white content that BFS would destroy.
+    rel = str(path.relative_to(ASSETS_DIR))
+    if rel in EXCLUDE_PATHS:
+        return False
+
     img = Image.open(path).convert("RGBA")
     arr = np.array(img, dtype=np.uint8)
 
@@ -153,6 +182,19 @@ def process_image(path: Path) -> bool:
 
     cleared = _bfs_fill(arr)
     if not cleared.any():
+        return False
+
+    # Safety guard: if BFS cleared more than MAX_CLEAR_RATIO of the image, the
+    # sprite likely has white content (e.g. a cloud body). Abort and leave the
+    # file untouched — add it to EXCLUDE_PATHS if you need to suppress the warning.
+    total_pixels = arr.shape[0] * arr.shape[1]
+    clear_ratio = cleared.sum() / total_pixels
+    if clear_ratio > MAX_CLEAR_RATIO:
+        print(
+            f"  SKIP {rel}: BFS would clear {clear_ratio:.0%} of pixels "
+            f"(>{MAX_CLEAR_RATIO:.0%} safety limit — likely white content)",
+            file=sys.stderr,
+        )
         return False
 
     _defringe(arr, cleared)
