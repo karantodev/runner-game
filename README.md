@@ -7,8 +7,15 @@ Vanilla ES modules, no build step, runs in any modern browser.
 
 ```bash
 npm install
-npm run dev          # http://localhost:8080/dev.html
+npm run dev          # starts local server → open one of the pages below
 ```
+
+### Dev pages
+
+| URL | Purpose |
+|---|---|
+| `/dev.html` | **Game** — full playable build served as ES modules (no bundling needed; edits are live on tab reload). Accepts all `?param=` URL flags listed below. |
+| `/sprites.html` | **Sprite viewer** — browse all 288 registered assets grouped by category. Shows each sprite on a transparency checkerboard with its pixel dimensions. Green dot = referenced in `src/`; amber dot = registered but not yet wired to any renderer. Search by key or path; filter to active / inactive only. Click any card to copy its asset key. |
 
 Keyboard: `← →` / `A D` move · `Space` / `↑` jump · `↓` / `S` crouch · `R` restart · `Esc` / `P` pause
 Gamepad and touch (swipe + on-screen buttons on mobile) also supported.
@@ -36,6 +43,17 @@ npm run preview          # build, then serve at /
 npm run test:smoke       # 2 playwright specs — page loads, no console errors
 npm run test:runtime     # 5 playwright specs — input, leaderboard, seed determinism
 npm test                 # both spec files
+```
+
+### Asset tooling
+
+```bash
+# Re-run after adding new sprites that ship with a white background
+python3 scripts/dematte-sprites.py
+
+# Regenerate active-key data embedded in sprites.html
+# (run after wiring new asset keys to renderers)
+node scripts/audit-active-keys.mjs > /tmp/active_keys.json
 ```
 
 ## Architecture

@@ -18,9 +18,11 @@
       --text-muted:#5a7890;
       --gold:      #ffd54a;
       --gold-dim:  #7a6010;
-      --green:     #5de060;
+      --green:     #4dce50;
+      --green-dim: #0d3010;
       --red:       #e05050;
       --blue:      #5ab8ff;
+      --amber:     #f0a030;
       --font-px:   'Press Start 2P', monospace;
       --font-body: 'Silkscreen', monospace;
       --sidebar-w: 220px;
@@ -54,8 +56,8 @@
       grid-area: top;
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 0 20px;
+      gap: 12px;
+      padding: 0 16px;
       background: #07111c;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
@@ -63,7 +65,7 @@
 
     #topbar h1 {
       font-family: var(--font-px);
-      font-size: 10px;
+      font-size: 9px;
       color: var(--gold);
       white-space: nowrap;
       letter-spacing: 1px;
@@ -71,35 +73,60 @@
 
     #search-wrap {
       flex: 1;
-      max-width: 360px;
+      max-width: 300px;
     }
 
     #search {
       width: 100%;
-      padding: 6px 10px;
+      padding: 5px 10px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 4px;
       color: var(--text);
       font-family: var(--font-body);
-      font-size: 13px;
+      font-size: 12px;
       outline: none;
       transition: border-color .15s;
     }
     #search:focus { border-color: var(--blue); }
     #search::placeholder { color: var(--text-muted); }
 
+    /* ── Active filter pills ─────────────────────────────── */
+    #usage-filter {
+      display: flex;
+      gap: 4px;
+    }
+
+    .usage-pill {
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 11px;
+      cursor: pointer;
+      transition: background .12s, color .12s, border-color .12s;
+      white-space: nowrap;
+    }
+    .usage-pill:hover { border-color: var(--border-hi); color: var(--text); }
+    .usage-pill.active-pill[data-usage="all"]      { background: var(--border); color: var(--text); border-color: var(--border-hi); }
+    .usage-pill.active-pill[data-usage="active"]   { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+    .usage-pill.active-pill[data-usage="inactive"] { background: #2a1a0a; color: var(--amber); border-color: var(--amber); }
+
+    /* ── Top-bar stats ────────────────────────────────────── */
     #topbar-stats {
       margin-left: auto;
       display: flex;
-      gap: 20px;
+      gap: 16px;
       font-size: 11px;
       color: var(--text-muted);
       white-space: nowrap;
     }
-    #topbar-stats b { color: var(--text); }
-    #stat-ok  { color: var(--green); }
-    #stat-err { color: var(--red); }
+    #stat-total { color: var(--text); }
+    #stat-active { color: var(--green); }
+    #stat-inactive { color: var(--amber); }
+    #stat-missing { color: var(--red); }
 
     /* ── Sidebar ──────────────────────────────────────────── */
     #sidebar {
@@ -123,12 +150,12 @@
       align-items: center;
       gap: 8px;
       width: 100%;
-      padding: 7px 14px;
+      padding: 6px 12px;
       background: none;
       border: none;
       color: var(--text-muted);
       font-family: var(--font-body);
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       text-align: left;
       transition: background .1s, color .1s;
@@ -137,7 +164,7 @@
     .cat-btn:hover { background: var(--bg-hover); color: var(--text); }
     .cat-btn.active { background: var(--bg-hover); color: var(--gold); border-left-color: var(--gold); }
 
-    .cat-icon { font-size: 14px; flex-shrink: 0; }
+    .cat-icon { font-size: 13px; flex-shrink: 0; }
     .cat-label { flex: 1; line-height: 1.3; }
     .cat-count {
       font-size: 10px;
@@ -154,43 +181,38 @@
     #main {
       grid-area: main;
       overflow-y: scroll;
-      padding: 20px 24px 48px;
+      padding: 18px 20px 48px;
       scroll-behavior: smooth;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
 
     /* ── Category section ─────────────────────────────────── */
-    .cat-section {
-      margin-bottom: 36px;
-    }
+    .cat-section { margin-bottom: 32px; }
 
     .cat-header {
       display: flex;
       align-items: baseline;
       gap: 10px;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 7px;
       border-bottom: 1px solid var(--border);
     }
 
     .cat-header h2 {
       font-family: var(--font-px);
-      font-size: 9px;
+      font-size: 8px;
       color: var(--gold);
       letter-spacing: 1px;
     }
 
-    .cat-header .badge {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
+    .cat-header .badge { font-size: 11px; color: var(--text-muted); }
 
     /* ── Sprite grid ──────────────────────────────────────── */
     .sprite-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
 
     /* ── Sprite card ──────────────────────────────────────── */
@@ -203,18 +225,20 @@
       transition: border-color .15s, transform .1s;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
-    .sprite-card:hover {
-      border-color: var(--border-hi);
-      transform: translateY(-1px);
-    }
-    .sprite-card.missing { opacity: .55; }
+    .sprite-card:hover { border-color: var(--border-hi); transform: translateY(-1px); }
+    .sprite-card.missing { opacity: .5; }
     .sprite-card.hidden  { display: none; }
+
+    /* Inactive card: slightly dimmed */
+    .sprite-card.inactive { opacity: .65; }
+    .sprite-card.inactive:hover { opacity: 1; }
 
     /* checkerboard to reveal transparency */
     .sprite-img-wrap {
       position: relative;
-      height: 100px;
+      height: 96px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -231,28 +255,38 @@
 
     .sprite-img-wrap img {
       max-width: 90%;
-      max-height: 88px;
+      max-height: 86px;
       object-fit: contain;
       image-rendering: pixelated;
       display: block;
     }
 
+    /* usage dot — top-right corner of image area */
+    .usage-dot {
+      position: absolute;
+      top: 5px; right: 5px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,.4);
+    }
+    .usage-dot.dot-active   { background: var(--green); }
+    .usage-dot.dot-inactive { background: var(--amber); }
+
     .missing-badge {
       position: absolute;
-      top: 6px; right: 6px;
+      bottom: 5px; left: 5px;
       font-size: 9px;
       background: var(--red);
       color: #fff;
-      padding: 2px 5px;
+      padding: 1px 5px;
       border-radius: 3px;
     }
 
     .sprite-meta {
-      padding: 6px 8px 7px;
+      padding: 5px 7px 6px;
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      min-height: 0;
+      gap: 2px;
     }
 
     .sprite-key {
@@ -268,17 +302,32 @@
       font-size: 10px;
       color: var(--text-muted);
       word-break: break-all;
-      line-height: 1.35;
+      line-height: 1.3;
+    }
+
+    .sprite-footer {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 2px;
     }
 
     .sprite-dims {
       font-size: 10px;
       color: var(--blue);
-      margin-top: 1px;
+      flex: 1;
     }
     .sprite-card.missing .sprite-dims { color: var(--red); }
 
-    /* ── Detail tooltip on hover (title attr fallback) ──────── */
+    .sprite-usage-label {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sprite-usage-label.lbl-active   { background: var(--green-dim); color: var(--green); }
+    .sprite-usage-label.lbl-inactive { background: #2a1a0a; color: var(--amber); }
 
     /* ── Empty state ──────────────────────────────────────── */
     #empty-state {
@@ -290,7 +339,7 @@
     }
     #empty-state.visible { display: block; }
 
-    /* ── Scrollbar polish ────────────────────────────────── */
+    /* ── Scrollbars ──────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -300,14 +349,20 @@
 <div id="shell">
 
   <header id="topbar">
-    <h1>🌸 SPRITE VIEWER</h1>
+    <h1>🌸 SPRITES</h1>
     <div id="search-wrap">
       <input id="search" type="search" placeholder="Search key or path…" autocomplete="off" spellcheck="false">
     </div>
+    <div id="usage-filter">
+      <button class="usage-pill active-pill" data-usage="all">All</button>
+      <button class="usage-pill" data-usage="active">● Active</button>
+      <button class="usage-pill" data-usage="inactive">● Inactive</button>
+    </div>
     <div id="topbar-stats">
-      <span>Total: <b id="stat-total">…</b></span>
-      <span><b id="stat-ok" class="stat-ok">…</b> loaded</span>
-      <span><b id="stat-err" class="stat-err">…</b> missing</span>
+      <span><b id="stat-total">…</b> total</span>
+      <span><b id="stat-active">…</b> active</span>
+      <span><b id="stat-inactive">…</b> inactive</span>
+      <span><b id="stat-missing">…</b> missing</span>
     </div>
   </header>
 
@@ -325,180 +380,85 @@
 <script type="module">
 import { GAME_CONFIG } from './src/config/gameConfig.js';
 
+// ─── Active-in-game map (generated by scripts/audit-active-keys.mjs) ───────
+// true  = key is referenced in src/ (exact literal, numbered-frame prefix, or
+//         Left/Right side-variant).  false = registered but not yet wired.
+const ACTIVE = {"collectibleFlower":true,"flowerPurpleCluster":true,"flowerYellowSmall":true,"lifeHeart":true,"sprout":true,"backgroundSkyGradient":true,"backgroundSun":true,"backgroundCastle":true,"backgroundCastleFar":false,"backgroundCloudLarge":false,"backgroundCloudMedium":false,"backgroundCloudSmall":false,"backgroundMountainsFar":true,"backgroundMountainsMid":true,"backgroundMountainsNear":true,"backgroundForestFar":true,"backgroundForestTreeline":true,"backgroundMeadowRolling":true,"backgroundCloud01":true,"backgroundCloud02":true,"backgroundCloud03":true,"backgroundCloud04":true,"backgroundCloud05":true,"backgroundCloud06":true,"cloudLarge":true,"mushroomRed":true,"mushroomPurple":true,"mushroomBlue":true,"treeRound":true,"leafClusterLow":true,"leafClusterCompact":true,"grassTuft":true,"dryGrass":true,"fenceWoodShort":true,"wheatTuft":true,"questionBlock":true,"brickPurpleSingle":true,"brickPurplePlatform3":true,"pipeGreen":true,"vineCoiled":true,"bushSpiky":true,"purpleBrick01":true,"purplePlatformRow04":true,"hangingPlatformVines":true,"purpleWallLow":true,"purpleWallStairs":true,"questionBlockSprite":true,"pipeGreenSprite":true,"mushroomRedBig":false,"treeRoundSprite":true,"fenceWoodSprite":true,"bushLarge":true,"bushLargeFlower":true,"purpleFlowerCluster":true,"yellowFlowerSmall":true,"grassTuftSmall":true,"grassTuftLarge":true,"leafClumpRound":true,"bushWithFlowers":true,"sproutSoil":true,"lowBranchOverhang":true,"spiderWebOverhang":true,"playerFarmerRun01":true,"playerFarmerRun02":true,"playerFarmerRun03":true,"playerFarmerRun04":true,"playerFarmerRun05":true,"playerFarmerRun06":true,"playerFarmerRun07":true,"playerFarmerRun08":true,"playerFarmerCrouch01":true,"playerFarmerCrouch02":true,"playerFarmerCrouch03":true,"playerFarmerCrouch04":true,"uiPauseButton":false,"uiPlayButton":false,"uiHeartFull":false,"uiHeartEmpty":false,"uiEnergyFull":false,"uiEnergyEmpty":false,"uiFlowerIcon":false,"uiLivesPanel":false,"uiToolPanel":false,"uiShovelFull":false,"uiShovelBlade":false,"uiShovelHandle":false,"goldenFlowerBig":true,"goldenFlowerSmall":true,"vineBarrierFull":true,"dryGrassObstacle":true,"mushroomSmallRed":true,"roadLaneTileA":false,"roadLaneTileB":false,"roadLaneTileC":false,"roadDividerYellow":false,"roadShoulderLeftGrass":true,"roadShoulderRightGrass":true,"roadKitForegroundLeft":true,"roadKitForegroundCenter":true,"roadKitForegroundRight":true,"roadKitMidLeft":true,"roadKitMidCenter":true,"roadKitMidRight":true,"roadKitFarStrip":true,"roadKitShoulderInnerLeft":true,"roadKitShoulderInnerRight":true,"roadKitLaneDividerLeftCenter":true,"roadKitLaneDividerCenterRight":true,"roadKitEdgeFlowerPatch01":true,"roadKitEdgeGrassPatch01":true,"roadKitEdgeDarkPatch01":true,"playerFarmerJump01":true,"playerFarmerJump02":true,"playerFarmerJump03":true,"playerFarmerJump04":true,"playerFarmerJump05":true,"playerFarmerJump06":true,"playerFarmerHit01":true,"playerFarmerHit02":true,"playerFarmerHit03":true,"playerFarmerHit04":true,"playerFarmerIdle01":true,"playerFarmerIdle02":true,"playerFarmerIdle03":true,"playerFarmerIdle04":true,"orchidGoldMain":true,"orchidGoldBig":true,"orchidGoldHalo":false,"orchidGoldEmblem":false,"orchidGoldGlow1":false,"orchidGoldGlow2":false,"orchidGoldStar":false,"orchidBlueRare":true,"orchidBlueRareHalo":true,"orchidGoldSparkle01":false,"orchidGoldSparkle02":false,"orchidGoldSparkle03":false,"orchidGoldSparkle04":false,"orchidGoldCollect02":false,"orchidGoldCollect03":false,"orchidGoldCollect04":false,"orchidGoldCollect05":false,"orchidGoldCollect06":false,"orchidGoldCollect07":false,"orchidGoldCollect08":false,"decorBranchFlowers01":false,"decorBushBright01":false,"decorBushFlower01":false,"decorGrassMedium01":false,"decorGrassSmall01":false,"decorLeafClump01":false,"grassDirtBlock01":true,"grassDirtBlock02":true,"grassDirtBlockFlower01":true,"grassDirtBlockFlower02":true,"grassDirtBlockLeft":true,"grassDirtBlockRight":true,"grassDirtPlatformLong2":true,"grassDirtStepLeft":true,"grassDirtStepRight":true,"dryBushObstacle":false,"vineBarrier01":false,"vineBarrier02":false,"vineBarrier03":false,"vineBarrier04":false,"vineBarrierSingle01":false,"vineBarrierSingle02":false,"vineBarrierSingle03":false,"vineBarrierSingle04":false,"planterPot":true,"planterPotLeft":true,"planterPotRight":true,"questionBlockAnim01":true,"questionBlockAnim02":true,"questionBlockAnim03":true,"questionBlockAnim04":true,"questionBlockBonus":false,"stoneBrickSingle":true,"stoneWallLow":true,"stoneWallStairs":true,"stoneBrickSingleLeft":true,"stoneBrickSingleRight":true,"stoneWallLowLeft":true,"stoneWallLowRight":true,"stoneWallStairsLeft":true,"stoneWallStairsRight":true,"platformFloating":true,"platformFloatingLeft":true,"platformFloatingRight":true,"platformHangingVines":true,"platformHangingVinesLeft":true,"platformHangingVinesRight":true,"fenceWebbed":false,"grassDirtPlatformLong":true,"grassDirtPlatformLongLeft":true,"grassDirtPlatformLongRight":true,"purpleBrickSingleLeft":true,"purpleBrickSingleRight":true,"fenceWoodSpriteLeft":true,"fenceWoodSpriteRight":true,"goldQuestionBlock01":false,"goldQuestionBlock02":false,"greenhouseFar":true,"greenhouseMid":false,"greenhouseNear":false,"midgroundHills":true,"midgroundTreeline":true,"cloudLargeAlt":false,"cloudMediumAlt":false,"cloudSmallAlt":false,"mountainsFarAlt":true,"castleFarAlt":true,"dustPuff01":true,"dustPuff02":true,"dustPuff03":true,"dustPuff04":true,"jumpDust01":true,"jumpDust02":true,"jumpDust03":true,"jumpDust04":true,"sparkle01":true,"sparkle02":true,"sparkle03":true,"sparkle04":true,"speedLine":false,"hitFlash01":false,"hitFlash02":false,"hitFlash03":false,"hitFlash04":false,"laneSwoosh01":true,"laneSwoosh02":true,"laneSwoosh03":true,"laneSwoosh04":true,"collectBurst01":false,"collectBurst02":false,"collectBurst03":false,"collectBurst04":false,"collectBurst05":false,"collectBurst06":false,"collectBurst07":false,"collectBurst08":false,"collectOrchidBurstSingle":false,"goldenFlowerBurstSingle":false,"goldenFlowerSparkleSingle":false,"dustPuffSingle":false,"hitSparkSingle":false,"goldSparkSingle":false,"pickupMagnet":true,"pickupShield":true,"pickupScoreX2":true,"miscShieldSign":true,"miscHourglass":true,"miscPotionEmerald":true,"miscSpikeBall":false,"miscChestWooden":false,"miscHeartRed":false,"miscCoinSingle":false,"miscCoinStack":false,"miscBarrelWooden":false,"miscCampfire":false,"hudPanelScore":false,"hudPanelLives":false,"hudPanelTool":false,"hudPanelLong":false,"panelGameOver":false,"iconOrchidCurrency":false,"buttonRetry":false,"buttonMenuBack":false,"iconHeartFull":false,"iconHeartEmpty":false,"iconEnergyFull":false,"iconEnergyEmpty":false,"buttonPauseAlt":false,"buttonPlay":false,"buttonRestart":false,"currencyFlowerBasic":false,"currencyFlowerGold":false,"multiplierX2":false,"multiplierX3":false,"multiplierX5Banner":false,"statusBatteryGreen":false,"statusHeartEmpty":false,"statusHeartRed1":false,"statusHeartRed2":false,"toolShovelFullAlt":false,"toolShovelBladeAlt":false,"toolShovelHandleAlt":false,"lifeHeartAlt":false};
+
 // ─── Category definitions ──────────────────────────────────────────────────
-// Ordered — first matching test wins.
 const CATS = [
-  {
-    id: 'player', label: 'Player', icon: '🏃',
-    test: k => k.startsWith('playerFarmer'),
-  },
-  {
-    id: 'collectibles', label: 'Collectibles', icon: '🌸',
-    test: k => k.startsWith('orchid') || k.startsWith('collectible') ||
-               k.startsWith('flower') || k === 'lifeHeart' || k === 'lifeHeartAlt' ||
-               k === 'sprout',
-  },
-  {
-    id: 'pickups', label: 'Pickups & Power-ups', icon: '⭐',
-    test: k => k.startsWith('pickup') || k.startsWith('goldenFlower'),
-  },
-  {
-    id: 'background', label: 'Background', icon: '🏔️',
-    test: k => k.startsWith('background') || k.startsWith('greenhouse') ||
-               k.startsWith('midground') ||
-               ['cloudLargeAlt','cloudMediumAlt','cloudSmallAlt',
-                'mountainsFarAlt','castleFarAlt'].includes(k),
-  },
-  {
-    id: 'environment', label: 'Environment (legacy)', icon: '🌲',
-    test: k => k === 'cloudLarge' ||
-               ['mushroomRed','mushroomPurple','mushroomBlue','treeRound',
-                'leafClusterLow','leafClusterCompact','grassTuft','dryGrass',
-                'fenceWoodShort','wheatTuft'].includes(k),
-  },
-  {
-    id: 'decor', label: 'Decor', icon: '🌿',
-    test: k => k.startsWith('decor') ||
-               k === 'treeRoundSprite' || k.startsWith('bushLarge') ||
-               k === 'mushroomRedBig' ||
-               k.startsWith('fenceWoodSprite') ||
-               k.startsWith('purpleFlowerCluster') ||
-               k.startsWith('yellowFlowerSmall') ||
-               k === 'grassTuftSmall' || k === 'grassTuftLarge' ||
-               k === 'leafClumpRound' || k === 'bushWithFlowers' ||
-               k === 'sproutSoil',
-  },
-  {
-    id: 'obstacles', label: 'Obstacles', icon: '⚠️',
-    test: k => k.startsWith('vineBarrier') || k === 'vineBarrierFull' ||
-               k.startsWith('lowBranch') || k.startsWith('spiderWeb') ||
-               k.startsWith('planterPot') ||
-               k === 'dryGrassObstacle' || k === 'dryBushObstacle' ||
-               k === 'mushroomSmallRed' || k === 'bushSpiky',
-  },
-  {
-    id: 'terrain', label: 'Terrain Blocks', icon: '🌱',
-    test: k => k.startsWith('grassDirtBlock') || k.startsWith('grassDirtStep') ||
-               k.startsWith('grassDirtPlatform'),
-  },
-  {
-    id: 'structures', label: 'Structures & Platforms', icon: '🏛️',
-    test: k => k.startsWith('stoneBrick') || k.startsWith('stoneWall') ||
-               k.startsWith('platform') ||
-               k === 'purpleBrick01' || k.startsWith('purpleBrickSingle') ||
-               k === 'purplePlatformRow04' || k === 'hangingPlatformVines' ||
-               k.startsWith('questionBlockAnim') || k === 'questionBlockBonus' ||
-               k === 'questionBlockSprite' || k === 'pipeGreenSprite' ||
-               k.startsWith('purpleWall') || k === 'fenceWebbed' ||
-               k.startsWith('goldQuestionBlock'),
-  },
-  {
-    id: 'blocks', label: 'Blocks (legacy)', icon: '📦',
-    test: k => ['questionBlock','brickPurpleSingle','brickPurplePlatform3',
-                'pipeGreen','vineCoiled'].includes(k),
-  },
-  {
-    id: 'road', label: 'Road', icon: '🛣️',
-    test: k => k.startsWith('road'),
-  },
-  {
-    id: 'effects', label: 'Effects & Particles', icon: '✨',
-    test: k => k.startsWith('dustPuff') || k.startsWith('jumpDust') ||
-               k.startsWith('sparkle') || k === 'speedLine' ||
-               k.startsWith('hitFlash') || k.startsWith('laneSwoosh') ||
-               k.startsWith('collectBurst') ||
-               k.endsWith('Single') || k === 'goldSparkSingle',
-  },
-  {
-    id: 'misc', label: 'Misc Props', icon: '🎁',
-    test: k => k.startsWith('misc'),
-  },
-  {
-    id: 'ui', label: 'UI / HUD', icon: '🖥️',
-    test: k => k.startsWith('ui') || k.startsWith('hud') ||
-               k.startsWith('panel') || k.startsWith('icon') ||
-               k.startsWith('button') || k.startsWith('currency') ||
-               k.startsWith('multiplier') || k.startsWith('status') ||
-               k.startsWith('tool') || k === 'panelGameOver',
-  },
-  {
-    id: 'other', label: 'Other', icon: '❓',
-    test: () => true,
-  },
+  { id: 'player',       label: 'Player',              icon: '🏃', test: k => k.startsWith('playerFarmer') },
+  { id: 'collectibles', label: 'Collectibles',         icon: '🌸', test: k => k.startsWith('orchid') || k.startsWith('collectible') || k.startsWith('flower') || k === 'lifeHeart' || k === 'lifeHeartAlt' || k === 'sprout' },
+  { id: 'pickups',      label: 'Pickups & Power-ups',  icon: '⭐', test: k => k.startsWith('pickup') || k.startsWith('goldenFlower') },
+  { id: 'background',   label: 'Background',           icon: '🏔️', test: k => k.startsWith('background') || k.startsWith('greenhouse') || k.startsWith('midground') || ['cloudLargeAlt','cloudMediumAlt','cloudSmallAlt','mountainsFarAlt','castleFarAlt'].includes(k) },
+  { id: 'environment',  label: 'Environment (legacy)', icon: '🌲', test: k => k === 'cloudLarge' || ['mushroomRed','mushroomPurple','mushroomBlue','treeRound','leafClusterLow','leafClusterCompact','grassTuft','dryGrass','fenceWoodShort','wheatTuft'].includes(k) },
+  { id: 'decor',        label: 'Decor',                icon: '🌿', test: k => k.startsWith('decor') || k === 'treeRoundSprite' || k.startsWith('bushLarge') || k === 'mushroomRedBig' || k.startsWith('fenceWoodSprite') || k.startsWith('purpleFlowerCluster') || k.startsWith('yellowFlowerSmall') || k === 'grassTuftSmall' || k === 'grassTuftLarge' || k === 'leafClumpRound' || k === 'bushWithFlowers' || k === 'sproutSoil' },
+  { id: 'obstacles',    label: 'Obstacles',            icon: '⚠️',  test: k => k.startsWith('vineBarrier') || k === 'vineBarrierFull' || k.startsWith('lowBranch') || k.startsWith('spiderWeb') || k.startsWith('planterPot') || k === 'dryGrassObstacle' || k === 'dryBushObstacle' || k === 'mushroomSmallRed' || k === 'bushSpiky' },
+  { id: 'terrain',      label: 'Terrain Blocks',       icon: '🌱',  test: k => k.startsWith('grassDirtBlock') || k.startsWith('grassDirtStep') || k.startsWith('grassDirtPlatform') },
+  { id: 'structures',   label: 'Structures & Platforms', icon: '🏛️', test: k => k.startsWith('stoneBrick') || k.startsWith('stoneWall') || k.startsWith('platform') || k === 'purpleBrick01' || k.startsWith('purpleBrickSingle') || k === 'purplePlatformRow04' || k === 'hangingPlatformVines' || k.startsWith('questionBlockAnim') || k === 'questionBlockBonus' || k === 'questionBlockSprite' || k === 'pipeGreenSprite' || k.startsWith('purpleWall') || k === 'fenceWebbed' || k.startsWith('goldQuestionBlock') },
+  { id: 'blocks',       label: 'Blocks (legacy)',       icon: '📦',  test: k => ['questionBlock','brickPurpleSingle','brickPurplePlatform3','pipeGreen','vineCoiled'].includes(k) },
+  { id: 'road',         label: 'Road',                 icon: '🛣️',  test: k => k.startsWith('road') },
+  { id: 'effects',      label: 'Effects & Particles',  icon: '✨',  test: k => k.startsWith('dustPuff') || k.startsWith('jumpDust') || k.startsWith('sparkle') || k === 'speedLine' || k.startsWith('hitFlash') || k.startsWith('laneSwoosh') || k.startsWith('collectBurst') || k.endsWith('Single') || k === 'goldSparkSingle' },
+  { id: 'misc',         label: 'Misc Props',            icon: '🎁',  test: k => k.startsWith('misc') },
+  { id: 'ui',           label: 'UI / HUD',              icon: '🖥️',  test: k => k.startsWith('ui') || k.startsWith('hud') || k.startsWith('panel') || k.startsWith('icon') || k.startsWith('button') || k.startsWith('currency') || k.startsWith('multiplier') || k.startsWith('status') || k.startsWith('tool') || k === 'panelGameOver' },
+  { id: 'other',        label: 'Other',                 icon: '❓',  test: () => true },
 ];
 
-function catForKey(key) {
-  return CATS.find(c => c.test(key)) ?? CATS[CATS.length - 1];
-}
+function catForKey(k) { return CATS.find(c => c.test(k)) ?? CATS[CATS.length - 1]; }
 
 // ─── Build asset list ──────────────────────────────────────────────────────
-const assets = GAME_CONFIG.assets;
-const entries = Object.entries(assets).map(([key, path]) => ({
-  key,
-  path,
-  cat: catForKey(key).id,
+const assets   = GAME_CONFIG.assets;
+const entries  = Object.entries(assets).map(([key, path]) => ({
+  key, path, cat: catForKey(key).id, active: ACTIVE[key] !== false,
 }));
 
-// Group by category (preserving CATS order)
 const byCategory = new Map(CATS.map(c => [c.id, []]));
-for (const entry of entries) {
-  byCategory.get(entry.cat).push(entry);
-}
-// Drop empty categories
-for (const [id, list] of byCategory) {
-  if (!list.length) byCategory.delete(id);
-}
+for (const e of entries) byCategory.get(e.cat).push(e);
+for (const [id, list] of byCategory) { if (!list.length) byCategory.delete(id); }
 
-// ─── Counters ──────────────────────────────────────────────────────────────
-let totalLoaded = 0;
-let totalMissing = 0;
+// ─── Runtime counters ─────────────────────────────────────────────────────
+let nLoaded = 0, nMissing = 0;
+const totalActive   = entries.filter(e => e.active).length;
+const totalInactive = entries.filter(e => !e.active).length;
 
 function updateStats() {
-  document.getElementById('stat-total').textContent  = entries.length;
-  document.getElementById('stat-ok').textContent     = totalLoaded;
-  document.getElementById('stat-err').textContent    = totalMissing;
+  document.getElementById('stat-total').textContent    = entries.length;
+  document.getElementById('stat-active').textContent   = totalActive;
+  document.getElementById('stat-inactive').textContent = totalInactive;
+  document.getElementById('stat-missing').textContent  = nMissing;
 }
 
-// ─── Render sidebar ────────────────────────────────────────────────────────
+// ─── Sidebar ───────────────────────────────────────────────────────────────
 const catNav = document.getElementById('cat-nav');
 
-// "All" button
 const allBtn = document.createElement('button');
 allBtn.className = 'cat-btn active';
 allBtn.dataset.target = '';
 allBtn.innerHTML = `<span class="cat-icon">🗂️</span><span class="cat-label">All sprites</span><span class="cat-count" id="cnt-all">${entries.length}</span>`;
 catNav.appendChild(allBtn);
 
-const catBtns = new Map();
-catBtns.set('', allBtn);
+const catBtns = new Map([['', allBtn]]);
 
 for (const [id, list] of byCategory) {
   const cat = CATS.find(c => c.id === id);
   const btn = document.createElement('button');
   btn.className = 'cat-btn';
   btn.dataset.target = id;
-  btn.innerHTML = `
-    <span class="cat-icon">${cat.icon}</span>
-    <span class="cat-label">${cat.label}</span>
-    <span class="cat-count" id="cnt-${id}">${list.length}</span>
-  `;
+  btn.innerHTML = `<span class="cat-icon">${cat.icon}</span><span class="cat-label">${cat.label}</span><span class="cat-count" id="cnt-${id}">${list.length}</span>`;
   catNav.appendChild(btn);
   catBtns.set(id, btn);
 }
 
-// ─── Render sprite grid ────────────────────────────────────────────────────
+// ─── Render sprite cards ───────────────────────────────────────────────────
 const content = document.getElementById('content');
-
-/** @type {Map<string, HTMLElement>} key → card element */
+/** @type {Map<string, HTMLElement>} */
 const cardEls = new Map();
 
 for (const [id, list] of byCategory) {
   const cat = CATS.find(c => c.id === id);
-
   const section = document.createElement('section');
   section.className = 'cat-section';
   section.id = `cat-${id}`;
-
   section.innerHTML = `
     <div class="cat-header">
       <h2>${cat.icon} ${cat.label.toUpperCase()}</h2>
@@ -512,52 +472,56 @@ for (const [id, list] of byCategory) {
 
   for (const entry of list) {
     const card = document.createElement('article');
-    card.className = 'sprite-card';
-    card.title = `${entry.key}\n${entry.path}`;
+    card.className = `sprite-card${entry.active ? '' : ' inactive'}`;
+    card.title = `${entry.key}\n${entry.path}\n${entry.active ? '● Active in game' : '○ Registered, not wired'}`;
     card.dataset.key = entry.key;
     card.dataset.cat = entry.cat;
+    card.dataset.active = entry.active ? '1' : '0';
 
-    // Normalise path (strip leading ./)
     const src = entry.path.replace(/^\.\//, '');
+    const dotClass = entry.active ? 'dot-active' : 'dot-inactive';
+    const lblClass = entry.active ? 'lbl-active' : 'lbl-inactive';
+    const lblText  = entry.active ? 'active' : 'inactive';
 
     card.innerHTML = `
       <div class="sprite-img-wrap">
         <img src="${src}" alt="${entry.key}" loading="lazy">
+        <div class="usage-dot ${dotClass}" title="${entry.active ? 'Active — referenced in src/' : 'Inactive — not yet wired to any renderer'}"></div>
       </div>
       <div class="sprite-meta">
         <div class="sprite-key">${entry.key}</div>
         <div class="sprite-path">${src.replace('assets/', '')}</div>
-        <div class="sprite-dims">…</div>
+        <div class="sprite-footer">
+          <div class="sprite-dims">…</div>
+          <div class="sprite-usage-label ${lblClass}">${lblText}</div>
+        </div>
       </div>
     `;
 
-    const img = card.querySelector('img');
+    const img  = card.querySelector('img');
     const dims = card.querySelector('.sprite-dims');
 
     img.addEventListener('load', () => {
-      dims.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
-      totalLoaded++;
+      dims.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+      nLoaded++;
       updateStats();
     });
-
     img.addEventListener('error', () => {
       card.classList.add('missing');
-      dims.textContent = '404 not found';
-      const badge = document.createElement('div');
-      badge.className = 'missing-badge';
-      badge.textContent = '✕ missing';
-      card.querySelector('.sprite-img-wrap').appendChild(badge);
-      totalMissing++;
+      dims.textContent = '404';
+      const b = document.createElement('div');
+      b.className = 'missing-badge'; b.textContent = '✕ missing';
+      card.querySelector('.sprite-img-wrap').appendChild(b);
+      nMissing++;
       updateStats();
     });
 
-    // Copy key to clipboard on click
     card.addEventListener('click', () => {
       navigator.clipboard?.writeText(entry.key).then(() => {
-        const key = card.querySelector('.sprite-key');
-        const prev = key.textContent;
-        key.textContent = '✓ copied!';
-        setTimeout(() => { key.textContent = prev; }, 900);
+        const el = card.querySelector('.sprite-key');
+        const prev = el.textContent;
+        el.textContent = '✓ copied!';
+        setTimeout(() => { el.textContent = prev; }, 900);
       });
     });
 
@@ -568,46 +532,57 @@ for (const [id, list] of byCategory) {
 
 updateStats();
 
-// ─── Sidebar navigation ────────────────────────────────────────────────────
-let activeCatFilter = '';
+// ─── Filter state ─────────────────────────────────────────────────────────
+let activeCatFilter   = '';
+let activeUsageFilter = 'all'; // 'all' | 'active' | 'inactive'
 
+// ─── Usage pills ──────────────────────────────────────────────────────────
+document.getElementById('usage-filter').addEventListener('click', (e) => {
+  const pill = e.target.closest('.usage-pill');
+  if (!pill) return;
+  activeUsageFilter = pill.dataset.usage;
+  document.querySelectorAll('.usage-pill').forEach(p => p.classList.remove('active-pill'));
+  pill.classList.add('active-pill');
+  applyFilters();
+});
+
+// ─── Sidebar nav ──────────────────────────────────────────────────────────
 catNav.addEventListener('click', (e) => {
   const btn = e.target.closest('.cat-btn');
   if (!btn) return;
   activeCatFilter = btn.dataset.target;
   applyFilters();
   if (activeCatFilter) {
-    const section = document.getElementById(`cat-${activeCatFilter}`);
-    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(`cat-${activeCatFilter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } else {
     document.getElementById('main').scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
 
-// ─── Search ────────────────────────────────────────────────────────────────
-const searchInput = document.getElementById('search');
-searchInput.addEventListener('input', applyFilters);
+// ─── Search ───────────────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', applyFilters);
 
+// ─── Apply all filters ────────────────────────────────────────────────────
 function applyFilters() {
-  const query = searchInput.value.trim().toLowerCase();
+  const query     = document.getElementById('search').value.trim().toLowerCase();
   const catFilter = activeCatFilter;
+  const usage     = activeUsageFilter;
 
-  // Update active button state
-  for (const [id, btn] of catBtns) {
-    btn.classList.toggle('active', id === catFilter);
-  }
+  for (const [, btn] of catBtns) btn.classList.remove('active');
+  (catBtns.get(catFilter) ?? allBtn).classList.add('active');
 
   let anyVisible = false;
   const sectionCounts = new Map();
 
   for (const [key, card] of cardEls) {
-    const entry = { key, path: assets[key], cat: card.dataset.cat };
-    const matchesSearch = !query ||
-      key.toLowerCase().includes(query) ||
-      entry.path.toLowerCase().includes(query);
-    const matchesCat = !catFilter || entry.cat === catFilter;
-    const show = matchesSearch && matchesCat;
+    const entry    = { key, path: assets[key], cat: card.dataset.cat, active: card.dataset.active === '1' };
+    const matchSrc = !query || key.toLowerCase().includes(query) || entry.path.toLowerCase().includes(query);
+    const matchCat = !catFilter || entry.cat === catFilter;
+    const matchUse = usage === 'all'
+      || (usage === 'active'   && entry.active)
+      || (usage === 'inactive' && !entry.active);
 
+    const show = matchSrc && matchCat && matchUse;
     card.classList.toggle('hidden', !show);
     if (show) {
       anyVisible = true;
@@ -615,49 +590,43 @@ function applyFilters() {
     }
   }
 
-  // Update section visibility and counts
   for (const [id] of byCategory) {
-    const section = document.getElementById(`cat-${id}`);
     const count = sectionCounts.get(id) ?? 0;
-    section.style.display = count > 0 ? '' : 'none';
+    document.getElementById(`cat-${id}`).style.display = count > 0 ? '' : 'none';
     const badge = document.getElementById(`badge-${id}`);
     if (badge) badge.textContent = `${count} sprites`;
+    const cnt = document.getElementById(`cnt-${id}`);
+    if (cnt) cnt.textContent = count;
   }
 
+  const allCount = [...sectionCounts.values()].reduce((a, b) => a + b, 0);
+  document.getElementById('cnt-all').textContent = allCount;
   document.getElementById('empty-state').classList.toggle('visible', !anyVisible);
 }
 
-// ─── Scroll spy — update active category as user scrolls ──────────────────
+// ─── Scroll spy ───────────────────────────────────────────────────────────
 const mainEl = document.getElementById('main');
-
 const observer = new IntersectionObserver((entries) => {
-  for (const entry of entries) {
-    if (entry.isIntersecting && !searchInput.value && !activeCatFilter) {
-      const id = entry.target.id.replace('cat-', '');
-      for (const [btnId, btn] of catBtns) {
-        btn.classList.toggle('active', btnId === id);
-      }
-      const sideBtn = catBtns.get('');
-      if (sideBtn) sideBtn.classList.remove('active');
+  for (const e of entries) {
+    if (e.isIntersecting && !document.getElementById('search').value && !activeCatFilter) {
+      const id = e.target.id.replace('cat-', '');
+      for (const [, b] of catBtns) b.classList.remove('active');
+      catBtns.get(id)?.classList.add('active');
     }
   }
 }, { root: mainEl, threshold: 0.15 });
 
 for (const [id] of byCategory) {
-  const section = document.getElementById(`cat-${id}`);
-  if (section) observer.observe(section);
+  const sec = document.getElementById(`cat-${id}`);
+  if (sec) observer.observe(sec);
 }
 
-// Restore "All" active state when scrolled back to very top
 mainEl.addEventListener('scroll', () => {
-  if (mainEl.scrollTop < 40 && !searchInput.value && !activeCatFilter) {
-    for (const [, btn] of catBtns) btn.classList.remove('active');
+  if (mainEl.scrollTop < 40 && !document.getElementById('search').value && !activeCatFilter) {
+    for (const [, b] of catBtns) b.classList.remove('active');
     allBtn.classList.add('active');
   }
 });
-
-// Reset cat filter when "All" is clicked (already handled), also
-// clicking a cat nav btn should clear search if desired
 </script>
 </body>
 </html>
