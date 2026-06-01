@@ -388,6 +388,7 @@ function createDebugApi() {
         obstacles,
         collectibles,
         scenery,
+        pooledEntities: r.freeCount,
         blockStyle: game.renderer.blockStyle,
         // v3.8.37 — Phase 2 placement validation counter. 0 means no
         // spawn attempted by SpawnSystem / DecorationSystem violated a

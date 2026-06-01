@@ -106,4 +106,16 @@ test.describe('Phase 9 — garden corridor theme', () => {
     expect(summary.d300).toBe('FAR');
     expect(summary.bands).toContain('CASTLE_APPROACH');
   });
+
+  test('side decoration prefabs keep side-local lanes positive', async ({ page }) => {
+    await page.goto('/dev.html');
+    const offenders = await page.evaluate(async () => {
+      const mod = await import('/src/config/sceneSchema.data.js');
+      return mod.SIDE_DECORATION_PREFABS.flatMap((prefab) =>
+        prefab.items
+          .filter((item) => item.lane < 0)
+          .map((item) => `${prefab.id}/${item.id}`));
+    });
+    expect(offenders).toEqual([]);
+  });
 });

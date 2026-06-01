@@ -199,8 +199,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     id: 'fence-bush-corner',
     weight: 3,
     items: [
+      // v4.8 — reference-match: heavier fence (0.84→0.98) so the right
+      // bottom-corner frame matches the left in visual weight.
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.84 },
+        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist: -1.0, scale: 0.62 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -514,8 +516,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     id: 'fence-flower-row',
     weight: 5,
     items: [
+      // v4.8 — reference-match: heavier fence (0.78→0.96) so the left
+      // bottom-corner frame reads clearly at the new near distance.
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist: 0.1, scale: 0.78 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist: 0.1, scale: 0.96 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: -1.0, scale: 0.46 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -913,22 +917,22 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // Two-brick wall row — clear "wall" silhouette in the mid band.
       { id: 'brick_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -1.92, dist:  0.0, scale: 0.94, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.94, variant: 0 },
       { id: 'brick_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: -1.92, dist: -1.2, scale: 0.94, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.2, scale: 0.94, variant: 1 },
       // Question block — visually floats ABOVE the brick row via
       // yOffset. No graph parenting (question_block.allowedParents =
       // ['ground'] in the semantic registry; QBLOCK_FLOATING validator
       // accepts proximity to a structural sibling instead).
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: -1.94, dist: -0.5, scale: 0.78, yOffset: -52 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.5, scale: 0.78, yOffset: -52 },
       // v4.2 — P2 reference-match: pushed +8 beyond structural items (dist 0.0/−1.2)
       // so the tree sorts clearly behind the wall cluster and avoids z-fighting.
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
-        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: -2.94, dist:  8.6, scale: 0.78, yOffset: -8 },
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist:  8.6, scale: 0.78, yOffset: -8 },
       // Single flower on shoulder.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: -1.56, dist:  0.7, scale: 0.34 },
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist:  0.7, scale: 0.34 },
     ],
   },
   {
@@ -958,16 +962,12 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 0,
     proceduralOk: false,
     items: [
-      // Symmetric tiny silhouettes — both sides, very small scale, no
-      // structures. Keeps the castle-approach band from looking empty
-      // without competing with the castle silhouette.
-      { id: 'tuft_left', role: 'loose-decor', anchor: 'ground', zLayer: 4,
-        assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: -1.74, dist:  0.0, scale: 0.34 },
-      { id: 'leaf_left', role: 'background-accent', anchor: 'ground', zLayer: 3,
-        assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane: -1.66, dist: -0.9, scale: 0.40 },
-      { id: 'tuft_right', role: 'loose-decor', anchor: 'ground', zLayer: 4,
+      // Tiny side-local silhouettes, mirrored by DecorationSystem. Keeps
+      // the castle-approach band from looking empty without spawning one
+      // prefab across both sides and muddying the road axis.
+      { id: 'tuft_edge', role: 'loose-decor', anchor: 'ground', zLayer: 4,
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane:  1.74, dist:  0.0, scale: 0.34 },
-      { id: 'leaf_right', role: 'background-accent', anchor: 'ground', zLayer: 3,
+      { id: 'leaf_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
         assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane:  1.66, dist:  0.9, scale: 0.40 },
     ],
   },
@@ -1336,8 +1336,13 @@ export const HERO_LAYOUT = Object.freeze([
   // anchoring the bottom corners (like the reference). Distinct prefabs so
   // the corners aren't a mirror-identical copy: left fence+flowers,
   // right fence+bush. Nearest-entry scale ~0.95-1.05.
-  { distance:  15, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.00 },
-  { distance:  22, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 0.98 },
+  // v4.8 — reference-match: pull both corner fences to the very front edge
+  // and enlarge them so they read as a clear foreground frame instead of a
+  // faint picket. Left nearer/larger than right keeps the corners framed
+  // without being a mirror-identical copy. Both stay in FOREGROUND [0,30)
+  // so the band still holds exactly 2 clusters/side (cap unchanged).
+  { distance:  11, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.16 },
+  { distance:  14, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 1.10 },
   // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
   { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.00 },
   { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.00 },

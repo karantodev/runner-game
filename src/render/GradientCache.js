@@ -47,33 +47,25 @@ export class GradientCache {
     skyDepth.addColorStop(0.68, 'rgba(0,0,0,0)');
     skyDepth.addColorStop(1,    'rgba(255,184,60,0.12)');
 
-    // v3.8.8 — haze layers redesigned to fade in/out smoothly instead
-    // of reading as rectangular overlays. Each layer fades to alpha 0
-    // at BOTH top and bottom so there is no visible hard edge.
-    const haze = ctx.createLinearGradient(0, p.horizonY - 40, 0, p.horizonY + 200);
-    haze.addColorStop(0.00, 'rgba(252,242,212,0)');
-    haze.addColorStop(0.30, 'rgba(252,242,212,0.08)');
-    haze.addColorStop(0.55, 'rgba(252,238,206,0.16)');
-    haze.addColorStop(0.80, 'rgba(248,232,196,0.10)');
-    haze.addColorStop(1.00, 'rgba(248,232,196,0)');
+    // One feathered atmospheric veil is enough. Older versions stacked
+    // several haze rectangles around the horizon and then added per-layer
+    // grey overlays in BackgroundRenderer. Even with transparent endpoints,
+    // the overlap read as a hard horizontal fog strip. Keep the sky clean
+    // and use this single veil between the distant and near landscape.
+    const horizonVeil = ctx.createLinearGradient(0, p.horizonY - 54, 0, p.roadVanishY + 132);
+    horizonVeil.addColorStop(0.00, 'rgba(206,236,236,0)');
+    horizonVeil.addColorStop(0.34, 'rgba(206,236,236,0.035)');
+    horizonVeil.addColorStop(0.58, 'rgba(196,230,220,0.085)');
+    horizonVeil.addColorStop(0.80, 'rgba(170,218,184,0.045)');
+    horizonVeil.addColorStop(1.00, 'rgba(150,206,164,0)');
 
-    // distantHaze — was the strongest "rectangular band" the user flagged.
-    // Peak alpha 0.34 → 0.16; fades to 0 at both ends; wider Y range so the
-    // peak sits behind the castle area, not as a hard stripe.
-    const distantHaze = ctx.createLinearGradient(0, p.roadVanishY - 120, 0, p.roadVanishY + 160);
-    distantHaze.addColorStop(0.00, 'rgba(196,232,248,0)');
-    distantHaze.addColorStop(0.32, 'rgba(196,232,248,0.10)');
-    distantHaze.addColorStop(0.56, 'rgba(232,242,250,0.16)');
-    distantHaze.addColorStop(0.80, 'rgba(232,242,250,0.06)');
-    distantHaze.addColorStop(1.00, 'rgba(232,242,250,0)');
-
-    // depthHaze — softer too; fades in and out so the ground-meets-horizon
-    // line reads as a soft transition rather than a coloured band.
-    const depthHaze = ctx.createLinearGradient(0, p.roadVanishY + 20, 0, p.roadVanishY + 130);
-    depthHaze.addColorStop(0.00, 'rgba(180,222,190,0)');
-    depthHaze.addColorStop(0.45, 'rgba(150,212,166,0.13)');
-    depthHaze.addColorStop(0.75, 'rgba(120,194,140,0.08)');
-    depthHaze.addColorStop(1.00, 'rgba(80,170,100,0)');
+    // A very small ground join keeps the road tip from looking pasted on.
+    // It is intentionally separate from atmospheric haze and stays below
+    // the mountain silhouettes.
+    const depthHaze = ctx.createLinearGradient(0, p.roadVanishY + 42, 0, p.roadVanishY + 126);
+    depthHaze.addColorStop(0.00, 'rgba(156,214,166,0)');
+    depthHaze.addColorStop(0.52, 'rgba(142,204,150,0.055)');
+    depthHaze.addColorStop(1.00, 'rgba(112,184,126,0)');
 
     const roadJoin = ctx.createLinearGradient(0, p.roadVanishY - 4, 0, p.roadVanishY + 78);
     roadJoin.addColorStop(0, 'rgba(198,236,146,0.12)');
@@ -117,8 +109,7 @@ export class GradientCache {
     this.gradients = {
       sky,
       skyDepth,
-      haze,
-      distantHaze,
+      horizonVeil,
       depthHaze,
       roadJoin,
       ground,

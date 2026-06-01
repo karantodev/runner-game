@@ -196,6 +196,33 @@ test('spawn runtime — top-up stays monotonic after visual offset wraps', async
   expect(result.maxRelativeDistance).toBeLessThan(600);
 });
 
+test('entity registry — compacted entities are pooled and reset before reuse', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const { EntityRegistry } = await import('/src/ecs/EntityRegistry.js');
+    const registry = new EntityRegistry();
+    const first = registry.create().add('OldComponent', { stale: true });
+    const firstId = first.id;
+    first.alive = false;
+    registry.compact();
+    const pooledAfterCompact = registry.freeCount;
+    const second = registry.create();
+    return {
+      reusedObject: second === first,
+      idAdvanced: second.id > firstId,
+      oldComponentCleared: !second.has('OldComponent'),
+      pooledAfterCompact,
+      pooledAfterReuse: registry.freeCount,
+    };
+  });
+
+  expect(result.reusedObject).toBe(true);
+  expect(result.idAdvanced).toBe(true);
+  expect(result.oldComponentCleared).toBe(true);
+  expect(result.pooledAfterCompact).toBe(1);
+  expect(result.pooledAfterReuse).toBe(0);
+});
+
 test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
   await page.goto('/dev.html');
   // Drive the Leaderboard module directly via a dynamic import; we don't
@@ -316,9 +343,26 @@ test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   const traceFor = async (url) => {
     await page.goto(url);
     await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
-    await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
-    await page.waitForTimeout(3000);
-    return page.evaluate(() => window.__ORCHID_DEBUG__.getSpawnLog().map(e => e.id));
+    await page.evaluate(() => {
+      window.__ORCHID_DEBUG__.startDebugRun();
+      if (window.__seed_trace_invuln_id) clearInterval(window.__seed_trace_invuln_id);
+      window.__seed_trace_invuln_id = setInterval(() => {
+        const player = window.__ORCHID_GAME__?.world?.player;
+        if (player?.components?.Health) player.components.Health.invulnerabilityFrames = 9999;
+      }, 100);
+    });
+    // Wait on simulation distance rather than wall-clock time. Cold asset
+    // loads and denser visual scenes can make 3 seconds insufficient on CI.
+    await page.waitForFunction(
+      () => (window.__ORCHID_GAME__?.world?.worldDistanceTotal ?? 0) >= 170,
+      null,
+      { timeout: 20_000, polling: 100 },
+    );
+    return page.evaluate(() => {
+      clearInterval(window.__seed_trace_invuln_id);
+      window.__seed_trace_invuln_id = null;
+      return window.__ORCHID_DEBUG__.getSpawnLog().map(e => e.id);
+    });
   };
 
   const a = await traceFor('/dev.html?debug=1&seed=42');

@@ -19,6 +19,8 @@ export class LandmarksRenderer {
     const ctx = this.ctx;
     const p = this.projection;
     const width = p.width;
+    const allowParallax = world.adaptiveQuality?.tier?.parallax !== false;
+    const parallaxScale = allowParallax ? 1 : 0;
     // v3.8.12 visual gate calibration — math alignment from v3.8.11 was
     // mathematically correct (castleBaseY - DOOR_OFFSET == roadVanishY)
     // but VISUALLY the castle still floated because the door OPENING
@@ -46,7 +48,7 @@ export class LandmarksRenderer {
     const VISIBLE_GATE_WIDTH_RATIO = 0.22;
     const VISIBLE_GATE_HEIGHT_RATIO = 0.32;
     const castleWidthPx = width * 0.122;
-    const castleOffset = parallaxOffset(p, world.scrollOffset, PARALLAX.castle, 1.1);
+    const castleOffset = parallaxOffset(p, world.scrollOffset, PARALLAX.castle * parallaxScale, 1.1);
     const castleX = width / 2;
     const topHalf = roadTopHalfWidth(p);
     // gateThresholdY = visible bottom of the gate opening (target = roadVanishY)
@@ -145,59 +147,33 @@ export class LandmarksRenderer {
     // reduced 0.96 → 0.88 so the castle absorbs a touch of atmospheric
     // haze instead of reading as a crisp cutout.
     //
-    // v4.0 — depth desaturation on the castle sprite. If visual.depth is
-    // enabled, draw the castle then overlay a semi-transparent grey+blue
-    // tint to push it into atmospheric haze. Uses the farDesaturate /
-    // farDarken config values scaled to a mild landmark strength (0.55/0.40)
-    // — less than far mountains so the castle stays readable as a focal
-    // point but clearly reads as "distant".
+    // v4.8 — depth treatment is masked to the castle pixels via ctx.filter.
+    // The old bounding-box tint produced a visible translucent rectangle
+    // around the focal point.
     const depthCfgL = world.config?.visual?.depth ?? {};
     const lmDesat = (depthCfgL.farDesaturate ?? 0.16) * 0.55;
     const lmDark  = (depthCfgL.farDarken     ?? 0.12) * 0.40;
     const visualOnL = world.config?.visual?.enabled !== false;
 
     ctx.globalAlpha = 0.88;
+    if (visualOnL) {
+      ctx.filter = `saturate(${Math.max(0.55, 1 - lmDesat)}) brightness(${Math.max(0.62, 1 - lmDark)})`;
+    }
     const landmarkDrawn =
       this.sprites.draw('castleFarAlt',      castleX, castleBaseY, width * 0.122, 'bottom')
       || this.sprites.draw('backgroundCastle', castleX, castleBaseY, width * 0.105, 'bottom')
       || this.sprites.draw('greenhouseFar',  castleX, castleBaseY, width * 0.105, 'bottom');
     ctx.restore();
 
-    // v4.0 — atmospheric depth overlay on the castle area.
-    // Approximate bounding box: castleWidthPx wide, ~1.4× tall, bottom at castleBaseY.
-    if (landmarkDrawn && visualOnL && (lmDesat > 0 || lmDark > 0)) {
-      const cH = castleWidthPx * 1.4;
-      const cX = castleX - castleWidthPx / 2;
-      const cY = castleBaseY - cH;
-      const ctx2 = this.ctx;
-      ctx2.save();
-      ctx2.globalCompositeOperation = 'source-over';
-      if (lmDesat > 0) {
-        // Slight cool-blue tint for atmospheric haze depth.
-        ctx2.globalAlpha = lmDesat;
-        ctx2.fillStyle = 'rgba(160,190,220,1)';
-        ctx2.fillRect(cX, cY, castleWidthPx, cH);
-      }
-      if (lmDark > 0) {
-        ctx2.globalAlpha = lmDark;
-        ctx2.fillStyle = 'rgba(0,0,0,1)';
-        ctx2.fillRect(cX, cY, castleWidthPx, cH);
-      }
-      ctx2.restore();
-    }
-
     if (!landmarkDrawn) {
       const flagWave = world.config.gameFeel.ambientMotion ? Math.sin(world.timeAlive * 0.09) : 0;
       this.#castle(castleX, gateY + 18, flagWave);
     }
 
-    // v3.8.8 — rect bounds match the new fade-in/out gradient extents so
-    // the layer reads as soft atmospheric depth, not a coloured band.
-    ctx.fillStyle = this.gradients.gradients.distantHaze;
-    ctx.fillRect(0, p.roadVanishY - 120, width, 280);
-
+    // Keep only a tiny ground join after the landscape. The main veil is
+    // drawn once in BackgroundRenderer between mountain depth layers.
     ctx.fillStyle = this.gradients.gradients.depthHaze;
-    ctx.fillRect(0, p.roadVanishY + 20, width, 110);
+    ctx.fillRect(0, p.roadVanishY + 42, width, 84);
 
     // Forest + meadow now honestly scroll with the road so they look
     // like they're parallaxing past the camera. Castle stays at its
@@ -206,13 +182,13 @@ export class LandmarksRenderer {
     if (forestImg?.naturalWidth) {
       const tileW = width + 68;
       const tileH = tileW * (forestImg.naturalHeight / forestImg.naturalWidth);
-      drawScrollingTile(ctx, forestImg, -34, p.roadVanishY + 88, tileW, tileH, world.scrollOffset * 0.22, 0.82);
+      drawScrollingTile(ctx, forestImg, -34, p.roadVanishY + 88, tileW, tileH, world.scrollOffset * 0.22 * parallaxScale, 0.82);
     } else {
       this.#drawSpriteRect('backgroundForestTreeline', -34, p.roadVanishY + 82, width + 68, 130, 0.68);
     }
     const meadowImg = this.assets.get('backgroundMeadowRolling');
     if (meadowImg?.naturalWidth) {
-      drawScrollingTile(ctx, meadowImg, -24, p.roadVanishY + 122, width + 48, 76, world.scrollOffset * 0.32, 0.60);
+      drawScrollingTile(ctx, meadowImg, -24, p.roadVanishY + 122, width + 48, 76, world.scrollOffset * 0.32 * parallaxScale, 0.60);
     }
 
     // v3.8.12 — visual gate calibration overlay. Enable via ?debugAxis=1.

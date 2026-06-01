@@ -24,6 +24,17 @@ export class Entity {
   }
 
   /**
+   * Revive a pooled entity without allocating a new component bag.
+   * Factories repopulate the bag immediately after registry.create().
+   */
+  reset(id) {
+    this.id = id;
+    this.alive = true;
+    for (const key in this.components) delete this.components[key];
+    return this;
+  }
+
+  /**
    * Attach (or replace) a component. Returns `this` for chaining.
    * @param {string} name
    * @param {any} data

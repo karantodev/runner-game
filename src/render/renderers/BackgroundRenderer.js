@@ -1,4 +1,3 @@
-import { PARALLAX } from '../constants.js';
 import { drawScrollingTile, parallaxOffset } from '../helpers.js';
 
 /**
@@ -24,10 +23,10 @@ const MOUNTAIN_SCROLL_FACTOR = {
   near: 0.10,
 };
 
-// v4.0 — depth desaturation / darkening per layer.
-// Far layers receive both treatments; mid only desaturate; near untouched.
-// Values driven by world.config.visual.depth (farDesaturate / farDarken).
-// Fallbacks match gameConfig defaults so the renderer is safe without config.
+// v4.8 — depth desaturation / darkening per layer.
+// The values are applied while each sprite is drawn, so transparent pixels
+// stay transparent. Previous rectangular overlays were the source of the
+// visible horizontal fog bands around the mountains.
 const DEPTH_LAYER = {
   // [desaturateStrength, darkenStrength] relative to base config values
   far:      [1.00, 1.00],  // full farDesaturate + farDarken
@@ -38,11 +37,12 @@ const DEPTH_LAYER = {
 };
 
 export class BackgroundRenderer {
-  constructor({ ctx, projection, assets, sprites }) {
+  constructor({ ctx, projection, assets, sprites, gradients }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.sprites = sprites;
+    this.gradients = gradients;
   }
 
   render(world) {
@@ -55,6 +55,8 @@ export class BackgroundRenderer {
     const farDesat  = depthCfg.farDesaturate ?? 0.16;
     const farDarken = depthCfg.farDarken     ?? 0.12;
     const visualOn  = world.config?.visual?.enabled !== false;
+    const allowParallax = world.adaptiveQuality?.tier?.parallax !== false;
+    const parallaxScale = allowParallax ? 1 : 0;
 
     // Clouds — keep the existing custom drift (each cloud has its own
     // x and speed handled by world.#updateClouds).
@@ -62,7 +64,7 @@ export class BackgroundRenderer {
       const cloud = world.clouds[i];
       const key = cloud.key ?? `backgroundCloud0${1 + (i % 6)}`;
       const targetW = (cloud.widthPx ?? cloud.radius * 5.25) * (i < 2 || i === 3 ? 0.92 : 0.96);
-      const x = cloud.x + parallaxOffset(p, scroll, 0.05 + (i % 3) * 0.015, i * 0.9);
+      const x = cloud.x + parallaxOffset(p, scroll, (0.05 + (i % 3) * 0.015) * parallaxScale, i * 0.9);
       if (!this.sprites.draw(key, x, cloud.y, targetW, 'center')) {
         this.sprites.draw('cloudLarge', x, cloud.y, targetW, 'center');
       }
@@ -73,14 +75,15 @@ export class BackgroundRenderer {
     // castle's center. Wider far (+130 → +220) means the visible portion
     // is offset by half a peak; mid widened too. This prevents a mountain
     // peak from sitting directly behind / under the castle silhouette.
-    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 32, width + 220, MOUNTAIN_SCROLL_FACTOR.far,  scroll, 0.30);
-    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 20, width, 80, farDesat, farDarken, DEPTH_LAYER.far);
+    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 32, width + 220, MOUNTAIN_SCROLL_FACTOR.far * parallaxScale, scroll, 0.42, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.far) : 'none');
+    this.#drawMountainLayer(['backgroundMountainsMid'], p.horizonY + 8, width + 180, MOUNTAIN_SCROLL_FACTOR.mid * parallaxScale, scroll, 0.68, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mid) : 'none');
 
-    this.#drawMountainLayer(['backgroundMountainsMid'],  p.horizonY + 8,  width + 180, MOUNTAIN_SCROLL_FACTOR.mid,  scroll, 0.62);
-    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 8, width, 60, farDesat, farDarken, DEPTH_LAYER.mid);
+    // The only atmospheric transition over the mountains. Its transparent
+    // endpoints and low peak alpha make the horizon soft without a fog bar.
+    this.ctx.fillStyle = this.gradients.gradients.horizonVeil;
+    this.ctx.fillRect(0, p.horizonY - 54, width, p.roadVanishY - p.horizonY + 186);
 
-    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near, scroll, 0.88);
-    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 28, width, 55, farDesat, farDarken, DEPTH_LAYER.near);
+    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
 
     // v3.8.9 wave — midground layer (designer delivery, was brief priority #5).
     // rolling_hills sits between mountains and treeline — gentle wave-form
@@ -89,51 +92,15 @@ export class BackgroundRenderer {
     // ties the mountains' bottom into the foreground green field.
     // Scroll factors midway between near mountains (0.22) and the upcoming
     // foreground decor (~0.95) so the depth ramp is continuous.
-    this.#drawMountainLayer(['midgroundHills'],    p.horizonY + 52, width + 110, 0.34, scroll, 0.82);
-    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 52, width, 45, farDesat, farDarken, DEPTH_LAYER.mground);
-
-    this.#drawMountainLayer(['midgroundTreeline'], p.horizonY + 78, width + 90,  0.46, scroll, 0.86);
+    this.#drawMountainLayer(['midgroundHills'], p.horizonY + 52, width + 110, 0.34 * parallaxScale, scroll, 0.86, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mground) : 'none');
+    this.#drawMountainLayer(['midgroundTreeline'], p.horizonY + 78, width + 90, 0.46 * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.treeline) : 'none');
     // treeline is closest — no depth overlay (crisp foreground silhouette).
   }
 
-  /**
-   * Overlay a semi-transparent desaturation + darkening rect over a
-   * recently-drawn layer to push it visually further away. Two passes:
-   *   1. Grey overlay (source-over) for desaturation effect.
-   *   2. Black overlay (source-over) for darkening.
-   *
-   * Both are bounded to [x, y, w, h] so only the target layer is affected.
-   * Weights are scaled by the DEPTH_LAYER multipliers so far/mid/near
-   * layers get proportionally different treatment.
-   *
-   * @param {import('../../world/Projection.js').Projection} p
-   * @param {number} x
-   * @param {number} y
-   * @param {number} w
-   * @param {number} h
-   * @param {number} farDesat  base desaturate strength (0..1)
-   * @param {number} farDark   base darken strength (0..1)
-   * @param {[number,number]} scale  [desatScale, darkScale]
-   */
-  #applyDepthOverlay(p, x, y, w, h, farDesat, farDark, [desatScale, darkScale]) {
-    const ctx = this.ctx;
-    const desat = farDesat * desatScale;
-    const dark  = farDark  * darkScale;
-    if (desat <= 0 && dark <= 0) return;
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    if (desat > 0) {
-      // Grey overlay approximates desaturation on Canvas 2D.
-      ctx.globalAlpha = desat;
-      ctx.fillStyle = 'rgba(180,190,200,1)';
-      ctx.fillRect(x, y, w, h);
-    }
-    if (dark > 0) {
-      ctx.globalAlpha = dark;
-      ctx.fillStyle = 'rgba(0,0,0,1)';
-      ctx.fillRect(x, y, w, h);
-    }
-    ctx.restore();
+  #depthFilter(farDesat, farDark, [desatScale, darkScale]) {
+    const saturation = Math.max(0.4, 1 - farDesat * desatScale);
+    const brightness = Math.max(0.55, 1 - farDark * darkScale);
+    return `saturate(${saturation}) brightness(${brightness})`;
   }
 
   /**
@@ -141,7 +108,7 @@ export class BackgroundRenderer {
    * x = -((width - viewport)/2) so the sprite sits roughly centered on
    * the canvas when scroll = 0.
    */
-  #drawMountainLayer(keys, y, tileWidth, factor, scroll, alpha) {
+  #drawMountainLayer(keys, y, tileWidth, factor, scroll, alpha, filter = 'none') {
     // v3.6: accept either a single key (legacy) or an ordered fallback list.
     const list = Array.isArray(keys) ? keys : [keys];
     let image = null;
@@ -154,6 +121,10 @@ export class BackgroundRenderer {
     const viewW = this.projection.width;
     // Center the un-scrolled tile across the viewport.
     const x0 = (viewW - tileWidth) / 2;
-    drawScrollingTile(this.ctx, image, x0, y, tileWidth, height, scroll * factor, alpha);
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.filter = filter;
+    drawScrollingTile(ctx, image, x0, y, tileWidth, height, scroll * factor, alpha);
+    ctx.restore();
   }
 }
