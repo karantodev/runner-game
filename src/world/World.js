@@ -14,6 +14,7 @@ import { GameStateSystem } from '../systems/GameStateSystem.js';
 import { EffectsSystem } from '../systems/EffectsSystem.js';
 import { SpawnSystem } from '../systems/SpawnSystem.js';
 import { DecorationSystem } from '../systems/DecorationSystem.js';
+import { GroundScatterSystem } from '../systems/GroundScatterSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { PowerUpSystem } from '../systems/PowerUpSystem.js';
 import { ComboSystem } from '../systems/ComboSystem.js';
@@ -95,6 +96,9 @@ export class World {
     this.placement = new PlacementValidator(config);
     this.spawnSystem = new SpawnSystem(config, projection, this.rng, this.adaptiveSkill, this.placement);
     this.decorationSystem = new DecorationSystem(config, projection, this.rng, this.placement);
+    // v4.6 — reference-match: second decoration channel for the dense
+    // shoulder-flora carpet, parallel to decorationSystem's structural pass.
+    this.groundScatterSystem = new GroundScatterSystem(config, projection, this.rng);
     this.collisionSystem = new CollisionSystem(config, eventBus);
     this.gameStateSystem = new GameStateSystem(config, eventBus);
     this.effectsSystem = new EffectsSystem(config, eventBus, projection);
@@ -113,6 +117,10 @@ export class World {
       new PlayerPhysicsSystem(eventBus),
       this.spawnSystem,
       this.decorationSystem,
+      // v4.6 — reference-match: ticks right after decorationSystem. Render
+      // order is decided by the renderer's band/zLayer passes, not pipeline
+      // order, so position here only governs spawn timing.
+      this.groundScatterSystem,
       new MovementSystem(),
       this.collisionSystem,
       this.particleSystem,
@@ -186,6 +194,7 @@ export class World {
     this.adaptiveSkill?.refresh();
     this.spawnSystem.reset();
     this.decorationSystem.reset();
+    this.groundScatterSystem.reset();
     this.particleSystem.reset();
     this.popupSystem.reset();
     this.placement.reset();
@@ -198,6 +207,7 @@ export class World {
     // physics bail in that case) — this is purely a visual fill.
     this.spawnSystem.prepopulate(this);
     this.decorationSystem.prepopulate(this);
+    this.groundScatterSystem.prepopulate(this);
   }
 
   /**

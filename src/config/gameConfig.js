@@ -139,7 +139,7 @@ export const GAME_CONFIG = Object.freeze({
       verticalWindow: 36,      // px from threshold
       bonusScore: 3,
       shakeAmount: 4.0,
-      focalImpulse: 7,
+      // v4.7 — focalImpulse removed: the FOV punch lurched the side trees.
     },
     localStorageBestKey: 'orchidQuest.bestScore.v1',
     leaderboardKey: 'orchidQuest.leaderboard.v1',
@@ -300,8 +300,11 @@ export const GAME_CONFIG = Object.freeze({
     },
 
     // ── Scene density: more shoulder decor (violets / mushrooms / tufts).
-    // v4.2 — P2 reference-match: lower multiplier widens effective cluster gap (spacing = base/multiplier), combined with sideDecorSpacing bump gives clusters room to breathe
-    density: { decorMultiplier: 1.15, scatterFlowers: true },
+    // v4.5 — reference-match: spacing 15 / mult 1.5 = effective gap ~10 units,
+    // matching the near-continuous platform walls of the reference image.
+    // v4.6 — reference-match: groundScatter toggles the dense shoulder-flora
+    // carpet (GroundScatterSystem). false = prepopulate AND update no-op.
+    density: { decorMultiplier: 1.5, scatterFlowers: true, groundScatter: true },
 
     // ── Juice: grounding shadow, run dust, collect bloom.
     juice: {
@@ -359,10 +362,29 @@ export const GAME_CONFIG = Object.freeze({
     // single prop. 18 is about as dense as it can go before adjacent
     // clusters start to z-fight at mid depth.
     // v4.2 — P2 reference-match: wider world-gap between clusters prevents depth z-fighting at adjacent prefabs
-    // v4.3 — P3 reference-match: sideDecorSpacing 21 → 24 so side clusters breathe more, complementing the tree-thinning pass
-    sideDecorSpacing: 24.0,
+    // v4.5 — reference-match: 24 → 15 so clusters are nearly continuous (effective gap = 15/1.5 = 10 units)
+    sideDecorSpacing: 15.0,
     sideDecorJitter: 0.45,
     sideDecorNearCullDistance: -5.5,
+    // v4.6 — reference-match: dense shoulder flora carpet — second
+    // decoration channel parallel to sideDecor. Much tighter spacing than
+    // sideDecorSpacing (15) so the green shoulders read as a continuous
+    // bed of small flora instead of empty gaps between structural clusters.
+    scatterSpacing: 3.2,
+    // v4.7 perf — 8→6: with the per-sprite save/restore removed this keeps
+    // a lush carpet while leaving render headroom (and trimming the
+    // entity-churn that drives periodic GC) so the run stays smooth.
+    scatterPerBand: 6,
+    scatterLaneRange: [1.40, 1.84],
+    // v4.6 — reference-match: cap the carpet at the visible near/mid range.
+    // Past this the flora are sub-pixel and waste entities; the budget is
+    // reinvested in denser near bands (scatterPerBand) for a lusher bed.
+    scatterMaxDistance: 140,
+    // v4.7 — reference-match: fraction of each band's flora placed in the
+    // wide MEADOW remap (the green field) vs the near SHOULDER strip. ~0.55
+    // spreads the bed across the whole flank like the reference instead of
+    // a thin road-edge border.
+    scatterMeadowFraction: 0.55,
     lifePickupMinDistance: 940,
     lifePickupMaxDistance: 1480,
     powerUpMinDistance: 780,

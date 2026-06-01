@@ -16,6 +16,12 @@ export const SCENE_ZONES = Object.freeze({
 export const LANE_BANDS = Object.freeze({
   PLAY: 'play',
   SHOULDER: 'shoulder',
+  // v4.7 — reference-match: wide low-flora carpet band. Used only by
+  // GroundScatterSystem to spread the violet/tuft bed across the green
+  // field between structure clusters; SHOULDER alone is a thin road-edge
+  // strip (its remap clamps to a 0.23 lane-unit band). Renders in the
+  // "organic" decor pass like SHOULDER, just remapped wider.
+  MEADOW: 'meadow',
   STRUCTURE: 'structure',
   NATURE: 'nature',
 });

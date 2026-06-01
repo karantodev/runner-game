@@ -9,6 +9,9 @@ import { LANE_BANDS, SCENE_ZONES } from '../../config/sceneSchema.js';
  */
 const BAND_SIZE_BIAS = Object.freeze({
   [LANE_BANDS.SHOULDER]:  0.55,   // tiny buffer flora
+  // v4.7 — MEADOW carpet flora: a touch smaller than SHOULDER so the wide
+  // bed reads as fine ground-cover behind the structure clusters.
+  [LANE_BANDS.MEADOW]:    0.50,
   [LANE_BANDS.STRUCTURE]: 1.00,   // blocks / mushrooms / fences
   // v3.7.1 — trees were dominating the frame at 1.40. Reference shows
   // them as small background mass, not foreground props. Cut to 0.80 +
@@ -20,6 +23,15 @@ const BAND_SIZE_BIAS = Object.freeze({
 const BAND_ALPHA_BIAS = Object.freeze({
   [LANE_BANDS.NATURE]: 0.78,
 });
+
+/**
+ * v4.7 — the two low-flora bands share the same soft treatment: small
+ * size bias, near-camera alpha fade and scatter size/flip variation.
+ * SHOULDER is the thin road-edge strip; MEADOW is the wide field carpet.
+ */
+function isLowFloraBand(band) {
+  return band === LANE_BANDS.SHOULDER || band === LANE_BANDS.MEADOW;
+}
 
 /** v3.7.4 — prefab filter. Only tree assetTypes get rendered as static frame. */
 function isTreeAssetType(assetType) {
@@ -47,6 +59,14 @@ function remapLaneForBand(lane, band) {
     // raw shoulder lanes ≈ [1.38, 1.85] → visual [2.32, 2.55] (just past edge)
     const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
     return sign * (2.32 + t * (2.55 - 2.32));
+  }
+  if (band === LANE_BANDS.MEADOW) {
+    // v4.7 — raw [1.38, 1.85] → visual [2.55, 3.35]. Picks up where the
+    // SHOULDER strip ends and spreads across the green field, laterally
+    // overlapping the structure band so low flora fill the gaps between
+    // clusters. zLayer keeps the carpet behind/below the blocks.
+    const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
+    return sign * (2.55 + t * (3.35 - 2.55));
   }
   if (band === LANE_BANDS.STRUCTURE) {
     // raw structure lanes ≈ [1.85, 2.25] → visual [2.55, 3.70] (full band)
@@ -297,7 +317,7 @@ export class SceneryRenderer {
     let scatterScale = 1;
     let scatterFlip  = false;
     const densityCfg = world.config.visual?.density;
-    if (densityCfg?.scatterFlowers && scenic.laneBand === LANE_BANDS.SHOULDER) {
+    if (densityCfg?.scatterFlowers && isLowFloraBand(scenic.laneBand)) {
       // Deterministic hash from lane + distance bucket so the variation
       // is stable frame-to-frame (no jitter) and seed-consistent.
       const hash = (Math.round(pos.lane * 37 + pos.distance * 13)) & 0xff;
@@ -316,8 +336,8 @@ export class SceneryRenderer {
     // reads denser. Close-fade floor raised 0 → 0.55 so props at distance
     // 0-16 stay readable instead of vanishing — the empty-bottom-corner
     // problem the user kept flagging traces to this fade-to-zero.
-    if (scenic.laneBand === LANE_BANDS.SHOULDER) alpha *= 0.85;
-    if (scenic.laneBand === LANE_BANDS.SHOULDER && pos.distance < 16) {
+    if (isLowFloraBand(scenic.laneBand)) alpha *= 0.85;
+    if (isLowFloraBand(scenic.laneBand) && pos.distance < 16) {
       alpha *= Math.max(0.55, pos.distance / 16);
     }
     // v3.7.1: NATURE alpha-fade so trees read as background mass even at
@@ -564,8 +584,14 @@ export class SceneryRenderer {
   #drawSceneryType(assetType, x, y, scale, variant, alpha = 1, mirrored = false) {
     const draw = getSceneryDraw(assetType);
     if (!draw) return;
-    this.ctx.save();
-    this.ctx.globalAlpha = alpha;
+    // v4.7 perf — DON'T ctx.save()/restore() per sprite. The state-stack
+    // push/pop was the dominant scenery-render cost once the ground-scatter
+    // carpet pushed the per-frame sprite count past ~1000 (measured source
+    // of the run-time frame stutter: ~9ms / ~844 flora). globalAlpha is
+    // isolated with a direct set + reset to the default; only the
+    // non-side-aware mirror TRANSFORM still needs save/restore.
+    const ctx = this.ctx;
+    ctx.globalAlpha = alpha;
     const side = mirrored ? 1 : -1;
     let usedSideVariant = false;
     let usedFallback = false;
@@ -583,15 +609,18 @@ export class SceneryRenderer {
         draw(this._drawDeps, x, y, scale, variant, undefined);
         usedFallback = true;
       }
+    } else if (mirrored) {
+      // Canvas flip needs an isolated transform → save/restore here only.
+      ctx.save();
+      ctx.translate(x, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-x, 0);
+      draw(this._drawDeps, x, y, scale, variant);
+      ctx.restore();
     } else {
-      if (mirrored) {
-        this.ctx.translate(x, 0);
-        this.ctx.scale(-1, 1);
-        this.ctx.translate(-x, 0);
-      }
       draw(this._drawDeps, x, y, scale, variant);
     }
-    this.ctx.restore();
+    ctx.globalAlpha = 1;
     // v3.8.16 debug labels — toggle via ?debugSides=1. Draws a small
     // overlay near each side-aware prop showing type, side, variant
     // used, and X position relative to road center.
