@@ -65,9 +65,7 @@ export class BackgroundRenderer {
       const key = cloud.key ?? `backgroundCloud0${3 + (i % 4)}`;
       const targetW = (cloud.widthPx ?? cloud.radius * 5.25) * (i < 2 || i === 3 ? 0.92 : 0.96);
       const x = cloud.x + parallaxOffset(p, scroll, (0.05 + (i % 3) * 0.015) * parallaxScale, i * 0.9);
-      if (!this.sprites.draw(key, x, cloud.y, targetW, 'center')) {
-        this.sprites.draw('cloudLarge', x, cloud.y, targetW, 'center');
-      }
+      this.sprites.draw(key, x, cloud.y, targetW, 'center');
     }
 
     // v3.8.8 castle alignment — far further pulled into haze (0.42 → 0.30),
