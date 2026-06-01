@@ -62,7 +62,7 @@ export class BackgroundRenderer {
     // x and speed handled by world.#updateClouds).
     for (let i = 0; i < world.clouds.length; i += 1) {
       const cloud = world.clouds[i];
-      const key = cloud.key ?? `backgroundCloud0${1 + (i % 6)}`;
+      const key = cloud.key ?? `backgroundCloud0${3 + (i % 4)}`;
       const targetW = (cloud.widthPx ?? cloud.radius * 5.25) * (i < 2 || i === 3 ? 0.92 : 0.96);
       const x = cloud.x + parallaxOffset(p, scroll, (0.05 + (i % 3) * 0.015) * parallaxScale, i * 0.9);
       if (!this.sprites.draw(key, x, cloud.y, targetW, 'center')) {
