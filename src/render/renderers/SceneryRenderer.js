@@ -493,12 +493,13 @@ export class SceneryRenderer {
     // v3.8.7 — projectVisual so decor placement scales with visualLaneScale
     // alongside the road silhouette. Keeps the gap between road edge and
     // structure decor constant as the visual model is tuned.
+    // v4.7 perf — mutate the fresh object projectVisual() returns instead of
+    // spreading into a new one. This runs for every scenery sprite (~1k/frame),
+    // so the spread was a per-sprite allocation feeding gen-0 GC churn.
     const projected = this.projection.projectVisual(lane, distance);
     const amount = layer === LAYERS.MIDGROUND_TERRAIN ? PARALLAX.midground : PARALLAX.foreground;
-    return {
-      ...projected,
-      sx: projected.sx + parallaxOffset(this.projection, world.scrollOffset, amount, distance * 0.02),
-    };
+    projected.sx += parallaxOffset(this.projection, world.scrollOffset, amount, distance * 0.02);
+    return projected;
   }
 
   // ── Foreground garden (side flora + ambient motes) ──────────────────────────
