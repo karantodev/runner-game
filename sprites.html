@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sprite Viewer — Orchid Quest</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #060f1a;
+      --bg-card:   #0e1f30;
+      --bg-hover:  #162840;
+      --border:    #1e3550;
+      --border-hi: #2e5070;
+      --text:      #c8dff0;
+      --text-muted:#5a7890;
+      --gold:      #ffd54a;
+      --gold-dim:  #7a6010;
+      --green:     #5de060;
+      --red:       #e05050;
+      --blue:      #5ab8ff;
+      --font-px:   'Press Start 2P', monospace;
+      --font-body: 'Silkscreen', monospace;
+      --sidebar-w: 220px;
+      --topbar-h:  52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+    }
+
+    /* ── Layout shell ─────────────────────────────────────── */
+    #shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: var(--topbar-h) 1fr;
+      grid-template-areas:
+        "top  top"
+        "side main";
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ──────────────────────────────────────────── */
+    #topbar {
+      grid-area: top;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      background: #07111c;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #topbar h1 {
+      font-family: var(--font-px);
+      font-size: 10px;
+      color: var(--gold);
+      white-space: nowrap;
+      letter-spacing: 1px;
+    }
+
+    #search-wrap {
+      flex: 1;
+      max-width: 360px;
+    }
+
+    #search {
+      width: 100%;
+      padding: 6px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    #search:focus { border-color: var(--blue); }
+    #search::placeholder { color: var(--text-muted); }
+
+    #topbar-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    #topbar-stats b { color: var(--text); }
+    #stat-ok  { color: var(--green); }
+    #stat-err { color: var(--red); }
+
+    /* ── Sidebar ──────────────────────────────────────────── */
+    #sidebar {
+      grid-area: side;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    #cat-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .cat-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 14px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: background .1s, color .1s;
+      border-left: 3px solid transparent;
+    }
+    .cat-btn:hover { background: var(--bg-hover); color: var(--text); }
+    .cat-btn.active { background: var(--bg-hover); color: var(--gold); border-left-color: var(--gold); }
+
+    .cat-icon { font-size: 14px; flex-shrink: 0; }
+    .cat-label { flex: 1; line-height: 1.3; }
+    .cat-count {
+      font-size: 10px;
+      background: var(--border);
+      color: var(--text-muted);
+      padding: 1px 5px;
+      border-radius: 10px;
+      min-width: 22px;
+      text-align: center;
+    }
+    .cat-btn.active .cat-count { background: var(--gold-dim); color: var(--gold); }
+
+    /* ── Main content ─────────────────────────────────────── */
+    #main {
+      grid-area: main;
+      overflow-y: scroll;
+      padding: 20px 24px 48px;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── Category section ─────────────────────────────────── */
+    .cat-section {
+      margin-bottom: 36px;
+    }
+
+    .cat-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cat-header h2 {
+      font-family: var(--font-px);
+      font-size: 9px;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+
+    .cat-header .badge {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── Sprite grid ──────────────────────────────────────── */
+    .sprite-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    /* ── Sprite card ──────────────────────────────────────── */
+    .sprite-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .15s, transform .1s;
+      display: flex;
+      flex-direction: column;
+    }
+    .sprite-card:hover {
+      border-color: var(--border-hi);
+      transform: translateY(-1px);
+    }
+    .sprite-card.missing { opacity: .55; }
+    .sprite-card.hidden  { display: none; }
+
+    /* checkerboard to reveal transparency */
+    .sprite-img-wrap {
+      position: relative;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #1a2a3a;
+      background-image:
+        linear-gradient(45deg, #243344 25%, transparent 25%),
+        linear-gradient(-45deg, #243344 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #243344 75%),
+        linear-gradient(-45deg, transparent 75%, #243344 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+      overflow: hidden;
+    }
+
+    .sprite-img-wrap img {
+      max-width: 90%;
+      max-height: 88px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .missing-badge {
+      position: absolute;
+      top: 6px; right: 6px;
+      font-size: 9px;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    .sprite-meta {
+      padding: 6px 8px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 0;
+    }
+
+    .sprite-key {
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 700;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+
+    .sprite-path {
+      font-size: 10px;
+      color: var(--text-muted);
+      word-break: break-all;
+      line-height: 1.35;
+    }
+
+    .sprite-dims {
+      font-size: 10px;
+      color: var(--blue);
+      margin-top: 1px;
+    }
+    .sprite-card.missing .sprite-dims { color: var(--red); }
+
+    /* ── Detail tooltip on hover (title attr fallback) ──────── */
+
+    /* ── Empty state ──────────────────────────────────────── */
+    #empty-state {
+      display: none;
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    #empty-state.visible { display: block; }
+
+    /* ── Scrollbar polish ────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="shell">
+
+  <header id="topbar">
+    <h1>🌸 SPRITE VIEWER</h1>
+    <div id="search-wrap">
+      <input id="search" type="search" placeholder="Search key or path…" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="topbar-stats">
+      <span>Total: <b id="stat-total">…</b></span>
+      <span><b id="stat-ok" class="stat-ok">…</b> loaded</span>
+      <span><b id="stat-err" class="stat-err">…</b> missing</span>
+    </div>
+  </header>
+
+  <nav id="sidebar">
+    <div id="cat-nav"></div>
+  </nav>
+
+  <main id="main">
+    <div id="content"></div>
+    <div id="empty-state">No sprites match your search.</div>
+  </main>
+
+</div>
+
+<script type="module">
+import { GAME_CONFIG } from './src/config/gameConfig.js';
+
+// ─── Category definitions ──────────────────────────────────────────────────
+// Ordered — first matching test wins.
+const CATS = [
+  {
+    id: 'player', label: 'Player', icon: '🏃',
+    test: k => k.startsWith('playerFarmer'),
+  },
+  {
+    id: 'collectibles', label: 'Collectibles', icon: '🌸',
+    test: k => k.startsWith('orchid') || k.startsWith('collectible') ||
+               k.startsWith('flower') || k === 'lifeHeart' || k === 'lifeHeartAlt' ||
+               k === 'sprout',
+  },
+  {
+    id: 'pickups', label: 'Pickups & Power-ups', icon: '⭐',
+    test: k => k.startsWith('pickup') || k.startsWith('goldenFlower'),
+  },
+  {
+    id: 'background', label: 'Background', icon: '🏔️',
+    test: k => k.startsWith('background') || k.startsWith('greenhouse') ||
+               k.startsWith('midground') ||
+               ['cloudLargeAlt','cloudMediumAlt','cloudSmallAlt',
+                'mountainsFarAlt','castleFarAlt'].includes(k),
+  },
+  {
+    id: 'environment', label: 'Environment (legacy)', icon: '🌲',
+    test: k => k === 'cloudLarge' ||
+               ['mushroomRed','mushroomPurple','mushroomBlue','treeRound',
+                'leafClusterLow','leafClusterCompact','grassTuft','dryGrass',
+                'fenceWoodShort','wheatTuft'].includes(k),
+  },
+  {
+    id: 'decor', label: 'Decor', icon: '🌿',
+    test: k => k.startsWith('decor') ||
+               k === 'treeRoundSprite' || k.startsWith('bushLarge') ||
+               k === 'mushroomRedBig' ||
+               k.startsWith('fenceWoodSprite') ||
+               k.startsWith('purpleFlowerCluster') ||
+               k.startsWith('yellowFlowerSmall') ||
+               k === 'grassTuftSmall' || k === 'grassTuftLarge' ||
+               k === 'leafClumpRound' || k === 'bushWithFlowers' ||
+               k === 'sproutSoil',
+  },
+  {
+    id: 'obstacles', label: 'Obstacles', icon: '⚠️',
+    test: k => k.startsWith('vineBarrier') || k === 'vineBarrierFull' ||
+               k.startsWith('lowBranch') || k.startsWith('spiderWeb') ||
+               k.startsWith('planterPot') ||
+               k === 'dryGrassObstacle' || k === 'dryBushObstacle' ||
+               k === 'mushroomSmallRed' || k === 'bushSpiky',
+  },
+  {
+    id: 'terrain', label: 'Terrain Blocks', icon: '🌱',
+    test: k => k.startsWith('grassDirtBlock') || k.startsWith('grassDirtStep') ||
+               k.startsWith('grassDirtPlatform'),
+  },
+  {
+    id: 'structures', label: 'Structures & Platforms', icon: '🏛️',
+    test: k => k.startsWith('stoneBrick') || k.startsWith('stoneWall') ||
+               k.startsWith('platform') ||
+               k === 'purpleBrick01' || k.startsWith('purpleBrickSingle') ||
+               k === 'purplePlatformRow04' || k === 'hangingPlatformVines' ||
+               k.startsWith('questionBlockAnim') || k === 'questionBlockBonus' ||
+               k === 'questionBlockSprite' || k === 'pipeGreenSprite' ||
+               k.startsWith('purpleWall') || k === 'fenceWebbed' ||
+               k.startsWith('goldQuestionBlock'),
+  },
+  {
+    id: 'blocks', label: 'Blocks (legacy)', icon: '📦',
+    test: k => ['questionBlock','brickPurpleSingle','brickPurplePlatform3',
+                'pipeGreen','vineCoiled'].includes(k),
+  },
+  {
+    id: 'road', label: 'Road', icon: '🛣️',
+    test: k => k.startsWith('road'),
+  },
+  {
+    id: 'effects', label: 'Effects & Particles', icon: '✨',
+    test: k => k.startsWith('dustPuff') || k.startsWith('jumpDust') ||
+               k.startsWith('sparkle') || k === 'speedLine' ||
+               k.startsWith('hitFlash') || k.startsWith('laneSwoosh') ||
+               k.startsWith('collectBurst') ||
+               k.endsWith('Single') || k === 'goldSparkSingle',
+  },
+  {
+    id: 'misc', label: 'Misc Props', icon: '🎁',
+    test: k => k.startsWith('misc'),
+  },
+  {
+    id: 'ui', label: 'UI / HUD', icon: '🖥️',
+    test: k => k.startsWith('ui') || k.startsWith('hud') ||
+               k.startsWith('panel') || k.startsWith('icon') ||
+               k.startsWith('button') || k.startsWith('currency') ||
+               k.startsWith('multiplier') || k.startsWith('status') ||
+               k.startsWith('tool') || k === 'panelGameOver',
+  },
+  {
+    id: 'other', label: 'Other', icon: '❓',
+    test: () => true,
+  },
+];
+
+function catForKey(key) {
+  return CATS.find(c => c.test(key)) ?? CATS[CATS.length - 1];
+}
+
+// ─── Build asset list ──────────────────────────────────────────────────────
+const assets = GAME_CONFIG.assets;
+const entries = Object.entries(assets).map(([key, path]) => ({
+  key,
+  path,
+  cat: catForKey(key).id,
+}));
+
+// Group by category (preserving CATS order)
+const byCategory = new Map(CATS.map(c => [c.id, []]));
+for (const entry of entries) {
+  byCategory.get(entry.cat).push(entry);
+}
+// Drop empty categories
+for (const [id, list] of byCategory) {
+  if (!list.length) byCategory.delete(id);
+}
+
+// ─── Counters ──────────────────────────────────────────────────────────────
+let totalLoaded = 0;
+let totalMissing = 0;
+
+function updateStats() {
+  document.getElementById('stat-total').textContent  = entries.length;
+  document.getElementById('stat-ok').textContent     = totalLoaded;
+  document.getElementById('stat-err').textContent    = totalMissing;
+}
+
+// ─── Render sidebar ────────────────────────────────────────────────────────
+const catNav = document.getElementById('cat-nav');
+
+// "All" button
+const allBtn = document.createElement('button');
+allBtn.className = 'cat-btn active';
+allBtn.dataset.target = '';
+allBtn.innerHTML = `<span class="cat-icon">🗂️</span><span class="cat-label">All sprites</span><span class="cat-count" id="cnt-all">${entries.length}</span>`;
+catNav.appendChild(allBtn);
+
+const catBtns = new Map();
+catBtns.set('', allBtn);
+
+for (const [id, list] of byCategory) {
+  const cat = CATS.find(c => c.id === id);
+  const btn = document.createElement('button');
+  btn.className = 'cat-btn';
+  btn.dataset.target = id;
+  btn.innerHTML = `
+    <span class="cat-icon">${cat.icon}</span>
+    <span class="cat-label">${cat.label}</span>
+    <span class="cat-count" id="cnt-${id}">${list.length}</span>
+  `;
+  catNav.appendChild(btn);
+  catBtns.set(id, btn);
+}
+
+// ─── Render sprite grid ────────────────────────────────────────────────────
+const content = document.getElementById('content');
+
+/** @type {Map<string, HTMLElement>} key → card element */
+const cardEls = new Map();
+
+for (const [id, list] of byCategory) {
+  const cat = CATS.find(c => c.id === id);
+
+  const section = document.createElement('section');
+  section.className = 'cat-section';
+  section.id = `cat-${id}`;
+
+  section.innerHTML = `
+    <div class="cat-header">
+      <h2>${cat.icon} ${cat.label.toUpperCase()}</h2>
+      <span class="badge" id="badge-${id}">${list.length} sprites</span>
+    </div>
+    <div class="sprite-grid" id="grid-${id}"></div>
+  `;
+  content.appendChild(section);
+
+  const grid = section.querySelector(`#grid-${id}`);
+
+  for (const entry of list) {
+    const card = document.createElement('article');
+    card.className = 'sprite-card';
+    card.title = `${entry.key}\n${entry.path}`;
+    card.dataset.key = entry.key;
+    card.dataset.cat = entry.cat;
+
+    // Normalise path (strip leading ./)
+    const src = entry.path.replace(/^\.\//, '');
+
+    card.innerHTML = `
+      <div class="sprite-img-wrap">
+        <img src="${src}" alt="${entry.key}" loading="lazy">
+      </div>
+      <div class="sprite-meta">
+        <div class="sprite-key">${entry.key}</div>
+        <div class="sprite-path">${src.replace('assets/', '')}</div>
+        <div class="sprite-dims">…</div>
+      </div>
+    `;
+
+    const img = card.querySelector('img');
+    const dims = card.querySelector('.sprite-dims');
+
+    img.addEventListener('load', () => {
+      dims.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+      totalLoaded++;
+      updateStats();
+    });
+
+    img.addEventListener('error', () => {
+      card.classList.add('missing');
+      dims.textContent = '404 not found';
+      const badge = document.createElement('div');
+      badge.className = 'missing-badge';
+      badge.textContent = '✕ missing';
+      card.querySelector('.sprite-img-wrap').appendChild(badge);
+      totalMissing++;
+      updateStats();
+    });
+
+    // Copy key to clipboard on click
+    card.addEventListener('click', () => {
+      navigator.clipboard?.writeText(entry.key).then(() => {
+        const key = card.querySelector('.sprite-key');
+        const prev = key.textContent;
+        key.textContent = '✓ copied!';
+        setTimeout(() => { key.textContent = prev; }, 900);
+      });
+    });
+
+    grid.appendChild(card);
+    cardEls.set(entry.key, card);
+  }
+}
+
+updateStats();
+
+// ─── Sidebar navigation ────────────────────────────────────────────────────
+let activeCatFilter = '';
+
+catNav.addEventListener('click', (e) => {
+  const btn = e.target.closest('.cat-btn');
+  if (!btn) return;
+  activeCatFilter = btn.dataset.target;
+  applyFilters();
+  if (activeCatFilter) {
+    const section = document.getElementById(`cat-${activeCatFilter}`);
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    document.getElementById('main').scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+// ─── Search ────────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', applyFilters);
+
+function applyFilters() {
+  const query = searchInput.value.trim().toLowerCase();
+  const catFilter = activeCatFilter;
+
+  // Update active button state
+  for (const [id, btn] of catBtns) {
+    btn.classList.toggle('active', id === catFilter);
+  }
+
+  let anyVisible = false;
+  const sectionCounts = new Map();
+
+  for (const [key, card] of cardEls) {
+    const entry = { key, path: assets[key], cat: card.dataset.cat };
+    const matchesSearch = !query ||
+      key.toLowerCase().includes(query) ||
+      entry.path.toLowerCase().includes(query);
+    const matchesCat = !catFilter || entry.cat === catFilter;
+    const show = matchesSearch && matchesCat;
+
+    card.classList.toggle('hidden', !show);
+    if (show) {
+      anyVisible = true;
+      sectionCounts.set(entry.cat, (sectionCounts.get(entry.cat) ?? 0) + 1);
+    }
+  }
+
+  // Update section visibility and counts
+  for (const [id] of byCategory) {
+    const section = document.getElementById(`cat-${id}`);
+    const count = sectionCounts.get(id) ?? 0;
+    section.style.display = count > 0 ? '' : 'none';
+    const badge = document.getElementById(`badge-${id}`);
+    if (badge) badge.textContent = `${count} sprites`;
+  }
+
+  document.getElementById('empty-state').classList.toggle('visible', !anyVisible);
+}
+
+// ─── Scroll spy — update active category as user scrolls ──────────────────
+const mainEl = document.getElementById('main');
+
+const observer = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (entry.isIntersecting && !searchInput.value && !activeCatFilter) {
+      const id = entry.target.id.replace('cat-', '');
+      for (const [btnId, btn] of catBtns) {
+        btn.classList.toggle('active', btnId === id);
+      }
+      const sideBtn = catBtns.get('');
+      if (sideBtn) sideBtn.classList.remove('active');
+    }
+  }
+}, { root: mainEl, threshold: 0.15 });
+
+for (const [id] of byCategory) {
+  const section = document.getElementById(`cat-${id}`);
+  if (section) observer.observe(section);
+}
+
+// Restore "All" active state when scrolled back to very top
+mainEl.addEventListener('scroll', () => {
+  if (mainEl.scrollTop < 40 && !searchInput.value && !activeCatFilter) {
+    for (const [, btn] of catBtns) btn.classList.remove('active');
+    allBtn.classList.add('active');
+  }
+});
+
+// Reset cat filter when "All" is clicked (already handled), also
+// clicking a cat nav btn should clear search if desired
+</script>
+</body>
+</html>
