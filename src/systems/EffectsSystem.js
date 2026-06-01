@@ -41,15 +41,19 @@
  *              (used by lane-swoosh's direction-driven kick)
  */
 const BURSTS = Object.freeze({
+  // v4.1 — P0 reference-match: cut count ~42%, shorten life, reduce radius
+  // and sprite size so the collect pop reads as a crisp accent, not a cloud.
   flowerCollect: {
-    count: 12, vx: 5.5, vy: 4, life: [22, 32], radius: [2, 4.4],
+    count: 7, vx: 5.5, vy: 4, life: [16, 24], radius: [1.5, 3.2],
     color: 'rgba(255,210,60,0.95)',
-    sprite: { key: 'sparkle', frames: 4, size: [18, 26] },
+    sprite: { key: 'sparkle', frames: 4, size: [13, 19] },
   },
+  // v4.1 — P0 reference-match: rare orchid stays celebratory but trimmed
+  // ~27% on count and ~15% on life/size so it doesn't bury subsequent pickups.
   rareCollect: {
-    count: 22, vx: 7, vy: 5, life: [28, 42], radius: [2.5, 5],
+    count: 16, vx: 7, vy: 5, life: [24, 36], radius: [2, 4.2],
     color: 'rgba(90,184,255,0.95)',
-    sprite: { key: 'sparkle', frames: 4, size: [24, 34] },
+    sprite: { key: 'sparkle', frames: 4, size: [20, 28] },
   },
   lifeCollect: {
     count: 18, vx: 7, vy: 5, life: [22, 32], radius: [2, 5.2],

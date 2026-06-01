@@ -1,0 +1,97 @@
+{
+  "batch": 32,
+  "generatedAt": "2026-06-01T05:06:08.972205+00:00",
+  "note": "Exact-canvas RGBA delivery. Recovered accepted stone and planter sprites; newly authored grass-step and purple-brick sprites. Planter sprites are distinct road-facing variants.",
+  "assets": [
+    {
+      "path": "assets/structures/stone_brick/stone_wall_low_left.png",
+      "width": 168,
+      "height": 56,
+      "bytes": 8334,
+      "sha256": "382025fe5659d21bb234d7114a31e3be2a718b3c498849ebd5c391c04301af1e",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/stone_wall_low_right.png",
+      "width": 168,
+      "height": 56,
+      "bytes": 9955,
+      "sha256": "6b6b8f34436663fe7f77909493591fdc883c8214bf1dbdd3f39952b52651ce81",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/stone_brick_single_left.png",
+      "width": 56,
+      "height": 56,
+      "bytes": 5397,
+      "sha256": "5be423ef00d7251fcc9391dd43e3352333a1bb70e04eae35b20ba076455c0cb9",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/stone_brick_single_right.png",
+      "width": 56,
+      "height": 56,
+      "bytes": 5943,
+      "sha256": "fc08feee8af0a182a7490403236b6dd00010a1862982ac4e8d2ea7f141b4e315",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/terrain/blocks/grass_dirt_step_right.png",
+      "width": 168,
+      "height": 168,
+      "bytes": 6400,
+      "sha256": "62a94bafae5442074103210543669e72130b82f5b7993028c7e1bdb0f8072eae",
+      "format": "PNG indexed + tRNS transparency",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/obstacles/planter_pot/planter_pot_left.png",
+      "width": 64,
+      "height": 80,
+      "bytes": 9406,
+      "sha256": "fea2843828d8fa696a76bcf7c4900a82001d6ffd58de50b19ba24c7820260da2",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/obstacles/planter_pot/planter_pot_right.png",
+      "width": 64,
+      "height": 80,
+      "bytes": 10199,
+      "sha256": "1125ff315529fd9bef3cb399fdafc69611caf0b4e4a5c672e7a0c86fbaa051d5",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/purple_brick_single.png",
+      "width": 56,
+      "height": 56,
+      "bytes": 3554,
+      "sha256": "bc9e68376ca877f13b3dc2cb01ca80e730e7bd3d7da085e0eccc84a43a21809d",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/purple_brick_single_moss.png",
+      "width": 56,
+      "height": 56,
+      "bytes": 3356,
+      "sha256": "9299d135727963482ceb4a9ea990ff1150c44395640ba950a3e17eb378c9fbce",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    },
+    {
+      "path": "assets/structures/stone_brick/purple_brick_stairs_left.png",
+      "width": 168,
+      "height": 112,
+      "bytes": 5540,
+      "sha256": "ef6df3377a774858128048ad7bd833a02d015a31f575f0181988d8e07affd3b4",
+      "format": "PNG RGBA",
+      "status": "DELIVERED"
+    }
+  ]
+}

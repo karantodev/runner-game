@@ -299,8 +299,10 @@ export const ASSET_SEMANTICS = Object.freeze({
   }),
   grass_dirt_wall: make(DEFAULTS.STRUCTURE, {
     key: 'grass_dirt_wall',
+    orientationType: 'neutral',
+    requiresCanonicalSideArt: false,
     canStackOnTop: false,
-    notes: 'Wall variant — no top-stacking children.',
+    notes: 'Billboard wall variant — no top-stacking children.',
   }),
   grass_dirt_platform_long: make(DEFAULTS.STRUCTURE, {
     key: 'grass_dirt_platform_long',
@@ -327,11 +329,15 @@ export const ASSET_SEMANTICS = Object.freeze({
   purple_brick_platform_3: make(DEFAULTS.STRUCTURE, {
     key: 'purple_brick_platform_3',
     category: 'platform',
+    orientationType: 'neutral',
+    requiresCanonicalSideArt: false,
     notes: '3-tile platform variant. Treats as platform — no children today.',
   }),
   question_block: make(DEFAULTS.STRUCTURE, {
     key: 'question_block',
     category: 'landmark',
+    orientationType: 'neutral',
+    requiresCanonicalSideArt: false,
     canSupportOthers: false,
     allowedChildren: [],
     notes: 'Iconic landmark — does not host children; mostly floats above support.',
@@ -345,7 +351,9 @@ export const ASSET_SEMANTICS = Object.freeze({
   green_pipe: make(DEFAULTS.STRUCTURE, {
     key: 'green_pipe',
     category: 'support',
-    notes: 'DEPRECATED — sceneSchema redirects to planter_pot. Keep for back-compat decoding.',
+    orientationType: 'neutral',
+    requiresCanonicalSideArt: false,
+    notes: 'Front-facing pipe landmark. Keep neutral so one sprite works on either shoulder.',
   }),
   floating_platform: make(DEFAULTS.STRUCTURE, {
     key: 'floating_platform',

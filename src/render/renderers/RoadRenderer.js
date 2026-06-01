@@ -14,7 +14,7 @@ import { roadBaseHalfWidth, roadTopHalfWidth } from '../helpers.js';
  *   - shoulders (scrolling grass tiles at the road edge)
  */
 export class RoadRenderer {
-  constructor({ ctx, projection, assets, gradients, pixelRatio = 1, roadStyle = 'procedural' }) {
+  constructor({ ctx, projection, assets, gradients, pixelRatio = 1, roadStyle = 'kit' }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
@@ -36,26 +36,36 @@ export class RoadRenderer {
     // Source canvas is dpr-scaled; we draw it into the LOGICAL dimensions
     // since our parent ctx transform already applies dpr.
     this.ctx.drawImage(this._staticLayer, 0, 0, this.projection.width, this.projection.height);
+    const scroll = world.scrollOffset;
+    // v4.4 — reference-match: draw the base surface per mode, THEN apply the
+    // shared perspective-grid overlay in EVERY mode. Previously kit mode
+    // returned early and skipped the converging edge/lane/shoulder cues, so
+    // the road read as a flat green strip.
     if (this.roadStyle === 'kit') {
-      // Kit mode is self-contained — the 14 designer tiles already
-      // include lane bodies, shoulder transitions, dividers, and edge
-      // accents. The other procedural passes (shoulderStrips, grassNoise,
-      // roadShoulders, shoulderFringe, laneDividers) would all
-      // double-draw or visually conflict with the hand-crafted tiles,
-      // so we skip them entirely in kit mode.
-      this.#imageKitGrid(world.scrollOffset);
-      return;
-    }
-    if (this.roadStyle === 'tiles') {
-      this.#imageTileGrid(world.scrollOffset);
+      this.#imageKitGrid(scroll);
+    } else if (this.roadStyle === 'tiles') {
+      this.#imageTileGrid(scroll);
     } else {
-      this.#roadBands(world.scrollOffset);
+      this.#roadBands(scroll);
+      this.#grassNoise(scroll);
+      this.#roadShoulders(scroll);
+      this.#shoulderFringe(scroll);
     }
+    this.#perspectiveGridOverlay(scroll);
+  }
+
+  /**
+   * v4.4 — reference-match: perspective grid in all modes. Shared overlay
+   * drawn on TOP of whatever base surface each mode produced — completes the
+   * "green floor receding to a vanishing point" read with shoulder darkening,
+   * horizontal rungs, lane dividers, and bold converging edge lines.
+   * Rungs go UNDER the lines so the cream lines stay crisp on top.
+   */
+  #perspectiveGridOverlay(scrollOffset) {
     this.#shoulderStrips();
-    this.#grassNoise(world.scrollOffset);
-    this.#roadShoulders(world.scrollOffset);
-    this.#shoulderFringe(world.scrollOffset);
-    this.#laneDividers(world.scrollOffset);
+    this.#roadRungs(scrollOffset);
+    this.#laneDividers(scrollOffset);
+    this.#roadEdgeLines(scrollOffset);
   }
 
   /**
@@ -127,9 +137,11 @@ export class RoadRenderer {
     // Bumped toward the target reference's more saturated kelly-green
     // path color. Previous tone was too desaturated — the path blended
     // into the meadow even with all the tile passes on top.
+    // v4.4 — reference-match: nudge stops brighter/more saturated so the
+    // road tone differs from the meadow even under sparse tiles.
     const pathFill = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    pathFill.addColorStop(0, 'rgba(148,212,92,0.30)');
-    pathFill.addColorStop(1, 'rgba(126,196,78,0.66)');
+    pathFill.addColorStop(0, 'rgba(150,214,96,0.36)');
+    pathFill.addColorStop(1, 'rgba(120,196,74,0.72)');
     ctx.fillStyle = pathFill;
     ctx.beginPath();
     ctx.moveTo(vpX - topHalf, vpY);
@@ -190,15 +202,28 @@ export class RoadRenderer {
       const fadeT = 1 - Math.min(1, dN / FAR_VISIBLE);
       if (fadeT <= 0.02) continue;
       const worldRow = rowOffset + dIdx;
-      // Reduced dark-seam alpha — earlier pass had visible but slightly
-      // overbearing contrast. Now the dark variant reads as a soft tile
-      // shadow / seam, not a chessboard.
-      const lightAlpha = 0.080 + 0.160 * fadeT;
-      const mediumAlpha = 0.055 + 0.115 * fadeT;
-      const darkAlpha   = 0.120 + 0.210 * fadeT;
+      // v4.1 — P1 reference-match: compress checker luminance range so the
+      // road surface reads as a cohesive green track rather than a loud
+      // chessboard. Geometry/tile sizing/perspective math untouched.
+      //
+      // Before:
+      //   lightAlpha  = 0.080 + 0.160*t  (peak 0.240, color #C4F280 bright lime)
+      //   mediumAlpha = 0.055 + 0.115*t  (peak 0.170, color #7EC258 mid-green)
+      //   darkAlpha   = 0.120 + 0.210*t  (peak 0.330, color #26622A deep dark)
+      // → peak contrast ratio (light vs dark color×alpha): ~3×, reads checkerboard.
+      //
+      // After:
+      //   lightAlpha  = 0.060 + 0.100*t  (peak 0.160, same hue — dimmer)
+      //   mediumAlpha = 0.050 + 0.095*t  (peak 0.145, unchanged hue)
+      //   darkAlpha   = 0.055 + 0.095*t  (peak 0.150, hue shifted #4A8C4E
+      //                                   — lighter/more-saturated mid-green)
+      // → peak contrast ratio: ~1.3×, reads as mottled texture not a grid.
+      const lightAlpha = 0.060 + 0.100 * fadeT;
+      const mediumAlpha = 0.050 + 0.095 * fadeT;
+      const darkAlpha   = 0.055 + 0.095 * fadeT;
       const lightFill  = `rgba(196,242,128,${lightAlpha})`;
       const mediumFill = `rgba(126,194,88,${mediumAlpha})`;
-      const darkFill   = `rgba(38,98,42,${darkAlpha})`;
+      const darkFill   = `rgba(74,140,78,${darkAlpha})`;
 
       for (let cIdx = -NUM_LATERAL; cIdx < NUM_LATERAL; cIdx += 1) {
         let laneL = cIdx * TILE_LANE_W;
@@ -303,24 +328,32 @@ export class RoadRenderer {
   #laneDividers(scrollOffset) {
     const ctx = this.ctx;
     const p = this.projection;
-    const dividerFade = this.gradients.gradients.dividerFade;
-    // v3.8.9 Tier-4 divider polish — was 4.5 px wide / segLen 1.8 / gap 1.4.
-    // User flagged dividers as "schematic / debug-like". Refined:
-    //   width 4.5 → 3.0 (thinner, pixel-clean)
-    //   segLen 1.8 → 1.2 (tighter rhythm)
-    //   segGap 1.4 → 0.9 (shorter gaps, more like worn dashes)
-    //   maxVisibleDistance 88 → 120 (dashes reach further toward castle)
-    //   near-floor 1.5 → 1.0, far-floor 0.3 → 0.18 (preserves pixel-thin
-    //   feel at very near AND very far depths)
-    const widthPx = 3.0;
+    // v4.1 — P1 reference-match: override the cached dividerFade with a
+    // locally-built gradient that has stronger alphas so the cream lines
+    // hold at mid-depth and read clearly as lane separators.
+    // Before: stop(0)=0.08, stop(0.45)=0.40, stop(1)=0.80 → lines fade
+    // out before mid-distance. After: 0.22 / 0.62 / 0.92 — ~2.75× brighter
+    // at the far end while still receding into the horizon.
+    const strongDividerFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    strongDividerFade.addColorStop(0,    'rgba(235,230,175,0.22)');
+    strongDividerFade.addColorStop(0.45, 'rgba(238,232,178,0.62)');
+    strongDividerFade.addColorStop(1,    'rgba(245,238,185,0.92)');
+
+    // v4.1 — P1 reference-match: widthPx 3.0 → 4.5 — slightly heavier
+    // stroke so the dividers are legible at a glance without becoming
+    // highway-thick. Far-floor 0.18 → 0.28 keeps a visible pixel even
+    // at the furthest rendered dashes.
+    const widthPx = 4.5;
     const segLen = 1.2;
     const segGap = 0.9;
     const period = segLen + segGap;
-    const maxVisibleDistance = 120;
+    // v4.1 — P1 reference-match: maxVisibleDistance 120 → 160 so dashes
+    // persist well into the middle of the road (toward the castle).
+    const maxVisibleDistance = 160;
     const off = ((scrollOffset % period) + period) % period;
 
     ctx.save();
-    ctx.fillStyle = dividerFade;
+    ctx.fillStyle = strongDividerFade;
     for (const laneLine of [-0.5, 0.5]) {
       for (let dStart = -off; dStart < maxVisibleDistance; dStart += period) {
         const start = Math.max(0, dStart);
@@ -329,7 +362,7 @@ export class RoadRenderer {
         const near = p.projectVisual(laneLine, start);
         const farP = p.projectVisual(laneLine, end);
         const wNear = Math.max(1.0, widthPx * near.scale);
-        const wFar  = Math.max(0.18, widthPx * farP.scale);
+        const wFar  = Math.max(0.28, widthPx * farP.scale);
         // v3.8.13 — pixel-snap dash vertices so the divider doesn't
         // shimmer between frames as scroll advances.
         const farLx  = Math.round(farP.sx - wFar / 2);
@@ -346,6 +379,120 @@ export class RoadRenderer {
         ctx.closePath();
         ctx.fill();
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * v4.2 — P2 reference-match: bold cream perspective edge lines at the
+   * playable road boundary (lane ±1.5), converging toward the castle vanish
+   * point. Each line is a continuous (not dashed) trapezoidal strip — wide
+   * near the camera (~8–12 px) tapering to ~2 px at the horizon — filled
+   * with a vertical cream gradient bolder than the inner lane dividers.
+   * Pixel-snapped to avoid shimmer (same rounding style as #laneDividers).
+   * Only runs in procedural mode — tiles/kit modes have their own edge art.
+   */
+  #roadEdgeLines(scrollOffset) {
+    const ctx = this.ctx;
+    const p   = this.projection;
+
+    // v4.2 — P2 reference-match: bolder gradient than inner dividers.
+    // stop(0) near-transparent at the vanish horizon, stop(1) near-opaque
+    // cream at the camera ground so the lines converge visually like the
+    // reference photo.
+    const edgeGrad = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    // v4.3 — P3 reference-match: raised far-end alpha 0.30 → 0.55 so the
+    // cream edge lines hold through mid-distance and read as a clear frame,
+    // not a ghost tint that vanishes before reaching the castle.
+    edgeGrad.addColorStop(0, 'rgba(245,238,190,0.55)');
+    edgeGrad.addColorStop(1, 'rgba(248,240,192,0.92)');
+
+    // v4.2 — P2 reference-match: edge line half-width in screen px at a
+    // given projection scale. Near camera scale≈1 → ~5 px either side of
+    // the lane centre = 10 px total strip; at the far horizon scale≈0.10
+    // → ~1 px either side = 2 px total. Clamped so far lines keep 1 px.
+    // v4.3 — P3 reference-match: widened near strip 10 → 14 px so both
+    // cream borders are immediately legible as bold framing lines rather
+    // than thin accents — still scale-tapers toward the vanish point.
+    const widthPx     = 14;
+    const farFloorPx  = 1.0;
+    const maxDistance = 120;
+
+    ctx.save();
+    ctx.fillStyle = edgeGrad;
+
+    for (const laneLine of [-1.5, 1.5]) {
+      const near = p.projectVisual(laneLine, 0);
+      const far  = p.projectVisual(laneLine, maxDistance);
+
+      const wNear = Math.max(farFloorPx, widthPx * near.scale);
+      const wFar  = Math.max(farFloorPx, widthPx * far.scale);
+
+      // Pixel-snap vertices — same style as #laneDividers to avoid shimmer.
+      const nearLx = Math.round(near.sx - wNear / 2);
+      const nearRx = Math.round(near.sx + wNear / 2);
+      const farLx  = Math.round(far.sx  - wFar  / 2);
+      const farRx  = Math.round(far.sx  + wFar  / 2);
+      const nearY  = Math.round(near.sy);
+      const farY   = Math.round(far.sy);
+
+      ctx.beginPath();
+      ctx.moveTo(farLx,  farY);
+      ctx.lineTo(farRx,  farY);
+      ctx.lineTo(nearRx, nearY);
+      ctx.lineTo(nearLx, nearY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * v4.4 — reference-match: perspective grid in all modes. Subtle horizontal
+   * "rung" lines crossing the playable road (lane -1.5 → +1.5) at regular
+   * world-depth intervals, scrolling toward the camera like the lane dashes.
+   * Completes the grid read as a SECONDARY cue — markedly fainter than the
+   * cream edge/lane lines (peak ~0.22 near, ~0.08 far). Pixel-snapped vertices
+   * (same rounding style as #laneDividers) keep rungs from shimmering on scroll.
+   */
+  #roadRungs(scrollOffset) {
+    const ctx = this.ctx;
+    const p   = this.projection;
+
+    // Faint cream that fades toward the horizon — same vertical-gradient
+    // idiom as #laneDividers / #roadEdgeLines, but lower alphas so rungs
+    // stay a background cue beneath the bold lines.
+    const rungFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    rungFade.addColorStop(0, 'rgba(238,232,180,0.08)');
+    rungFade.addColorStop(1, 'rgba(245,238,185,0.22)');
+
+    const period       = 5;
+    const maxDistance  = 120;
+    const thicknessPx  = 1.5;
+    const off = ((scrollOffset % period) + period) % period;
+
+    ctx.save();
+    ctx.fillStyle = rungFade;
+    for (let d = -off; d < maxDistance; d += period) {
+      if (d <= 0) continue;
+      const left  = p.projectVisual(-1.5, d);
+      const right = p.projectVisual( 1.5, d);
+      // Skip horizon rungs too small to read — avoids clutter / overdraw.
+      if (left.scale < 0.05) continue;
+      const halfH = Math.max(0.5, (thicknessPx * left.scale) / 2);
+      // Pixel-snap every vertex so the rung doesn't shimmer between frames.
+      const lx   = Math.round(left.sx);
+      const rx   = Math.round(right.sx);
+      const yTop = Math.round(left.sy - halfH);
+      const yBot = Math.round(left.sy + halfH);
+      ctx.beginPath();
+      ctx.moveTo(lx, yTop);
+      ctx.lineTo(rx, yTop);
+      ctx.lineTo(rx, yBot);
+      ctx.lineTo(lx, yBot);
+      ctx.closePath();
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -653,7 +800,9 @@ export class RoadRenderer {
     ctx.save();
     // Darker green vs the inner playable corridor — the eye now reads
     // 3 lanes flanked by 2 shoulder strips rather than one flat surface.
-    ctx.fillStyle = 'rgba(32,92,40,0.34)';
+    // v4.4 — reference-match: alpha 0.34 → 0.52 so the corridor frame pops
+    // clearly against the meadow, still reading as grass not a black band.
+    ctx.fillStyle = 'rgba(30,88,38,0.52)';
     for (const side of [-1, 1]) {
       const inN  = p.projectVisual(side * PLAYABLE_HALF, 0);
       const inF  = p.projectVisual(side * PLAYABLE_HALF, farDist);
@@ -694,7 +843,9 @@ export class RoadRenderer {
       const sz = Math.max(1, Math.round(2 * proj.scale));
       // Foreground gets noticeably stronger texture — far end stays
       // light so the visual hierarchy still points toward the castle.
-      const alpha = 0.22 + 0.62 * proj.scale;
+      // v4.4 — reference-match: alpha dialed down ~40% so the clean
+      // perspective grid reads over the texture (geometry unchanged).
+      const alpha = 0.14 + 0.38 * proj.scale;
       ctx.fillStyle = pt.dark
         ? `rgba(46,118,40,${alpha * 0.72})`
         : `rgba(196,238,124,${alpha})`;
@@ -732,7 +883,9 @@ export class RoadRenderer {
       const lane = f.side * (PLAYABLE_HALF + f.shoulderDepth * shoulderWidth);
       const proj = p.projectVisual(lane, d);
       if (proj.scale < 0.06) continue;
-      const alpha = 0.22 + 0.52 * proj.scale;
+      // v4.4 — reference-match: fringe alpha dialed down ~40% to match the
+      // quieter grass noise so the perspective grid stays the dominant cue.
+      const alpha = 0.13 + 0.31 * proj.scale;
 
       if (f.kind === 'yellowFlower') {
         const sz = Math.max(1, Math.round(2.4 * proj.scale));

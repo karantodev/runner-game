@@ -59,6 +59,7 @@ export class GameStateSystem {
 
     const previousDistance = Math.floor(world.distanceRun);
     world.distanceRun += world.speed * delta * this.config.gameplay.distanceScale;
+    world.worldDistanceTotal = (world.worldDistanceTotal ?? 0) + world.speed * delta;
     world.scrollOffset += world.speed * delta;
     // v3.1: prevent FP precision loss on multi-hour sessions. scrollOffset
     // feeds Math.sin / parallax math; once it crosses ~2²³ the visual

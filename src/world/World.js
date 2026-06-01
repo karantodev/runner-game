@@ -46,7 +46,8 @@ const COUNTDOWN_TOTAL_FRAMES = 200;
  * @property {number} baseSpeed
  * @property {number} distanceRun       — world units travelled, scaled to "m"
  * @property {number} timeAlive         — frames since the run started
- * @property {number} scrollOffset      — running sum of speed*delta, for VFX
+ * @property {number} scrollOffset      — cyclic visual offset for VFX
+ * @property {number} worldDistanceTotal — monotonic gameplay road distance
  * @property {number} cameraShake       — current shake amplitude
  * @property {number} cameraImpulseTime — frames since the most recent shake
  * @property {number} bestScore         — persisted best across sessions
@@ -161,6 +162,7 @@ export class World {
     this.cameraShake = 0;
     this.cameraImpulseTime = 0;
     this.scrollOffset = 0;
+    this.worldDistanceTotal = 0;
     this.lastRunRank = 0;
     // v3.1 — distance-baseline accumulator. Combo state lives in ComboSystem.
     this.distanceScoreCarry = 0;
@@ -343,16 +345,15 @@ export class World {
   getOccupiedLanes() {
     const minLane = this.config.player.minLane;
     const maxLane = this.config.player.maxLane;
-    const targetLane = this.player.components.LaneState.targetLane;
-    const center = clamp(Math.round(targetLane), minLane, maxLane);
+    const center = this.player.components.LaneState.laneX;
     const out = this._occupiedLanes;
     out.length = 0;
     out.push(center);
     if (this.powerUpSystem.isSplitClonesActive()) {
       const left = clamp(center - 1, minLane, maxLane);
       const right = clamp(center + 1, minLane, maxLane);
-      if (left !== center) out.push(left);
-      if (right !== center && right !== left) out.push(right);
+      if (Math.abs(left - center) > 0.001) out.push(left);
+      if (Math.abs(right - center) > 0.001 && Math.abs(right - left) > 0.001) out.push(right);
     }
     return out;
   }

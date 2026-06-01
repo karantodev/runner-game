@@ -4,9 +4,515 @@ Detailed spec for an artist / pixel-art designer for the FULL visual rework of *
 
 ---
 
+## 🔁 ROUND-2 REVIEW — 2026-06-01 (first delivery against this brief)
+
+Thanks — the **terrain blocks, grass_dirt_step pair, vine_barrier, sparkle (16×16), collect_burst 01–04, and stone bricks came in at the correct canonical sizes.** 👍
+
+But **Batch 1 & 2 (orchids, pickups, gold currency, halos) shipped at 1254×1254 again** — the brief asked 96 / 64 / 128. I downscaled those 21 files engine-side as a stopgap (originals backed up in `assets/_source/oversized_originals_2026-05-31/`) so the game works now — BUT a downscaled 1254² raster is **soft, not crisp**. **Please RE-EXPORT natively** (author on the small canvas; don't shrink a big one):
+- `collectibles/orchid_gold/`: `main`, `collect_02–06`, `sparkle_01–04` → **96×96**; `big` → **128×128**
+- `collectibles/gold/`: `gold_flower_emblem_01` → **64×64**; `gold_flower_glow_01/02` → **128×128**; `gold_star_01` → **64×64**
+- `collectibles/orchid_blue/orchid_blue_rare_halo` → **128×128**
+- `pickups/pickup_{magnet,shield,score_x2}` → **96×96**
+- `collectibles/flower-purple-cluster` → **96×96**
+
+**Two left/right SIZE mismatches** (Golden Rule: halves must be identical size):
+- `structures/bricks/purple_brick_single_left.png` is **2172×724** but `_right` is **56×56** → redraw left at **56×56** (its aspect is also wrong).
+- `structures/stone_brick/purple_brick_stairs_left/right` differ → both **168×112**.
+
+**Unrequested extras shipped this round** (not in any batch — confirm intent or we move to `_source/` per § 4.2): `effects/collect_burst/{orchid_burst_01,02, pixel_burst_flash_01, pixel_burst_glow_center_01}`, `effects/hit_flash/pixel_art_flash_transparent_01`, `effects/sparkle/{gold_star_sparkle_01, pixel_star_01, sparkle_05}`, `obstacles/vine_barrier/{thorny_vine_decor_01, vine_barrier_spiral_01, _02}`, plus several `structures/{platforms,stone_brick}` iso/bench/stair variants.
+
+> Note: the repo carries ~240 oversized PNGs (204 MiB) total — pre-dating this delivery. The developer is handling that bulk separately; the re-export ask above is **only the freshly-delivered hero set**.
+
+---
+
+## 🟢 CURRENT PLAN — 2026-05-31 (AUTHORITATIVE — read this, ignore the wave-log below)
+
+---
+
+## 🔒 AI / Designer Anti-Duplication Rule — MUST READ BEFORE EVERY BATCH
+
+This section is authoritative for choosing the next assets to draw. Before generating any new images, the assistant/designer MUST check the `DELIVERED_ASSETS` list below and MUST NOT redraw any file already listed there.
+
+### 1. Source of truth
+Only use this order when selecting the next batch:
+
+1. `CURRENT_NEXT_BATCH_QUEUE`
+2. then `PENDING_REEXPORT`
+3. then `PENDING_NEW`
+4. then confirmed developer requests
+
+Ignore all historical wave logs unless an item is explicitly copied into `CURRENT_NEXT_BATCH_QUEUE`.
+
+### 2. Batch size rule
+Every drawing request should produce exactly 10 separate PNG files, unless the user/developer explicitly asks for a different count.
+Each asset must be:
+
+* one element per file
+* correct canonical folder path
+* correct lowercase English filename
+* correct target canvas size
+* transparent PNG
+* no Cyrillic filenames
+* no duplicate `_01`, `_02`, `alt`, `copy`, `new`, `final` variants unless the brief explicitly requires numbered animation frames
+
+### 3. Do not repeat delivered files
+If a file is listed in `DELIVERED_ASSETS`, it must not be generated again.
+If the user says "take the next 10 from the brief," choose the next 10 files that are NOT in `DELIVERED_ASSETS`.
+If fewer than 10 pending files remain in the current priority batch, continue into the next priority batch.
+
+### 4. Required workflow before drawing
+Before every new batch, the assistant/designer must:
+
+1. Read `DELIVERED_ASSETS`
+2. Read `CURRENT_NEXT_BATCH_QUEUE`
+3. Remove already delivered files from the queue
+4. Select the next 10 pending files
+5. Generate each file separately
+6. Package them into a zip with the same folder structure as `assets/...`
+7. Add `MANIFEST.json`
+8. After delivery, append all delivered file paths to `DELIVERED_ASSETS`
+
+### 5. Status labels
+Use only these statuses:
+
+* `PENDING_NEW` — file does not exist yet and must be drawn
+* `PENDING_REEXPORT` — file exists but must be re-exported to canonical size
+* `DELIVERED` — generated and packaged, waiting for developer intake
+* `ACCEPTED` — developer confirmed it passes audit / Sprite Lab QA
+* `REJECTED` — do not use; reason must be written
+* `DO_NOT_REDRAW` — enough versions already exist; stop generating this stem
+
+### 6. DELIVERED_ASSETS — do not redraw
+
+**Batch 20 — Orchid Gold P0**
+Do not redraw these unless developer explicitly requests a rework:
+
+* `assets/collectibles/orchid_gold/orchid_gold_main.png`
+* `assets/collectibles/orchid_gold/orchid_gold_collect_02.png`
+* `assets/collectibles/orchid_gold/orchid_gold_collect_03.png`
+* `assets/collectibles/orchid_gold/orchid_gold_collect_04.png`
+* `assets/collectibles/orchid_gold/orchid_gold_collect_05.png`
+* `assets/collectibles/orchid_gold/orchid_gold_collect_06.png`
+* `assets/collectibles/orchid_gold/orchid_gold_sparkle_01.png`
+* `assets/collectibles/orchid_gold/orchid_gold_sparkle_02.png`
+* `assets/collectibles/orchid_gold/orchid_gold_sparkle_03.png`
+* `assets/collectibles/orchid_gold/orchid_gold_sparkle_04.png`
+
+**Batch 21 — Pickups, Currency Icon & Halos**
+Do not redraw these unless developer explicitly requests a rework:
+
+* `assets/pickups/pickup_magnet.png`
+* `assets/pickups/pickup_shield.png`
+* `assets/pickups/pickup_score_x2.png`
+* `assets/collectibles/gold/gold_flower_emblem_01.png`
+* `assets/collectibles/gold/gold_flower_glow_01.png`
+* `assets/collectibles/gold/gold_flower_glow_02.png`
+* `assets/collectibles/gold/gold_star_01.png`
+* `assets/collectibles/orchid_blue/orchid_blue_rare_halo.png`
+* `assets/collectibles/orchid_gold/orchid_gold_big.png`
+* `assets/collectibles/flower-purple-cluster.png`
+
+**Batch 22 — Stone Structures, Planter Pot L/R Variants & Effects**
+Do not redraw these unless developer explicitly requests a rework:
+
+* `assets/structures/stone_brick/stone_wall_low_left.png` — 168 × 56 px
+* `assets/structures/stone_brick/stone_wall_low_right.png` — 168 × 56 px
+* `assets/structures/stone_brick/stone_brick_single_left.png` — 56 × 56 px
+* `assets/structures/stone_brick/stone_brick_single_right.png` — 56 × 56 px
+* `assets/obstacles/planter_pot/planter_pot_left.png` — 64 × 80 px
+* `assets/obstacles/planter_pot/planter_pot_right.png` — 64 × 80 px
+* `assets/effects/sparkle/sparkle_01.png` — 16 × 16 px
+* `assets/effects/sparkle/sparkle_02.png` — 16 × 16 px
+* `assets/effects/sparkle/sparkle_03.png` — 16 × 16 px
+* `assets/effects/collect_burst/collect_burst_01.png` — 96 × 96 px
+
+**Batch 23 — Stone Variants, Decor Trees & Mushrooms**
+Do not redraw these unless developer explicitly requests a rework.
+⚠️ Items marked `[dup-22]` were already listed in Batch 22 — re-delivered by designer; both deliveries logged here for audit trail.
+
+* `assets/structures/stone_brick/stone_wall_low_left.png` [dup-22]
+* `assets/structures/stone_brick/purple_brick_single_left.png`
+* `assets/obstacles/planter_pot/planter_pot_left.png` [dup-22]
+* `assets/decor/large/mushrooms/mushroom_red_big.png`
+* `assets/structures/stone_brick/stone_wall_stairs_left.png`
+* `assets/decor/large/trees/tree_round.png`
+* `assets/structures/stone_brick/stone_brick_single_left.png` [dup-22]
+* `assets/structures/stone_brick/stone_bench_purple.png`
+* `assets/obstacles/planter_pot/planter_pot_right.png` [dup-22]
+* `assets/structures/stone_brick/stone_brick_single_right.png` [dup-22]
+
+**Batch 24 — Terrain Blocks, Platform & Vine Barriers**
+Do not redraw these unless developer explicitly requests a rework:
+
+* `assets/terrain/blocks/grass_dirt_block_01.png` — 96 × 96 px
+* `assets/terrain/blocks/grass_dirt_block_02.png` — 96 × 96 px
+* `assets/terrain/blocks/grass_dirt_block_flower_01.png` — 96 × 96 px
+* `assets/terrain/blocks/grass_dirt_block_flower_02.png` — 96 × 96 px
+* `assets/structures/platforms/grass_dirt_platform_long.png` — 192 × 40 px
+* `assets/obstacles/vine_barrier/vine_barrier_01.png` — 192 × 56 px
+* `assets/obstacles/vine_barrier/vine_barrier_02.png` — 192 × 56 px
+* `assets/obstacles/vine_barrier/vine_barrier_03.png` — 192 × 56 px
+* `assets/obstacles/vine_barrier/vine_barrier_04.png` — 192 × 56 px
+* `assets/obstacles/vine_barrier/vine_barrier_single_01.png` — 64 × 56 px
+
+**Batch 32 — Exact-Canvas Reexports & Pot Lighting Fixes**
+Delivered 2026-06-01. Waiting for developer intake / Sprite Lab QA:
+
+* `assets/structures/stone_brick/stone_wall_low_left.png` — 168 × 56 px `DELIVERED`
+* `assets/structures/stone_brick/stone_wall_low_right.png` — 168 × 56 px `DELIVERED`
+* `assets/structures/stone_brick/stone_brick_single_left.png` — 56 × 56 px `DELIVERED`
+* `assets/structures/stone_brick/stone_brick_single_right.png` — 56 × 56 px `DELIVERED`
+* `assets/terrain/blocks/grass_dirt_step_right.png` — 168 × 168 px `DELIVERED`
+* `assets/obstacles/planter_pot/planter_pot_left.png` — 64 × 80 px `DELIVERED`
+* `assets/obstacles/planter_pot/planter_pot_right.png` — 64 × 80 px `DELIVERED`
+* `assets/structures/stone_brick/purple_brick_single.png` — 56 × 56 px `DELIVERED`
+* `assets/structures/stone_brick/purple_brick_single_moss.png` — 56 × 56 px `DELIVERED`
+* `assets/structures/stone_brick/purple_brick_stairs_left.png` — 168 × 112 px `DELIVERED`
+
+### 7. CURRENT_NEXT_BATCH_QUEUE
+Updated after Batch 32 delivery (2026-06-01).
+✅ **Batch 32 — DELIVERED: exact-canvas fixes for remaining oversized files from Batch 31**
+Batch 32 ships exact-canvas RGBA PNGs. `planter_pot_left` and `planter_pot_right`
+are distinct road-facing sprites and no longer share the same content hash.
+⚠️ `planter_pot_left` and `planter_pot_right` MUST be two distinct sprites with different lighting. See § 1.4.1:
+  - `planter_pot_left` — road on RIGHT → pot's RIGHT face is lit (highlight), LEFT face in shadow
+  - `planter_pot_right` — road on LEFT → pot's LEFT face is lit (highlight), RIGHT face in shadow
+
+1. `assets/structures/stone_brick/stone_wall_low_left.png` — **168 × 56 px** `DELIVERED`
+2. `assets/structures/stone_brick/stone_wall_low_right.png` — **168 × 56 px** `DELIVERED`
+3. `assets/structures/stone_brick/stone_brick_single_left.png` — **56 × 56 px** `DELIVERED`
+4. `assets/structures/stone_brick/stone_brick_single_right.png` — **56 × 56 px** `DELIVERED`
+5. `assets/terrain/blocks/grass_dirt_step_right.png` — **168 × 168 px** `DELIVERED`
+6. `assets/obstacles/planter_pot/planter_pot_left.png` — **64 × 80 px** `DELIVERED`
+7. `assets/obstacles/planter_pot/planter_pot_right.png` — **64 × 80 px** `DELIVERED`
+8. `assets/structures/stone_brick/purple_brick_single.png` — **56 × 56 px** `DELIVERED`
+9. `assets/structures/stone_brick/purple_brick_single_moss.png` — **56 × 56 px** `DELIVERED`
+10. `assets/structures/stone_brick/purple_brick_stairs_left.png` — **168 × 112 px** `DELIVERED`
+
+**Batch 33 — after Batch 32 (remaining reexports of Batch 25–29):**
+Skip files already delivered in Batch 32. The next pending slice starts at item 4.
+
+1. `assets/structures/stone_brick/purple_brick_single.png` — **56 × 56 px** `DELIVERED` `[batch-32]`
+2. `assets/structures/stone_brick/purple_brick_single_moss.png` — **56 × 56 px** `DELIVERED` `[batch-32]`
+3. `assets/structures/stone_brick/purple_brick_stairs_left.png` — **168 × 112 px** `DELIVERED` `[batch-32]`
+4. `assets/structures/stone_brick/purple_brick_stairs_right.png` — **168 × 112 px** `PENDING_REEXPORT` ⚠️ restore Batch 26 correct version
+5. `assets/structures/platforms/grass_dirt_platform_tile_01.png` — **96 × 40 px** `PENDING_REEXPORT`
+6. `assets/terrain/blocks/grass_dirt_platform_01.png` — **192 × 40 px** `PENDING_REEXPORT`
+7. `assets/terrain/blocks/grass_dirt_stair_block_01.png` — **96 × 96 px** `PENDING_REEXPORT`
+8. `assets/terrain/blocks/grass_dirt_step_right.png` — **168 × 168 px** `DELIVERED` `[batch-32]`
+9. `assets/effects/collect_burst/collect_burst_05.png` — **96 × 96 px** `PENDING_REEXPORT`
+10. `assets/effects/collect_burst/collect_burst_06.png` — **96 × 96 px** `PENDING_REEXPORT`
+
+**Remaining after Batch 29 (≈ 24 files — Batch 30–31):**
+- `assets/effects/collect_burst/collect_burst_07.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/effects/collect_burst/collect_burst_08.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/obstacles/vine_barrier/vine_barrier_spiral_01.png` — **192 × 56 px** `PENDING_REEXPORT`
+- `assets/obstacles/vine_barrier/vine_barrier_spiral_02.png` — **192 × 56 px** `PENDING_REEXPORT`
+- `assets/obstacles/vine_barrier/vine_barrier_single_03.png` — **64 × 56 px** `PENDING_NEW`
+- `assets/obstacles/vine_barrier/vine_barrier_single_04.png` — **64 × 56 px** `PENDING_NEW`
+- `assets/effects/hit_flash/hit_flash_01..04.png` — **64 × 36 px** each (4 files) `PENDING_NEW`
+- `assets/effects/lane_swoosh/lane_swoosh_01..04.png` — **96 × 64 px** each (4 files) `PENDING_NEW`
+- `assets/decor/large/bushes/bush_large.png` — `PENDING_NEW`
+- `assets/decor/large/bushes/bush_large_flower.png` — `PENDING_NEW`
+- `assets/collectibles/orchid_gold/orchid_gold_collect_01.png` — **96 × 96 px** `PENDING_NEW`
+- `assets/structures/stone_brick/purple_brick_block_iso_01.png` — **56 × 56 px** `PENDING_REEXPORT`
+- `assets/structures/stone_brick/mossy_stone_tile_01.png` — **56 × 56 px** `PENDING_REEXPORT`
+- `assets/structures/stone_brick/purple_brick_stairs_01.png` — **168 × 112 px** `PENDING_REEXPORT`
+- `assets/structures/stone_brick/purple_brick_stairs_02.png` — **168 × 112 px** `PENDING_REEXPORT`
+- `assets/structures/platforms/grass_platform_01.png` — **192 × 40 px** `PENDING_REEXPORT`
+- `assets/structures/platforms/grass_platform_02.png` — **192 × 40 px** `PENDING_REEXPORT`
+- `assets/terrain/blocks/grass_terrain_block_01.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/terrain/blocks/grass_terrain_block_02.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/effects/collect_burst/orchid_burst_01.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/effects/collect_burst/orchid_burst_02.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/structures/stone_brick/purple_stone_stairs_grass_01.png` — **168 × 112 px** `PENDING_REEXPORT`
+- `assets/structures/stone_brick/purple_mossy_stone_block_01.png` — **56 × 56 px** `PENDING_REEXPORT`
+- `assets/structures/platforms/grass_dirt_platform_double_01.png` — **192 × 40 px** `PENDING_REEXPORT`
+- `assets/effects/sparkle/gold_star_sparkle_01.png` — **16 × 16 px** `PENDING_REEXPORT`
+- `assets/effects/sparkle/pixel_star_01.png` — **16 × 16 px** `PENDING_REEXPORT`
+- `assets/effects/collect_burst/pixel_burst_glow_center_01.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/effects/hit_flash/pixel_art_flash_transparent_01.png` — **64 × 36 px** `PENDING_REEXPORT`
+- `assets/effects/collect_burst/pixel_burst_flash_01.png` — **96 × 96 px** `PENDING_REEXPORT`
+- `assets/obstacles/vine_barrier/thorny_vine_decor_01.png` — **192 × 56 px** `PENDING_REEXPORT`
+
+**Batch 25 — Effects, Vine & New Structures**
+⚠️ ALL 10 FILES ARE OVERSIZED RAW EXPORTS — status `PENDING_REEXPORT`. Do NOT use in engine until re-exported at canonical sizes.
+⚠️ `sparkle_05.png` violates STOP LIST (canonical sparkle = 4 frames only). Do not wire; do not redraw.
+⚠️ `purple_brick_stairs_left.png` — only LEFT variant delivered; right pair still missing.
+
+| File | Delivered size | Canonical target | Status |
+|---|---|---|---|
+| `assets/effects/collect_burst/collect_burst_02.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/collect_burst_03.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/collect_burst_04.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/sparkle/sparkle_04.png` | 1254 × 1254 | **16 × 16 px** | `PENDING_REEXPORT` |
+| `assets/effects/sparkle/sparkle_05.png` | 1672 × 941 | — | `DO_NOT_REDRAW` (beyond canonical 4-frame set) |
+| `assets/obstacles/vine_barrier/vine_barrier_single_02.png` | 1341 × 1173 | **64 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_single.png` | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_stairs_left.png` | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` |
+| `assets/structures/platforms/grass_dirt_platform_tile_01.png` | 1254 × 1254 | **96 × 40 px** (match platform family) | `PENDING_REEXPORT` |
+| `assets/terrain/blocks/grass_dirt_stair_block_01.png` | 1254 × 1254 | **96 × 96 px** (match block family) | `PENDING_REEXPORT` |
+
+**Batch 26 — Reexports, Missing Right Pairs & Step Blocks**
+Do not redraw these unless developer explicitly requests a rework:
+
+* `assets/effects/sparkle/sparkle_04.png` — 16 × 16 px
+* `assets/effects/collect_burst/collect_burst_02.png` — 96 × 96 px
+* `assets/effects/collect_burst/collect_burst_03.png` — 96 × 96 px
+* `assets/effects/collect_burst/collect_burst_04.png` — 96 × 96 px
+* `assets/obstacles/vine_barrier/vine_barrier_single_02.png` — 64 × 56 px
+* `assets/structures/stone_brick/stone_wall_stairs_right.png` — 168 × 112 px
+* `assets/structures/stone_brick/purple_brick_stairs_right.png` — 168 × 112 px
+* `assets/structures/stone_brick/purple_brick_single_right.png` — 56 × 56 px
+* `assets/terrain/blocks/grass_dirt_step_left.png` — 168 × 168 px
+* `assets/terrain/blocks/grass_dirt_step_right.png` — 168 × 168 px
+
+**Batch 27 — Collect Burst, New Variants & Spiral Barriers**
+⚠️ ALL 10 FILES ARE OVERSIZED RAW EXPORTS — status `PENDING_REEXPORT`.
+⚠️ Items marked `[dup-26]` overwrite files already delivered at correct size in Batch 26 — designer sent oversized versions again.
+
+| File | Delivered size | Canonical target | Status |
+|---|---|---|---|
+| `assets/structures/stone_brick/purple_brick_single_moss.png` | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` (new mossy variant) |
+| `assets/structures/stone_brick/purple_brick_stairs_right.png` | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` `[dup-26]` |
+| `assets/terrain/blocks/grass_dirt_platform_01.png` | 1942 × 809 | **192 × 40 px** (match platform family) | `PENDING_REEXPORT` (new file) |
+| `assets/terrain/blocks/grass_dirt_step_right.png` | 1254 × 1254 | **168 × 168 px** | `PENDING_REEXPORT` `[dup-26]` |
+| `assets/effects/collect_burst/collect_burst_05.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/collect_burst_06.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/collect_burst_07.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/collect_burst_08.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/obstacles/vine_barrier/vine_barrier_spiral_01.png` | 1341 × 1173 | **192 × 56 px** (match vine_barrier family) | `PENDING_REEXPORT` (new spiral variant) |
+| `assets/obstacles/vine_barrier/vine_barrier_spiral_02.png` | 1341 × 1173 | **192 × 56 px** | `PENDING_REEXPORT` (new spiral variant) |
+
+**Batch 28 — ISO Blocks, Stairs, Platforms & Orchid Burst**
+✅ Paths fixed by developer (2026-05-31) — all 10 files moved to canonical locations.
+⚠️ ALL 10 FILES still oversized — `PENDING_REEXPORT`. Designer must re-export at canonical sizes.
+
+| Canonical path (fixed) | Delivered size | Target size | Status |
+|---|---|---|---|
+| `assets/structures/stone_brick/purple_brick_block_iso_01.png` | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/mossy_stone_tile_01.png` | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_stairs_01.png` | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_stairs_02.png` | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` |
+| `assets/structures/platforms/grass_platform_01.png` | 1942 × 809 | **192 × 40 px** | `PENDING_REEXPORT` |
+| `assets/structures/platforms/grass_platform_02.png` | 1881 × 836 | **192 × 40 px** | `PENDING_REEXPORT` |
+| `assets/terrain/blocks/grass_terrain_block_01.png` | 1254 × 1254 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/terrain/blocks/grass_terrain_block_02.png` | 1254 × 1254 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/orchid_burst_01.png` | 1254 × 1254 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/orchid_burst_02.png` | 1254 × 1254 | **96 × 96 px** | `PENDING_REEXPORT` |
+
+**Batch 29 — Stairs, Blocks, Platforms, Sparkles, Explosions & Vine Decor**
+✅ Paths fixed by developer (2026-06-01) — 9 files moved; 1 conflict isolated to `_source/`.
+⚠️ ALL 9 ACTIVE FILES still oversized — `PENDING_REEXPORT`. Designer must re-export at canonical sizes.
+⚠️ `grass_dirt_block_01.png` — CONFLICT with Batch 24 accepted file. Moved to `assets/_source/rejected_duplicates/grass_dirt_block_01_batch29_dup.png`. Do not use.
+
+| Canonical path (fixed) | Delivered size | Target size | Status |
+|---|---|---|---|
+| `assets/structures/stone_brick/purple_stone_stairs_grass_01.png` | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_mossy_stone_block_01.png` | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/terrain/platforms/grass_dirt_block_01.png` | 1254 × 1254 | — | `REJECTED` — duplicate of Batch 24, moved to `_source/rejected_duplicates/` |
+| `assets/structures/platforms/grass_dirt_platform_double_01.png` | 1254 × 1254 | **192 × 40 px** | `PENDING_REEXPORT` |
+| `assets/effects/sparkle/gold_star_sparkle_01.png` | 1254 × 1254 | **16 × 16 px** | `PENDING_REEXPORT` |
+| `assets/effects/sparkle/pixel_star_01.png` | 1672 × 941 | **16 × 16 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/pixel_burst_glow_center_01.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/effects/hit_flash/pixel_art_flash_transparent_01.png` | 1672 × 941 | **64 × 36 px** | `PENDING_REEXPORT` |
+| `assets/effects/collect_burst/pixel_burst_flash_01.png` | 1672 × 941 | **96 × 96 px** | `PENDING_REEXPORT` |
+| `assets/obstacles/vine_barrier/thorny_vine_decor_01.png` | 1341 × 1173 | **192 × 56 px** | `PENDING_REEXPORT` |
+
+**Batch 30 — Stone Walls, Brick Singles, Step & Planters**
+✅ Paths fixed by developer (2026-06-01) — 3 alternates moved to `_source/future/alternates/`.
+🚨 ALL 7 PRIMARY FILES overwrite previously-accepted Batch 22/26 versions with oversized raws — correct art is LOST until reexport.
+⚠️ `planter_pot_left.png` and `planter_pot_right.png` are byte-identical (a single source PNG was exported for both halves). Left ≠ Right. Redraw required — see Golden Rule § 1.4.1.
+
+| File | Was accepted in | Delivered size | Target size | Status |
+|---|---|---|---|---|
+| `assets/structures/stone_brick/stone_wall_low_left.png` | Batch 22 ✅ | 2172 × 724 | **168 × 56 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted |
+| `assets/structures/stone_brick/stone_wall_low_right.png` | Batch 22 ✅ | 2172 × 724 | **168 × 56 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted |
+| `assets/structures/stone_brick/stone_brick_single_left.png` | Batch 22 ✅ | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted |
+| `assets/structures/stone_brick/stone_brick_single_right.png` | Batch 22 ✅ | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted |
+| `assets/terrain/blocks/grass_dirt_step_right.png` | Batch 26 ✅ | 1254 × 1254 | **168 × 168 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted |
+| `assets/obstacles/planter_pot/planter_pot_left.png` | Batch 22 ✅ | 1122 × 1402 | **64 × 80 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted + identical to right |
+| `assets/obstacles/planter_pot/planter_pot_right.png` | Batch 22 ✅ | 1122 × 1402 | **64 × 80 px** | `PENDING_REEXPORT` ⚠️ overwrote accepted + identical to left |
+| `assets/_source/future/alternates/stone_stairs_alt_01.png` | — | 1536 × 1024 | — | moved to `_source/future/` — not in brief |
+| `assets/_source/future/alternates/stone_stairs_alt_02.png` | — | 1536 × 1024 | — | moved to `_source/future/` — not in brief |
+| `assets/_source/future/alternates/platform_grass_vines_alt_01.png` | — | 1619 × 971 | — | moved to `_source/future/` — not in brief |
+
+**Batch 31 — Urgent Restore + Purple Brick Redelivery**
+🟡 Partial progress vs Batch 30: stone wall and brick single pairs are now distinct left/right files.
+⚠️ ALL 10 FILES still oversized — `PENDING_REEXPORT`.
+⚠️ `planter_pot_left` and `planter_pot_right` are **still byte-identical** (md5 match). Must be redrawn as two distinct sprites with correct per-side lighting (§ 1.4.1).
+
+| File | Left ≠ Right? | Delivered size | Target size | Status |
+|---|---|---|---|---|
+| `assets/structures/stone_brick/stone_wall_low_left.png` | ✅ distinct | 2172 × 724 | **168 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/stone_wall_low_right.png` | ✅ distinct | 2172 × 724 | **168 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/stone_brick_single_left.png` | ✅ distinct | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/stone_brick_single_right.png` | ✅ distinct | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/terrain/blocks/grass_dirt_step_right.png` | — | 1254 × 1254 | **168 × 168 px** | `PENDING_REEXPORT` |
+| `assets/obstacles/planter_pot/planter_pot_left.png` | ⚠️ IDENTICAL | 1122 × 1402 | **64 × 80 px** | `PENDING_REEXPORT` + redraw required |
+| `assets/obstacles/planter_pot/planter_pot_right.png` | ⚠️ IDENTICAL | 1122 × 1402 | **64 × 80 px** | `PENDING_REEXPORT` + redraw required |
+| `assets/structures/stone_brick/purple_brick_single.png` | — | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_single_moss.png` | — | 1254 × 1254 | **56 × 56 px** | `PENDING_REEXPORT` |
+| `assets/structures/stone_brick/purple_brick_stairs_left.png` | — | 1536 × 1024 | **168 × 112 px** | `PENDING_REEXPORT` |
+
+### 8. STOP LIST — do not generate more unless explicitly requested
+Do not generate more of these stems without a direct developer request:
+
+* `player_farmer_run_*`
+* `player_farmer_jump_*`
+* `player_farmer_crouch_*`
+* generic `sparkle_*` variants outside the canonical requested frames
+* extra dust variants outside canonical animation frames
+* extra clouds
+* extra powerup auras / medallions
+* duplicate decor with `_01`, `_02`, `_alt`, `_new`
+* any Cyrillic or transliterated filenames
+* any asset under a non-canonical folder when a canonical folder already exists
+
+### 9. Archive naming rule
+Every archive must be named with an incremental batch number and category:
+`orchid_quest_assets_batch_<number>_<category>_10.zip`
+
+Example:
+`orchid_quest_assets_batch_22_terrain_structures_10.zip`
+
+The zip must contain:
+```
+README.md
+MANIFEST.json
+assets/
+_source/optional_originals/
+_previews/optional_contact_sheet.png
+```
+
+### 10. Final check before packaging
+Before creating the zip, verify:
+
+* no duplicate file paths
+* no Cyrillic final filenames
+* no wrong folders
+* each file matches the requested asset path
+* every generated image is separate, not a collage
+* archive contains exactly the requested batch files
+
+---
+
+> This section **supersedes** everything from "🎯 ACTIVE DESIGNER ASKS — 2026-05-30"
+> down to "## 0. Context and target audience". Those sections are kept only as
+> history. The **drawing spec** (palette § 3, sizes § 5, light § 1.4, rules § 4)
+> from "## 0." onward is still the authoritative HOW-TO-DRAW reference.
+> Forensic data backing this plan came from a one-time audit — run `node scripts/audit-assets.mjs` and `node scripts/audit-images.mjs` to regenerate the live numbers.
+
+### The real situation (measured, not guessed)
+
+| Finding | Number | Meaning |
+|---|---|---|
+| Live PNGs | 373 (204 MiB) | the engine-visible set (excludes `_source/`) |
+| **Byte-identical duplicates** | **1 pair, intentional** | NOT a duplication problem — that pair is a sanctioned anim-loop reuse |
+| **Oversized (> 256 px)** | **245 / 373** | THE problem: sprites exported at ~1254×1254 but drawn at ~80–160 px |
+| **Fully unused PNGs** | **79 (63 MiB)** | shipped, never referenced → delete |
+| **Dead registry keys** | **6** | engine expects art that was never delivered → breaks loading |
+| `.DS_Store` junk committed | 5 | macOS cruft → remove + gitignore |
+
+**Headline:** there are essentially **no duplicate images** to clean up. The bloat (204 MiB, slow load, the golden-flower "flame" render glitch) all comes from **oversized exports**. The fix is **re-export at the real draw size** + **delete the 79 unused files**.
+
+### Two workstreams
+
+**🅰 Cleanup — developer-side, NO drawing** (the designer does not act on this; listed so you don't redraw things we're deleting):
+- Delete the **79 unused PNGs** (full list in the forensics doc). Biggest wins: `player/farmer_remaining_batch/` + `player/farmer_unfinished_batch/` (13 raw 1024×1536 / 1122×1402 files, Cyrillic names, 13.9 MiB), all of `pickups/aura/` (4), animation tails `farmer_jump_07..16` + `farmer_run_09..12`.
+- Remove 5 `.DS_Store`, add to `.gitignore`.
+- The **6 dead keys** are **kept on purpose** — Batch 1 below delivers exactly that art, so they wire automatically on drop-in.
+
+**🅱 Designer re-export — DRAWING, in BATCHES OF 10**, priority order below. Rule for every entry: **same artwork, exported on the canonical small canvas** — these are downscales / crisp re-authors, not new concepts. Transparent RGBA (PNG color-type 6), 1×1 pixel grid, sun upper-right (§ 1.4), no AA except the alpha assets noted.
+
+---
+
+### ▶ BATCH 1 (10 files) — Gold orchid trail + collect anim  ·  PRIORITY P0
+
+This batch fixes both the **6 dead keys** (loading errors) AND the center-screen
+"golden flame" glitch (the orchid currently renders from a 1254×1254 source
+crushed to ~82 px → noise). Match the already-accepted siblings
+`orchid_gold_collect_07.png` / `_08.png` (96×96) exactly — same hue, outline, palette.
+
+| # | File (path: `assets/collectibles/orchid_gold/`) | Action | Current → Target | Notes |
+|---|---|---|---|---|
+| 1 | `orchid_gold_main.png` | **re-export** | 1254×1254 → **96×96** | the primary un-collected orchid; crisp 5-petal gold bloom |
+| 2 | `orchid_gold_collect_02.png` | **re-export** | 1254×1254 → **96×96** | collect-burst frame 2/8 |
+| 3 | `orchid_gold_collect_03.png` | **re-export** | 1254×1254 → **96×96** | collect-burst frame 3/8 |
+| 4 | `orchid_gold_collect_04.png` | **re-export** | 1254×1254 → **96×96** | collect-burst frame 4/8 |
+| 5 | `orchid_gold_collect_05.png` | **NEW (dead key)** | — → **96×96** | burst ~85% travel, petals/specks |
+| 6 | `orchid_gold_collect_06.png` | **NEW (dead key)** | — → **96×96** | burst residual fade, closes pickup |
+| 7 | `orchid_gold_sparkle_01.png` | **NEW (dead key)** | — → **96×96** | idle-shimmer 1/4 orbiting the orchid |
+| 8 | `orchid_gold_sparkle_02.png` | **NEW (dead key)** | — → **96×96** | idle-shimmer 2/4 |
+| 9 | `orchid_gold_sparkle_03.png` | **NEW (dead key)** | — → **96×96** | idle-shimmer 3/4 |
+| 10 | `orchid_gold_sparkle_04.png` | **NEW (dead key)** | — → **96×96** | idle-shimmer 4/4, loops to 1 |
+
+> ❌ Do NOT keep the 1254×1254 originals. Overwrite in place at 96×96.
+
+---
+
+### ▶ BATCH 2 (10 files) — Pickups, currency icon & halos  ·  PRIORITY P0/P1
+
+All currently 1254×1254 raw exports, drawn far smaller. Re-export at target. The three `glow`/`halo` entries are **alpha assets** — soft radial, AA allowed.
+
+| # | File | Action | Current → Target | Notes |
+|---|---|---|---|---|
+| 1 | `pickups/pickup_magnet.png` | re-export | 1254² → **96×96** | power-up icon |
+| 2 | `pickups/pickup_shield.png` | re-export | 1254² → **96×96** | power-up icon |
+| 3 | `pickups/pickup_score_x2.png` | re-export | 1254² → **96×96** | power-up icon |
+| 4 | `collectibles/gold/gold_flower_emblem_01.png` | re-export | 1254² → **64×64** | HUD currency icon (top-left counter) |
+| 5 | `collectibles/gold/gold_flower_glow_01.png` | re-export (alpha) | 1254² → **128×128** | orchid halo frame 1 |
+| 6 | `collectibles/gold/gold_flower_glow_02.png` | re-export (alpha) | 1254² → **128×128** | orchid halo frame 2 |
+| 7 | `collectibles/gold/gold_star_01.png` | re-export | 1254² → **64×64** | bonus spark icon |
+| 8 | `collectibles/orchid_blue/orchid_blue_rare_halo.png` | re-export (alpha) | 1254² → **128×128** | rare blue-orchid aura |
+| 9 | `collectibles/orchid_gold/orchid_gold_big.png` | re-export | 1035×936 → **128×128** | large-scale orchid (near camera) |
+| 10 | `collectibles/flower-purple-cluster.png` | re-export | 319×332 → **96×96** | purple roadside flower cluster (decor) |
+
+---
+
+### ▶ BATCH 3 (10 files) — Corridor terrain & structure blocks  ·  PRIORITY P2 (perf)
+
+These are the side-of-road blocks: visually fine in-game but exported huge
+(1254×1254 … 2172×724), so they dominate the 204 MiB / slow load. Re-export to
+match each family's **already-accepted sibling** size — do NOT invent a new size.
+**Dev to confirm the exact target px per family at handoff** (the wave-log below
+lists historical numbers that conflict; trust the accepted on-disk sibling).
+Ship only files confirmed still-used (some are on the delete list).
+
+| # | File | Current → Target | Match sibling |
+|---|---|---|---|
+| 1 | `terrain/blocks/grass_dirt_block_01.png` | oversized → **= grass_dirt_block_left.png** | accepted block |
+| 2 | `terrain/blocks/grass_dirt_block_02.png` | oversized → **= grass_dirt_block_left.png** | accepted block |
+| 3 | `terrain/blocks/grass_dirt_block_flower_01.png` | oversized → **= grass_dirt_block_left.png** | accepted block |
+| 4 | `terrain/blocks/grass_dirt_block_flower_02.png` | oversized → **= grass_dirt_block_left.png** | accepted block |
+| 5 | `structures/platforms/grass_dirt_platform_long.png` | 2172×724 → **= grass_dirt_platform_long_left.png (192×40)** | accepted platform |
+| 6 | `structures/stone_brick/stone_brick_single.png` | oversized → **56×56** | stone set |
+| 7 | `structures/stone_brick/stone_wall_low.png` | oversized → **168×56** | stone set |
+| 8 | `structures/stone_brick/stone_wall_stairs.png` | oversized → **168×112** | stone set |
+| 9 | `obstacles/planter_pot/planter_pot.png` | oversized → **64×80** | planter set |
+| 10 | `obstacles/vine_barrier/vine_barrier_01.png` | oversized → match the 4-frame set | vine anim |
+
+> Batches 4+ (remaining oversized USED sprites — `misc/` power-up stand-ins,
+> `background/`, `effects/` bursts, `ui/buttons/`) are **lower priority (perf only,
+> no visual bug)**. After the developer runs the cleanup (🅰) the remaining
+> oversized-USED set is small; the dev will hand you the exact next-10 list then,
+> so you never re-export a file that's about to be deleted.
+
+### 🔑 Why this order
+1. **Batch 1** = the only batch that fixes a *visible* bug (flame-orchid) + *loading* errors (6 dead keys). Do first.
+2. **Batch 2** = HUD/pickup polish + the heaviest 1254² collectibles.
+3. **Batch 3+** = pure file-size / load-time wins (the 204 MiB → target ~30–40 MiB).
+
+### 🔒 Canonical-size rule (so this never recurs)
+Every sprite is **authored/exported at the size it is drawn on screen**, never a 1254×1254 raw generator dump. Player = 64×96; in-lane collectibles ≈ 96×96; HUD icons 48–64; small decor ≤ 96; blocks/platforms per family. CI (`node scripts/audit-assets.mjs --check --strict`) already fails the build on off-canonical **player** frames; we are extending that check to collectibles next.
+
+---
+
+## 🗄 Historical wave-log (SUPERSEDED — kept for reference only)
+
 ## 🎯 ACTIVE DESIGNER ASKS — 2026-05-30 (curation pass, 7 files)
 
-Companion doc: [`asset-curation-next-actions.md`](./asset-curation-next-actions.md).
+(Superseded — see the ROUND-2 REVIEW + CURRENT PLAN sections at the top of this file.)
 
 After the duplicate-archive PR (33 files → `_source/rejected_2026_05_30/`)
 and the PENDING_WIRE curation pass (10 alt-art files → `_source/future/`),

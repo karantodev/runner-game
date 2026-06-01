@@ -45,12 +45,18 @@ export const PATTERNS = Object.freeze([
 
   {
     // Obstacle left — guide flowers in center/right arrive first.
+    // v4.2 — P2 reference-match: telegraph flowers in the hazard lane
+    // (-1) at offsets 6 and 13 so the player sees the danger lane lit
+    // up before the mushroom becomes visible.
     id: 'd1-left-block',
     difficulty: 1,
     weight: 3,
     items: [
       { kind: 'flower', lane: 0,  offset: 0  },
       { kind: 'flower', lane: 1,  offset: 0  },
+      // Telegraph: two flowers in the hazard lane ahead of the mushroom.
+      { kind: 'flower', lane: -1, offset: 6  },
+      { kind: 'flower', lane: -1, offset: 13 },
       { kind: 'obstacle', lane: -1, type: 'mushroom', variant: 'red', offset: 22 },
       { kind: 'flower', lane: 0,  offset: 36 },
       { kind: 'flower', lane: 1,  offset: 44 },
@@ -59,12 +65,17 @@ export const PATTERNS = Object.freeze([
 
   {
     // Mirror: obstacle right.
+    // v4.2 — P2 reference-match: telegraph flowers in hazard lane (+1)
+    // before the wheat so the player sees the lane marked before jumping.
     id: 'd1-right-block',
     difficulty: 1,
     weight: 3,
     items: [
       { kind: 'flower', lane: 0,  offset: 0  },
       { kind: 'flower', lane: -1, offset: 0  },
+      // Telegraph: two flowers in the hazard lane ahead of the wheat.
+      { kind: 'flower', lane: 1,  offset: 6  },
+      { kind: 'flower', lane: 1,  offset: 13 },
       { kind: 'obstacle', lane: 1, type: 'wheat', offset: 22 },
       { kind: 'flower', lane: 0,  offset: 36 },
       { kind: 'flower', lane: -1, offset: 44 },
@@ -72,15 +83,21 @@ export const PATTERNS = Object.freeze([
   },
 
   {
-    // Center blocked — both side flowers guide player off center.
+    // v4.2 — P2 reference-match: moved bush from lane 0 → -1 so it is never
+    // buried in the center orchid trail. Telegraph flowers guide the player
+    // to the safe right lane before the hazard appears.
     id: 'd1-center-block',
     difficulty: 1,
     weight: 2,
     items: [
-      { kind: 'flower', lane: -1, offset: 0  },
+      { kind: 'flower', lane: 0,  offset: 0  },
       { kind: 'flower', lane: 1,  offset: 0  },
-      { kind: 'obstacle', lane: 0, type: 'bush', offset: 20 },
-      { kind: 'flower', lane: -1, offset: 34 },
+      // Telegraph: two flowers in the hazard lane (-1) ahead of the bush,
+      // cueing "here comes something — step off this lane".
+      { kind: 'flower', lane: -1, offset: 4  },
+      { kind: 'flower', lane: -1, offset: 11 },
+      { kind: 'obstacle', lane: -1, type: 'bush', offset: 20 },
+      { kind: 'flower', lane: 0,  offset: 34 },
       { kind: 'flower', lane: 1,  offset: 34 },
     ],
   },
@@ -119,16 +136,21 @@ export const PATTERNS = Object.freeze([
   },
 
   {
-    // Only center blocked; reward is on whichever side the player chooses.
+    // v4.2 — P2 reference-match: moved mushroom from lane 0 → +1 so it is
+    // never hidden in the center orchid trail. Telegraph flowers in the
+    // hazard lane direct the player left before the obstacle appears.
     id: 'd2-center-block',
     difficulty: 2,
     weight: 2,
     items: [
       { kind: 'flower', lane: -1, offset: 0  },
-      { kind: 'flower', lane: 1,  offset: 0  },
-      { kind: 'obstacle', lane: 0, type: 'mushroom', variant: 'red', offset: 22 },
+      { kind: 'flower', lane: 0,  offset: 0  },
+      // Telegraph: two flowers in the hazard lane (+1) ahead of the mushroom.
+      { kind: 'flower', lane: 1,  offset: 6  },
+      { kind: 'flower', lane: 1,  offset: 13 },
+      { kind: 'obstacle', lane: 1, type: 'mushroom', variant: 'red', offset: 22 },
       { kind: 'flower', lane: -1, offset: 36 },
-      { kind: 'flower', lane: 1,  offset: 36 },
+      { kind: 'flower', lane: 0,  offset: 36 },
       { kind: 'flower', lane: -1, offset: 44 },
     ],
   },

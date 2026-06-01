@@ -1,4 +1,5 @@
 import { getCollectibleSpec } from '../ecs/collectibleTypes.js';
+import { getObstacleRule } from '../ecs/obstacleRules.js';
 
 /**
  * Detects player <-> obstacle and player <-> collectible interactions.
@@ -13,7 +14,7 @@ import { getCollectibleSpec } from '../ecs/collectibleTypes.js';
  *   - life:collected     { lane, high }
  *   - power:collected    { type, lane, high }
  *   - hazard:hit         { type, laneX } — only when player is vulnerable
- *   - hazard:cleared     { kind: 'jump' | 'crouch' }
+ *   - hazard:cleared     { kind: 'jump' | 'crouch', type }
  *   - hazard:nearMiss    { kind, type, laneX, clearance } v3.1 — narrow escape
  */
 export class CollisionSystem {
@@ -31,16 +32,14 @@ export class CollisionSystem {
 
   #collect(world) {
     const occupiedLanes = world.getOccupiedLanes();
-    const playerLaneX = world.player.components.LaneState.laneX;
     const playerY = world.player.components.VerticalState.y;
 
     for (const e of world.registry.query('Position', 'CollectibleData')) {
       const pos = e.components.Position;
       const data = e.components.CollectibleData;
-      if (data.collected || pos.distance <= -3 || pos.distance >= 3) continue;
+      if (data.collected || !crossedDepthWindow(pos, -3, 3)) continue;
 
-      const inLane = occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.48)
-        || Math.abs(playerLaneX - pos.lane) < 0.48;
+      const inLane = occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.48);
       const heightOK = data.high ? playerY < -30 : true;
       if (!inLane || !heightOK) continue;
 
@@ -108,26 +107,26 @@ export class CollisionSystem {
       const pos = e.components.Position;
       const box = e.components.Hitbox;
       box.warning = false;
-      if (box.hit || pos.distance <= -3) continue;
+      if (box.hit || passedDepthWindow(pos, -3)) continue;
 
       const inLane = box.allLanes
         ? true
-        : occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.56)
-          || Math.abs(playerLaneX - pos.lane) < 0.56;
+        : occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.56);
 
       // Widened from 18 → 32 so a striped warning band has time to read.
       // At base speed 0.9 that's ~36 frames (~0.6 sec) of advance notice;
       // at full burst (×1.58) about 22 frames (~0.37 sec) — still readable.
       if (inLane && pos.distance > 3 && pos.distance < 32) box.warning = true;
-      if (pos.distance >= 3) continue;
+      if (!crossedDepthWindow(pos, -3, 3)) continue;
       if (!inLane) continue;
 
       const jumpingOver = playerY < -25;
+      const rule = getObstacleRule(box.type);
       const cfgNearMiss = this.config.gameplay.nearMiss;
-      if (box.type === 'vine' && jumpingOver) {
+      if (rule.clearBy === 'jump' && jumpingOver) {
         box.hit = true;
-        this.eventBus.emit('hazard:cleared', { kind: 'jump' });
-        // v3.1: a "near miss" is a vine cleared with low vertical clearance.
+        this.eventBus.emit('hazard:cleared', { kind: 'jump', type: box.type });
+        // v3.1: a "near miss" is a jump hazard cleared with low vertical clearance.
         // playerY between -25 and -(25+verticalWindow) is the narrow band.
         const clearance = Math.abs(playerY) - 25;
         if (clearance >= 0 && clearance <= cfgNearMiss.verticalWindow) {
@@ -136,9 +135,9 @@ export class CollisionSystem {
         }
         continue;
       }
-      if (box.type === 'overhang' && isCrouching) {
+      if (rule.clearBy === 'crouch' && isCrouching) {
         box.hit = true;
-        this.eventBus.emit('hazard:cleared', { kind: 'crouch' });
+        this.eventBus.emit('hazard:cleared', { kind: 'crouch', type: box.type });
         // For overhang, "near miss" = crouched within last few frames of
         // the collision zone (didn't react until the very edge).
         if (pos.distance > -1.5 && pos.distance < 0.5) {
@@ -156,4 +155,15 @@ export class CollisionSystem {
       this.eventBus.emit('hazard:hit', { type: box.type, laneX: playerLaneX });
     }
   }
+}
+
+function crossedDepthWindow(pos, min, max) {
+  const previous = pos.previousDistance ?? pos.distance;
+  return Math.min(previous, pos.distance) < max
+    && Math.max(previous, pos.distance) > min;
+}
+
+function passedDepthWindow(pos, min) {
+  const previous = pos.previousDistance ?? pos.distance;
+  return Math.max(previous, pos.distance) <= min;
 }

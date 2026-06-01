@@ -24,6 +24,19 @@ const MOUNTAIN_SCROLL_FACTOR = {
   near: 0.10,
 };
 
+// v4.0 — depth desaturation / darkening per layer.
+// Far layers receive both treatments; mid only desaturate; near untouched.
+// Values driven by world.config.visual.depth (farDesaturate / farDarken).
+// Fallbacks match gameConfig defaults so the renderer is safe without config.
+const DEPTH_LAYER = {
+  // [desaturateStrength, darkenStrength] relative to base config values
+  far:      [1.00, 1.00],  // full farDesaturate + farDarken
+  mid:      [0.60, 0.40],  // 60% desaturate, 40% darken
+  near:     [0.25, 0.00],  // slight desaturate only
+  mground:  [0.10, 0.00],  // barely touched (closer to player)
+  treeline: [0.05, 0.00],  // nearly pristine
+};
+
 export class BackgroundRenderer {
   constructor({ ctx, projection, assets, sprites }) {
     this.ctx = ctx;
@@ -36,6 +49,12 @@ export class BackgroundRenderer {
     const p = this.projection;
     const width = p.width;
     const scroll = world.scrollOffset;
+
+    // Read depth config (safe fallback to gameConfig defaults).
+    const depthCfg = world.config?.visual?.depth ?? {};
+    const farDesat  = depthCfg.farDesaturate ?? 0.16;
+    const farDarken = depthCfg.farDarken     ?? 0.12;
+    const visualOn  = world.config?.visual?.enabled !== false;
 
     // Clouds — keep the existing custom drift (each cloud has its own
     // x and speed handled by world.#updateClouds).
@@ -55,8 +74,13 @@ export class BackgroundRenderer {
     // is offset by half a peak; mid widened too. This prevents a mountain
     // peak from sitting directly behind / under the castle silhouette.
     this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 32, width + 220, MOUNTAIN_SCROLL_FACTOR.far,  scroll, 0.30);
+    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 20, width, 80, farDesat, farDarken, DEPTH_LAYER.far);
+
     this.#drawMountainLayer(['backgroundMountainsMid'],  p.horizonY + 8,  width + 180, MOUNTAIN_SCROLL_FACTOR.mid,  scroll, 0.62);
+    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 8, width, 60, farDesat, farDarken, DEPTH_LAYER.mid);
+
     this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near, scroll, 0.88);
+    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 28, width, 55, farDesat, farDarken, DEPTH_LAYER.near);
 
     // v3.8.9 wave — midground layer (designer delivery, was brief priority #5).
     // rolling_hills sits between mountains and treeline — gentle wave-form
@@ -66,7 +90,50 @@ export class BackgroundRenderer {
     // Scroll factors midway between near mountains (0.22) and the upcoming
     // foreground decor (~0.95) so the depth ramp is continuous.
     this.#drawMountainLayer(['midgroundHills'],    p.horizonY + 52, width + 110, 0.34, scroll, 0.82);
+    if (visualOn) this.#applyDepthOverlay(p, 0, p.horizonY + 52, width, 45, farDesat, farDarken, DEPTH_LAYER.mground);
+
     this.#drawMountainLayer(['midgroundTreeline'], p.horizonY + 78, width + 90,  0.46, scroll, 0.86);
+    // treeline is closest — no depth overlay (crisp foreground silhouette).
+  }
+
+  /**
+   * Overlay a semi-transparent desaturation + darkening rect over a
+   * recently-drawn layer to push it visually further away. Two passes:
+   *   1. Grey overlay (source-over) for desaturation effect.
+   *   2. Black overlay (source-over) for darkening.
+   *
+   * Both are bounded to [x, y, w, h] so only the target layer is affected.
+   * Weights are scaled by the DEPTH_LAYER multipliers so far/mid/near
+   * layers get proportionally different treatment.
+   *
+   * @param {import('../../world/Projection.js').Projection} p
+   * @param {number} x
+   * @param {number} y
+   * @param {number} w
+   * @param {number} h
+   * @param {number} farDesat  base desaturate strength (0..1)
+   * @param {number} farDark   base darken strength (0..1)
+   * @param {[number,number]} scale  [desatScale, darkScale]
+   */
+  #applyDepthOverlay(p, x, y, w, h, farDesat, farDark, [desatScale, darkScale]) {
+    const ctx = this.ctx;
+    const desat = farDesat * desatScale;
+    const dark  = farDark  * darkScale;
+    if (desat <= 0 && dark <= 0) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    if (desat > 0) {
+      // Grey overlay approximates desaturation on Canvas 2D.
+      ctx.globalAlpha = desat;
+      ctx.fillStyle = 'rgba(180,190,200,1)';
+      ctx.fillRect(x, y, w, h);
+    }
+    if (dark > 0) {
+      ctx.globalAlpha = dark;
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.fillRect(x, y, w, h);
+    }
+    ctx.restore();
   }
 
   /**

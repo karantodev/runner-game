@@ -36,10 +36,29 @@ const seed = seedParam === null
 // Retina up to 2×; `?dpr=N` is an explicit override for testing.
 const pixelRatioChoice = pickPixelRatio(params, GAME_CONFIG.canvas.pixelRatio);
 
-// `?roadStyle=tiles` boots with image-tile road; default is the procedural
-// fillRect tile-grid. Press T at runtime to toggle between the two for
-// quick A/B-comparison.
-const roadStyle = params.get('roadStyle') === 'tiles' ? 'tiles' : 'procedural';
+// The delivered road kit is the production default: it has organic
+// shoulders and worn dividers matching the garden reference. Keep the
+// procedural and legacy tile modes available for live A/B comparison.
+const requestedRoadStyle = params.get('roadStyle');
+const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
+  ? requestedRoadStyle
+  : 'kit';
+
+// Modular side structures can be A/B-tested without touching spawn or
+// collision state. `2d` keeps the delivered sprite art; `3d` uses the
+// lightweight Canvas voxel renderer. Press Y to switch live.
+const requestedBlockStyle = params.get('blockStyle');
+const blockStyle = ['3d', 'voxel'].includes(requestedBlockStyle) ? 'voxel' : 'sprite';
+
+// v4.0 — `?grade=0` switches off the master visual gate: the post-process
+// color grade (saturate/contrast/warm-cool/vignette) and the far-layer
+// depth desaturation. Lets you A/B the atmosphere against the pre-v4.0
+// look. Gameplay-readability layers (orchid trail, obstacle tint, glow,
+// juice) keep their own sub-flags under GAME_CONFIG.visual. Same
+// non-throwing override idiom as the debug flags below.
+if (params.get('grade') === '0') {
+  Object.defineProperty(GAME_CONFIG.visual, 'enabled', { value: false, writable: false, configurable: true });
+}
 
 // `?debugAxis=1` enables castle-axis verification markers (drawn by
 // LandmarksRenderer). Mutates the frozen config via a non-throwing
@@ -141,6 +160,7 @@ const game = new Game(canvas, {
   seed,
   pixelRatio: pixelRatioChoice.value,
   roadStyle,
+  blockStyle,
 });
 
 // Live road-style toggle. Available in every build (not gated on debug)
@@ -151,6 +171,17 @@ window.addEventListener('keydown', (event) => {
   const target = event.target;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
   game.renderer.toggleRoadStyle();
+});
+
+// Live structural-block style toggle. This is intentionally independent
+// of road style so each combination can be compared on the same seed.
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'KeyY' || event.repeat) return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const target = event.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+  game.renderer.toggleBlockStyle();
+  updateDebugPanel();
 });
 
 new TouchControls(game.input);
@@ -182,6 +213,7 @@ const debugState = {
   lastCapture: null,
   errorCountNode: null,
   captureNode: null,
+  blockStyleNode: null,
 };
 
 function updateDebugPanel() {
@@ -192,6 +224,9 @@ function updateDebugPanel() {
     debugState.captureNode.textContent = debugState.lastCapture
       ? `Last capture: ${debugState.lastCapture.path.split('/').pop()}`
       : 'Last capture: none';
+  }
+  if (debugState.blockStyleNode) {
+    debugState.blockStyleNode.textContent = `Blocks: ${game.renderer.blockStyle === 'voxel' ? '3D cubes' : '2D sprites'}`;
   }
 }
 
@@ -240,6 +275,9 @@ function installDebugPanel(debugApi) {
   debugState.captureNode = document.createElement('div');
   panel.appendChild(debugState.captureNode);
 
+  debugState.blockStyleNode = document.createElement('div');
+  panel.appendChild(debugState.blockStyleNode);
+
   const captureButton = document.createElement('button');
   captureButton.type = 'button';
   captureButton.textContent = 'Capture PNG';
@@ -259,7 +297,16 @@ function installDebugPanel(debugApi) {
   });
   panel.appendChild(restartButton);
 
-  for (const button of [captureButton, restartButton]) {
+  const blocksButton = document.createElement('button');
+  blocksButton.type = 'button';
+  blocksButton.textContent = 'Toggle 2D / 3D Blocks';
+  blocksButton.addEventListener('click', () => {
+    game.renderer.toggleBlockStyle();
+    updateDebugPanel();
+  });
+  panel.appendChild(blocksButton);
+
+  for (const button of [captureButton, restartButton, blocksButton]) {
     Object.assign(button.style, {
       padding: '6px 8px',
       border: '0',
@@ -341,6 +388,7 @@ function createDebugApi() {
         obstacles,
         collectibles,
         scenery,
+        blockStyle: game.renderer.blockStyle,
         // v3.8.37 — Phase 2 placement validation counter. 0 means no
         // spawn attempted by SpawnSystem / DecorationSystem violated a
         // zone / adjacency rule in this run. Regression-tested by the
@@ -356,6 +404,19 @@ function createDebugApi() {
     },
     getSpawnLog() {
       return [...game.world.spawnSystem.spawnLog];
+    },
+    getBlockStyle() {
+      return game.renderer.blockStyle;
+    },
+    setBlockStyle(style) {
+      const next = game.renderer.setBlockStyle(style);
+      updateDebugPanel();
+      return next;
+    },
+    toggleBlockStyle() {
+      const next = game.renderer.toggleBlockStyle();
+      updateDebugPanel();
+      return next;
     },
     runPatternTests() {
       const results = runPatternTests();

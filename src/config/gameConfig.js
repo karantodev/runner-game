@@ -249,6 +249,68 @@ export const GAME_CONFIG = Object.freeze({
     theme: 'GARDEN_CORRIDOR_REFERENCE',
   },
 
+  // v4.0 — Reference-Match visual grade. SINGLE source of truth for the
+  // "make it look like the reference" pass. Renderers + spawn systems
+  // READ from here; none of them hardcode these numbers. A/B the whole
+  // pass with ?grade=0 (wired in main.js → visual.grade.enabled).
+  visual: {
+    enabled: true,
+
+    // ── Color grading — applied as a post-process in RenderSystem after
+    //    the pipeline paints the frame. Cheap (one offscreen pass).
+    grade: {
+      enabled: true,
+      // v4.4 — reference-match: juicy/bright grade. Non-neutral values here
+      // enable RenderSystem's one offscreen filter blit per frame (cheap on
+      // the measured 119fps headroom; AdaptiveQuality can drop it on weak HW).
+      // Pushes the muted scene toward the saturated, high-contrast reference.
+      saturate: 1.14,
+      contrast: 1.07,
+      brightness: 1.02,
+      // Warm sunlit highlights / cool shadows via a soft overlay.
+      warmCool: {
+        enabled: true,
+        warm: 'rgba(255, 224, 150, 1)',
+        cool: 'rgba(64, 86, 158, 1)',
+        strength: 0.08,
+      },
+      vignette: { enabled: true, strength: 0.06 },
+    },
+
+    // ── Depth: far layers slightly desaturated + darkened so the
+    //    foreground corridor reads as "closer".
+    depth: {
+      farDesaturate: 0.22,  // 0..1 toward grey // v4.1 — P1 reference-match: push far layers toward atmospheric grey for depth separation
+      farDarken: 0.17,      // 0..1 toward black // v4.1 — P1 reference-match: push far layers darker so foreground corridor reads as closer
+    },
+
+    // ── Collectibles: center "breadcrumb" orchid line + stronger halo.
+    collectibles: {
+      // v4.2 — P2 reference-match: runLength 24 fills the whole visible corridor in one top-up pass, eliminating per-call gaps; spacing 4 tightens the breadcrumb line so the gold reads as a continuous path
+      // v4.3 — P3 reference-match: spacing 4 → 3 so the gold orchid trail reads as one unbroken path, not separate dots
+      centerTrail: { enabled: true, spacing: 6, runLength: 16 },
+      glow: { enabled: true, radiusScale: 1.12, pulse: 0.10, alpha: 0.28, flowerColor: '#ffcf3a' },
+    },
+
+    // ── Obstacles: cool/purple tint + dark outline so hazards separate
+    //    from the green road (the #1 readability fix).
+    obstacles: {
+      tint: { enabled: true, color: '#7a4fd0', strength: 0.20 },
+      outline: { enabled: true, color: 'rgba(20,12,40,0.55)', width: 2 },
+    },
+
+    // ── Scene density: more shoulder decor (violets / mushrooms / tufts).
+    // v4.2 — P2 reference-match: lower multiplier widens effective cluster gap (spacing = base/multiplier), combined with sideDecorSpacing bump gives clusters room to breathe
+    density: { decorMultiplier: 1.15, scatterFlowers: true },
+
+    // ── Juice: grounding shadow, run dust, collect bloom.
+    juice: {
+      playerShadow: { enabled: true, alpha: 0.28, widthScale: 0.92 },
+      runDust: { enabled: true, rate: 0.5 },
+      collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
+    },
+  },
+
   powerUps: {
     speedBurst: {
       durationFrames: 360,
@@ -296,7 +358,9 @@ export const GAME_CONFIG = Object.freeze({
     // every spawn slot now lands a richly-composed group instead of a
     // single prop. 18 is about as dense as it can go before adjacent
     // clusters start to z-fight at mid depth.
-    sideDecorSpacing: 18.0,
+    // v4.2 — P2 reference-match: wider world-gap between clusters prevents depth z-fighting at adjacent prefabs
+    // v4.3 — P3 reference-match: sideDecorSpacing 21 → 24 so side clusters breathe more, complementing the tree-thinning pass
+    sideDecorSpacing: 24.0,
     sideDecorJitter: 0.45,
     sideDecorNearCullDistance: -5.5,
     lifePickupMinDistance: 940,
@@ -551,6 +615,7 @@ export const GAME_CONFIG = Object.freeze({
     grassDirtBlockRight:     './assets/terrain/blocks/grass_dirt_block_right.png',
     grassDirtPlatformLong2:  './assets/terrain/blocks/grass_dirt_platform_long.png',
     grassDirtStepLeft:       './assets/terrain/blocks/grass_dirt_step_left.png',
+    grassDirtStepRight:      './assets/terrain/blocks/grass_dirt_step_right.png',
     // v3.6 designer-delivered dry bush obstacle (alt path).
     dryBushObstacle:         './assets/obstacles/bushes/dry_bush_01.png',
 
@@ -595,9 +660,17 @@ export const GAME_CONFIG = Object.freeze({
     platformFloatingLeft:  './assets/structures/platforms/platform_floating_left.png',
     platformFloatingRight: './assets/structures/platforms/platform_floating_right.png',
     platformHangingVines: './assets/structures/platforms/platform_hanging_vines.png',
+    platformHangingVinesLeft:  './assets/structures/platforms/platform_hanging_vines_left.png',
+    platformHangingVinesRight: './assets/structures/platforms/platform_hanging_vines_right.png',
     // v3.6 designer-delivered alternates.
     fenceWebbed:          './assets/structures/fences/wooden_fence_webbed_01.png',
     grassDirtPlatformLong:'./assets/structures/platforms/grass_dirt_platform_long.png',
+    grassDirtPlatformLongLeft:  './assets/structures/platforms/grass_dirt_platform_long_left.png',
+    grassDirtPlatformLongRight: './assets/structures/platforms/grass_dirt_platform_long_right.png',
+    purpleBrickSingleLeft:  './assets/structures/bricks/purple_brick_single_left.png',
+    purpleBrickSingleRight: './assets/structures/bricks/purple_brick_single_right.png',
+    fenceWoodSpriteLeft:  './assets/decor/large/fence/fence_wood_short_left.png',
+    fenceWoodSpriteRight: './assets/decor/large/fence/fence_wood_short_right.png',
     goldQuestionBlock01:  './assets/blocks/question/gold_question_block_01.png',
     goldQuestionBlock02:  './assets/blocks/question/gold_question_block_02.png',
 

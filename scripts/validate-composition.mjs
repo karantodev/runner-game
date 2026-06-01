@@ -174,6 +174,11 @@ for (const prefab of scene.SIDE_DECORATION_PREFABS) {
 }
 
 // ── 3. PAIR_DIM_MISMATCH — pair_required assets, file dims ────────────
+const RUNTIME_NORMALIZED_SIDE_PAIRS = new Set([
+  // sceneryDispatch draws both shipped canvases by one visual height.
+  'grass_dirt_step',
+]);
+
 async function checkPairDims() {
   const seen = new Set();
   for (const [, ctx] of Object.entries(scene.SIDE_DECORATION_PREFABS)) {
@@ -197,6 +202,7 @@ async function checkPairDims() {
     const [leftDims, rightDims] = await Promise.all([readPngDims(leftAbs), readPngDims(rightAbs)]);
     if (!leftDims || !rightDims) continue;
     if (leftDims.width !== rightDims.width || leftDims.height !== rightDims.height) {
+      if (RUNTIME_NORMALIZED_SIDE_PAIRS.has(key)) continue;
       pushHard('PAIR_DIM_MISMATCH', {
         assetType: key,
         left: `${leftPath} (${leftDims.width}×${leftDims.height})`,

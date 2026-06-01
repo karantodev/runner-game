@@ -10,7 +10,11 @@
 // ── Spatial ──────────────────────────────────────────────────────────────────
 
 /** World-space lane + depth used by everything that scrolls toward the player. */
-export const Position = (lane = 0, distance = 0) => ({ lane, distance });
+export const Position = (lane = 0, distance = 0) => ({
+  lane,
+  distance,
+  previousDistance: distance,
+});
 
 /** Marks an entity as "moves with the road" — distance decreases by world.speed * delta * factor. */
 export const Scrollable = (factor = 1) => ({ factor });

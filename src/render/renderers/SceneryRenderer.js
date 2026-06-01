@@ -37,27 +37,28 @@ function isTreeAssetType(assetType) {
 function remapLaneForBand(lane, band) {
   const sign = Math.sign(lane) || 1;
   const abs = Math.abs(lane);
+  // v4.2 — P2 reference-match: remap outer bands onto the canonical zone
+  // geometry (road edge 2.30, shoulder→2.55, structure→3.70, nature→4.80
+  // lane-units, per GAME_CONFIG.projection) so the sides read as clean,
+  // non-overlapping bands like the reference. SHOULDER was previously
+  // unremapped and rendered flora ON the road; STRUCTURE was collapsed
+  // into a thin stripe; NATURE trees now sit clearly beyond the blocks.
+  if (band === LANE_BANDS.SHOULDER) {
+    // raw shoulder lanes ≈ [1.38, 1.85] → visual [2.32, 2.55] (just past edge)
+    const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
+    return sign * (2.32 + t * (2.55 - 2.32));
+  }
   if (band === LANE_BANDS.STRUCTURE) {
-    // v3.8.20 Hero composition pass — STRUCTURE band widened so prefabs
-    // can spread props across THREE x-tiers (inner / mid / outer) in
-    // one composition. Was [2.12, 2.68] which clamped everything to a
-    // narrow band right next to the road. Now [2.05, 2.95] — items at
-    // lane 1.86 → 2.05 (inner, road edge); lane 2.00 → ~2.42 (mid);
-    // lane 2.25 → 2.95 (outer frame, just inside the tree band).
-    // Prefabs distribute items across these lane values to build a
-    // layered corridor instead of two flat lines of decor.
-    if (abs < 1.85) return lane;
+    // raw structure lanes ≈ [1.85, 2.25] → visual [2.55, 3.70] (full band)
+    if (abs < 1.85) return sign * 2.55;
     const t = Math.min(1, (abs - 1.85) / 0.40);
-    return sign * (2.05 + t * (2.95 - 2.05));
+    return sign * (2.55 + t * (3.70 - 2.55));
   }
   if (band === LANE_BANDS.NATURE) {
-    // v3.8.20 — NATURE band pushed slightly outward again: [2.92, 3.60]
-    // → [3.05, 3.80]. Trees no longer overlap the new outer-frame
-    // structures at lane ~2.95; they form a distinct silhouette layer
-    // beyond the outermost decor.
-    if (abs < 2.40) return lane;
+    // raw nature lanes ≈ [2.40, 3.25] → visual [3.70, 4.80] (beyond structures)
+    if (abs < 2.40) return sign * 3.70;
     const t = Math.min(1, (abs - 2.40) / 0.85);
-    return sign * (3.05 + t * (3.80 - 3.05));
+    return sign * (3.70 + t * (4.80 - 3.70));
   }
   return lane;
 }
@@ -127,16 +128,20 @@ function runtimeZoneForLane(lane) {
  * dispatcher that paints every individual scenery asset type.
  */
 export class SceneryRenderer {
-  constructor({ ctx, projection, assets, sprites, paint, gradients }) {
+  constructor({ ctx, projection, assets, sprites, paint, gradients, voxelBlocks }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.sprites = sprites;
     this.paint = paint;
     this.gradients = gradients;
-    this._drawDeps = { sprites, paint };
+    this.voxelBlocks = voxelBlocks;
+    this._drawDeps = { sprites, paint, voxelBlocks };
     this._structural = [];
     this._organic = [];
+    // v4.2 — P2 reference-match: third scratch array for NATURE (tree) band
+    // so the three-way draw order is allocation-free on the hot path.
+    this._nature = [];
   }
 
   render(world) {
@@ -177,19 +182,30 @@ export class SceneryRenderer {
     // Dynamic decor through DecorationSystem covers the buffer/structure
     // zones with entities that actually scroll toward the camera.
 
-    // Reuse the two scratch arrays — clearing length to 0 keeps the same
-    // backing storage and avoids per-frame allocation of two new arrays.
+    // v4.2 — P2 reference-match: three-way draw order so trees (NATURE)
+    // form a background mass, then STRUCTURE blocks paint over them, then
+    // SHOULDER/road-shoulder decor (flowers, tufts) sits nearest the road.
+    // Reuse the three scratch arrays — length=0 keeps the backing storage.
     const structural = this._structural;
     const organic = this._organic;
+    const nature = this._nature;
     structural.length = 0;
     organic.length = 0;
+    nature.length = 0;
     for (const e of world.registry.query('ScenicData', 'Position', 'Sprite')) {
-      if (this.#isStructural(e)) structural.push(e);
+      const band = e.components.ScenicData.laneBand;
+      if (band === LANE_BANDS.NATURE) nature.push(e);
+      else if (this.#isStructural(e)) structural.push(e);
       else organic.push(e);
     }
+    // Pass (a): NATURE trees — painted first, behind everything.
+    nature.sort(byDistanceComponent);
+    for (const e of nature) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
+    // Pass (b): STRUCTURE blocks / walls / platforms — over the trees.
     structural.sort(byDistanceComponent);
-    organic.sort(byDistanceComponent);
     for (const e of structural) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
+    // Pass (c): SHOULDER + other decor — nearest the road, in front of structures.
+    organic.sort(byDistanceComponent);
     for (const e of organic) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
 
     this.#foregroundFrame(world);
@@ -271,7 +287,25 @@ export class SceneryRenderer {
     //   NATURE    — trees, hedges: imposing (140%) to read as background mass
     // Falls back to 1.0 for any band that hasn't been classified.
     const sizeBias = BAND_SIZE_BIAS[scenic.laneBand] ?? 1.0;
-    const scale = p.scale * sprite.visualScale * sizeBias;
+
+    // v4.0 — scale/flip variety for shoulder DECOR. Small flora on the
+    // shoulder get a deterministic size tweak (0.82–1.10) and occasional
+    // X-flip based on world position + lane, so the same flower asset
+    // reads differently every few spawns without random() in the render
+    // path. Structural items (STRUCTURE / NATURE bands) are NOT affected —
+    // they need consistent proportions for the 3/4-view facing.
+    let scatterScale = 1;
+    let scatterFlip  = false;
+    const densityCfg = world.config.visual?.density;
+    if (densityCfg?.scatterFlowers && scenic.laneBand === LANE_BANDS.SHOULDER) {
+      // Deterministic hash from lane + distance bucket so the variation
+      // is stable frame-to-frame (no jitter) and seed-consistent.
+      const hash = (Math.round(pos.lane * 37 + pos.distance * 13)) & 0xff;
+      scatterScale = 0.82 + (hash % 29) / 100;   // 0.82–1.10
+      scatterFlip  = (hash & 3) === 0;             // ~25% chance
+    }
+
+    const scale = p.scale * sprite.visualScale * sizeBias * scatterScale;
     const y = p.sy + sprite.yOffset * scale;
 
     const isStructural = this.#isStructural(entity);
@@ -297,7 +331,9 @@ export class SceneryRenderer {
     if (pos.distance < 10 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.82;
     if (alpha <= 0.03) return;
 
-    const mirrored = isStructural && pos.lane > 0;
+    // v4.0 — scatterFlip applies to non-structural shoulder flora only.
+    // For structural items the existing mirror logic (lane > 0) stays.
+    const mirrored = isStructural ? pos.lane > 0 : scatterFlip;
     // v3.8.14 — pixel-snap projected position. Same rationale as the
     // composed-prefab path above.
     // v3.8.39 — Phase 5 role propagation. Sprite.role (populated by

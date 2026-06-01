@@ -108,7 +108,7 @@ async function main() {
     // Group #14 — questionBlockAnim02 / questionBlockAnim04 SHA-equal.
     // Runtime cycles `questionBlockAnim0${animFrame}` over frames 1-4
     // in sceneryDispatch.js:182; frame 4 reusing frame 2's art is the
-    // intended loop. See docs/asset-archive-manifest.md Group #14.
+    // intended loop (frame 4 == frame 2 by content hash; allowlisted here).
     '4f2605dee4a5feaadc49ae5e3b731a79914180d0e49cfed1f6ac04d5289db9c1',
   ]);
   const allDuplicates = [...byHash.values()].filter((g) => g.length > 1);
@@ -138,8 +138,14 @@ async function main() {
   // scenery pairs (rocks, stairs, stone walls, terrain step blocks)
   // are still expected to match. See Phase 7d sidePair split.
   const isRoadKitPair = (relPath) => /^assets\/terrain\/road\//.test(relPath);
+  const RUNTIME_NORMALIZED_SIDE_PAIRS = new Set([
+    // sceneryDispatch draws both halves by a shared visual height, so the
+    // shipped canvas mismatch no longer creates an in-game scale pop.
+    'assets/terrain/blocks/grass_dirt_step',
+  ]);
   const sidePairMismatches = [];
   const sidePairMismatchesRoadKit = [];
+  const sidePairMismatchesNormalized = [];
   const filesByPath = new Map(entries.map((e) => [e.path, e]));
   for (const e of entries) {
     if (!e.path.endsWith('_left.png')) continue;
@@ -148,6 +154,7 @@ async function main() {
     if (!right) continue;
     if (e.width !== right.width || e.height !== right.height) {
       if (isRoadKitPair(e.path)) sidePairMismatchesRoadKit.push({ left: e, right });
+      else if (RUNTIME_NORMALIZED_SIDE_PAIRS.has(e.path.replace(/_left\.png$/, ''))) sidePairMismatchesNormalized.push({ left: e, right });
       else sidePairMismatches.push({ left: e, right });
     }
   }
@@ -175,6 +182,9 @@ async function main() {
     }
     console.log(`  stem dim mismatches ${dimMismatches.length}`);
     console.log(`  side-pair dim mismatches ${sidePairMismatches.length}`);
+    if (sidePairMismatchesNormalized.length) {
+      console.log(`  runtime-normalized pairs ${sidePairMismatchesNormalized.length}`);
+    }
     if (sidePairMismatchesRoadKit.length) {
       console.log(`  road-kit pairs (intentional asym) ${sidePairMismatchesRoadKit.length}`);
     }
@@ -239,6 +249,20 @@ async function main() {
   }
   lines.push('');
 
+  lines.push(`## Runtime-normalized side pairs (${sidePairMismatchesNormalized.length})`);
+  if (sidePairMismatchesNormalized.length === 0) {
+    lines.push('_(none)_');
+  } else {
+    lines.push('These pairs still deserve a future canonical re-export, but');
+    lines.push('the dispatcher normalizes their visual height at runtime so');
+    lines.push('they do not create a left/right scale pop in the game.');
+    lines.push('');
+    for (const m of sidePairMismatchesNormalized) {
+      lines.push(`- \`${m.left.path}\` ${m.left.width}×${m.left.height} · \`${m.right.path}\` ${m.right.width}×${m.right.height}`);
+    }
+  }
+  lines.push('');
+
   lines.push(`## Road-kit intentional asymmetry (${sidePairMismatchesRoadKit.length})`);
   if (sidePairMismatchesRoadKit.length === 0) {
     lines.push('_(none)_');
@@ -273,6 +297,7 @@ async function main() {
   lines.push(`- Exact-content duplicate groups: **${duplicates.length}** (${duplicates.reduce((s, g) => s + g.length, 0)} files)`);
   lines.push(`- Stem dim mismatches: **${dimMismatches.length}**`);
   lines.push(`- Side-pair dim mismatches: **${sidePairMismatches.length}** (designer task)`);
+  lines.push(`- Runtime-normalized side pairs: **${sidePairMismatchesNormalized.length}** (re-export recommended, non-blocking)`);
   lines.push(`- Road-kit intentional asymmetry: **${sidePairMismatchesRoadKit.length}** (documented, no-action)`);
   lines.push(`- Aspect-ratio flags: **${aspectFlags.length}**`);
   lines.push('');

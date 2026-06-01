@@ -32,6 +32,18 @@ test('runtime — start, move, jump, crouch, restart, no console errors', async 
   expect(errors).toEqual([]);
 });
 
+test('structural block renderer — 2D / 3D mode stays reversible', async ({ page }) => {
+  await page.goto('/dev.html?debug=1&blockStyle=3d');
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.setBlockStyle('2d'))).toBe('sprite');
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.toggleBlockStyle())).toBe('voxel');
+
+  await page.keyboard.press('KeyY');
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getState().blockStyle)).toBe('sprite');
+});
+
 test('touch controls — buttons exist and bind to actions', async ({ page }) => {
   // ?touch=1 forces the on-screen pad to render on desktop chromium.
   // We don't tap from the menu (overlay correctly captures pointer
@@ -79,6 +91,109 @@ test('jump buffer — tap mid-air still fires on landing', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   expect(errors).toEqual([]);
+});
+
+test('collision contract — actual lane position, jump clears, swept depth window', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const [{ GAME_CONFIG }, { EventBus }, { EntityRegistry }, factories, { CollisionSystem }] = await Promise.all([
+      import('/src/config/gameConfig.js'),
+      import('/src/core/EventBus.js'),
+      import('/src/ecs/EntityRegistry.js'),
+      import('/src/ecs/factories.js'),
+      import('/src/systems/CollisionSystem.js'),
+    ]);
+
+    const scenario = ({ type = 'wheat', lane = 0, laneX = 0, targetLane = laneX, playerY = 0, previous = 0, current = 0, collectible = false }) => {
+      const eventBus = new EventBus();
+      const registry = new EntityRegistry();
+      const player = factories.createPlayer(registry, GAME_CONFIG);
+      Object.assign(player.components.LaneState, { laneX, targetLane });
+      player.components.VerticalState.y = playerY;
+      const events = { hits: [], clears: [], flowers: 0 };
+      eventBus.on('hazard:hit', payload => events.hits.push(payload.type));
+      eventBus.on('hazard:cleared', payload => events.clears.push(payload.type));
+      eventBus.on('flower:collected', () => { events.flowers += 1; });
+      const world = {
+        state: 'playing',
+        config: GAME_CONFIG,
+        registry,
+        player,
+        nearMissesThisRun: 0,
+        lastHazardType: null,
+        orchidsCollectedThisRun: 0,
+        powerUpSystem: {
+          isSplitClonesActive: () => false,
+          isMagnetActive: () => false,
+        },
+        getOccupiedLanes: () => [player.components.LaneState.laneX],
+      };
+      const entity = collectible
+        ? factories.createCollectible(registry, { type: 'flower', lane, distance: current })
+        : factories.createObstacle(registry, { type, lane, distance: current });
+      entity.components.Position.previousDistance = previous;
+      new CollisionSystem(GAME_CONFIG, eventBus).update(world);
+      return events;
+    };
+
+    return {
+      movingLane: scenario({ type: 'wheat', lane: 1, laneX: 0, targetLane: 1 }),
+      jumpingGroundHazard: scenario({ type: 'wheat', lane: 0, playerY: -40 }),
+      sweptObstacle: scenario({ type: 'stone', lane: 0, previous: 4, current: -4 }),
+      sweptCollectible: scenario({ lane: 0, previous: 4, current: -4, collectible: true }),
+    };
+  });
+
+  expect(result.movingLane.hits).toEqual([]);
+  expect(result.jumpingGroundHazard.hits).toEqual([]);
+  expect(result.jumpingGroundHazard.clears).toEqual(['wheat']);
+  expect(result.sweptObstacle.hits).toEqual(['stone']);
+  expect(result.sweptCollectible.flowers).toBe(1);
+});
+
+test('spawn runtime — top-up stays monotonic after visual offset wraps', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const [{ GAME_CONFIG }, { EntityRegistry }, { Rng }, { SpawnSystem }] = await Promise.all([
+      import('/src/config/gameConfig.js'),
+      import('/src/ecs/EntityRegistry.js'),
+      import('/src/utils/rng.js'),
+      import('/src/systems/SpawnSystem.js'),
+    ]);
+    const projection = { maxDistance: GAME_CONFIG.projection.maxDistance };
+    const spawn = new SpawnSystem(GAME_CONFIG, projection, new Rng(42));
+    const registry = new EntityRegistry();
+    const world = {
+      state: 'playing',
+      speed: GAME_CONFIG.gameplay.startSpeed,
+      scrollOffset: 0.4,
+      worldDistanceTotal: 262144.4,
+      config: GAME_CONFIG,
+      registry,
+      powerUpSystem: { snapshot: () => ({ splitClonesActive: false, speedBurstActive: false }) },
+    };
+    spawn.heroCycleOrigin = 262500;
+    spawn._centerTrailNext = 262500;
+    spawn.nextPattern = 999;
+    spawn.nextOrchid = 999;
+    spawn.nextLife = 999;
+    spawn.nextPowerUp = 999;
+    spawn.nextRare = 999;
+    spawn.update(world, 1);
+    const positions = [...registry.query('Position')].map(entity => entity.components.Position.distance);
+    return {
+      heroCycleOrigin: spawn.heroCycleOrigin,
+      trailNext: spawn._centerTrailNext,
+      horizon: world.worldDistanceTotal + projection.maxDistance,
+      entityCount: positions.length,
+      maxRelativeDistance: Math.max(...positions),
+    };
+  });
+
+  expect(result.heroCycleOrigin).toBeGreaterThan(262500);
+  expect(result.trailNext).toBeGreaterThan(result.horizon);
+  expect(result.entityCount).toBeGreaterThan(0);
+  expect(result.maxRelativeDistance).toBeLessThan(600);
 });
 
 test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
@@ -190,21 +305,31 @@ test('strict enforcement — ?enforcePlacement=1 drops violations and finishes t
 
 test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
   // Two independent debug runs with the same seed should yield identical
-  // spawn-system traces (pattern ids in order). The test does two cold
-  // page loads + a 1.2 s settle each, so the default 30 s budget runs
-  // tight on slow machines; bump per-test timeout.
-  test.setTimeout(60_000);
+  // spawn-system traces (pattern ids in order).
+  //
+  // v4.4: only procedural patterns (past obstacleStartDistance ≈ 92 world-
+  // units) write to spawnLog; the hero-cycle opening sequence does not. A
+  // 1.2 s settle reaches only ~65 units → empty log → false failure. Settle
+  // 3 s (~160 units) clears the hero window and captures real patterns.
+  // Two cold loads (~28 s each) + 3 s settle → budget well above 30 s.
+  test.setTimeout(120_000);
   const traceFor = async (url) => {
     await page.goto(url);
     await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
     await page.evaluate(() => window.__ORCHID_DEBUG__.startDebugRun());
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(3000);
     return page.evaluate(() => window.__ORCHID_DEBUG__.getSpawnLog().map(e => e.id));
   };
 
   const a = await traceFor('/dev.html?debug=1&seed=42');
   const b = await traceFor('/dev.html?debug=1&seed=42');
 
+  // Both runs must spawn patterns and agree entry-for-entry. Compare the
+  // shared prefix: a wall-clock settle can leave the two runs ±1 pattern
+  // apart in TOTAL count, but a seed/RNG regression shows up as a diff
+  // WITHIN the shared prefix — which is what this test exists to catch.
   expect(a.length).toBeGreaterThan(0);
-  expect(a).toEqual(b);
+  expect(b.length).toBeGreaterThan(0);
+  const n = Math.min(a.length, b.length);
+  expect(a.slice(0, n)).toEqual(b.slice(0, n));
 });
