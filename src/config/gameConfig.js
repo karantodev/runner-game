@@ -312,6 +312,18 @@ export const GAME_CONFIG = Object.freeze({
     // carpet (GroundScatterSystem). false = prepopulate AND update no-op.
     density: { decorMultiplier: 1.5, scatterFlowers: true, groundScatter: true },
 
+    // ── Background: which cloud sprite keys appear in the sky.
+    // Add/remove/reorder keys here — World picks them by index (cycling).
+    // Keys must be registered in assets above and have transparent backgrounds.
+    background: {
+      cloudKeys: [
+        'backgroundCloud03',
+        'backgroundCloud04',
+        'backgroundCloud05',
+        'backgroundCloud06',
+      ],
+    },
+
     // ── Juice: grounding shadow, run dust, collect bloom.
     juice: {
       playerShadow: { enabled: true, alpha: 0.28, widthScale: 0.92 },
