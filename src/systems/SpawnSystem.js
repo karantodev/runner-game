@@ -145,6 +145,9 @@ export class SpawnSystem {
     // so the very first frame can fill the visible corridor.
     this._centerTrailNext = 0;
     this._patternSerial = 0;
+    // Debug metrics for the cross-seam fairness check (observe over-rejection).
+    this._patternPicks = 0;
+    this._crossSeamRejects = 0;
     this.roadLedger.reset();
     this.spawnLog.length = 0;
   }
@@ -492,7 +495,12 @@ export class SpawnSystem {
       // 6) — the extra pressure comes from tighter patternSpacing.
       const libraryLevel = Math.min(5, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
       pattern = this.library.pick(libraryLevel);
-      if (!this.validator.isSolvable(pattern, { speed: world.speed })) {
+      this._patternPicks += 1;
+      // Reject if the pattern is unsolvable on its own OR forms an unclearable
+      // seam with the hero/earlier-pattern obstacles already on the road.
+      const isolatedOk = this.validator.isSolvable(pattern, { speed: world.speed });
+      if (!isolatedOk || !this.#isSolvableWithNeighbors(world, pattern, absoluteBaseDistance)) {
+        if (isolatedOk) this._crossSeamRejects += 1; // seam-specific rejection (debug metric)
         pattern = this.library.pickFallback();
       }
     }
@@ -522,6 +530,43 @@ export class SpawnSystem {
     // "double barrier" at 96 distance-units of separation.
     const minSpacing = hasVine ? 140 : diff.patternSpacing;
     this.nextPattern = Math.max(diff.patternSpacing, minSpacing);
+  }
+
+  /**
+   * Cross-seam fairness: the per-pattern validator only sees ONE pattern, but a
+   * just-spawned pattern shares the road with hero-cycle and earlier procedural
+   * obstacles. Merge this pattern's obstacles with the neighbours already
+   * reserved in a speed-scaled window and run the full lane simulation over the
+   * union, so a hero hazard followed by a pattern hazard can't force an
+   * impossible double-switch that the gap heuristic alone would allow.
+   *
+   * RNG-neutral (pure filter + simulation) — does not perturb the seeded stream.
+   */
+  #isSolvableWithNeighbors(world, pattern, absoluteBaseDistance) {
+    const obstacleOffsets = pattern.items
+      .filter((i) => i.kind === 'obstacle')
+      .map((i) => i.offset);
+    if (obstacleOffsets.length === 0) return true; // collectible-only pattern
+
+    // Window scales with speed: at higher speed a jump / lane-switch reaches
+    // further, so obstacles further out can still interact across the seam.
+    const margin = 60 * Math.max(1, world.speed / this.config.gameplay.startSpeed);
+    const from = absoluteBaseDistance + Math.min(...obstacleOffsets) - margin;
+    const to = absoluteBaseDistance + Math.max(...obstacleOffsets) + margin;
+
+    const neighbors = this.roadLedger.obstaclesInSpan(from, to);
+    if (neighbors.length === 0) return true; // isolated — per-pattern check suffices
+
+    const merged = {
+      items: [
+        ...neighbors.map((o) => ({
+          kind: 'obstacle', type: o.type, lane: o.lane, allLanes: o.allLanes,
+          offset: o.distance - absoluteBaseDistance,
+        })),
+        ...pattern.items.filter((i) => i.kind === 'obstacle'),
+      ],
+    };
+    return this.validator.isSolvable(merged, { speed: world.speed });
   }
 
   /** Read the lane the vine sits in (or 0 if it spans all lanes). */

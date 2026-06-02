@@ -106,6 +106,23 @@ export class RoadSpawnLedger {
     return count;
   }
 
+  /**
+   * Snapshot of reserved obstacles whose absolute distance falls in
+   * [fromDistance, toDistance]. Used for cross-source solvability: a producer
+   * merges these with its own obstacles and runs the path validator over the
+   * union, so a hero hazard + a procedural hazard can't form an unclearable
+   * seam that the per-pattern check (one pattern only) would miss.
+   */
+  obstaclesInSpan(fromDistance, toDistance) {
+    const out = [];
+    for (const o of this.obstacles) {
+      if (o.distance >= fromDistance && o.distance <= toDistance) {
+        out.push({ type: o.type, lane: o.lane, allLanes: o.allLanes, distance: o.distance });
+      }
+    }
+    return out;
+  }
+
   #obstacleRecord(opts) {
     const rule = getObstacleRule(opts.type);
     return {
