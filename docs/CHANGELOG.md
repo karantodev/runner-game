@@ -1,5 +1,26 @@
 # Changelog
 
+## Phase 8 — Reference-match: spawn balance, game feel, visuals
+
+### Spawn balance + fairness
+- Difficulty is a smooth `intensity` curve (time + score) with periodic rest windows, replacing the discrete 6-step ramp. Tunables in `gameConfig.gameplay.difficulty`.
+- Collectible "density discipline": the center breadcrumb trail AND the orchid filler both yield to hero/pattern figures (`RoadSpawnLedger.collectibleDensityAround`), killing the early-run "gold blob". Knobs in `gameConfig.spawn.density`.
+- Anti-repetition shuffle-bag in `PatternLibrary` — a procedural pattern can't repeat back-to-back.
+- Cross-seam solvability: a candidate pattern is validated against the hero/earlier obstacles already on the road (`obstaclesInSpan` + merged `PathValidator` sim), not just in isolation — closes an unfair double-switch the gap heuristic allowed.
+- New difficulty buckets 5-6 (rolling corridors, vine-gates, gauntlets, duck-jump-duck) for deep / end-game variety; pool clamp raised 4 → 6.
+
+### Risk / reward + game feel
+- `flower-rich` jackpot collectible (3×, jump-gated), placed on the safe exit of the harder patterns; distinct gold burst + real-value popup on pickup.
+- Combo tier-ups fire a ×N popup + escalating-colour burst (pairs with the existing combo sound).
+- Forgiving lateral pickup tolerance (`gameConfig.gameplay.collect.laneWindow`).
+
+### Collectible visuals (reference-match)
+- Foreground "lead" orchid emphasis — the nearest orchid reads bigger, like the reference's prominent foreground orchid (`visual.collectibles.lead`).
+- Straighter center line (`visual.collectibles.lineJitter`) + softer flower glow.
+- Reference-match art pass: side-aware asset re-exports (`scripts/reexport-side-aware-assets.py`), renderer / scene / ground-scatter tuning, reference target art under `docs/visual-qa/`.
+
+> Determinism preserved throughout (gameplay RNG via the seeded `this.rng`; particle/popup juice uses visual-only `Math.random`). Verified by `runPatternTests` (52/52) and the full Playwright suite (31/31, incl. composition seed sweeps).
+
 ## Phase 7 — Polish + Leaderboard
 - Opt-in HiDPI rendering (`?hidpi=1` or `gameConfig.canvas.pixelRatio`). Default stays 1 (pixel-art look + cheap on mobile).
 - Honest horizontal-scroll parallax for mountain / forest / meadow layers (`drawScrollingTile` with wrap-around). Castle still anchored.

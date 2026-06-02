@@ -4,6 +4,10 @@ playwright-report/
 tmp/
 .DS_Store
 
+# Python bytecode cache from scripts/ tooling (e.g. asset re-export helpers).
+__pycache__/
+*.pyc
+
 # Designer working files + asset backups — the engine never reads assets/_source/.
 # Keeps the ~300 MB of oversized originals (backed up by scripts/optimize-assets.mjs)
 # local-only so they don't bloat the repo. 54 legacy _source files are already
