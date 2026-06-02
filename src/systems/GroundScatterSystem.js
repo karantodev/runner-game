@@ -9,14 +9,15 @@ import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
 // and two grass tufts — the same SHOULDER-band assets the renderer
 // already size-biases down to buffer-flora weight.
 const SCATTER_FLORA = [
-  { assetType: 'purple_flower_single', type: 'flowerbush',  scale: [0.40, 0.58] },
-  { assetType: 'yellow_flower_small',  type: 'smallFlower', scale: [0.30, 0.42] },
-  { assetType: 'grass_tuft_small',     type: 'grassTuft',   scale: [0.40, 0.52] },
-  { assetType: 'grass_tuft',           type: 'grassTuft',   scale: [0.42, 0.56] },
+  { assetType: 'purple_flower_single', type: 'flowerbush',  scale: [0.42, 0.60], weight: 4 },
+  { assetType: 'yellow_flower_small',  type: 'smallFlower', scale: [0.30, 0.40], weight: 1 },
+  { assetType: 'grass_tuft_small',     type: 'grassTuft',   scale: [0.40, 0.52], weight: 2 },
+  { assetType: 'grass_tuft',           type: 'grassTuft',   scale: [0.42, 0.56], weight: 2 },
   // v4.9 — low leaf clumps give the meadow carpet visual mass without
   // increasing entity count or competing with structural bushes.
-  { assetType: 'leaf_clump_round',     type: 'leafClusterCompact', scale: [0.34, 0.48] },
+  { assetType: 'leaf_clump_round',     type: 'leafClusterCompact', scale: [0.34, 0.48], weight: 1 },
 ];
+const SCATTER_FLORA_POOL = SCATTER_FLORA.flatMap((flora) => Array(flora.weight ?? 1).fill(flora));
 
 // v4.6 — reference-match: scatter sits at zLayer 4 so when a scatter item
 // shares a depth tier with a structural cluster's loose flowers (zLayer 5)
@@ -155,7 +156,7 @@ export class GroundScatterSystem {
     const meadowFrac = this.config.spawn.scatterMeadowFraction ?? 0;
     const zone = zoneForSide(side, LANE_BANDS.SHOULDER);
     for (let i = 0; i < count; i += 1) {
-      const flora = this.rng.choice(SCATTER_FLORA);
+      const flora = this.rng.choice(SCATTER_FLORA_POOL);
       const band = this.rng.chance(meadowFrac) ? LANE_BANDS.MEADOW : LANE_BANDS.SHOULDER;
       // Cluster around one local centre rather than spreading each band
       // uniformly from road edge to meadow edge.
