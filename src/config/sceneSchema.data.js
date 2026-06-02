@@ -549,25 +549,29 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   },
   {
     id: 'organic-meadow',
-    weight: 2,
+    weight: 5,
     items: [
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist: 0.0, scale: 0.52 },
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist: 0.0, scale: 0.54 },
+      { id: 'flower_a2', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.58, dist: -0.8, scale: 0.46 },
       { id: 'mushroom_shoulder', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'mushroom_red_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.52, dist: -1.0, scale: 0.50, variant: 'purple' },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: 1.5, scale: 0.33 },
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: 1.5, scale: 0.42 },
       { id: 'flower_c', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: -1.9, scale: 0.28 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist: 2.3, scale: 0.47 },
+      { id: 'bush_mid', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.64, dist: 2.0, scale: 0.48 },
       { id: 'leaf_outer', role: 'background-accent', anchor: 'ground', zLayer: 4,
         assetType: 'leaf_clump_round', laneBand: LANE_BANDS.NATURE, lane: 2.58, dist: 2.8, scale: 0.44 },
     ],
   },
   {
     id: 'leaf-forest-edge',
-    weight: 3,
+    weight: 5,
     items: [
       { id: 'leaf_a', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.78, dist: 0.0, scale: 0.64 },
@@ -576,7 +580,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: 1.85, dist: 1.7, scale: 0.46 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -0.7, scale: 0.42 },
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -0.7, scale: 0.46 },
+      { id: 'flower_a2', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: 1.0, scale: 0.40 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: 2.3, scale: 0.29 },
       { id: 'bush_outer', role: 'background-accent', anchor: 'ground', zLayer: 4,
@@ -604,16 +610,18 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   // ── Chunks using new high-quality sprites ───────────────────────────────────
   {
     id: 'large-bush-garden',
-    weight: 7,
+    weight: 8,
     items: [
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist:  0.0, scale: 0.68 },
+      { id: 'violet_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single',            laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist:  0.7, scale: 0.42 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small',            laneBand: LANE_BANDS.SHOULDER, lane: 1.46, dist: -1.1, scale: 0.30 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft_small',               laneBand: LANE_BANDS.SHOULDER, lane: 1.64, dist:  1.5, scale: 0.44 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
-        assetType: 'yellow_flower_small',            laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: -2.1, scale: 0.27 },
+        assetType: 'purple_flower_single',           laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: -2.1, scale: 0.38 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'sprout_soil',                    laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist:  2.3, scale: 0.28 },
     ],
@@ -808,12 +816,14 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
   // structural beats in the procedural rotation.
   {
     id: 'scatter-violet-tuft',
-    weight: 4,
+    weight: 6,
     items: [
       { id: 'violet_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist:  0.0, scale: 0.50 },
       { id: 'violet_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.54, dist: -1.4, scale: 0.40 },
+      { id: 'violet_c', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.44, dist:  1.6, scale: 0.36 },
       { id: 'tuft_a',   role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft_small',     laneBand: LANE_BANDS.SHOULDER, lane: 1.80, dist:  1.2, scale: 0.44 },
       { id: 'yellow_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -1244,6 +1254,9 @@ export const THEMES = Object.freeze({
       'big-bush-wall',
       // v4.10 — coherent organic masses supplement structural clusters;
       // the independent GroundScatterSystem owns small-flora patches.
+      'scatter-violet-tuft',
+      'leaf-forest-edge',
+      'organic-meadow',
       'large-bush-garden',
       'blue-mushroom-grove',
       // v4.5 — continuous-wall clusters + unlocked hero-layered compositions.

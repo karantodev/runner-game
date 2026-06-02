@@ -33,7 +33,7 @@ const BAND_ALPHA_BIAS = Object.freeze({
 // MIN_SCALE bounds how many flora get a shadow: only the near/large slice
 // (final draw scale above this) qualifies, so the cost stays a handful of
 // ellipses per frame instead of one per carpet speck.
-const FLORA_SHADOW_MIN_SCALE = 0.14;
+const FLORA_SHADOW_MIN_SCALE = 0.13;
 // Base footprint half-width in px at scale 1; multiplied by widthScale and
 // the sprite's final scale to size the ellipse to the planted flora.
 const FLORA_SHADOW_BASE_PX = 46;
