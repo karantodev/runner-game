@@ -1,7 +1,9 @@
 # Orchid Quest
 
 Endless-runner with three lanes, jumps, ducks, and procedurally generated obstacle patterns.
-Vanilla ES modules, no build step, runs in any modern browser.
+Vanilla ES modules (no dev build step), runs in any modern browser. Two ways to run it:
+with the **local dev server** (below), or as a **server-free standalone build** you open by
+double-clicking — see [Play without a server](#play-without-a-server-standalone-build).
 
 ## Quick start
 
@@ -19,6 +21,42 @@ npm run dev          # starts local server → open one of the pages below
 
 Keyboard: `← →` / `A D` move · `Space` / `↑` jump · `↓` / `S` crouch · `R` restart · `Esc` / `P` pause
 Gamepad and touch (swipe + on-screen buttons on mobile) also supported.
+
+## Play without a server (standalone build)
+
+`npm run dev` keeps a Node server running. To just **play** — or hand the game to
+someone with no Node / dev setup — build a self-contained copy you open by
+double-clicking, no server at all:
+
+```bash
+npm install                 # once — also pulls esbuild (the bundler)
+npm run build:standalone
+```
+
+That writes a **`dist/`** folder. It's git-ignored, so it does **not** exist in a
+fresh clone — just run the command above to create (or refresh) it:
+
+```
+dist/
+  index.html   ← open THIS (double-click it, or drag it into a browser)
+  game.js      ← the whole game bundled into one classic script
+  style.css
+  assets/
+```
+
+Open **`dist/index.html`** directly: it runs over `file://` with **no server and no
+Node needed to play**. The folder is self-contained — zip it, copy it to any machine
+(Windows / macOS / Linux), or put it on a USB stick, double-click `index.html`, and it
+works **offline**, anywhere.
+
+> **Why a build is needed for this:** in dev the game loads ES modules
+> (`<script type="module">`), which browsers refuse to import over `file://`.
+> `build:standalone` bundles everything into one classic script so it runs straight
+> off disk. (`npm run dev` doesn't need it — it serves the modules over http.)
+>
+> **file:// caveats** (all harmless, never crash): high-score / leaderboard may not
+> persist between sessions in some browsers; offline, the pixel font falls back to a
+> system font. Both run modes play identically otherwise.
 
 ## URL parameters
 
