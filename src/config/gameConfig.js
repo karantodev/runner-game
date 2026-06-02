@@ -81,6 +81,11 @@ export const GAME_CONFIG = Object.freeze({
      * for decorative cluster props.
      */
     bottomMargin: 50,
+    // v4.16 — reference-match: render-only hero size multiplier applied to
+    // the player sprite's bodyScale (PlayerRenderer). 1.0 = ship default;
+    // ?cam=immersive raises it for a bigger, closer hero. Pure visual —
+    // collision/hitbox stay in lane/distance units, untouched.
+    heroScale: 1.0,
     gravity: 0.95,
     jumpVelocity: -16.5,
     jumpHoldBoost: -0.8,

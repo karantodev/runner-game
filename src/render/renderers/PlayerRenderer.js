@@ -166,7 +166,7 @@ export class PlayerRenderer {
     const alphaScale = 1 - airFraction * 0.55;
     const sizeScale  = 1 - airFraction * 0.30;
 
-    const bodyScale = (p.height / 720) * 1.23;
+    const bodyScale = (p.height / 720) * 1.23 * (world.config.player.heroScale ?? 1);
     const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
     const halfW = Math.round(
       CANONICAL_PLAYER.w * pixelScale * (shadowCfg.widthScale ?? 0.92) * sizeScale * 0.5
@@ -251,7 +251,7 @@ export class PlayerRenderer {
       // match the live player's per-sprite proportions exactly.
       // v3.8.31 — fit-to-canonical guard so oversized source frames don't
       // spill ghosts across the whole canvas.
-      const bodyScale = (p.height / 720) * 1.23;
+      const bodyScale = (p.height / 720) * 1.23 * (world.config.player.heroScale ?? 1);
       const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
       const renderScale = getRenderScale(img, pixelScale);
       const meta = getFrameMeta(img, key);
@@ -302,7 +302,7 @@ export class PlayerRenderer {
     // (jump arc) + tilt (rotation, not scale) change between states.
     const stretch = 1;
     const squash = 1;
-    const bodyScale = (p.height / 720) * 1.23;
+    const bodyScale = (p.height / 720) * 1.23 * (world.config.player.heroScale ?? 1);
     // v3.8.29 — unified pixel scale derived from canonical 64×96 canvas.
     // See module-level comment for the full rationale.
     const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
