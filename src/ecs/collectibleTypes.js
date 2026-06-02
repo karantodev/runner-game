@@ -14,11 +14,13 @@
  *   event: string,
  *   runStatField?: 'orchidsCollectedThisRun' | 'rareOrchidsCollectedThisRun',
  *   powerUpType?: string,
+ *   scoreValue?: number,
  *   render: {
  *     kind: 'flower' | 'rare' | 'power' | 'life',
  *     spriteKey?: string,
  *     glowColor?: string,
  *     size?: number,
+ *     sizeScale?: number,
  *   },
  * }} CollectibleSpec
  */
@@ -28,10 +30,20 @@ export const COLLECTIBLE_REGISTRY = Object.freeze({
   flower: {
     event: 'flower:collected',
     runStatField: 'orchidsCollectedThisRun',
+    scoreValue: 1,
     // v4.0 — glow params read by GameplayRenderer from GAME_CONFIG.visual.collectibles.glow.
     // glowColor / size here are the DATA-LAYER defaults; GameplayRenderer overrides
     // them with the live config values so A/B-toggling visual.enabled works.
     render: { kind: 'flower', glowColor: '#ffcf3a', size: 60 },
+  },
+  'flower-rich': {
+    // Jackpot orchid: same gold family + same flower:collected event (so combo
+    // and counters treat it as an orchid), but worth 3× and rendered larger so
+    // the premium reads at a glance — matches the one big orchid in the ref art.
+    event: 'flower:collected',
+    runStatField: 'orchidsCollectedThisRun',
+    scoreValue: 3,
+    render: { kind: 'flower', sizeScale: 1.35, glowColor: '#ffcf3a' },
   },
   'rare-orchid': {
     event: 'rare:collected',

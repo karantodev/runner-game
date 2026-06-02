@@ -115,6 +115,18 @@ export const GAME_CONFIG = Object.freeze({
     startLives: 3,
     maxLives: 5,
     invulnerabilityFrames: 82,
+    // Designer-tunable difficulty curve. intensity ∈ [0,1] drives pattern/orchid
+    // spacing; `level` (1..6) drives the pattern pool. Warm-up holds intensity at
+    // 0 for the opening seconds; wave* adds rhythmic rest windows.
+    difficulty: {
+      warmupFrames: 1200,        // ~20s level-1 intro (unchanged from old curve)
+      timeToFullFrames: 6000,    // ~100s for time alone to saturate its share
+      scoreToFull: 700,          // score at which collection alone saturates
+      timeWeight: 0.55,
+      scoreWeight: 0.55,
+      waveAmplitude: 0.14,       // max downward dip of a rest window
+      wavePeriodFrames: 520,     // ~8.7s rest cadence
+    },
     // v3.1: open-ended tiers. After tier 6 the gameplay difficulty pool
     // saturates but score keeps milestones flowing for late-run dopamine.
     scoreTiers: [50, 100, 175, 280, 420, 600, 850, 1200, 1700, 2400],
@@ -420,6 +432,15 @@ export const GAME_CONFIG = Object.freeze({
     rareOrchidMinDistance: 1800,
     rareOrchidMaxDistance: 3600,
     rareOrchidBaseScore: 25,
+    // v4.x — collectible density discipline. Stops the center breadcrumb trail,
+    // hero cycles and the orchid filler from stacking into one "gold blob"; the
+    // reference art shows a single clean gold line.
+    density: {
+      centerTrailYieldsToFigures: true,  // center dots open up around figures
+      orchidFillerYieldsToFigures: true, // filler line/arc skips lanes already lit (early-run de-clutter)
+      figureWindow: 4,                   // world-units of yield radius (< trail spacing 6)
+      orchidTickMaxIntensity: 0.35,      // orchid filler silent above this intensity
+    },
   },
 
   assets: {

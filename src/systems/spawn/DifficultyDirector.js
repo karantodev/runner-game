@@ -1,3 +1,5 @@
+import { GAME_CONFIG } from '../../config/gameConfig.js';
+
 /**
  * Translates {score, timeAlive, speed} into pattern-spacing / orchid-spacing
  * / level numbers used by SpawnSystem. RNG is injected so the spawn
@@ -7,18 +9,22 @@ export class DifficultyDirector {
   /**
    * @param {import('../../utils/rng.js').Rng} [rng]
    * @param {import('../../core/AdaptiveSkill.js').AdaptiveSkill | null} [skill]
+   * @param {typeof GAME_CONFIG} [config]
    */
-  constructor(rng = null, skill = null) {
+  constructor(rng = null, skill = null, config = GAME_CONFIG) {
     this.rng = rng;
     this.skill = skill;
+    this.config = config;
   }
 
   get(world) {
+    const intensity = this.#intensity(world);
     const level = this.#applySkillBias(this.#level(world));
     return {
       level,
-      patternSpacing: this.#patternSpacing(level, world.speed),
-      orchidSpacing: this.#orchidSpacing(level),
+      intensity,
+      patternSpacing: this.#patternSpacing(intensity, world.speed),
+      orchidSpacing: this.#orchidSpacing(intensity),
     };
   }
 
@@ -35,6 +41,22 @@ export class DifficultyDirector {
     return level;
   }
 
+  // Smooth 0..1 pressure curve blending elapsed time and collected score, with
+  // periodic "rest" dips so the run breathes instead of ramping monotonically.
+  // Pure function of {score, timeAlive} — never draws RNG, so seeded placement
+  // tests stay deterministic.
+  #intensity({ score = 0, timeAlive = 0 }) {
+    const d = this.config.gameplay.difficulty;
+    if (timeAlive < d.warmupFrames) return 0;
+    const t = Math.min(1, (timeAlive - d.warmupFrames) / d.timeToFullFrames);
+    const s = Math.min(1, score / d.scoreToFull);
+    const base = Math.min(1, d.timeWeight * t + d.scoreWeight * s);
+    // Periodic release windows: dip (never boost) intensity so the player gets
+    // rhythmic breathers; amplitude shrinks as base rises so peaks stay tense.
+    const dip = Math.max(0, -Math.sin(timeAlive / d.wavePeriodFrames)) * d.waveAmplitude * (1 - base);
+    return Math.max(0, Math.min(1, base - dip));
+  }
+
   // v3.1: open-ended difficulty. Levels 1-4 still drive the PatternLibrary
   // (which only knows those buckets). Levels 5-6 reuse the level-4 pool
   // but tighten spacing / orchid density further, so seasoned players
@@ -44,14 +66,9 @@ export class DifficultyDirector {
   // player gets a warm-up regardless of how fast they collect orchids.
   // Without this, a quick early streak could vault them into level 3+
   // before they've even seen one obstacle.
-  #level({ score, timeAlive }) {
-    if (timeAlive < 1200) return 1;                  // ~20 s warm-up
-    if (score >= 600 || timeAlive >= 6000) return 6;
-    if (score >= 350 || timeAlive >= 4000) return 5;
-    if (score >= 200 || timeAlive >= 2600) return 4;
-    if (score >= 100 || timeAlive >= 1200) return 3;
-    if (score >= 50 || timeAlive >= 600) return 2;
-    return 1;
+  #level(world) {
+    if (world.timeAlive < this.config.gameplay.difficulty.warmupFrames) return 1;
+    return 1 + Math.min(5, Math.floor(this.#intensity(world) * 6)); // 1..6
   }
 
   /**
@@ -63,16 +80,16 @@ export class DifficultyDirector {
   }
 
   // Scale by current speed so faster play still gives fair reaction time.
-  #patternSpacing(level, speed) {
-    const specs = [[46, 18], [38, 16], [30, 14], [22, 12], [18, 10], [15, 9]];
-    const [base, jitter] = specs[Math.min(specs.length, level) - 1];
+  #patternSpacing(intensity, speed) {
+    const base = 46 - 31 * intensity;     // 46 → 15
+    const jitter = 18 - 9 * intensity;    // 18 → 9
     const r = this.rng ? this.rng.next() : Math.random();
-    return (base + r * jitter) * Math.max(1, speed / 0.9);
+    return (base + r * jitter) * Math.max(1, speed / this.config.gameplay.startSpeed);
   }
 
-  #orchidSpacing(level) {
-    const specs = [[30, 18], [27, 16], [23, 12], [19, 10], [16, 9], [14, 8]];
-    const [base, jitter] = specs[Math.min(specs.length, level) - 1];
+  #orchidSpacing(intensity) {
+    const base = 30 - 16 * intensity;     // 30 → 14
+    const jitter = 18 - 10 * intensity;   // 18 → 8
     const r = this.rng ? this.rng.next() : Math.random();
     return base + r * jitter;
   }

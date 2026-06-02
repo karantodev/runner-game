@@ -814,7 +814,8 @@ const COLLECTIBLE_DRAWERS = {
     // Keep the flower readable without turning the whole center lane into
     // a permanent bloom strip.
     const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
-    const w = 82 * scale * pop * szMod;
+    // r.sizeScale lets a jackpot orchid read bigger; absent for plain flowers (×1).
+    const w = 82 * (r.sizeScale ?? 1) * scale * pop * szMod;
 
     // v4.0 — warm golden halo drawn BEFORE the sprite so it sits behind
     // the orchid. v4.4: drawFlowerGlow now uses a tight 'source-over' halo

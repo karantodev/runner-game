@@ -28,7 +28,7 @@ export class GameStateSystem {
     this.eventBus = eventBus;
     /** @type {import('../world/World.js').World | null} */
     this.world = null;
-    eventBus.on('flower:collected', () => this.#addScore(1, 'orchid'));
+    eventBus.on('flower:collected', ({ value }) => this.#addScore(value ?? 1, 'orchid'));
     eventBus.on('rare:collected', () => this.#addScore(this.config.spawn.rareOrchidBaseScore, 'rare'));
     eventBus.on('life:collected', () => this.#gainLife());
     eventBus.on('power:collected', ({ type }) => this.#activatePowerUp(type));
