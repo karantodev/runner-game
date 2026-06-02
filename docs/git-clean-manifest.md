@@ -41,6 +41,7 @@ Listed in `.gitignore`:
 - `playwright-report/` — playwright HTML report.
 - `tmp/` — local debug capture output (`tmp/debug-captures/*.png`).
 - `.DS_Store` — macOS Finder metadata.
+- `__pycache__/` / `*.pyc` — Python bytecode cache from `scripts/` tooling (asset re-export helpers).
 - `assets/_source/` — designer working files + oversized-original backups (engine never reads it).
 - generated `docs/*.md` reports — regenerable script output (see the Keep note above).
 
