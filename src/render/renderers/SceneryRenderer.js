@@ -16,12 +16,17 @@ const BAND_SIZE_BIAS = Object.freeze({
   // v3.7.1 — trees were dominating the frame at 1.40. Reference shows
   // them as small background mass, not foreground props. Cut to 0.80 +
   // pair with the BAND_ALPHA_BIAS so they read as fading background.
-  [LANE_BANDS.NATURE]:    0.80,
+  // v4.15 — reference-match: still read as a foreground wall along the
+  // early corridor; cut another ~17% (0.80 → 0.66) so the treeline drops
+  // back into background mass and the flowered field + mountains show.
+  [LANE_BANDS.NATURE]:    0.66,
 });
 
 /** v3.7.1 — extra alpha multiplier so NATURE reads as washed-back. */
 const BAND_ALPHA_BIAS = Object.freeze({
-  [LANE_BANDS.NATURE]: 0.78,
+  // v4.15 — reference-match: more washed-back (0.78 → 0.64) so the
+  // mountains/sky read THROUGH the treeline instead of behind a wall.
+  [LANE_BANDS.NATURE]: 0.64,
 });
 
 // v4.8 — flora contact-shadow tuning (see #drawFloraShadow).
@@ -389,7 +394,10 @@ export class SceneryRenderer {
     if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale, pos.distance)) {
       alpha = Math.min(alpha, (pos.distance / 20) * 0.22);
     }
-    if (pos.distance < 10 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.82;
+    // v4.15 — reference-match: near trees still stacked into a foreground
+    // wall; widen the recede window (10 → 16) and fade harder (0.82 → 0.68)
+    // so the treeline drops back as background mass.
+    if (pos.distance < 16 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.68;
     if (alpha <= 0.03) return;
 
     // v4.0 — scatterFlip applies to non-structural shoulder flora only.

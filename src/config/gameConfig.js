@@ -288,7 +288,7 @@ export const GAME_CONFIG = Object.freeze({
       // v4.11 — reference-match P3: push saturation/contrast harder and drop
       // brightness below 1 (the +2% lift was washing the scene out). Combined
       // with the deeper GradientCache greens this lands the rich, premium look.
-      saturate: 1.22,
+      saturate: 1.18, // v4.15 — reference-match: ease the candy-hot greens (deeper ground gradient + warm overlay carry the richness)
       contrast: 1.15, // v4.14 — reference-match: a touch more punch
       brightness: 0.99,
       // Warm sunlit highlights / cool shadows via a soft overlay.
@@ -369,7 +369,7 @@ export const GAME_CONFIG = Object.freeze({
       // v4.14 — reference-match: contact shadow under solid side structures
       // (blocks/mushrooms/fences) so they read as planted, not floating.
       // Consumed by SceneryRenderer; bounded by a scale gate so cost stays tiny.
-      solidShadow: { enabled: true, alpha: 0.22, widthScale: 0.62 },
+      solidShadow: { enabled: true, alpha: 0.27, widthScale: 0.62 }, // v4.15 — reference-match: a touch more contact-shadow grounding under side structures
       runDust: { enabled: true, rate: 0.5 },
       collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
     },

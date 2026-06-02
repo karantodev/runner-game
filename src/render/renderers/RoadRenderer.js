@@ -1005,9 +1005,12 @@ export class RoadRenderer {
         const a = 0.50 + s * 0.42;
         const w = Math.max(1, Math.round((4.2 + pt.phase) * s));
         const h = Math.max(1, Math.round((4.4 + pt.phase) * s));
-        ctx.fillStyle = `rgba(120,84,196,${a})`;
+        // v4.15 — reference-match: brighter violet body + cap so the
+        // purple-dominant field reads a touch lighter at distance (alpha,
+        // width/height, and the warm-centre pixel are intentionally untouched).
+        ctx.fillStyle = `rgba(132,92,210,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, h);
-        ctx.fillStyle = `rgba(172,142,228,${a})`;
+        ctx.fillStyle = `rgba(186,150,236,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, Math.max(1, Math.round(h * 0.34)));
         if (s > 0.26) {
           ctx.fillStyle = `rgba(250,224,120,${a})`;
@@ -1226,7 +1229,10 @@ function buildMeadowPattern(count, seed) {
     // Violet-dominant carpet + yellow accents + green tufts, matching the
     // reference's flowered field. Distance stays uniform across the loop so
     // on-screen density does not pulse as the field scrolls.
-    const kind = roll < 0.54 ? 'violet' : roll < 0.81 ? 'yellow' : 'tuft';
+    // v4.15 — reference-match: push violet share up (54%→66%, yellow 27%→20%,
+    // tuft 19%→14%) so the carpet reads as the reference's purple-dominant
+    // violet field rather than a green/gold mix.
+    const kind = roll < 0.66 ? 'violet' : roll < 0.86 ? 'yellow' : 'tuft';
     points[i] = {
       // 2.35 (just past the visual road edge, roadHalfLaneUnits 2.30) → 6.3
       // (into the nature zone) so the carpet hugs the path and fills the flank.
