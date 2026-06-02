@@ -316,6 +316,9 @@ export const GAME_CONFIG = Object.freeze({
       // up by maxBoost, so the closest orchid reads as the single large orchid
       // the reference foregrounds and guides the eye to the next pickup.
       lead: { enabled: true, scaleStart: 0.7, scaleFull: 0.92, maxBoost: 0.4 },
+      // v4.x — reference-match: dampen per-orchid horizontal jitter (0..1) so the
+      // center line reads straight like the reference; 1 = full organic wobble.
+      lineJitter: 0.3,
     },
 
     // ── Obstacles: cool/purple tint + dark outline so hazards separate

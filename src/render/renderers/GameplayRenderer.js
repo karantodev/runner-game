@@ -197,7 +197,12 @@ export class GameplayRenderer {
     const p = this.projection.projectVisual(pos.lane, pos.distance);
     const yOffset = data.high ? -86 : -40;
     const wobble = Math.sin(data.t) * 4 * p.scale;
-    const x = p.sx + data.laneJitter * this.projection.visualLaneWidth;
+    // v4.x — reference-match: dampen the per-orchid horizontal jitter so the
+    // center gold line reads as one straight path (the reference line is dead
+    // straight). lineJitter scales the wobble; szMod below still uses the full
+    // laneJitter for organic SIZE variation.
+    const lineJitter = world.config?.visual?.collectibles?.lineJitter ?? 1;
+    const x = p.sx + data.laneJitter * this.projection.visualLaneWidth * lineJitter;
     const y = p.sy + yOffset * p.scale + wobble;
     const pop = world.config.gameFeel.ambientMotion ? 1 + Math.sin(data.t * 2.1) * 0.05 : 1;
 
@@ -304,7 +309,9 @@ export class GameplayRenderer {
       const center = size / 2;
       const grad = glowCtx.createRadialGradient(center, center, 0, center, center, center);
       grad.addColorStop(0, color);
-      grad.addColorStop(0.28, color);
+      // v4.x — reference-match: smaller solid core (0.28 → 0.2) so the halo
+      // fades more gradually into a soft warm aura instead of a hard gold disc.
+      grad.addColorStop(0.2, color);
       grad.addColorStop(1, 'rgba(0,0,0,0)');
       glowCtx.globalAlpha = 0.72;
       glowCtx.fillStyle = grad;
