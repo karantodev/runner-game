@@ -115,6 +115,9 @@ export const GAME_CONFIG = Object.freeze({
     startLives: 3,
     maxLives: 5,
     invulnerabilityFrames: 82,
+    // Forgiving pickup: lateral collection tolerance. Lanes are 1.0 apart, so a
+    // touch over 0.5 lets a flower you sweep past on a lane switch still count.
+    collect: { laneWindow: 0.55 },
     // Designer-tunable difficulty curve. intensity ∈ [0,1] drives pattern/orchid
     // spacing; `level` (1..6) drives the pattern pool. Warm-up holds intensity at
     // 0 for the opening seconds; wave* adds rhythmic rest windows.

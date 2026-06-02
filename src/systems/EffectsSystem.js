@@ -48,6 +48,22 @@ const BURSTS = Object.freeze({
     color: 'rgba(255,210,60,0.95)',
     sprite: { key: 'sparkle', frames: 4, size: [13, 19] },
   },
+  // Jackpot orchid (flower-rich): a richer gold pop than a plain flower but
+  // below the rare-orchid fanfare, so the premium reads without burying the run.
+  jackpotCollect: {
+    count: 12, vx: 6.5, vy: 5, life: [20, 30], radius: [2, 4],
+    color: 'rgba(255,200,40,0.97)',
+    sprite: { key: 'sparkle', frames: 4, size: [18, 26] },
+    spread: { x: [-14, 14], y: [-6, 6] },
+  },
+  // Combo tier-up celebration. Colour is overridden per tier by the handler;
+  // count scales with the multiplier via the opts.count override.
+  comboTier: {
+    count: 10, vx: 6, vy: 5, life: [22, 34], radius: [2, 4.5],
+    color: 'rgba(255,210,60,0.95)',
+    sprite: { key: 'sparkle', frames: 4, size: [18, 26] },
+    spread: { x: [-26, 26], y: [-10, 10] },
+  },
   // v4.1 — P0 reference-match: rare orchid stays celebratory but trimmed
   // ~27% on count and ~15% on life/size so it doesn't bury subsequent pickups.
   rareCollect: {
@@ -115,6 +131,20 @@ const POPUPS = Object.freeze({
   nearMiss: { text: 'NEAR MISS', color: '#ffd54a' },
 });
 
+/**
+ * Combo tier-up colours, indexed by (multiplier - 2): ×2 gold → ×8 white-hot.
+ * Escalating warmth signals the rising streak at a glance.
+ */
+const COMBO_TIER_COLORS = Object.freeze([
+  'rgba(255,210,60,0.95)',   // ×2
+  'rgba(255,170,40,0.95)',   // ×3
+  'rgba(255,120,40,0.96)',   // ×4
+  'rgba(255,80,90,0.96)',    // ×5
+  'rgba(255,90,200,0.96)',   // ×6
+  'rgba(190,120,255,0.97)',  // ×7
+  'rgba(255,255,255,0.98)',  // ×8
+]);
+
 /** Power-up type → activation-burst colour override. */
 const POWER_ACTIVATION_COLOR = Object.freeze({
   'speed-burst': 'rgba(90,255,100,0.95)',
@@ -161,6 +191,7 @@ export class EffectsSystem {
     eventBus.on('powerup:activated',(p) => this.#onPowerUpActivated(p));
     eventBus.on('milestone:reached',(p) => this.#onMilestone(p));
     eventBus.on('speed:tierUp',     (p) => this.#onSpeedTier(p));
+    eventBus.on('comboChanged',     (p) => this.#onComboChanged(p));
     eventBus.on('camera:shake',     (amount) => this.#shake(amount));
   }
 
@@ -169,9 +200,16 @@ export class EffectsSystem {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  #onCollect({ lane, high }, kind) {
+  #onCollect({ lane, high, value }, kind) {
     const w = this.world;
     if (!w) return;
+    // Jackpot orchids (flower-rich, value > 1) get a bigger gold pop and show
+    // their real point value, so the premium reads at the moment of pickup.
+    if (kind === 'flower' && value > 1) {
+      this.#burstAtLane('jackpotCollect', lane, { yOffset: high ? -100 : -52 });
+      this.#popupAtLane({ text: `+${value}`, color: '#ffd24a' }, lane, high);
+      return;
+    }
     const burstName = `${kind}Collect`;
     this.#burstAtLane(burstName, lane, { yOffset: high ? -100 : -52 });
     this.#popupAtLane(POPUPS[kind], lane, high);
@@ -219,6 +257,21 @@ export class EffectsSystem {
     // v4.7 — FOV punch removed (see #onNearMiss): it lurched the side trees.
     const laneX = w.player?.components.LaneState.laneX ?? 0;
     this.#popupAtLane({ text: `SPEED +${tier}`, color: '#a7ff7e' }, laneX, true);
+  }
+
+  /**
+   * Combo tier-up — a ×N popup + an escalating-colour sparkle burst at the
+   * player. Only fires on an increase (reason 'bump'); the matching COMBO_UP /
+   * COMBO_MEGA sound is handled by SoundSystem on the same event.
+   */
+  #onComboChanged({ multiplier, reason }) {
+    const w = this.world;
+    if (!w || !w.player) return;
+    if (reason !== 'bump' || multiplier <= 1) return;
+    const laneX = w.player.components.LaneState.laneX;
+    const color = COMBO_TIER_COLORS[Math.min(COMBO_TIER_COLORS.length - 1, Math.max(0, multiplier - 2))];
+    this.#burstAt('comboTier', laneX, { yOffset: -120, color, count: 8 + multiplier * 2 });
+    this.#popupAtLane({ text: `×${multiplier}`, color }, laneX, true);
   }
 
   /**
@@ -304,7 +357,8 @@ export class EffectsSystem {
     const spriteKey = preset.sprite?.key ?? null;
     const spriteFrames = preset.sprite?.frames ?? 0;
     const spread = preset.spread ?? null;
-    for (let i = 0; i < preset.count; i += 1) {
+    const count = opts.count ?? preset.count;
+    for (let i = 0; i < count; i += 1) {
       let vx;
       if (typeof opts.vxBuilder === 'function') {
         vx = opts.vxBuilder(Math.random);

@@ -39,7 +39,8 @@ export class CollisionSystem {
       const data = e.components.CollectibleData;
       if (data.collected || !crossedDepthWindow(pos, -3, 3)) continue;
 
-      const inLane = occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.48);
+      const laneWindow = this.config.gameplay.collect?.laneWindow ?? 0.48;
+      const inLane = occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < laneWindow);
       const heightOK = data.high ? playerY < -30 : true;
       if (!inLane || !heightOK) continue;
 
