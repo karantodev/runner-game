@@ -495,6 +495,61 @@ export const PATTERNS = Object.freeze([
       { kind: 'flower', collectible: 'flower-rich', lane: 0, high: true, offset: 86 },
     ],
   },
+
+  // ── Difficulty 6: end-game — maximum fair pressure for very long runs ────────
+
+  {
+    // Four-wave rolling gauntlet (one wave more than d4); the safe lane swings
+    // -1 → +1 → -1 → +1, each shift exactly inside the 18-unit window.
+    id: 'd6-rolling-gauntlet',
+    difficulty: 6,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 0  },
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 0  },
+      { kind: 'obstacle', lane: -1, type: 'wall',     offset: 18 },
+      { kind: 'obstacle', lane: 0,  type: 'wheat',    offset: 18 },
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 36 },
+      { kind: 'obstacle', lane: 1,  type: 'bush',     offset: 36 },
+      { kind: 'obstacle', lane: -1, type: 'wall',     offset: 54 },
+      { kind: 'obstacle', lane: 0,  type: 'mushroom', variant: 'red', offset: 54 },
+      { kind: 'flower', lane: 1, offset: 68 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 1, high: true, offset: 76 },
+    ],
+  },
+
+  {
+    // Duck → jump → duck rhythm (overhang, vine, overhang) with proven spacing,
+    // then a jackpot once the final crouch lock-out clears.
+    id: 'd6-duck-jump-duck',
+    difficulty: 6,
+    weight: 1,
+    items: [
+      { kind: 'obstacle', type: 'overhang', assetType: 'low_branch_overhang', offset: 0 },
+      { kind: 'flower', lane: 0, offset: 30 },
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 44 },
+      { kind: 'flower', lane: 0, offset: 74 },
+      { kind: 'obstacle', type: 'overhang', assetType: 'spider_web_overhang', offset: 82 },
+      { kind: 'flower', lane: -1, offset: 108 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 0, high: true, offset: 116 },
+    ],
+  },
+
+  {
+    // Four single-lane snaps stepping +1 → 0 → -1 → +1, each a one-lane move in
+    // the 16-unit gap; a jackpot rewards holding the final safe lane.
+    id: 'd6-quad-snap',
+    difficulty: 6,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 0  },
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 16 },
+      { kind: 'obstacle', lane: -1, type: 'bush',     offset: 32 },
+      { kind: 'obstacle', lane: 1,  type: 'wheat',    offset: 48 },
+      { kind: 'flower', lane: 0, offset: 62 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 0, high: true, offset: 70 },
+    ],
+  },
 ]);
 
 // Spawned during split-clones power-up: no obstacles, wide flower bonus.
