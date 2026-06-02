@@ -490,10 +490,10 @@ export class SpawnSystem {
     if (snap.splitClonesActive) {
       pattern = this.library.pickSplitBonus();
     } else {
-      // v3.1: pattern pool is keyed on levels 1-4. v5 adds a level-5 bucket
-      // for deep-run variety; level 6 still maps to pool 5 (there is no pool
-      // 6) — the extra pressure comes from tighter patternSpacing.
-      const libraryLevel = Math.min(5, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
+      // Pattern pool keyed on levels 1-6. Buckets 5-6 add deep / end-game
+      // variety; speed-burst caps the pick at level 2 so a burst never throws a
+      // hard late pattern at the accelerated player.
+      const libraryLevel = Math.min(6, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
       pattern = this.library.pick(libraryLevel);
       this._patternPicks += 1;
       // Reject if the pattern is unsolvable on its own OR forms an unclearable
