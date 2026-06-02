@@ -38,6 +38,7 @@ Gamepad and touch (swipe + on-screen buttons on mobile) also supported.
 ```bash
 npm run dev              # local server with hot reload (just reload the tab)
 npm run build            # sync index.html to dev.html (no bundling)
+npm run build:standalone # bundle to dist/ — open dist/index.html directly (no server)
 npm run check            # CI gate — fails if index.html is stale
 npm run preview          # build, then serve at /
 npm run test:smoke       # 2 playwright specs — page loads, no console errors
