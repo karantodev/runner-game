@@ -293,7 +293,7 @@ export const GAME_CONFIG = Object.freeze({
       // v4.11 — reference-match P3: push saturation/contrast harder and drop
       // brightness below 1 (the +2% lift was washing the scene out). Combined
       // with the deeper GradientCache greens this lands the rich, premium look.
-      saturate: 1.18, // v4.15 — reference-match: ease the candy-hot greens (deeper ground gradient + warm overlay carry the richness)
+      saturate: 1.16, // v4.16 — meadow rebalance: violet-heavy flora now carries the richness, so global sat eases off slightly
       contrast: 1.15, // v4.14 — reference-match: a touch more punch
       brightness: 0.99,
       // Warm sunlit highlights / cool shadows via a soft overlay.
@@ -301,7 +301,7 @@ export const GAME_CONFIG = Object.freeze({
         enabled: true,
         warm: 'rgba(255, 216, 138, 1)', // v4.14 — reference-match: more saturated amber highlight
         cool: 'rgba(64, 86, 158, 1)',
-        strength: 0.11, // v4.14 — reference-match: stronger warm-top / cool-shadow split for the golden-hour read
+        strength: 0.13, // v4.16 — lean the scene further into golden-hour warmth after opening the side walls
       },
       vignette: { enabled: true, strength: 0.06 },
     },
@@ -309,8 +309,8 @@ export const GAME_CONFIG = Object.freeze({
     // ── Depth: far layers slightly desaturated + darkened so the
     //    foreground corridor reads as "closer".
     depth: {
-      farDesaturate: 0.14,  // 0..1 toward grey // v4.11 — reference-match: 0.22→0.14 so distant hills stay green like the reference instead of greying out
-      farDarken: 0.12,      // 0..1 toward black // v4.11 — reference-match: 0.17→0.12, keep depth separation but less muddy
+      farDesaturate: 0.11,  // v4.16 — keep the mountains/hills airy and less grey so the scene breathes like the reference
+      farDarken: 0.10,      // v4.16 — ease the distant compression; castle approach should feel open, not heavy
     },
 
     // ── Collectibles: center "breadcrumb" orchid line + stronger halo.
@@ -343,7 +343,7 @@ export const GAME_CONFIG = Object.freeze({
     // carpet (GroundScatterSystem). false = prepopulate AND update no-op.
     // v4.11 — reference-match: decorMultiplier 1.5→1.8 → effective side-decor
     // gap ≈ sideDecorSpacing/1.8, for the near-continuous wall of the reference.
-    density: { decorMultiplier: 1.8, scatterFlowers: true, groundScatter: true },
+    density: { decorMultiplier: 1.62, scatterFlowers: true, groundScatter: true },
 
     // Cheap, allocation-free surface detail. Meadow pixels scroll in world
     // space outside the road, so the field reads as textured terrain instead
@@ -370,11 +370,11 @@ export const GAME_CONFIG = Object.freeze({
       // reads as planted, not floating. Subtle: low alpha, narrow ellipse.
       // Only the nearest/largest flora get one (see SceneryRenderer scale
       // gate) so the cost stays bounded across the ~1k-sprite carpet.
-      floraShadow: { enabled: true, alpha: 0.18, widthScale: 0.7 },
+      floraShadow: { enabled: true, alpha: 0.20, widthScale: 0.7 },
       // v4.14 — reference-match: contact shadow under solid side structures
       // (blocks/mushrooms/fences) so they read as planted, not floating.
       // Consumed by SceneryRenderer; bounded by a scale gate so cost stays tiny.
-      solidShadow: { enabled: true, alpha: 0.27, widthScale: 0.62 }, // v4.15 — reference-match: a touch more contact-shadow grounding under side structures
+      solidShadow: { enabled: true, alpha: 0.30, widthScale: 0.62 }, // v4.16 — slightly firmer planting shadow after thinning the vertical masses
       runDust: { enabled: true, rate: 0.5 },
       collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
     },
@@ -442,13 +442,13 @@ export const GAME_CONFIG = Object.freeze({
     // v4.10 — two close bands per patch, then a larger breathing interval.
     // This keeps the meadow stocked while reducing live scatter entities
     // versus an evenly-spaced carpet.
-    scatterPatchSpacing: 9.2,  // v4.11 Stage B: 8.4→9.2 — fewer live patches; the baked meadow carpet carries the visual mass, so trim entity churn
+    scatterPatchSpacing: 9.2,  // tuned with decorMultiplier; keep the patch cadence, open the scene via band composition instead of more entities
     scatterPatchBands: 2,
     scatterPatchBandSpacing: 1.35,
-    scatterClusterLaneRadius: 0.16,
+    scatterClusterLaneRadius: 0.22,
     // v4.7 perf — six items per local band keeps render headroom and trims
     // the entity churn that drives periodic GC.
-    scatterPerBand: 6,  // v4.11 Stage B: back to 6 — the baked meadow carpet now carries the mass; live entities are just the near hero flora
+    scatterPerBand: 6,  // keep perf headroom; the violet weighting now changes character more than raw count
     scatterLaneRange: [1.34, 1.90],  // v4.11 reference-match: wider seeding band
     // v4.6 — reference-match: cap the carpet at the visible near/mid range.
     // Past this the flora are sub-pixel and waste entities; the budget is
@@ -458,7 +458,7 @@ export const GAME_CONFIG = Object.freeze({
     // wide MEADOW remap (the green field) vs the near SHOULDER strip.
     // Two thirds of each patch sits in the meadow, so local beds fill the
     // flank without returning to a uniform lawn.
-    scatterMeadowFraction: 0.72,
+    scatterMeadowFraction: 0.60,
     lifePickupMinDistance: 940,
     lifePickupMaxDistance: 1480,
     powerUpMinDistance: 780,
