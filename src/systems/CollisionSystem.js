@@ -91,7 +91,9 @@ export class CollisionSystem {
     if (spec.powerUpType) {
       this.eventBus.emit(spec.event, { ...payload, type: spec.powerUpType });
     } else {
-      this.eventBus.emit(spec.event, payload);
+      // Carry the point value so the scorer can apply 1× / 3× without
+      // re-consulting the registry.
+      this.eventBus.emit(spec.event, { ...payload, value: spec.scoreValue ?? 1 });
     }
   }
 

@@ -451,17 +451,25 @@ export class SpawnSystem {
     let cursor = Math.ceil(fromDist / spacing) * spacing;
     let emitted = 0;
 
+    const density = world.config?.spawn?.density;
+    const yieldToFigures = density?.centerTrailYieldsToFigures ?? false;
+    const figureWindow = density?.figureWindow ?? 4;
     while (cursor <= toDist && emitted < runLength) {
-      this.#spawnCollectible(world, {
-        type: 'flower',
-        lane: 0,
-        distance: cursor - (world.worldDistanceTotal ?? 0),
-        absoluteDistance: cursor,
-        sourceId: 'center-trail',
-        high: false,
-      });
+      // Skip a breadcrumb dot when a hero-cycle/pattern flower already fills this
+      // window so the center line opens up around figures instead of clumping.
+      const busy = yieldToFigures && this.roadLedger.collectibleDensityAround(cursor, 0, figureWindow) > 0;
+      if (!busy) {
+        this.#spawnCollectible(world, {
+          type: 'flower',
+          lane: 0,
+          distance: cursor - (world.worldDistanceTotal ?? 0),
+          absoluteDistance: cursor,
+          sourceId: 'center-trail',
+          high: false,
+        });
+      }
       cursor += spacing;
-      emitted++;
+      emitted += 1;
     }
     // Advance to where the next call should start (even if runLength capped us).
     this._centerTrailNext = cursor;
@@ -479,10 +487,10 @@ export class SpawnSystem {
     if (snap.splitClonesActive) {
       pattern = this.library.pickSplitBonus();
     } else {
-      // v3.1: pattern pool is keyed on levels 1-4. For our open-ended
-      // levels 5-6 we still pick from level 4 — the heightened pressure
-      // comes from tighter patternSpacing (DifficultyDirector).
-      const libraryLevel = Math.min(4, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
+      // v3.1: pattern pool is keyed on levels 1-4. v5 adds a level-5 bucket
+      // for deep-run variety; level 6 still maps to pool 5 (there is no pool
+      // 6) — the extra pressure comes from tighter patternSpacing.
+      const libraryLevel = Math.min(5, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
       pattern = this.library.pick(libraryLevel);
       if (!this.validator.isSolvable(pattern, { speed: world.speed })) {
         pattern = this.library.pickFallback();
@@ -555,7 +563,14 @@ export class SpawnSystem {
 
   #tickOrchid(world) {
     const diff = this.director.get(world);
-    this.#spawnOrchidPattern(world, this.projection.maxDistance);
+    // v4.x — the orchid filler is the THIRD flower producer. Hero cycles + the
+    // center trail already saturate the lane at speed, so let this one fire only
+    // in low-intensity rest windows; otherwise it just rebuilds the gold blob.
+    // Cadence still advances so it resumes naturally during the next breather.
+    const maxIntensity = this.config.spawn.density?.orchidTickMaxIntensity ?? 0.35;
+    if (diff.intensity <= maxIntensity) {
+      this.#spawnOrchidPattern(world, this.projection.maxDistance);
+    }
     this.nextOrchid = diff.orchidSpacing;
   }
 
@@ -633,7 +648,8 @@ export class SpawnSystem {
         });
       } else if (item.kind === 'flower') {
         this.#spawnCollectible(world, {
-          type: 'flower',
+          // Patterns may opt a single flower into a jackpot variant.
+          type: item.collectible ?? 'flower',
           lane: item.lane,
           distance,
           sourceId,
@@ -668,6 +684,28 @@ export class SpawnSystem {
   }
 
   /**
+   * v4.x — orchid-filler spawn that yields to existing collectible density the
+   * same way the center trail does. The filler is the THIRD flower producer;
+   * when its line/arc lands on a lane already carrying the breadcrumb trail or
+   * a hero figure it just rebuilds the early-run "gold blob" (the filler fires
+   * at low intensity, so #tickOrchid's gate doesn't cover the opening seconds).
+   * Skipping the spawn draws no RNG — each sub-pattern's rolls happen before its
+   * spawn loop — so seeded determinism is preserved.
+   */
+  #spawnFillerFlower(world, opts) {
+    const density = world.config?.spawn?.density;
+    if (density?.orchidFillerYieldsToFigures) {
+      const worldDistance = world.worldDistanceTotal ?? 0;
+      const absolute = opts.absoluteDistance ?? (worldDistance + opts.distance);
+      const figureWindow = density.figureWindow ?? 4;
+      if (this.roadLedger.collectibleDensityAround(absolute, opts.lane ?? 0, figureWindow) > 0) {
+        return null;
+      }
+    }
+    return this.#spawnCollectible(world, opts);
+  }
+
+  /**
    * Diagonal sweep from lane A to lane B. Player must lane-switch midway
    * to collect the full trail. 4 orchids spaced 12 apart, transitioning
    * smoothly across two adjacent lanes (e.g. -1 → 0 or 0 → 1).
@@ -682,7 +720,7 @@ export class SpawnSystem {
     for (let i = 0; i < count; i += 1) {
       const t = i / (count - 1);
       const lane = fromLane + (toLane - fromLane) * t;
-      this.#spawnCollectible(world, {
+      this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 12,
@@ -702,7 +740,7 @@ export class SpawnSystem {
     const fromLane = LANE_TRIPLET[fromIdx];
     const toLane = LANE_TRIPLET[toIdx];
     [fromLane, fromLane, toLane, toLane].forEach((lane, i) => {
-      this.#spawnCollectible(world, {
+      this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 13,
@@ -718,7 +756,7 @@ export class SpawnSystem {
     const count = this.rng.integer(2, 3);
     const high = this.rng.chance(0.26);
     for (let i = 0; i < count; i++) {
-      this.#spawnCollectible(world, {
+      this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 14,
@@ -731,7 +769,7 @@ export class SpawnSystem {
     // v3.8.1 — shorter zigzag (5 → 3 nodes) so it doesn't span half a screen.
     const lanes = this.rng.chance(0.5) ? [-1, 0, 1] : [1, 0, -1];
     lanes.forEach((lane, i) => {
-      this.#spawnCollectible(world, {
+      this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
         distance: baseDistance + i * 10,

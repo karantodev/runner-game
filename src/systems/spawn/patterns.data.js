@@ -14,13 +14,14 @@
  *
  * Schema:
  *   {
- *     id: string,             // unique, kebab-case
- *     difficulty: 1|2|3|4|0,  // 0 = special (split-bonus / safe-fallback)
- *     weight?: number,        // pick weight inside its difficulty pool (default 1)
+ *     id: string,               // unique, kebab-case
+ *     difficulty: 1|2|3|4|5|0,  // 0 = special (split-bonus / safe-fallback)
+ *     weight?: number,          // pick weight inside its difficulty pool (default 1)
  *     items: [
  *       { kind: 'obstacle', type: string, lane?: number,
  *         assetType?: string, variant?: any, allLanes?: boolean, offset: number }
- *       | { kind: 'flower', lane: number, high?: boolean, offset: number }
+ *       | { kind: 'flower', lane: number, high?: boolean, offset: number,
+ *           collectible?: string } // opt a single flower into a variant (e.g. jackpot)
  *     ],
  *   }
  */
@@ -394,6 +395,56 @@ export const PATTERNS = Object.freeze([
       { kind: 'flower', lane: -1, offset: 60 },
       { kind: 'flower', lane: 1,  offset: 60 },
       { kind: 'flower', lane: -1, offset: 68 },
+    ],
+  },
+
+  // ── Difficulty 5: deep run — rolling corridors + optional jackpots ───────────
+
+  {
+    // Safe lane rolls -1 → 0 → +1 across three waves. Each wave leaves exactly
+    // one open lane, reachable from the previous. Jackpot rewards the final lane.
+    id: 'd5-rolling-corridor',
+    difficulty: 5,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 0  },
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 0  },
+      { kind: 'obstacle', lane: -1, type: 'wall',     offset: 22 },
+      { kind: 'obstacle', lane: 1,  type: 'wheat',    offset: 22 },
+      { kind: 'obstacle', lane: -1, type: 'bush',     offset: 44 },
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 44 },
+      { kind: 'flower', lane: 1, offset: 58 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 1, high: true, offset: 66 },
+    ],
+  },
+
+  {
+    // Vine jump into a single-lane weave; jackpot sits on the clear exit lane.
+    id: 'd5-vine-weave',
+    difficulty: 5,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
+      { kind: 'flower', lane: 0, offset: 40 },
+      { kind: 'obstacle', lane: -1, type: 'wall',     offset: 48 },
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 64 },
+      { kind: 'flower', lane: 0, offset: 80 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 0, high: true, offset: 90 },
+    ],
+  },
+
+  {
+    // Duck then a rolling two-lane corridor. Overhang→vine spacing kept wide.
+    id: 'd5-duck-corridor',
+    difficulty: 5,
+    weight: 1,
+    items: [
+      { kind: 'obstacle', type: 'overhang', assetType: 'low_branch_overhang', offset: 0 },
+      { kind: 'flower', lane: 0, offset: 30 },
+      { kind: 'obstacle', lane: 0,  type: 'wall', offset: 44 },
+      { kind: 'obstacle', lane: 1,  type: 'bush', offset: 62 },
+      { kind: 'flower', lane: -1, offset: 78 },
+      { kind: 'flower', collectible: 'flower-rich', lane: -1, high: true, offset: 88 },
     ],
   },
 ]);

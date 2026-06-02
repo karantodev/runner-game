@@ -91,6 +91,21 @@ export class RoadSpawnLedger {
     if (reservation) reservation.entity = entity;
   }
 
+  /**
+   * Count reserved collectibles near a point. Lets independent producers yield
+   * to each other so several flower sources don't pile into one visible window.
+   * `distance` is absolute world distance — same space as reserveCollectible.
+   */
+  collectibleDensityAround(distance, lane, window = 8) {
+    let count = 0;
+    for (const c of this.collectibles.values()) {
+      if (Math.abs(c.distance - distance) < window && Math.abs(c.lane - lane) < 0.4) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
   #obstacleRecord(opts) {
     const rule = getObstacleRule(opts.type);
     return {
