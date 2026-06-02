@@ -1,15 +1,16 @@
 :root {
   /* v3.3 pixel-art palette (matches the in-game reference) */
-  --hud-bg: #0c1828;
-  --hud-bg-translucent: rgba(12, 24, 40, 0.92);
-  --hud-bg-inner: #18283e;
+  --hud-bg: #0a1728;
+  --hud-bg-translucent: rgba(10, 23, 40, 0.94);
+  --hud-bg-inner: #172b46;
   --hud-outline: #000000;
-  --hud-highlight: #3a5a7e;      /* 1px top-left inner stroke */
-  --hud-shadow: #061018;         /* 1px bottom-right inner stroke */
+  --hud-highlight: #42688d;      /* cool steel-blue bevel highlight */
+  --hud-shadow: #04101c;         /* deep navy bevel shadow */
+  --hud-drop: rgba(0, 0, 0, 0.34);
   --hud-text: #ffffff;
   --hud-text-muted: #9bb0c8;
-  --hud-gold: #ffd54a;
-  --hud-gold-dark: #b08018;
+  --hud-gold: #ffdc58;
+  --hud-gold-dark: #a87512;
   --hud-red: #e44848;
   --hud-red-dark: #7a2018;
   --hud-green: #74c050;
@@ -71,12 +72,12 @@ canvas {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 2px solid var(--hud-outline);
+  gap: 12px;
+  padding: 12px 16px;
+  border: 3px solid var(--hud-outline);
   border-radius: 0;
   background: var(--hud-bg);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow), 0 4px 0 var(--hud-drop);
   backdrop-filter: none;
   font-family: var(--pixel-font);
   font-weight: 400;          /* Press Start 2P only has one weight */
@@ -85,21 +86,21 @@ canvas {
 }
 
 .icon-button {
-  border: 2px solid var(--hud-outline);
+  border: 3px solid var(--hud-outline);
   color: var(--hud-text);
   cursor: pointer;
   background: var(--hud-bg);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow), 0 3px 0 var(--hud-drop);
 }
 
 .icon-button:hover { transform: translateY(-1px); }
-.icon-button svg { width: 22px; height: 22px; fill: currentColor; }
+.icon-button svg { width: 28px; height: 28px; fill: currentColor; }
 .hud-button-img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; display: block; }
-.hud-flower-icon { width: 28px; height: 28px; object-fit: contain; image-rendering: pixelated; }
-.hud-heart { width: 26px; height: 26px; object-fit: contain; image-rendering: pixelated; }
-.hud-energy { width: 14px; height: 22px; object-fit: contain; image-rendering: pixelated; }
+.hud-flower-icon { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.hud-heart { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+.hud-energy { width: 16px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 
-#pause { top: 20px; left: 20px; padding: 12px 14px; }
+#pause { top: 18px; left: 18px; padding: 16px 18px; }
 #pause svg { fill: var(--hud-text); }
 
 /* v3.8.4 HUD polish — top-right column has stable 8 px gaps, fixed 160 px
@@ -107,35 +108,35 @@ canvas {
 #score-box,
 #hearts-box,
 #distance-box {
-  right: 20px;
-  width: 160px;
+  right: 18px;
+  width: 184px;
   min-width: 0;
 }
 
 #score-box {
-  top: 20px;
+  top: 18px;
   justify-content: flex-start;
-  font-size: 20px;
+  font-size: 22px;
   /* drop the legacy wooden panel PNG background — pixel emboss handles it */
   background: var(--hud-bg);
 }
-#score-box .hud-flower-icon { width: 28px; height: 28px; }
+#score-box .hud-flower-icon { width: 34px; height: 34px; }
 #score-box #score {
   color: var(--hud-text);
   font-family: var(--pixel-font);
-  font-size: 18px;
+  font-size: 20px;
   text-shadow: 2px 2px 0 var(--hud-shadow);
 }
 
 #hearts-box {
-  top: 84px;
+  top: 88px;
   justify-content: center;
   gap: 6px;
   background: var(--hud-bg);
 }
 
 #distance-box {
-  top: 148px;
+  top: 158px;
   justify-content: space-between;
   font-size: 12px;
   background: var(--hud-bg);
@@ -143,7 +144,7 @@ canvas {
 #distance-box #distance {
   color: var(--hud-text);
   font-family: var(--pixel-font);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 #tier-box { display: none; }
@@ -152,7 +153,7 @@ canvas {
  * 6 → 4 px gaps so it doesn't bleed into the playable corridor. Powerups
  * panel aligned to the same left edge as #ability. */
 #powerups-box {
-  bottom: 156px; left: 20px;
+  bottom: 174px; left: 18px;
   width: 168px;
   min-height: 44px;
   align-items: stretch;
@@ -168,19 +169,19 @@ canvas {
  * room, charge segments enlarged 30×14 → 26×18 so they read as a meter
  * not as dots. */
 .tool-icon {
-  width: 72px; height: 72px;
+  width: 78px; height: 78px;
   object-fit: contain;
   image-rendering: pixelated;
   display: block;
   margin-bottom: 2px;
 }
 #ability {
-  bottom: 20px; left: 20px;
+  bottom: 18px; left: 18px;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 12px 14px 10px;
-  min-width: 100px;
+  padding: 14px 16px 12px;
+  min-width: 118px;
   background: var(--hud-bg);
 }
 #ability .bar {
@@ -453,9 +454,9 @@ body.force-touch #touch-controls { display: flex; }
 @media (max-width: 760px) {
   #hint { display: none; }
   #pause { top: 12px; left: 12px; }
-  #score-box { top: 12px; right: 12px; font-size: 20px; min-width: 112px; }
-  #hearts-box { top: 68px; right: 12px; font-size: 18px; min-width: 112px; }
-  #distance-box { top: 120px; right: 12px; min-width: 112px; font-size: 14px; }
+  #score-box { top: 12px; right: 12px; width: 136px; font-size: 20px; min-width: 112px; }
+  #hearts-box { top: 68px; right: 12px; width: 136px; font-size: 18px; min-width: 112px; }
+  #distance-box { top: 120px; right: 12px; width: 136px; min-width: 112px; font-size: 14px; }
   #tier-box { display: none; }
   #powerups-box { bottom: 100px; left: 12px; min-width: 132px; font-size: 11px; padding: 8px 10px; }
   #ability { bottom: 12px; left: 12px; padding: 10px 12px 10px; min-width: 84px; }

@@ -49,7 +49,9 @@ export class LandmarksRenderer {
     const VISIBLE_GATE_HEIGHT_RATIO = 0.32;
     const castleWidthPx = width * 0.122;
     const castleOffset = parallaxOffset(p, world.scrollOffset, PARALLAX.castle * parallaxScale, 1.1);
-    const castleX = width / 2;
+    // Keep the landmark gate on the same render-only axis as the road. The
+    // gameplay lane model remains centred; only the visual corridor bends.
+    const castleX = p.roadVanishX;
     const topHalf = roadTopHalfWidth(p);
     // gateThresholdY = visible bottom of the gate opening (target = roadVanishY)
     const gateThresholdY = p.roadVanishY;
@@ -80,6 +82,14 @@ export class LandmarksRenderer {
     ctx.lineTo(0, p.roadVanishY + 124);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+
+    // v4.9 — focused haze behind the landmark. This keeps the horizon clean
+    // while giving the castle a soft atmospheric pocket instead of a hard
+    // sticker edge against the mountains.
+    ctx.save();
+    ctx.fillStyle = this.gradients.gradients.landmarkHaze;
+    ctx.fillRect(castleX - 190, p.roadVanishY - 168, 380, 380);
     ctx.restore();
 
     // v3.8.12 — approach path = ROAD MATERIAL CONTINUATION. User flagged
@@ -210,8 +220,8 @@ export class LandmarksRenderer {
       ctx.strokeStyle = 'rgba(255,210,80,0.45)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(width / 2, 0);
-      ctx.lineTo(width / 2, p.height);
+      ctx.moveTo(p.width / 2, p.groundY);
+      ctx.lineTo(castleX, p.roadVanishY);
       ctx.stroke();
 
       // Math markers (v3.8.11)
@@ -257,10 +267,10 @@ export class LandmarksRenderer {
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
       // Left road edge at the foreground (groundY) → left gate corner
-      ctx.moveTo(castleX - roadBaseHalfWidth(p), p.groundY);
+      ctx.moveTo(p.visualRoadCenterX(0) - roadBaseHalfWidth(p), p.groundY);
       ctx.lineTo(castleX - gateWidthPx / 2, gateThresholdY);
       // Right road edge at the foreground → right gate corner
-      ctx.moveTo(castleX + roadBaseHalfWidth(p), p.groundY);
+      ctx.moveTo(p.visualRoadCenterX(0) + roadBaseHalfWidth(p), p.groundY);
       ctx.lineTo(castleX + gateWidthPx / 2, gateThresholdY);
       ctx.stroke();
       ctx.setLineDash([]);

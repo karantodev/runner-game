@@ -126,7 +126,7 @@ export class SettingsMenu {
       this.world.config.gameFeel.particles   = !!this.settings.particles;
     }
     if (this.adaptiveQuality) {
-      this.adaptiveQuality.setLocked(this.settings.qualityLock);
+      this.adaptiveQuality.setLocked(this.settings.qualityLock, this.world);
     }
     if (this.sound) {
       this.sound.setEnabled(!!this.settings.sfx);

@@ -7,9 +7,9 @@ import { Entity } from './Entity.js';
  *   - `list`: a dense Array for fast iteration (queries scan it).
  *   - `byId`: a Map for O(1) lookup / destroy.
  *
- * Queries are pure filters — they walk `list` once per call. For the
- * working set sizes in this game (≤ ~250 entities), this is plenty fast
- * and avoids the bookkeeping cost of per-component indices.
+ * Queries are pure filters — they walk `list` once per call. Even with the
+ * dense garden-scatter pass (~1.5k entities), this remains cheaper than
+ * maintaining per-component indices for the current system graph.
  *
  * Dead entities (alive = false) are NOT skipped automatically by every
  * query — the CleanupSystem compacts them out each frame, so a query
@@ -22,7 +22,10 @@ export class EntityRegistry {
     this._list = [];
     this._byId = new Map();
     this._free = [];
-    this._poolLimit = 512;
+    // v4.9 — dense meadow scatter raised the steady-state scene above the
+    // old 512-entity cap. Retain enough ECS shells to cover a full visual
+    // reset so repeated runs do not reallocate ~1k Entity objects.
+    this._poolLimit = 2048;
   }
 
   /** Create a fresh entity and register it. */

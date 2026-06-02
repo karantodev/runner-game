@@ -13,6 +13,9 @@ const SCATTER_FLORA = [
   { assetType: 'yellow_flower_small',  type: 'smallFlower', scale: [0.30, 0.42] },
   { assetType: 'grass_tuft_small',     type: 'grassTuft',   scale: [0.40, 0.52] },
   { assetType: 'grass_tuft',           type: 'grassTuft',   scale: [0.42, 0.56] },
+  // v4.9 — low leaf clumps give the meadow carpet visual mass without
+  // increasing entity count or competing with structural bushes.
+  { assetType: 'leaf_clump_round',     type: 'leafClusterCompact', scale: [0.34, 0.48] },
 ];
 
 // v4.6 — reference-match: scatter sits at zLayer 4 so when a scatter item
@@ -21,19 +24,17 @@ const SCATTER_FLORA = [
 // The carpet is the bed; structural flora stay the focal layer on top.
 const SCATTER_Z_LAYER = 4;
 
-// v4.6 — reference-match: hard floor on the per-band step so a high
-// decorMultiplier can't collapse the spacing into a z-fighting smear and
-// can't blow up the live-entity count without bound. 1.5 world-units is
-// dense enough to read as a continuous bed at the near corridor.
-const MIN_SCATTER_STEP = 1.5;
+// v4.10 — patches keep flora locally dense without carpeting every metre.
+// The floor prevents decorMultiplier from collapsing the breathing interval
+// and bounds the live-entity count at high density.
+const MIN_SCATTER_PATCH_STEP = 4;
 
 /**
  * Dense ground-scatter decoration layer. Runs as an INDEPENDENT spawn
  * channel parallel to DecorationSystem: same entity lifecycle (spawn at
  * the horizon, reaped by CleanupSystem once behind the player), same
- * per-side distance-cursor cadence — but a much tighter spacing and
- * multiple small flora per band so the shoulders read as a carpet rather
- * than isolated clusters.
+ * per-side distance-cursor cadence — but in small clustered patches so the
+ * shoulders read as planted garden beds rather than an even lawn.
  */
 export class GroundScatterSystem {
   /**
@@ -52,7 +53,7 @@ export class GroundScatterSystem {
     // Stagger the two sides so left/right bands don't spawn in lockstep —
     // a synchronised carpet reads as rows; an offset one reads organic.
     this.nextLeft = 0;
-    this.nextRight = 1.7;
+    this.nextRight = 2.4;
   }
 
   /**
@@ -71,11 +72,11 @@ export class GroundScatterSystem {
     const maxDist = this.#farLimit() + 12;
     // Independent cursor per side, each seeded with its own jitter so the
     // two carpets interleave instead of mirroring.
-    for (let distance = start; distance < maxDist; distance += this.#step(world)) {
-      this.#spawnBand(world, -1, distance);
+    for (let distance = start; distance < maxDist; distance += this.#patchStep(world)) {
+      this.#spawnPatch(world, -1, distance);
     }
-    for (let distance = start + 1.6; distance < maxDist; distance += this.#step(world)) {
-      this.#spawnBand(world, 1, distance);
+    for (let distance = start + 2.4; distance < maxDist; distance += this.#patchStep(world)) {
+      this.#spawnPatch(world, 1, distance);
     }
   }
 
@@ -87,12 +88,12 @@ export class GroundScatterSystem {
     this.nextRight -= world.speed * delta;
 
     if (this.nextLeft <= 0) {
-      this.#spawnBand(world, -1, this.#farLimit() + this.rng.range(-1, 1));
-      this.nextLeft = this.#step(world);
+      this.#spawnPatch(world, -1, this.#farLimit() + this.rng.range(-1, 1));
+      this.nextLeft = this.#patchStep(world);
     }
     if (this.nextRight <= 0) {
-      this.#spawnBand(world, 1, this.#farLimit() + this.rng.range(-1, 1));
-      this.nextRight = this.#step(world);
+      this.#spawnPatch(world, 1, this.#farLimit() + this.rng.range(-1, 1));
+      this.nextRight = this.#patchStep(world);
     }
   }
 
@@ -112,27 +113,41 @@ export class GroundScatterSystem {
   }
 
   /**
-   * Per-band distance step. Base scatterSpacing tightened by
-   * decorMultiplier (denser scene ⇒ shorter step) and jittered so the
-   * carpet rows don't line up. Floored at MIN_SCATTER_STEP to keep the
-   * live-entity count bounded and avoid z-fighting at high density.
+   * Distance between garden patches. Base spacing is tightened by
+   * decorMultiplier and jittered so left/right beds do not line up.
+   * The hard floor keeps the live-entity count bounded.
    */
-  #step(world) {
-    const base = this.config.spawn.scatterSpacing;
+  #patchStep(world) {
+    const base = this.config.spawn.scatterPatchSpacing ?? this.config.spawn.scatterSpacing * 2.6;
     const multiplier = world?.config?.visual?.density?.decorMultiplier ?? 1;
-    const jitter = this.rng.range(-0.4, 0.4);
+    const jitter = this.rng.range(-0.7, 0.7);
     const step = (base + jitter) / Math.max(0.5, multiplier);
-    return Math.max(MIN_SCATTER_STEP, step);
+    return Math.max(MIN_SCATTER_PATCH_STEP, step);
   }
 
   /**
-   * Lay one band of small flora across the shoulder lane range. Each item
+   * Spawn a short run of close bands, then leave a larger interval before
+   * the next run. Each band picks its own lateral centre, producing irregular
+   * planted beds while preserving the collision-safe shoulder lane range.
+   */
+  #spawnPatch(world, side, distance) {
+    const bands = this.config.spawn.scatterPatchBands ?? 2;
+    const bandSpacing = this.config.spawn.scatterPatchBandSpacing ?? 1.35;
+    for (let i = 0; i < bands; i += 1) {
+      this.#spawnBand(world, side, distance + i * bandSpacing);
+    }
+  }
+
+  /**
+   * Lay one compact flora cluster inside the shoulder lane range. Each item
    * gets independent lateral + distance jitter and a random variant +
    * per-asset scale so repeated assets never read as a grid.
    */
   #spawnBand(world, side, distance) {
     const count = this.config.spawn.scatterPerBand;
     const [laneMin, laneMax] = this.config.spawn.scatterLaneRange;
+    const laneRadius = this.config.spawn.scatterClusterLaneRadius ?? 0.16;
+    const laneCenter = this.rng.range(laneMin + laneRadius, laneMax - laneRadius);
     // v4.7 — reference-match: split each band between the SHOULDER strip
     // (road edge) and the wider MEADOW remap (the green field between
     // clusters) so the carpet covers the whole flank, not just a border
@@ -142,10 +157,9 @@ export class GroundScatterSystem {
     for (let i = 0; i < count; i += 1) {
       const flora = this.rng.choice(SCATTER_FLORA);
       const band = this.rng.chance(meadowFrac) ? LANE_BANDS.MEADOW : LANE_BANDS.SHOULDER;
-      // Spread items across the band width, then jitter so they don't sit
-      // on fixed sub-lanes; mirror onto the active side.
-      const laneT = count > 1 ? i / (count - 1) : 0.5;
-      const lane = laneMin + laneT * (laneMax - laneMin) + this.rng.range(-0.05, 0.05);
+      // Cluster around one local centre rather than spreading each band
+      // uniformly from road edge to meadow edge.
+      const lane = Math.min(laneMax, Math.max(laneMin, laneCenter + this.rng.range(-laneRadius, laneRadius)));
       createScenery(world.registry, {
         type: flora.type,
         assetType: flora.assetType,

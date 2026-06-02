@@ -95,21 +95,21 @@ export class Game {
     });
     // v4.0 — collect bloom flash on flower / rare pickup.
     // Projects the player's current screen position as the bloom centre.
-    const _triggerCollectBloom = () => {
+    const _triggerCollectBloom = (force = false) => () => {
       const eff = this.renderer.effectsRenderer;
       if (!eff) return;
       const proj = this.projection;
       const player = this.world.player;
-      if (!player) { eff.triggerCollectFlash(proj.width / 2, proj.groundY - 80); return; }
+      if (!player) { eff.triggerCollectFlash(proj.width / 2, proj.groundY - 80, { force }); return; }
       const laneX = player.components.LaneState.laneX;
       const vertY  = player.components.VerticalState.y;
       const bm     = this.config.player.bottomMargin ?? 0;
       const sx = proj.width / 2 + laneX * proj.visualLaneWidth;
       const sy = proj.groundY - bm + vertY - 60;
-      eff.triggerCollectFlash(sx, sy);
+      eff.triggerCollectFlash(sx, sy, { force });
     };
-    this.eventBus.on('flower:collected', _triggerCollectBloom);
-    this.eventBus.on('rare:collected',   _triggerCollectBloom);
+    this.eventBus.on('flower:collected', _triggerCollectBloom(false));
+    this.eventBus.on('rare:collected',   _triggerCollectBloom(true));
 
     // Tutorial overlay must not linger after the run ends or is paused —
     // it would sit on top of the death/pause UI and capture screen real

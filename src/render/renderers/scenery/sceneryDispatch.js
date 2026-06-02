@@ -57,46 +57,38 @@ function drawByHeight({ sprites }, key, x, y, height) {
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
 // v3.8.18 side-aware mapping — supports per-type override.
-// v3.8.19 — defaults flipped to 'swapped' for the current designer wave
-// after the A/B matrix + clean gameplay comparison.
 //
 // Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
 //   _left.png  → asset placed on the road's LEFT shoulder  (placement convention)
 //   _right.png → asset placed on the road's RIGHT shoulder
 //
-// HOWEVER — empirical finding from v3.8.19 A/B (clean gameplay screenshots
-// at sideMapping=normal vs swapped): the designer named the current wave
-// of files by VISIBLE-FACE convention, not placement. So:
-//   designer's `_left.png`  → block's LEFT face is the visible one
-//                              (correct for RIGHT-shoulder placement)
-//   designer's `_right.png` → block's RIGHT face is the visible one
-//                              (correct for LEFT-shoulder placement)
-// Hence both grass_dirt_block and floating_platform default to 'swapped'
-// so the engine picks the right file for each shoulder. If a future
-// designer batch ships under the placement convention, flip the relevant
-// entries back to 'normal'.
+// Runtime audit: all accepted pairs follow that placement convention.
+// Their LEFT files expose the road-facing right surface and recede inward;
+// RIGHT files do the opposite. This also matches VoxelBlockRenderer's
+// side=-1/+1 geometry.
 //
 // Two layers of control:
 //   1. Per-type table — each side-aware type is 'normal' or 'swapped'.
 //   2. Global `?sideMapping=swapped` URL flag XORs over the whole table.
 const SIDE_MAPPING_BY_TYPE = new Map([
-  ['grass_dirt_block',   'swapped'],
-  ['grass_dirt_step',    'swapped'],
-  ['terrainBlock',       'swapped'],
-  ['floating_platform',  'swapped'],
-  ['platform',           'swapped'],
-  // v3.8.34 — P1 Golden Rule pairs. Designer shipped under the same
-  // visible-face convention as the v3.8.27 wave; if a future batch
-  // flips convention, override via ?sideMapping=type:normal.
-  ['stone_brick_single', 'swapped'],
-  ['stone_wall_low',     'swapped'],
-  ['stone_wall_stairs',  'swapped'],
-  ['planter_pot',        'swapped'],
-  ['grass_dirt_platform_long', 'swapped'],
-  ['purple_brick_single',      'swapped'],
-  ['hanging_platform_vines',   'swapped'],
-  ['fence_wood_short',         'swapped'],
+  ['grass_dirt_block',   'normal'],
+  ['grass_dirt_step',    'normal'],
+  ['terrainBlock',       'normal'],
+  ['floating_platform',  'normal'],
+  ['platform',           'normal'],
+  ['stone_brick_single', 'normal'],
+  ['stone_wall_low',     'normal'],
+  ['stone_wall_stairs',  'normal'],
+  ['planter_pot',        'normal'],
+  ['grass_dirt_platform_long', 'normal'],
+  ['purple_brick_single',      'normal'],
+  ['hanging_platform_vines',   'normal'],
+  ['fence_wood_short',         'normal'],
 ]);
+// All currently registered pairs passed the side-aware re-export audit.
+// Keep the marker set so future art deliveries can be quarantined without
+// changing the renderer contract.
+const QUARANTINED_SIDE_VARIANTS = new Set();
 let globalSwap = false;
 
 export function setSideMappingSwap(swap) { globalSwap = !!swap; }
@@ -108,6 +100,9 @@ export function setSideMappingForType(type, mode) {
 }
 export function getSideMappingForType(type) {
   return SIDE_MAPPING_BY_TYPE.get(type) ?? 'normal';
+}
+export function isSideVariantQuarantined(type) {
+  return QUARANTINED_SIDE_VARIANTS.has(type);
 }
 
 /** Per-type SIDE_KEY_FOR. Resolves type's mapping mode + global swap. */
@@ -191,10 +186,12 @@ register(['grass_dirt_platform_long', 'grassDirtPlatformLong'], (deps, x, y, sca
   return false;
 });
 
-register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs'], (deps, x, y, scale, variant, side) => {
+function drawStoneWall(deps, x, y, scale, variant, side, forcedType) {
   const v = variant ?? 0;
+  const stoneType = forcedType ?? (v % 2 === 0 ? 'stone_wall_low' : 'stone_wall_stairs');
+  const stairs = stoneType === 'stone_wall_stairs';
   if (deps.voxelBlocks?.enabled) {
-    if (v % 2 === 1) {
+    if (stairs) {
       return deps.voxelBlocks.drawSteps(x, y, scale, {
         material: 'stone',
         side,
@@ -208,18 +205,29 @@ register(['grass_dirt_wall', 'grassWall', 'stone_wall_low', 'stone_wall_stairs']
       units: 2,
     });
   }
-  const stoneKey  = v % 2 === 0 ? 'stoneWallLow'  : 'stoneWallStairs';
+  const stoneKey = stairs ? 'stoneWallStairs' : 'stoneWallLow';
   // v3.8.34 — side-aware variant pass. Variant index selects low vs stairs
-  // (matching the existing legacy fallback chain), then SIDE_KEY_FOR picks
-  // the _left or _right delivery via SIDE_MAPPING_BY_TYPE.
+  // for legacy aliases; canonical types force their matching sprite.
+  // SIDE_KEY_FOR then picks the road-facing _left or _right delivery.
   if (side === -1 || side === 1) {
-    const stoneType = v % 2 === 0 ? 'stone_wall_low' : 'stone_wall_stairs';
     return deps.sprites.draw(`${stoneKey}${SIDE_KEY_FOR(side, stoneType)}`, x, y, 200 * scale);
   }
-  const legacyKey = v % 2 === 0 ? 'purpleWallLow' : 'purpleWallStairs';
+  const legacyKey = stairs ? 'purpleWallStairs' : 'purpleWallLow';
   tryDraw(deps, [stoneKey, legacyKey], x, y, 200 * scale,
-    () => deps.paint.grassWall(x, y, scale, v % 2));
+    () => deps.paint.grassWall(x, y, scale, stairs ? 1 : 0));
   return false;
+}
+
+register(['grass_dirt_wall', 'grassWall'], (deps, x, y, scale, variant, side) => {
+  return drawStoneWall(deps, x, y, scale, variant, side);
+});
+
+register(['stone_wall_low'], (deps, x, y, scale, variant, side) => {
+  return drawStoneWall(deps, x, y, scale, variant, side, 'stone_wall_low');
+});
+
+register(['stone_wall_stairs'], (deps, x, y, scale, variant, side) => {
+  return drawStoneWall(deps, x, y, scale, variant, side, 'stone_wall_stairs');
 });
 
 // v4.3 — P3 reference-match: purple_brick_single / blockStack must render the
@@ -419,13 +427,15 @@ export function getSceneryDraw(assetType) {
  */
 const SIDE_AWARE_TYPES = new Set([
   'grass_dirt_block', 'grass_dirt_step', 'terrainBlock',
-  'grass_dirt_platform_long',
-  'purple_brick_single', 'blockStack',
   'floating_platform', 'platform',
   'hanging_platform_vines', 'hangingPlatform',
-  'fence_wood_short', 'fence',
   // v3.8.34 — P1 Golden Rule batch.
-  'stone_brick_single', 'stone_wall_low', 'stone_wall_stairs', 'planter_pot',
+  'stone_brick_single', 'stone_wall_low', 'stone_wall_stairs',
+  // v4.10 — canonical side-pair re-export batch.
+  'grass_dirt_platform_long', 'grassDirtPlatformLong',
+  'purple_brick_single', 'blockStack',
+  'planter_pot', 'planterPot',
+  'fence_wood_short', 'fence',
 ]);
 
 /** @param {string} assetType */

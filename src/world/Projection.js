@@ -26,6 +26,8 @@
  * @typedef {{
  *   horizonRatio: number,
  *   roadVanishOffsetRatio?: number,
+ *   roadVanishXOffsetRatio?: number,
+ *   roadCurveStrengthRatio?: number,
  *   groundRatio: number,
  *   focal: number,
  *   laneWidth: number,
@@ -47,6 +49,8 @@ export class Projection {
     this.height = canvasConfig.height;
     this.horizonY = this.height * config.horizonRatio;
     this.roadVanishY = this.horizonY + this.height * (config.roadVanishOffsetRatio ?? 0.09);
+    this.roadVanishX = this.width / 2 + this.width * (config.roadVanishXOffsetRatio ?? 0);
+    this.roadCurveStrength = this.width * (config.roadCurveStrengthRatio ?? 0);
     this.groundY = this.height * config.groundRatio;
     this.focal = config.focal;
     this.laneWidth = config.laneWidth;
@@ -98,10 +102,30 @@ export class Projection {
     const f = this.focal + this.focalImpulse;
     const scale = f / (f + d);
     return {
-      sx: this.width / 2 + lane * this.visualLaneWidth * scale,
+      sx: this.visualRoadCenterXForScale(scale) + lane * this.visualLaneWidth * scale,
       sy: this.roadVanishY + (this.groundY - this.roadVanishY) * scale,
       scale,
     };
+  }
+
+  /**
+   * Render-only road centre for a projection scale. At scale=1 the runner
+   * stays centred at the bottom of the screen; at scale=0 the road meets the
+   * castle gate at roadVanishX. The sine term adds a small mid-depth curve
+   * without touching the straight lane/collision model.
+   */
+  visualRoadCenterXForScale(scale) {
+    const t = 1 - Math.max(0, Math.min(1, scale));
+    return this.width / 2
+      + (this.roadVanishX - this.width / 2) * t
+      + Math.sin(t * Math.PI) * this.roadCurveStrength;
+  }
+
+  /** Render-only road centre at a world distance. */
+  visualRoadCenterX(distance) {
+    const d = Math.max(distance, -10);
+    const f = this.focal + this.focalImpulse;
+    return this.visualRoadCenterXForScale(f / (f + d));
   }
 
   /**

@@ -71,12 +71,12 @@ function remapLaneForBand(lane, band) {
     return sign * (2.32 + t * (2.55 - 2.32));
   }
   if (band === LANE_BANDS.MEADOW) {
-    // v4.7 — raw [1.38, 1.85] → visual [2.55, 3.35]. Picks up where the
+    // v4.9 — raw [1.38, 1.85] → visual [2.55, 3.70]. Picks up where the
     // SHOULDER strip ends and spreads across the green field, laterally
     // overlapping the structure band so low flora fill the gaps between
     // clusters. zLayer keeps the carpet behind/below the blocks.
     const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
-    return sign * (2.55 + t * (3.35 - 2.55));
+    return sign * (2.55 + t * (3.70 - 2.55));
   }
   if (band === LANE_BANDS.STRUCTURE) {
     // raw structure lanes ≈ [1.85, 2.25] → visual [2.55, 3.70] (full band)
@@ -364,7 +364,7 @@ export class SceneryRenderer {
     // the frame.
     const bandAlphaBias = BAND_ALPHA_BIAS[scenic.laneBand];
     if (bandAlphaBias != null) alpha *= bandAlphaBias;
-    if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale)) {
+    if (!isStructural && layer === LAYERS.FOREGROUND_DECOR && this.#intrudesOnGameplayCorridor(p.sx, scale, pos.distance)) {
       alpha = Math.min(alpha, (pos.distance / 20) * 0.22);
     }
     if (pos.distance < 10 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.82;
@@ -546,8 +546,8 @@ export class SceneryRenderer {
     ctx.restore();
   }
 
-  #intrudesOnGameplayCorridor(x, scale) {
-    const center = this.projection.width / 2;
+  #intrudesOnGameplayCorridor(x, scale, distance = 0) {
+    const center = this.projection.visualRoadCenterX(distance);
     const safeHalfWidth = roadBaseHalfWidth(this.projection) * 0.72;
     return Math.abs(x - center) < safeHalfWidth + 80 * scale;
   }

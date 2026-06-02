@@ -844,12 +844,12 @@ Recent waves shipped a lot of new files, but most of them are:
 |---|---|
 | `grass_dirt_block_left.png` + `grass_dirt_block_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **VISIBLE-FACE convention** |
 | `platform_floating_left.png` + `platform_floating_right.png` | ✅ DELIVERED + WIRED (v3.8.15), **VISIBLE-FACE convention** |
-| `grass_dirt_step_left.png` + `grass_dirt_step_right.png` | ✅ DELIVERED (v3.8.22) — orphan partner shipped. Awaiting wiring + convention verification |
-| `fence_wood_short_left.png` + `fence_wood_short_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
-| `purple_brick_single_left.png` + `purple_brick_single_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
-| `grass_dirt_platform_long_left.png` + `grass_dirt_platform_long_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
-| `platform_hanging_vines_left.png` + `platform_hanging_vines_right.png` | ✅ DELIVERED (v3.8.22). Awaiting wiring + convention verification |
-| stone_wall_low / stone_brick_single / stone_wall_stairs / planter_pot pairs | ❌ PENDING — see remaining file list below |
+| `grass_dirt_step_left.png` + `grass_dirt_step_right.png` | ✅ WIRED + verified consistent (Orientation audit 2026-06-01) — faces road correctly |
+| `fence_wood_short_left.png` + `fence_wood_short_right.png` | ✅ WIRED — delivered reversed, engine set to `'normal'` (Orientation audit 2026-06-01); faces road correctly |
+| `purple_brick_single_left.png` + `purple_brick_single_right.png` | ❌ DEFECTIVE — both halves share one face; REDRAW `_right` at 56×56 as a true mirror (Orientation audit 2026-06-01) |
+| `grass_dirt_platform_long_left.png` + `grass_dirt_platform_long_right.png` | ✅ WIRED — delivered reversed, engine set to `'normal'` (Orientation audit 2026-06-01); faces road correctly |
+| `platform_hanging_vines_left.png` + `platform_hanging_vines_right.png` | ✅ WIRED — delivered reversed, engine set to `'normal'` (Orientation audit 2026-06-01); faces road correctly |
+| stone_wall_low / stone_brick_single / stone_wall_stairs / planter_pot pairs | ✅ DELIVERED + WIRED — `stone_wall_low`/`stairs` consistent; `stone_brick_single` reversed→`'normal'`; `planter_pot` symmetric (Orientation audit 2026-06-01) |
 
 ### ⚠️ Naming convention finding (v3.8.19)
 
@@ -867,6 +867,60 @@ The engine compensates via `SIDE_MAPPING_BY_TYPE` defaults set to `'swapped'` fo
 2. **VISIBLE-FACE convention** — `<name>_left.png` is whichever variant has its left face visible. Engine will keep the `'swapped'` mapping for those.
 
 Either is fine as long as it's consistent within a batch.
+
+### ✅ Orientation audit — road-facing convention RESOLVED (2026-06-01)
+
+We isolated **every** side-aware pair (each sprite drawn alone on a neutral
+card, unoccluded) and measured which face is visible — top-edge-vs-bottom-edge
+silhouette skew — then cross-checked visually against the `grass_dirt_block`
+reference. A pair is "consistent" when `<name>_left.png` shows the **LEFT** face
+and `<name>_right.png` shows the **RIGHT** face (the visible-face convention the
+v3.8.19 note established).
+
+**Finding: the delivery is mixed — not one convention.** Most pairs are
+consistent, but five were delivered with the two halves **swapped relative to
+each other** (`_left` shows the right face and vice-versa), and one pair is
+defective. Engine-side status per type:
+
+| Type | Convention used | Engine mapping now | Designer action |
+|---|---|---|---|
+| `grass_dirt_block` | visible-face ✅ | `swapped` | none |
+| `stone_wall_low` | visible-face ✅ | `swapped` | none |
+| `stone_wall_stairs` | visible-face ✅ | `swapped` | none |
+| `platform_floating` | visible-face ✅ | `swapped` | none |
+| `grass_dirt_step` | visible-face ✅ | `swapped` | none |
+| `grass_dirt_platform_long` | **reversed** ⚠️ | `normal` (compensated) | none required — see note |
+| `stone_brick_single` | **reversed** ⚠️ (subtle, near-cubic) | `normal` (compensated) | none required |
+| `fence_wood_short` | **reversed** ⚠️ | `normal` (compensated) | none required |
+| `hanging_platform_vines` | **reversed** ⚠️ | `normal` (compensated) | none required |
+| `purple_brick_single` | **DEFECTIVE** ❌ | `swapped` (best of two bad options) | **REDRAW — see below** |
+| `planter_pot` | near-symmetric | `swapped` (no visual effect) | optional |
+
+**The 5 "reversed" pairs need NO redraw.** The engine now picks the opposite
+file per shoulder for them (`SIDE_MAPPING_BY_TYPE` set to `'normal'`), so they
+face the road correctly in-game as of this build. If you ever re-export them,
+just match the `grass_dirt_block` convention (`_left` = left face visible) and
+ping the dev to flip those four back to `'swapped'`.
+
+**`purple_brick_single` — the one real art bug (code cannot fix):**
+both delivered halves show roughly the **same** (left/front) face — there is no
+right-facing variant at all. So whichever file we place on the road's **left**
+shoulder fails to point its face at the road, under either mapping. This also
+matches the size mismatch already flagged in the Round-2 review (`_left` is
+2172×724, `_right` is 56×56).
+- **Action:** redraw the pair as a true mirror at **56×56** — `purple_brick_single_left.png`
+  shows the LEFT face, `purple_brick_single_right.png` shows the RIGHT face
+  (mirror of left, same sun-upper-right lighting). Use `grass_dirt_block_left/right`
+  as the orientation reference.
+
+**`planter_pot`** reads as radially symmetric (round pot), so the side mapping
+has no visible effect — fine as-is. Only redraw if you want it to read with a
+distinct lit/shadow side toward the road.
+
+**Going forward — pick ONE convention per wave.** This whole audit was caused by
+a single wave mixing both conventions file-to-file. Either option from the
+v3.8.19 note is fine, but every file in a batch must use the **same** one. When
+in doubt, copy the `grass_dirt_block` pair's orientation exactly.
 
 ### What the engine ACTUALLY needs
 

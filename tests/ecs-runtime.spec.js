@@ -44,6 +44,40 @@ test('structural block renderer — 2D / 3D mode stays reversible', async ({ pag
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getState().blockStyle)).toBe('sprite');
 });
 
+test('side-aware scenery — accepted re-export pairs use direct side variants', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const dispatch = await import('/src/render/renderers/scenery/sceneryDispatch.js');
+    const reliable = [
+      'grass_dirt_block',
+      'grass_dirt_step',
+      'floating_platform',
+      'hanging_platform_vines',
+      'stone_brick_single',
+      'stone_wall_low',
+      'grass_dirt_platform_long',
+      'purple_brick_single',
+      'stone_wall_stairs',
+      'planter_pot',
+      'fence_wood_short',
+    ];
+    return {
+      reliable: reliable.map((type) => ({
+        type,
+        quarantined: dispatch.isSideVariantQuarantined(type),
+        sideAware: dispatch.isSideAwareSceneryType(type),
+      })),
+      purpleMapping: dispatch.getSideMappingForType('purple_brick_single'),
+    };
+  });
+
+  for (const item of result.reliable) {
+    expect(item.quarantined, item.type).toBe(false);
+    expect(item.sideAware, item.type).toBe(true);
+  }
+  expect(result.purpleMapping).toBe('normal');
+});
+
 test('touch controls — buttons exist and bind to actions', async ({ page }) => {
   // ?touch=1 forces the on-screen pad to render on desktop chromium.
   // We don't tap from the menu (overlay correctly captures pointer
@@ -223,6 +257,72 @@ test('entity registry — compacted entities are pooled and reset before reuse',
   expect(result.pooledAfterReuse).toBe(0);
 });
 
+test('adaptive quality — manual lock applies runtime flags and reserves full filter for Ultra', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const { AdaptiveQuality } = await import('/src/core/AdaptiveQuality.js');
+    const quality = new AdaptiveQuality();
+    const world = {
+      config: {
+        gameFeel: {
+          particles: true,
+          cameraShake: true,
+          scorePopups: true,
+          ambientMotion: true,
+        },
+      },
+      particleSystem: { softCap: 256 },
+    };
+
+    quality.setLocked(0, world);
+    const low = {
+      ...world.config.gameFeel,
+      softCap: world.particleSystem.softCap,
+      fullCanvasFilter: quality.tier.fullCanvasFilter,
+    };
+    quality.setLocked(2, world);
+    const high = {
+      ...world.config.gameFeel,
+      softCap: world.particleSystem.softCap,
+      fullCanvasFilter: quality.tier.fullCanvasFilter,
+    };
+    quality.setLocked(3, world);
+    const ultra = {
+      ...world.config.gameFeel,
+      softCap: world.particleSystem.softCap,
+      fullCanvasFilter: quality.tier.fullCanvasFilter,
+    };
+    quality.setLocked(null, world);
+    return { low, high, ultra, locked: quality.locked };
+  });
+
+  expect(result.low).toMatchObject({
+    particles: false,
+    cameraShake: false,
+    scorePopups: false,
+    ambientMotion: false,
+    softCap: 51,
+    fullCanvasFilter: false,
+  });
+  expect(result.high).toMatchObject({
+    particles: true,
+    cameraShake: true,
+    scorePopups: false,
+    ambientMotion: true,
+    softCap: 192,
+    fullCanvasFilter: false,
+  });
+  expect(result.ultra).toMatchObject({
+    particles: true,
+    cameraShake: true,
+    scorePopups: true,
+    ambientMotion: true,
+    softCap: 256,
+    fullCanvasFilter: true,
+  });
+  expect(result.locked).toBe(false);
+});
+
 test('leaderboard — qualify / submit / persist / cap', async ({ page }) => {
   await page.goto('/dev.html');
   // Drive the Leaderboard module directly via a dynamic import; we don't
@@ -352,11 +452,12 @@ test('seeded run — same ?seed produces same spawn log', async ({ page }) => {
       }, 100);
     });
     // Wait on simulation distance rather than wall-clock time. Cold asset
-    // loads and denser visual scenes can make 3 seconds insufficient on CI.
+    // loads, parallel workers and denser visual scenes can make 20 seconds
+    // insufficient on CI even though the loop remains healthy.
     await page.waitForFunction(
       () => (window.__ORCHID_GAME__?.world?.worldDistanceTotal ?? 0) >= 170,
       null,
-      { timeout: 20_000, polling: 100 },
+      { timeout: 40_000, polling: 100 },
     );
     return page.evaluate(() => {
       clearInterval(window.__seed_trace_invuln_id);
