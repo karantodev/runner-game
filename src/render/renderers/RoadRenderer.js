@@ -1241,7 +1241,7 @@ function buildMeadowPattern(count, seed) {
   const PATCH_SIZE = 4;
   for (let i = 0; i < count; i += PATCH_SIZE) {
     const side = ((i / PATCH_SIZE) & 1) === 0 ? -1 : 1;
-    const outerPatch = rng() < 0.36;
+    const outerPatch = rng() < 0.42;   // v4.20 — reference-match: more outer-field beds (0.36 → 0.42) to fill the far foreground corners
     const anchorLane = side * (outerPatch
       ? 5.45 + Math.sqrt(rng()) * 2.75
       : 2.34 + rng() * rng() * 3.50);
