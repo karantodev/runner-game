@@ -91,6 +91,9 @@ export class GameplayRenderer {
     this._glowCfg = world.config?.visual?.enabled
       ? (world.config.visual.collectibles?.glow ?? null)
       : null;
+    // v4.x — reference-match: foreground "lead" emphasis config. The near orchid
+    // reads bigger, like the single prominent orchid in the reference art.
+    this._leadCfg = world.config?.visual?.collectibles?.lead ?? null;
 
     const queue = this._renderQueue;
     queue.length = 0;
@@ -110,6 +113,7 @@ export class GameplayRenderer {
     }
 
     this._glowCfg = null;  // prevent stale ref across frames
+    this._leadCfg = null;
 
     // v3.8.38 — Phase 3 composition overlay pass. Drawn after all
     // entities so labels sit on top of the scene. Walks the same queue;
@@ -814,8 +818,18 @@ const COLLECTIBLE_DRAWERS = {
     // Keep the flower readable without turning the whole center lane into
     // a permanent bloom strip.
     const szMod = 1 + data.laneJitter * 0.5;  // ±8% size variation
+    // v4.x — reference-match: foreground "lead" emphasis. As an orchid nears the
+    // player its projection scale rises; ramp its size toward maxBoost so the
+    // closest orchid reads as the single large "lead" the reference foregrounds.
+    const lead = self._leadCfg;
+    let foreground = 1;
+    if (lead?.enabled) {
+      const span = (lead.scaleFull - lead.scaleStart) || 1;
+      const t = Math.min(1, Math.max(0, (scale - lead.scaleStart) / span));
+      foreground = 1 + t * lead.maxBoost;
+    }
     // r.sizeScale lets a jackpot orchid read bigger; absent for plain flowers (×1).
-    const w = 82 * (r.sizeScale ?? 1) * scale * pop * szMod;
+    const w = 82 * (r.sizeScale ?? 1) * foreground * scale * pop * szMod;
 
     // v4.0 — warm golden halo drawn BEFORE the sprite so it sits behind
     // the orchid. v4.4: drawFlowerGlow now uses a tight 'source-over' halo

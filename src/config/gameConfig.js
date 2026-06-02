@@ -311,6 +311,11 @@ export const GAME_CONFIG = Object.freeze({
       // v4.3 — P3 reference-match: spacing 4 → 3 so the gold orchid trail reads as one unbroken path, not separate dots
       centerTrail: { enabled: true, spacing: 6, runLength: 16 },
       glow: { enabled: true, radiusScale: 1.12, pulse: 0.10, alpha: 0.28, flowerColor: '#ffcf3a' },
+      // v4.x — reference-match: foreground "lead" emphasis. As an orchid nears
+      // the player (projection scale rises scaleStart→scaleFull) its size ramps
+      // up by maxBoost, so the closest orchid reads as the single large orchid
+      // the reference foregrounds and guides the eye to the next pickup.
+      lead: { enabled: true, scaleStart: 0.7, scaleFull: 0.92, maxBoost: 0.4 },
     },
 
     // ── Obstacles: cool/purple tint + dark outline so hazards separate
