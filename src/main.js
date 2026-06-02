@@ -42,7 +42,9 @@ const pixelRatioChoice = pickPixelRatio(params, GAME_CONFIG.canvas.pixelRatio);
 const requestedRoadStyle = params.get('roadStyle');
 const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
   ? requestedRoadStyle
-  : 'kit';
+  // v4.13 — default to the procedural pixel-art road (crisp fillRect grass),
+  // not the kit PNG tiles (drawImage upscales them → reads as blurry "pictures").
+  : 'procedural';
 
 // Modular side structures can be A/B-tested without touching spawn or
 // collision state. `2d` keeps the delivered sprite art; `3d` uses the

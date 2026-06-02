@@ -32,6 +32,16 @@ const FLORA_SHADOW_MIN_SCALE = 0.14;
 // Base footprint half-width in px at scale 1; multiplied by widthScale and
 // the sprite's final scale to size the ellipse to the planted flora.
 const FLORA_SHADOW_BASE_PX = 46;
+// v4.14 — reference-match: solid (block/mushroom/fence/bush) contact-shadow
+// tuning. MIN_SCALE is higher than flora's so only near/mid structures pay the
+// cost — far blocks skip — bounding the count to a handful of ellipses/frame.
+const SOLID_SHADOW_MIN_SCALE = 0.20;
+// v4.14 — reference-match: wider base footprint than flora; blocks are chunky
+// and need a broader contact patch to read as planted rather than floating.
+const SOLID_SHADOW_BASE_PX = 60;
+// v4.14 — reference-match: structures that float have NO ground contact, so
+// they must never get a contact shadow (it would read as a detached blob).
+const NO_SOLID_SHADOW = new Set(['floating_platform', 'platform', 'hanging_platform_vines', 'hangingPlatform']);
 const TWO_PI = Math.PI * 2;
 
 /**
@@ -167,11 +177,13 @@ export class SceneryRenderer {
     this.gradients = gradients;
     this.voxelBlocks = voxelBlocks;
     this._drawDeps = { sprites, paint, voxelBlocks };
-    this._structural = [];
-    this._organic = [];
-    // v4.2 — P2 reference-match: third scratch array for NATURE (tree) band
-    // so the three-way draw order is allocation-free on the hot path.
+    // v4.12 — three-way draw order (allocation-free scratch arrays). Low flora
+    // (SHOULDER/MEADOW) is the GROUND carpet and must sit behind solid props,
+    // so the order is: NATURE backdrop → flora carpet → STRUCTURE props.
+    // Within each band byDistanceComponent sorts far→near (+ zLayer tiebreak).
     this._nature = [];
+    this._flora = [];
+    this._structural = [];
   }
 
   render(world) {
@@ -187,6 +199,13 @@ export class SceneryRenderer {
     const floraShadowCfg = world.config.visual?.juice?.floraShadow;
     this._floraShadow = floraShadowCfg?.enabled ? floraShadowCfg : null;
     if (this._floraShadow) this.ctx.fillStyle = 'rgb(30, 18, 8)';
+    // v4.14 — reference-match: contact shadow under solid side structures so
+    // blocks/mushrooms read as planted, not floating. Order-independent default
+    // (only OFF when explicitly disabled) so it works before the config knob lands.
+    const solidShadowCfg = world.config.visual?.juice?.solidShadow;
+    this._solidShadow = (solidShadowCfg && solidShadowCfg.enabled === false)
+      ? null
+      : (solidShadowCfg ?? { alpha: 0.22, widthScale: 0.62 });
     // v3.8.38 — keep a world ref for the composition overlay so the
     // per-entity dispatch doesn't have to thread world through every
     // private method.
@@ -221,31 +240,34 @@ export class SceneryRenderer {
     // Dynamic decor through DecorationSystem covers the buffer/structure
     // zones with entities that actually scroll toward the camera.
 
-    // v4.2 — P2 reference-match: three-way draw order so trees (NATURE)
-    // form a background mass, then STRUCTURE blocks paint over them, then
-    // SHOULDER/road-shoulder decor (flowers, tufts) sits nearest the road.
-    // Reuse the three scratch arrays — length=0 keeps the backing storage.
-    const structural = this._structural;
-    const organic = this._organic;
+    // v4.12 — correctness. Low flora (SHOULDER/MEADOW) is the GROUND carpet:
+    // it must always sit BEHIND solid props. The original 3-pass order drew it
+    // LAST so flora floated over every block; a flat depth-merge let a nearer
+    // flower paint over a farther block face (flowers growing out of blocks).
+    // Right model: NATURE backdrop → flora carpet → STRUCTURE props on top,
+    // each distance-sorted internally (byDistanceComponent also z-tiebreaks
+    // base→topper, so prefab toppers — STRUCTURE band — stay on their blocks).
     const nature = this._nature;
-    structural.length = 0;
-    organic.length = 0;
+    const flora = this._flora;
+    const structural = this._structural;
     nature.length = 0;
+    flora.length = 0;
+    structural.length = 0;
     for (const e of world.registry.query('ScenicData', 'Position', 'Sprite')) {
       const band = e.components.ScenicData.laneBand;
       if (band === LANE_BANDS.NATURE) nature.push(e);
-      else if (this.#isStructural(e)) structural.push(e);
-      else organic.push(e);
+      else if (isLowFloraBand(band)) flora.push(e);
+      else structural.push(e);
     }
-    // Pass (a): NATURE trees — painted first, behind everything.
+    // Pass (a): NATURE trees — background mass.
     nature.sort(byDistanceComponent);
     for (const e of nature) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
-    // Pass (b): STRUCTURE blocks / walls / platforms — over the trees.
+    // Pass (b): flora carpet — the ground bed, behind solid props.
+    flora.sort(byDistanceComponent);
+    for (const e of flora) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
+    // Pass (c): STRUCTURE blocks / mushrooms / fences — solid props on the bed.
     structural.sort(byDistanceComponent);
     for (const e of structural) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
-    // Pass (c): SHOULDER + other decor — nearest the road, in front of structures.
-    organic.sort(byDistanceComponent);
-    for (const e of organic) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
 
     this.#foregroundFrame(world);
     // v3.8.40 — Phase 6 parent-child support lines pass.
@@ -381,6 +403,14 @@ export class SceneryRenderer {
     this._currentItemRole = sprite.role ?? null;
     this._currentItemLane = pos.lane;
     this._currentPrefabId = sprite.prefabId ?? null;
+    // v4.14 — reference-match: ground contact shadow for solid structures,
+    // drawn BEFORE the sprite so it sits underneath the planted block/mushroom.
+    // alpha is the entity's already-faded alpha → the shadow fades with the
+    // object (same discipline as the flora path). Floating items are excluded.
+    if (this._solidShadow && isStructural
+        && !NO_SOLID_SHADOW.has(sprite.assetType ?? sprite.type)) {
+      this.#drawSolidShadow(Math.round(p.sx), Math.round(y), scale, alpha);
+    }
     // v4.8 — contact shadow under near ground-flora, drawn BEFORE the
     // sprite so it sits underneath the planted flower/tuft. Gated on band
     // + near-size so only the readable foreground carpet pays the cost.
@@ -463,6 +493,37 @@ export class SceneryRenderer {
     const radiusX = Math.max(2, (cfg.widthScale ?? 0.7) * FLORA_SHADOW_BASE_PX * scale);
     const radiusY = Math.max(1.5, radiusX * 0.32);
     const ctx = this.ctx;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radiusX, radiusY, 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * v4.14 — reference-match: ground contact shadow for solid side structures
+   * (blocks, mushrooms, fences, bushes) so they read as planted, not floating.
+   * Wider/slightly stronger than the flora shadow because blocks are chunky.
+   *
+   * Perf contract (same as #drawFloraShadow — do NOT regress):
+   *  - NO ctx.save()/restore(), NO gradient, NO shadowBlur. Only globalAlpha is
+   *    touched and reset to 1 — same direct-alpha discipline as #drawSceneryType.
+   *  - Unlike the flora path, fillStyle is set HERE every call: sprite draws
+   *    between entities mutate ctx.fillStyle, so the once-per-frame set in
+   *    render() can't be relied on for correctness.
+   *  - One ellipse path + one fill per shadow.
+   *  - Count is BOUNDED by SOLID_SHADOW_MIN_SCALE: only near/mid structures
+   *    (final draw scale above the gate) get a shadow; far blocks are skipped.
+   */
+  #drawSolidShadow(x, y, scale, alpha) {
+    if (scale < SOLID_SHADOW_MIN_SCALE) return;
+    const cfg = this._solidShadow;
+    const a = (cfg.alpha ?? 0.22) * alpha;
+    if (a <= 0.01) return;
+    const radiusX = Math.max(3, (cfg.widthScale ?? 0.62) * SOLID_SHADOW_BASE_PX * scale);
+    const radiusY = Math.max(2, radiusX * 0.30);
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgb(26, 16, 8)';   // own fillStyle — robust to sprite draws between entities
     ctx.globalAlpha = a;
     ctx.beginPath();
     ctx.ellipse(x, y, radiusX, radiusY, 0, 0, TWO_PI);

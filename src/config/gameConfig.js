@@ -65,8 +65,8 @@ export const GAME_CONFIG = Object.freeze({
     // zones shifted outward so blocks sit JUST past the road shoulder
     // instead of inside it; tree zone follows.
     roadHalfLaneUnits: 2.30,      // visual road extent (collisions ignore this)
-    bufferOuterLaneUnits: 2.55,   // small flora hugging the road edge
-    decorOuterLaneUnits: 3.70,    // blocks / mushrooms / fences
+    bufferOuterLaneUnits: 2.40,   // v4.11 reference-match: 2.55→2.40, flora hugs the road edge (kills the empty green gap)
+    decorOuterLaneUnits: 3.35,    // v4.11 reference-match: 3.70→3.35, blocks/mushrooms/fences sit closer to the shoulder
     natureOuterLaneUnits: 4.80,   // trees / hedges
     maxDistance: 420,
   },
@@ -285,15 +285,18 @@ export const GAME_CONFIG = Object.freeze({
       // enable RenderSystem's one offscreen filter blit per frame (cheap on
       // the measured 119fps headroom; AdaptiveQuality can drop it on weak HW).
       // Pushes the muted scene toward the saturated, high-contrast reference.
-      saturate: 1.14,
-      contrast: 1.07,
-      brightness: 1.02,
+      // v4.11 — reference-match P3: push saturation/contrast harder and drop
+      // brightness below 1 (the +2% lift was washing the scene out). Combined
+      // with the deeper GradientCache greens this lands the rich, premium look.
+      saturate: 1.22,
+      contrast: 1.15, // v4.14 — reference-match: a touch more punch
+      brightness: 0.99,
       // Warm sunlit highlights / cool shadows via a soft overlay.
       warmCool: {
         enabled: true,
-        warm: 'rgba(255, 224, 150, 1)',
+        warm: 'rgba(255, 216, 138, 1)', // v4.14 — reference-match: more saturated amber highlight
         cool: 'rgba(64, 86, 158, 1)',
-        strength: 0.08,
+        strength: 0.11, // v4.14 — reference-match: stronger warm-top / cool-shadow split for the golden-hour read
       },
       vignette: { enabled: true, strength: 0.06 },
     },
@@ -301,8 +304,8 @@ export const GAME_CONFIG = Object.freeze({
     // ── Depth: far layers slightly desaturated + darkened so the
     //    foreground corridor reads as "closer".
     depth: {
-      farDesaturate: 0.22,  // 0..1 toward grey // v4.1 — P1 reference-match: push far layers toward atmospheric grey for depth separation
-      farDarken: 0.17,      // 0..1 toward black // v4.1 — P1 reference-match: push far layers darker so foreground corridor reads as closer
+      farDesaturate: 0.14,  // 0..1 toward grey // v4.11 — reference-match: 0.22→0.14 so distant hills stay green like the reference instead of greying out
+      farDarken: 0.12,      // 0..1 toward black // v4.11 — reference-match: 0.17→0.12, keep depth separation but less muddy
     },
 
     // ── Collectibles: center "breadcrumb" orchid line + stronger halo.
@@ -333,12 +336,14 @@ export const GAME_CONFIG = Object.freeze({
     // matching the near-continuous platform walls of the reference image.
     // v4.6 — reference-match: groundScatter toggles the dense shoulder-flora
     // carpet (GroundScatterSystem). false = prepopulate AND update no-op.
-    density: { decorMultiplier: 1.5, scatterFlowers: true, groundScatter: true },
+    // v4.11 — reference-match: decorMultiplier 1.5→1.8 → effective side-decor
+    // gap ≈ sideDecorSpacing/1.8, for the near-continuous wall of the reference.
+    density: { decorMultiplier: 1.8, scatterFlowers: true, groundScatter: true },
 
     // Cheap, allocation-free surface detail. Meadow pixels scroll in world
     // space outside the road, so the field reads as textured terrain instead
     // of one smooth gradient without adding ECS entities.
-    detail: { meadowTexture: true },
+    detail: { meadowTexture: true, vineGarlands: true },
 
     // ── Background: which cloud sprite keys appear in the sky.
     // Add/remove/reorder keys here — World picks them by index (cycling).
@@ -361,6 +366,10 @@ export const GAME_CONFIG = Object.freeze({
       // Only the nearest/largest flora get one (see SceneryRenderer scale
       // gate) so the cost stays bounded across the ~1k-sprite carpet.
       floraShadow: { enabled: true, alpha: 0.18, widthScale: 0.7 },
+      // v4.14 — reference-match: contact shadow under solid side structures
+      // (blocks/mushrooms/fences) so they read as planted, not floating.
+      // Consumed by SceneryRenderer; bounded by a scale gate so cost stays tiny.
+      solidShadow: { enabled: true, alpha: 0.22, widthScale: 0.62 },
       runDust: { enabled: true, rate: 0.5 },
       collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
     },
@@ -415,7 +424,7 @@ export const GAME_CONFIG = Object.freeze({
     // clusters start to z-fight at mid depth.
     // v4.2 — P2 reference-match: wider world-gap between clusters prevents depth z-fighting at adjacent prefabs
     // v4.5 — reference-match: 24 → 15 so clusters are nearly continuous (effective gap = 15/1.5 = 10 units)
-    sideDecorSpacing: 15.0,
+    sideDecorSpacing: 11.0,  // v4.11 reference-match: 15→11 (with mult 1.8 → effective ~6 units = continuous wall)
     sideDecorJitter: 0.45,
     sideDecorNearCullDistance: -5.5,
     // Curated opening groups are supplemented when a per-side gap exceeds
@@ -428,23 +437,23 @@ export const GAME_CONFIG = Object.freeze({
     // v4.10 — two close bands per patch, then a larger breathing interval.
     // This keeps the meadow stocked while reducing live scatter entities
     // versus an evenly-spaced carpet.
-    scatterPatchSpacing: 8.4,
+    scatterPatchSpacing: 9.2,  // v4.11 Stage B: 8.4→9.2 — fewer live patches; the baked meadow carpet carries the visual mass, so trim entity churn
     scatterPatchBands: 2,
     scatterPatchBandSpacing: 1.35,
     scatterClusterLaneRadius: 0.16,
     // v4.7 perf — six items per local band keeps render headroom and trims
     // the entity churn that drives periodic GC.
-    scatterPerBand: 6,
-    scatterLaneRange: [1.40, 1.84],
+    scatterPerBand: 6,  // v4.11 Stage B: back to 6 — the baked meadow carpet now carries the mass; live entities are just the near hero flora
+    scatterLaneRange: [1.34, 1.90],  // v4.11 reference-match: wider seeding band
     // v4.6 — reference-match: cap the carpet at the visible near/mid range.
     // Past this the flora are sub-pixel and waste entities; the budget is
     // reinvested in denser near bands (scatterPerBand) for a lusher bed.
-    scatterMaxDistance: 140,
+    scatterMaxDistance: 120,  // v4.11 Stage B: 160→120 — only near hero flora live as entities; the baked carpet covers mid/far depth
     // v4.7 — reference-match: fraction of each band's flora placed in the
     // wide MEADOW remap (the green field) vs the near SHOULDER strip.
     // Two thirds of each patch sits in the meadow, so local beds fill the
     // flank without returning to a uniform lawn.
-    scatterMeadowFraction: 0.66,
+    scatterMeadowFraction: 0.72,
     lifePickupMinDistance: 940,
     lifePickupMaxDistance: 1480,
     powerUpMinDistance: 780,

@@ -41,7 +41,8 @@ export class RenderSystem {
     this.pixelRatio = Math.max(1, options.pixelRatio ?? 1);
     this.roadStyle = ['procedural', 'tiles', 'kit'].includes(options.roadStyle)
       ? options.roadStyle
-      : 'kit';
+      // v4.13 — procedural pixel-art road is the default (see main.js).
+      : 'procedural';
     this.blockStyle = options.blockStyle === 'voxel' ? 'voxel' : 'sprite';
 
     // Resize the backing store to logical * pixelRatio. The projection
