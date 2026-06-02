@@ -27,9 +27,16 @@ export class RoadRenderer {
     // passes — built once, scrolled per frame via scrollOffset modulo.
     // Loop length 420 (= maxDistance) means the pattern repeats every
     // ~8 seconds at base speed — long enough to not read as obvious.
-    this._noisePoints = buildNoisePattern(120, 0x9e3779b9);
+    this._noisePoints = buildNoisePattern(240, 0x9e3779b9);  // v4.13 — denser fine grass grain
     this._fringePoints = buildFringePattern(72, 0x85ebca6b);
-    this._meadowPoints = buildMeadowPattern(76, 0xc2b2ae35);
+    // v4.11 — reference-match Stage B: 76→300 points carry the wall-to-wall
+    // violet/yellow flower carpet (the reference's signature "lush field")
+    // entirely in allocation-free world-space fillRects — no ECS entities,
+    // no per-frame GC. Uniform distance keeps density temporally stable as
+    // the field scrolls.
+    // v4.14 — reference-match: 560→900 points densify the flower carpet for a
+    // lusher field; the per-frame far-cull in #meadowTexture bounds overdraw.
+    this._meadowPoints = buildMeadowPattern(900, 0xc2b2ae35);
   }
 
   render(world) {
@@ -58,6 +65,13 @@ export class RoadRenderer {
       this.#shoulderFringe(scroll);
     }
     this.#perspectiveGridOverlay(scroll);
+    // v4.11 — reference-match Stage C: flat decorative vine garlands woven
+    // across the path at a sparse rhythm (the reference's signature motif).
+    // Drawn here (road layer) so they sit UNDER the player + collectibles and
+    // read as flat ground decoration, never as a duck-under hazard.
+    if (world.config.visual?.detail?.vineGarlands) {
+      this.#vineGarlands(scroll);
+    }
   }
 
   /**
@@ -144,9 +158,13 @@ export class RoadRenderer {
     // into the meadow even with all the tile passes on top.
     // v4.4 — reference-match: nudge stops brighter/more saturated so the
     // road tone differs from the meadow even under sparse tiles.
+    // v4.14 — reference-match: lower path-fill opacity so the meadow shows
+    // through and the road reads as a garden path, not a separate bright
+    // carpet; road readability is carried by the cream edge lines, lane
+    // dividers, rungs, and shoulder strips, so this low-contrast fill is safe.
     const pathFill = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    pathFill.addColorStop(0, 'rgba(150,214,96,0.36)');
-    pathFill.addColorStop(1, 'rgba(120,196,74,0.72)');
+    pathFill.addColorStop(0, 'rgba(148,212,96,0.18)');
+    pathFill.addColorStop(1, 'rgba(126,194,80,0.42)');
     ctx.fillStyle = pathFill;
     ctx.beginPath();
     const slices = 12;
@@ -198,10 +216,14 @@ export class RoadRenderer {
     //   MAX_ROWS 20 → 32 (covers same depth at smaller tile size)
     // Net: ~2.6× more tiles in the same road area — surface reads as
     // mottled pixel texture rather than a low-res checker.
-    const TILE_DEPTH = 3;
-    const TILE_LANE_W = 0.11;
+    // v4.13 — finer crisp pixel-art grass. TILE_DEPTH 3→2 + TILE_LANE_W
+    // 0.11→0.08 ≈ 2× more cells → tighter, hand-pixelled grain like the
+    // reference (no upscaled-PNG blur). MAX_ROWS covers FAR_VISIBLE at the
+    // smaller depth step.
+    const TILE_DEPTH = 2;
+    const TILE_LANE_W = 0.08;
     const FAR_VISIBLE = 84;
-    const MAX_ROWS = 32;
+    const MAX_ROWS = 46;
     const NUM_LATERAL = Math.ceil(ROAD_HALF / TILE_LANE_W);
 
     const off = ((scrollOffset % TILE_DEPTH) + TILE_DEPTH) % TILE_DEPTH;
@@ -484,7 +506,7 @@ export class RoadRenderer {
 
     const period       = 5;
     const maxDistance  = 120;
-    const thicknessPx  = 1.5;
+    const thicknessPx  = 2.1;  // v4.11 Stage C: 1.5→2.1 so the panel cross-lines read like the reference's grid
     const off = ((scrollOffset % period) + period) % period;
 
     ctx.save();
@@ -698,9 +720,14 @@ export class RoadRenderer {
     };
 
     const ROAD_HALF = p.roadHalfLaneUnits;
-    const TILE_DEPTH = 5;
+    // v4.12 — finer kit texture. TILE_DEPTH 5→3 shrinks the world-depth each
+    // PNG tile is stretched over, so the foreground upscales the tile ~40%
+    // less (nearest-neighbor) → smaller pixels + denser texture, closer to the
+    // reference. MAX_ROWS bumped so rows still cover FAR_VISIBLE at the smaller
+    // step (≈ FAR_VISIBLE/TILE_DEPTH + headroom).
+    const TILE_DEPTH = 3;
     const FAR_VISIBLE = 200;
-    const MAX_ROWS = 42;
+    const MAX_ROWS = 72;
     const FG_BOUND = 25;
     const MID_BOUND = 70;
     // Lane boundaries in lane-units (the 3 playable lanes sit at -1, 0, +1).
@@ -824,7 +851,10 @@ export class RoadRenderer {
     // 3 lanes flanked by 2 shoulder strips rather than one flat surface.
     // Keep enough separation from the meadow while preserving the grass
     // texture and edge props layered over the shoulder.
-    ctx.fillStyle = 'rgba(30,88,38,0.40)';
+    // v4.11 — reference-match Stage C: deeper shoulder shade (0.40→0.48) so
+    // the road reads as a corridor with shadowed edges (tunnel/depth feel).
+    // Stays ON the road (±1.5…±roadHalf), so the flower carpet is untouched.
+    ctx.fillStyle = 'rgba(26,80,34,0.48)';
     for (const side of [-1, 1]) {
       const inN  = p.projectVisual(side * PLAYABLE_HALF, 0);
       const inF  = p.projectVisual(side * PLAYABLE_HALF, farDist);
@@ -941,9 +971,12 @@ export class RoadRenderer {
   }
 
   /**
-   * Small world-space pixel clusters outside the road. They scroll with the
-   * terrain and scale through Projection, so the meadow gains texture and
-   * depth without static screen noise or another scenery entity channel.
+   * Wall-to-wall flower carpet + grass tufts outside the road. Each point is
+   * a tiny world-space pixel cluster that scrolls with the terrain and scales
+   * through Projection, so the meadow reads as a dense flowered field with
+   * real depth — without static screen noise or any scenery entity (the
+   * reference's lushness, at zero GC cost). v4.11 Stage B: violet + yellow
+   * flowers added alongside the original green tufts.
    */
   #meadowTexture(scrollOffset) {
     const p = this.projection;
@@ -960,23 +993,125 @@ export class RoadRenderer {
       if (d > loop * 0.84) continue;
 
       const proj = p.projectVisual(pt.lane, d);
-      if (proj.scale < 0.075) continue;
-      const alpha = 0.10 + proj.scale * 0.24;
+      const s = proj.scale;
+      if (s < 0.075) continue;
       const x = Math.round(proj.sx);
       const y = Math.round(proj.sy);
-      const h = Math.max(1, Math.round((pt.tall ? 5 : 3) * proj.scale));
-      const w = Math.max(1, Math.round((pt.tall ? 2 : 3) * proj.scale));
 
-      ctx.fillStyle = pt.light
-        ? `rgba(154,218,92,${alpha})`
-        : `rgba(38,112,48,${alpha * 0.82})`;
-      ctx.fillRect(x - Math.floor(w / 2), y - h, w, h);
+      if (pt.kind === 'violet') {
+        // Small purple flower: body + lighter cap + warm centre pixel.
+        // v4.14 — reference-match: stronger alpha + larger body so flowers
+        // hold their read at mid-distance in the denser carpet.
+        const a = 0.50 + s * 0.42;
+        const w = Math.max(1, Math.round((4.2 + pt.phase) * s));
+        const h = Math.max(1, Math.round((4.4 + pt.phase) * s));
+        ctx.fillStyle = `rgba(120,84,196,${a})`;
+        ctx.fillRect(x - (w >> 1), y - h, w, h);
+        ctx.fillStyle = `rgba(172,142,228,${a})`;
+        ctx.fillRect(x - (w >> 1), y - h, w, Math.max(1, Math.round(h * 0.34)));
+        if (s > 0.26) {
+          ctx.fillStyle = `rgba(250,224,120,${a})`;
+          ctx.fillRect(x, y - Math.max(1, h - 1), 1, 1);
+        }
+      } else if (pt.kind === 'yellow') {
+        // v4.14 — reference-match: match the violet bump so yellow accents
+        // stay legible at mid-distance in the denser carpet.
+        const a = 0.50 + s * 0.42;
+        const w = Math.max(1, Math.round((3.6 + pt.phase) * s));
+        const h = Math.max(1, Math.round((3.6 + pt.phase) * s));
+        ctx.fillStyle = `rgba(244,200,58,${a})`;
+        ctx.fillRect(x - (w >> 1), y - h, w, h);
+        ctx.fillStyle = `rgba(255,236,150,${a})`;
+        ctx.fillRect(x - (w >> 1), y - h, w, Math.max(1, Math.round(h * 0.34)));
+      } else {
+        // Green grass tuft (original behaviour, palette nudged to match the
+        // deeper Stage A field).
+        const alpha = 0.10 + s * 0.24;
+        const h = Math.max(1, Math.round((pt.tall ? 5 : 3) * s));
+        const w = Math.max(1, Math.round((pt.tall ? 2 : 3) * s));
+        ctx.fillStyle = pt.light
+          ? `rgba(150,214,88,${alpha})`
+          : `rgba(34,104,44,${alpha * 0.82})`;
+        ctx.fillRect(x - (w >> 1), y - h, w, h);
+        if (pt.tall && s > 0.28) {
+          ctx.fillStyle = `rgba(198,232,120,${alpha * 0.66})`;
+          ctx.fillRect(x - (w >> 1), y - h, w, 1);
+        }
+      }
+    }
+    ctx.restore();
+  }
 
-      // A restrained highlight cap makes near tufts read as intentional
-      // pixel clusters instead of isolated dots.
-      if (pt.tall && proj.scale > 0.28) {
-        ctx.fillStyle = `rgba(202,236,126,${alpha * 0.66})`;
-        ctx.fillRect(x - Math.floor(w / 2), y - h, w, 1);
+  /**
+   * Flat braided vine garlands across the path at a sparse depth rhythm.
+   * Two strands woven 180° out of phase form the braid; a dark underlay +
+   * body + highlight stroke give it rounded volume, and leaf/flower accents
+   * sit on the weave crests. Everything follows the road's perspective
+   * (wider near, narrower far) and lies flat — it is purely decorative.
+   */
+  #vineGarlands(scrollOffset) {
+    const p = this.projection;
+    const ctx = this.ctx;
+    const period = 72;                 // sparse — a rhythm beat, not a wall
+    const off = ((scrollOffset % period) + period) % period;
+    // v4.12 — keep the garland ON the road (was roadHalf + 0.26, which poked
+    // into the side-block band at lane ≥2.55 and read as "through the blocks").
+    const spanLane = p.roadHalfLaneUnits - 0.04;
+    const waves = 7;                   // weave humps across the road width
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let d = period - off; d < 150; d += period) {
+      if (d <= 8) continue;
+      const left  = p.projectVisual(-spanLane, d);
+      const right = p.projectVisual(spanLane, d);
+      const mid   = p.projectVisual(0, d);
+      const scale = mid.scale;
+      if (scale < 0.11) continue;      // too far to read cleanly
+      const baseY = mid.sy;
+      const x0 = left.sx;
+      const widthPx = right.sx - x0;
+      const amp = Math.max(2, 9 * scale);
+      const strand = Math.max(1.4, 5 * scale);
+      const STEPS = 44;
+
+      for (let s = 0; s < 2; s += 1) {
+        const dir = s === 0 ? 1 : -1;
+        ctx.beginPath();
+        for (let i = 0; i <= STEPS; i += 1) {
+          const t = i / STEPS;
+          const x = x0 + widthPx * t;
+          const y = baseY + dir * amp * Math.sin(t * Math.PI * waves);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(18,66,26,0.55)';   // grounding shadow underlay
+        ctx.lineWidth = strand + 1.6;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(56,138,50,0.96)';  // vine body
+        ctx.lineWidth = strand;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(122,198,88,0.80)'; // top highlight
+        ctx.lineWidth = Math.max(0.8, strand * 0.4);
+        ctx.stroke();
+      }
+
+      // Leaf + occasional gold-flower accents on the weave crests.
+      const leafR = Math.max(1, 2.4 * scale);
+      for (let i = 0; i < waves; i += 1) {
+        const t = (i + 0.5) / waves;
+        const x = x0 + widthPx * t;
+        const y = baseY + (i % 2 ? amp : -amp);
+        ctx.fillStyle = 'rgba(84,166,62,0.95)';
+        ctx.beginPath();
+        ctx.ellipse(x, y, leafR * 1.4, leafR, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if ((i & 1) === 0 && scale > 0.18) {
+          ctx.fillStyle = 'rgba(245,206,64,0.95)';
+          ctx.beginPath();
+          ctx.arc(x, y, Math.max(0.8, leafR * 0.62), 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     ctx.restore();
@@ -1087,11 +1222,23 @@ function buildMeadowPattern(count, seed) {
   const points = new Array(count);
   for (let i = 0; i < count; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
+    const roll = rng();
+    // Violet-dominant carpet + yellow accents + green tufts, matching the
+    // reference's flowered field. Distance stays uniform across the loop so
+    // on-screen density does not pulse as the field scrolls.
+    const kind = roll < 0.54 ? 'violet' : roll < 0.81 ? 'yellow' : 'tuft';
     points[i] = {
-      lane: side * (2.72 + rng() * 3.55),
+      // 2.35 (just past the visual road edge, roadHalfLaneUnits 2.30) → 6.3
+      // (into the nature zone) so the carpet hugs the path and fills the flank.
+      // v4.14 — reference-match: product-of-two-uniforms biases the offset
+      // toward 0 so most flowers crowd the near road edge (lane ≈ 2.35–4.0),
+      // where the eye reads them, matching the reference's path-hugging beds.
+      lane: side * (2.35 + rng() * rng() * 3.95),
       distance: rng() * 420,
-      light: rng() < 0.54,
-      tall: rng() < 0.38,
+      kind,
+      light: rng() < 0.54,   // tuft shade variation
+      tall: rng() < 0.38,    // tuft height variation
+      phase: rng() * 1.4,    // per-flower size jitter so the bed isn't uniform
     };
   }
   return points;

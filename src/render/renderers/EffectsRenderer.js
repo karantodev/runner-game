@@ -1,4 +1,4 @@
-import { AMBIENT_MOTES } from '../constants.js';
+import { AMBIENT_MOTES, AMBIENT_BUTTERFLIES, AMBIENT_PETALS, AMBIENT_BIRDS } from '../constants.js';
 
 /**
  * Particles + score popups + full-screen hit flash. Sits on top of all
@@ -83,6 +83,11 @@ export class EffectsRenderer {
     // unreachable foreground-garden motes and add quiet life to the side
     // fields without obscuring gameplay or consuming the particle pool.
     this.#drawAmbientMotes(world);
+    // v4.12 — ambient life: distant birds + fluttering butterflies + drifting
+    // petals. Visual-only (time-driven, no RNG/ECS), so seeded runs are
+    // unaffected. Drawn here in the front pass; the post-process grade in
+    // RenderSystem unifies their colour with the scene.
+    this.#drawAmbientLife(world);
 
     // Active-power-up vignette: tinted radial edges that pulse slowly.
     // Burst (green) and split-clones (purple) stack alpha-wise — both can
@@ -376,6 +381,91 @@ export class EffectsRenderer {
       ctx.arc(p.width * mote.x + driftX, p.height * mote.y + driftY, mote.size, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  /**
+   * Ambient life — distant birds, fluttering butterflies and drifting petals.
+   * All motion is a pure function of world.timeAlive + the frozen parameter
+   * tables (no RNG, no ECS, no allocation), so it adds life without touching
+   * the seeded simulation. Cheap: a few dozen vector ops per frame.
+   */
+  #drawAmbientLife(world) {
+    if (!world.config.gameFeel.ambientMotion) return;
+    const ctx = this.ctx;
+    const W = this.projection.width;
+    const H = this.projection.height;
+    const t = world.timeAlive || 0;
+
+    ctx.save();
+
+    // ── Distant birds: slow gull silhouettes crossing the sky, wings flap ──
+    ctx.strokeStyle = 'rgba(40,54,72,0.62)';
+    ctx.lineCap = 'round';
+    for (let i = 0; i < AMBIENT_BIRDS.length; i += 1) {
+      const b = AMBIENT_BIRDS[i];
+      const xf = ((((t * b.speed + b.phase) % 1.2) + 1.2) % 1.2) - 0.1;
+      const x = xf * W;
+      const y = b.y * H + Math.sin(t * 0.05 + b.phase * 6) * (b.bob * H);
+      const s = 9.5 * b.scale;
+      const lift = -s * (0.25 + 0.55 * (Math.sin(t * 0.18 + b.phase * 10) * 0.5 + 0.5));
+      ctx.lineWidth = Math.max(1.2, 1.9 * b.scale);
+      ctx.beginPath();
+      ctx.moveTo(x - s, y);
+      ctx.quadraticCurveTo(x - s * 0.4, y + lift, x, y);
+      ctx.quadraticCurveTo(x + s * 0.4, y + lift, x + s, y);
+      ctx.stroke();
+    }
+
+    // ── Butterflies: wandering path + opening/closing wings ──
+    for (let i = 0; i < AMBIENT_BUTTERFLIES.length; i += 1) {
+      const bf = AMBIENT_BUTTERFLIES[i];
+      const x = bf.x * W + Math.sin(t * bf.speed + bf.phase) * (bf.rx * W);
+      const y = bf.y * H + Math.sin(t * bf.speed * 1.7 + bf.phase * 1.3) * (bf.ry * H);
+      const wing = Math.abs(Math.sin(t * bf.flap + bf.phase));  // 0..1 spread
+      const sz = 7.5 * bf.scale;
+      const ww = sz * (0.45 + 0.95 * wing);
+      const wh = sz * 0.9;
+      const cols = bf.kind === 'gold'
+        ? ['rgba(250,196,60,0.92)', 'rgba(255,230,150,0.92)']
+        : bf.kind === 'blue'
+          ? ['rgba(92,150,236,0.90)', 'rgba(156,204,255,0.90)']
+          : ['rgba(244,244,250,0.90)', 'rgba(255,255,255,0.92)'];
+      // Wings first, then the body on top + centred, so it reads as one
+      // butterfly rather than two disconnected dots.
+      ctx.fillStyle = cols[0];
+      ctx.beginPath(); ctx.ellipse(x - ww * 0.46, y, ww * 0.5, wh * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + ww * 0.46, y, ww * 0.5, wh * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = cols[1];
+      ctx.beginPath(); ctx.ellipse(x - ww * 0.46, y - wh * 0.22, ww * 0.30, wh * 0.30, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + ww * 0.46, y - wh * 0.22, ww * 0.30, wh * 0.30, 0, 0, Math.PI * 2); ctx.fill();
+      const bw = Math.max(1, Math.round(sz * 0.24));
+      ctx.fillStyle = 'rgba(38,28,30,0.88)';
+      ctx.fillRect(Math.round(x - bw / 2), Math.round(y - wh / 2), bw, Math.max(2, Math.round(wh)));
+    }
+
+    // ── Petals: looped fall + sway, gentle rotation ──
+    for (let i = 0; i < AMBIENT_PETALS.length; i += 1) {
+      const pt = AMBIENT_PETALS[i];
+      const yf = (((t * pt.fall + pt.phase) % 1) + 1) % 1;
+      const y = yf * (H * 1.12) - H * 0.06;
+      const x = pt.x * W + Math.sin(t * pt.swaySpeed + pt.phase * 6) * (pt.sway * W);
+      const rot = Math.sin(t * pt.swaySpeed * 1.4 + pt.phase * 3);
+      const sz = 4.4 * pt.scale;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.fillStyle = pt.kind === 'pink'
+        ? 'rgba(255,182,212,0.85)'
+        : pt.kind === 'gold'
+          ? 'rgba(250,206,92,0.80)'
+          : 'rgba(255,250,250,0.82)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, sz, sz * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 

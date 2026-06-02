@@ -84,14 +84,21 @@ export class GradientCache {
 
     const groundStartY = p.roadVanishY + 62;
     const ground = ctx.createLinearGradient(0, groundStartY, 0, p.height);
-    ground.addColorStop(0, '#83c34f');
-    ground.addColorStop(0.38, '#58a53d');
-    ground.addColorStop(1, '#2d712f');
+    // v4.11 — reference-match P3: deeper, more saturated greens. The old
+    // high-key lime (#83c34f / #96dc64) read as washed-out next to the
+    // reference's rich field. Lowering value + raising saturation on the
+    // light stops and deepening the dark stops widens tonal range so the
+    // corridor reads as lush rather than pale.
+    // v4.14 — reference-match: warm the field toward golden-hour and widen
+    // the value range — yellower far/mid stops + a deeper, richer near stop.
+    ground.addColorStop(0, '#7cb83e');     // warmer, more yellow-green in the far field
+    ground.addColorStop(0.38, '#519632');  // warmer mid
+    ground.addColorStop(1, '#205a23');     // a touch deeper/richer near field (still readable)
 
     const road = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    road.addColorStop(0, '#96dc64');
-    road.addColorStop(0.42, '#6cba47');
-    road.addColorStop(1, '#3f8f34');
+    road.addColorStop(0, '#7ec64c');
+    road.addColorStop(0.42, '#5dae3e');
+    road.addColorStop(1, '#347d2b');
 
     const roadEdge = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
     roadEdge.addColorStop(0, 'rgba(220,248,120,0.14)');
@@ -129,9 +136,11 @@ export class GradientCache {
     roadEdgeStrong.addColorStop(0, 'rgba(245,238,190,0.55)');
     roadEdgeStrong.addColorStop(1, 'rgba(248,240,192,0.92)');
 
+    // v4.11 — reference-match P4: stronger perspective "rungs" so the road
+    // reads as panelled like the reference instead of a smooth fill.
     const roadRungFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    roadRungFade.addColorStop(0, 'rgba(238,232,180,0.08)');
-    roadRungFade.addColorStop(1, 'rgba(245,238,185,0.22)');
+    roadRungFade.addColorStop(0, 'rgba(238,232,180,0.16)');
+    roadRungFade.addColorStop(1, 'rgba(245,238,185,0.40)');
 
     this.gradients = {
       sky,
