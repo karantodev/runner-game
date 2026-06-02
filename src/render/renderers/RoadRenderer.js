@@ -36,7 +36,9 @@ export class RoadRenderer {
     // the field scrolls.
     // v4.14 — reference-match: 560→900 points densify the flower carpet for a
     // lusher field; the per-frame far-cull in #meadowTexture bounds overdraw.
-    this._meadowPoints = buildMeadowPattern(900, 0xc2b2ae35);
+    // v4.16 — reference-match: denser carpet (900->1040) so the purple field
+    // reads as wall-to-wall like the reference; far-culls keep overdraw bounded.
+    this._meadowPoints = buildMeadowPattern(1040, 0xc2b2ae35);
   }
 
   render(world) {
@@ -1232,7 +1234,9 @@ function buildMeadowPattern(count, seed) {
     // v4.15 — reference-match: push violet share up (54%→66%, yellow 27%→20%,
     // tuft 19%→14%) so the carpet reads as the reference's purple-dominant
     // violet field rather than a green/gold mix.
-    const kind = roll < 0.66 ? 'violet' : roll < 0.86 ? 'yellow' : 'tuft';
+    // v4.16 — reference-match: push violet share 66%->74% for a denser
+    // purple carpet (yellow 16%, tuft 10%).
+    const kind = roll < 0.74 ? 'violet' : roll < 0.90 ? 'yellow' : 'tuft';
     points[i] = {
       // 2.35 (just past the visual road edge, roadHalfLaneUnits 2.30) → 6.3
       // (into the nature zone) so the carpet hugs the path and fills the flank.
