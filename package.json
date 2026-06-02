@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "build": "node build.js",
+    "build:standalone": "node scripts/build-standalone.mjs",
     "preview": "node build.js && node server.mjs",
     "check": "node build.js --check",
     "test:smoke": "playwright test tests/smoke.spec.js",
@@ -17,6 +18,7 @@
     "audit:semantic": "node scripts/generate-semantic-registry.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "esbuild": "^0.28.0"
   }
 }
