@@ -447,6 +447,54 @@ export const PATTERNS = Object.freeze([
       { kind: 'flower', collectible: 'flower-rich', lane: -1, high: true, offset: 88 },
     ],
   },
+
+  {
+    // Three single-lane hazards stepping +1 → 0 → -1; one safe lane per wave,
+    // then a jackpot rewards committing to the right lane.
+    id: 'd5-snap-turn',
+    difficulty: 5,
+    weight: 2,
+    items: [
+      { kind: 'flower', lane: 0, offset: 0 },
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 16 },
+      { kind: 'obstacle', lane: 0,  type: 'wall',     offset: 34 },
+      { kind: 'obstacle', lane: -1, type: 'bush',     offset: 52 },
+      { kind: 'flower', lane: 1, offset: 66 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 1, high: true, offset: 74 },
+    ],
+  },
+
+  {
+    // Vine jump into a two-lane gate (safe lane +1), then a single block off
+    // that lane — land, commit, then peel away.
+    id: 'd5-vine-gate',
+    difficulty: 5,
+    weight: 2,
+    items: [
+      { kind: 'obstacle', allLanes: true, type: 'vine', offset: 0 },
+      { kind: 'flower', lane: 0, offset: 40 },
+      { kind: 'obstacle', lane: -1, type: 'wall',  offset: 48 },
+      { kind: 'obstacle', lane: 0,  type: 'wheat', offset: 48 },
+      { kind: 'flower', lane: 1, offset: 62 },
+      { kind: 'obstacle', lane: 1,  type: 'bush',  offset: 76 },
+      { kind: 'flower', lane: 0, offset: 92 },
+    ],
+  },
+
+  {
+    // Duck the overhang, then a single-lane weave with a jackpot on the exit.
+    id: 'd5-duck-weave',
+    difficulty: 5,
+    weight: 1,
+    items: [
+      { kind: 'obstacle', type: 'overhang', assetType: 'spider_web_overhang', offset: 0 },
+      { kind: 'flower', lane: 1, offset: 30 },
+      { kind: 'obstacle', lane: 1,  type: 'mushroom', variant: 'red', offset: 44 },
+      { kind: 'obstacle', lane: -1, type: 'wall',     offset: 60 },
+      { kind: 'flower', lane: 0, offset: 76 },
+      { kind: 'flower', collectible: 'flower-rich', lane: 0, high: true, offset: 86 },
+    ],
+  },
 ]);
 
 // Spawned during split-clones power-up: no obstacles, wide flower bonus.
