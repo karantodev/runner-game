@@ -26,7 +26,7 @@ export function parallaxOffset(projection, scrollOffset, amount, driftPhase = 0)
  * @param {Projection} projection
  */
 export function roadBaseHalfWidth(projection) {
-  return projection.roadVisualBaseHalfWidth * 0.92;
+  return projection.roadVisualBaseHalfWidth * 0.98;
 }
 
 /**

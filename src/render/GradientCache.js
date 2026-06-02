@@ -67,6 +67,17 @@ export class GradientCache {
     depthHaze.addColorStop(0.52, 'rgba(142,204,150,0.055)');
     depthHaze.addColorStop(1.00, 'rgba(112,184,126,0)');
 
+    // v4.9 — local atmospheric focus around the road-to-castle join. A
+    // radial veil is less likely to read as a horizontal fog band than
+    // another full-width gradient, while still softening the landmark edge.
+    const landmarkHaze = ctx.createRadialGradient(
+      p.roadVanishX, p.roadVanishY + 22, 8,
+      p.roadVanishX, p.roadVanishY + 22, 190,
+    );
+    landmarkHaze.addColorStop(0.00, 'rgba(218,242,202,0.18)');
+    landmarkHaze.addColorStop(0.46, 'rgba(184,224,184,0.075)');
+    landmarkHaze.addColorStop(1.00, 'rgba(150,206,164,0)');
+
     const roadJoin = ctx.createLinearGradient(0, p.roadVanishY - 4, 0, p.roadVanishY + 78);
     roadJoin.addColorStop(0, 'rgba(198,236,146,0.12)');
     roadJoin.addColorStop(1, 'rgba(108,178,78,0.46)');
@@ -106,11 +117,28 @@ export class GradientCache {
     dividerFade.addColorStop(0.45, 'rgba(232,228,170,0.40)');
     dividerFade.addColorStop(1,    'rgba(240,232,180,0.80)');
 
+    // v4.9 — production road-overlay gradients. These depend only on the
+    // projection geometry, so cache them here instead of allocating three
+    // CanvasGradient objects on every rendered frame.
+    const roadDividerStrong = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    roadDividerStrong.addColorStop(0,    'rgba(235,230,175,0.22)');
+    roadDividerStrong.addColorStop(0.45, 'rgba(238,232,178,0.62)');
+    roadDividerStrong.addColorStop(1,    'rgba(245,238,185,0.92)');
+
+    const roadEdgeStrong = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    roadEdgeStrong.addColorStop(0, 'rgba(245,238,190,0.55)');
+    roadEdgeStrong.addColorStop(1, 'rgba(248,240,192,0.92)');
+
+    const roadRungFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
+    roadRungFade.addColorStop(0, 'rgba(238,232,180,0.08)');
+    roadRungFade.addColorStop(1, 'rgba(245,238,185,0.22)');
+
     this.gradients = {
       sky,
       skyDepth,
       horizonVeil,
       depthHaze,
+      landmarkHaze,
       roadJoin,
       ground,
       road,
@@ -119,6 +147,9 @@ export class GradientCache {
       burstVignette,
       splitVignette,
       dividerFade,
+      roadDividerStrong,
+      roadEdgeStrong,
+      roadRungFade,
       skyH,
       groundStartY,
       foregroundY0: y0Foreground,

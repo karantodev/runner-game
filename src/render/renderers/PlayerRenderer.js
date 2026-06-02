@@ -106,10 +106,10 @@ export class PlayerRenderer {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
-    // v4.0 — pre-allocated scratch for shadow gradient (no per-frame object).
-    // null until first use; reused every frame after that.
-    this._shadowGrad = null;
-    this._shadowGradW = 0;
+    // v4.9 — cached unit shadow sprite. The old path rebuilt a radial
+    // CanvasGradient every frame; drawImage scaling gives the same ellipse
+    // while keeping the run loop allocation-free.
+    this._shadowSprite = null;
   }
 
   render(world) {
@@ -175,23 +175,29 @@ export class PlayerRenderer {
     const baseAlpha = (shadowCfg.alpha ?? 0.28) * alphaScale;
     if (baseAlpha <= 0.01 || halfW <= 0) return;
 
+    const sprite = this.#getShadowSprite();
     ctx.save();
-    // Flatten the circle into an ellipse via Y-scale.
-    const yRatio = halfH / halfW;
-    ctx.scale(1, yRatio);
-    const scaledFootY = footY / yRatio;
-
-    // Radial gradient: dark opaque centre → transparent rim.
-    const grad = ctx.createRadialGradient(footX, scaledFootY, 0, footX, scaledFootY, halfW);
-    grad.addColorStop(0,    `rgba(30, 18, 8, ${baseAlpha})`);
-    grad.addColorStop(0.60, `rgba(30, 18, 8, ${(baseAlpha * 0.45).toFixed(3)})`);
-    grad.addColorStop(1,    'rgba(30, 18, 8, 0)');
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(footX, scaledFootY, halfW, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = baseAlpha;
+    ctx.drawImage(sprite, footX - halfW, footY - halfH, halfW * 2, halfH * 2);
     ctx.restore();
+  }
+
+  #getShadowSprite() {
+    if (this._shadowSprite) return this._shadowSprite;
+    const size = 96;
+    const shadow = typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(size, size)
+      : (() => { const c = document.createElement('canvas'); c.width = size; c.height = size; return c; })();
+    const ctx = shadow.getContext('2d');
+    const center = size / 2;
+    const grad = ctx.createRadialGradient(center, center, 0, center, center, center);
+    grad.addColorStop(0,    'rgba(30, 18, 8, 1)');
+    grad.addColorStop(0.60, 'rgba(30, 18, 8, 0.45)');
+    grad.addColorStop(1,    'rgba(30, 18, 8, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    this._shadowSprite = shadow;
+    return shadow;
   }
 
   /**
@@ -400,6 +406,18 @@ export class PlayerRenderer {
       ctx.drawImage(spriteImg, drawLeft + o, drawTop, drawW, drawH);
       ctx.drawImage(spriteImg, drawLeft, drawTop - o, drawW, drawH);
       ctx.drawImage(spriteImg, drawLeft, drawTop + o, drawW, drawH);
+      ctx.restore();
+    }
+
+    // A one-pixel upper-right sunlight rim separates the farmer from dense
+    // greenery without blurring the sprite or changing its authored pixels.
+    const rimCfg = world.config.visual?.juice?.playerRimLight;
+    if (!isClone && rimCfg?.enabled) {
+      ctx.save();
+      ctx.globalAlpha = alpha * (rimCfg.alpha ?? 0.18);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.filter = 'brightness(1.35) saturate(1.08)';
+      ctx.drawImage(spriteImg, drawLeft + 1, drawTop - 1, drawW, drawH);
       ctx.restore();
     }
 

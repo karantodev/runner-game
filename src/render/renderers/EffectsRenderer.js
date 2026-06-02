@@ -1,3 +1,5 @@
+import { AMBIENT_MOTES } from '../constants.js';
+
 /**
  * Particles + score popups + full-screen hit flash. Sits on top of all
  * world geometry so VFX always read.
@@ -37,14 +39,22 @@ export class EffectsRenderer {
     /** Screen-x of the last collect event (follows the player). */
     this.collectFlashX = 0;
     this.collectFlashY = 0;
+    this._collectBloomCounter = 0;
+    this._comboGradient = null;
   }
 
   /**
    * v4.0 — trigger a collect flash. Called by World after flower:collected.
    * @param {number} x  screen-space X
    * @param {number} y  screen-space Y
+   * @param {{ force?: boolean }} [options]
    */
-  triggerCollectFlash(x, y) {
+  triggerCollectFlash(x, y, options = {}) {
+    this._collectBloomCounter += 1;
+    // Dense orchid trails already have sparkle particles + popups. Bloom
+    // every third common pickup so the road stays readable; rare pickups
+    // pass force=true and always get the premium flash.
+    if (!options.force && this._collectBloomCounter % 3 !== 0) return;
     this.collectFlash = 1;
     this.collectFlashX = x;
     this.collectFlashY = y;
@@ -69,6 +79,11 @@ export class EffectsRenderer {
     // render — they don't obscure the farmer for pose QA.
     const noFx = world.config.debug?.disableFullScreenEffects === true;
 
+    // v4.9 — tiny allocation-free ambient motes. These replace the old
+    // unreachable foreground-garden motes and add quiet life to the side
+    // fields without obscuring gameplay or consuming the particle pool.
+    this.#drawAmbientMotes(world);
+
     // Active-power-up vignette: tinted radial edges that pulse slowly.
     // Burst (green) and split-clones (purple) stack alpha-wise — both can
     // be active at the same time.
@@ -78,12 +93,12 @@ export class EffectsRenderer {
       const pulse = 0.65 + 0.35 * Math.sin(world.timeAlive * 0.11);
       if (burstActive) {
         ctx.globalAlpha = pulse;
-        ctx.fillStyle = this.gradients.burstVignette;
+        ctx.fillStyle = this.gradients.gradients.burstVignette;
         ctx.fillRect(0, 0, this.projection.width, this.projection.height);
       }
       if (splitActive) {
         ctx.globalAlpha = pulse * 0.9;
-        ctx.fillStyle = this.gradients.splitVignette;
+        ctx.fillStyle = this.gradients.gradients.splitVignette;
         ctx.fillRect(0, 0, this.projection.width, this.projection.height);
       }
       ctx.globalAlpha = 1;
@@ -272,10 +287,12 @@ export class EffectsRenderer {
         // Soft inner cut-out (player area stays clear, edges glow).
         const cx = this.projection.width / 2;
         const cy = this.projection.height * 0.55;
-        const grad = ctx.createRadialGradient(cx, cy, this.projection.width * 0.18, cx, cy, this.projection.width * 0.6);
-        grad.addColorStop(0, 'rgba(255,213,74,0)');
-        grad.addColorStop(1, 'rgba(255,213,74,0.85)');
-        ctx.fillStyle = grad;
+        if (!this._comboGradient) {
+          this._comboGradient = ctx.createRadialGradient(cx, cy, this.projection.width * 0.18, cx, cy, this.projection.width * 0.6);
+          this._comboGradient.addColorStop(0, 'rgba(255,213,74,0)');
+          this._comboGradient.addColorStop(1, 'rgba(255,213,74,0.85)');
+        }
+        ctx.fillStyle = this._comboGradient;
         ctx.fillRect(0, 0, this.projection.width, this.projection.height);
         ctx.restore();
       }
@@ -342,6 +359,24 @@ export class EffectsRenderer {
       this.#drawCollectBloom(world);
       this.collectFlash = Math.max(0, this.collectFlash - 0.14);
     }
+  }
+
+  #drawAmbientMotes(world) {
+    if (!world.config.gameFeel.ambientMotion) return;
+    const ctx = this.ctx;
+    const p = this.projection;
+    const scroll = world.scrollOffset;
+    ctx.save();
+    for (let i = 0; i < AMBIENT_MOTES.length; i += 1) {
+      const mote = AMBIENT_MOTES[i];
+      const driftX = Math.sin(scroll * 0.012 * mote.speed + mote.x * 11) * 22;
+      const driftY = Math.cos(scroll * 0.009 * mote.speed + mote.y * 13) * 9;
+      ctx.fillStyle = mote.color;
+      ctx.beginPath();
+      ctx.arc(p.width * mote.x + driftX, p.height * mote.y + driftY, mote.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   /**

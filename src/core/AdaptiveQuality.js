@@ -21,10 +21,10 @@
  *   0 — Low:    everything stripped (chunky frame survival mode)
  */
 const TIERS = Object.freeze([
-  { id: 0, label: 'Low',   parallax: false, particles: false, cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, particleCapPct: 0.20 },
-  { id: 1, label: 'Mid',   parallax: false, particles: true,  cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, particleCapPct: 0.45 },
-  { id: 2, label: 'High',  parallax: true,  particles: true,  cameraShake: true,  scorePopups: false, ambientMotion: true,  postProcessGrade: true,  particleCapPct: 0.75 },
-  { id: 3, label: 'Ultra', parallax: true,  particles: true,  cameraShake: true,  scorePopups: true,  ambientMotion: true,  postProcessGrade: true,  particleCapPct: 1.00 },
+  { id: 0, label: 'Low',   parallax: false, particles: false, cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, fullCanvasFilter: false, particleCapPct: 0.20 },
+  { id: 1, label: 'Mid',   parallax: false, particles: true,  cameraShake: false, scorePopups: false, ambientMotion: false, postProcessGrade: false, fullCanvasFilter: false, particleCapPct: 0.45 },
+  { id: 2, label: 'High',  parallax: true,  particles: true,  cameraShake: true,  scorePopups: false, ambientMotion: true,  postProcessGrade: true,  fullCanvasFilter: false, particleCapPct: 0.75 },
+  { id: 3, label: 'Ultra', parallax: true,  particles: true,  cameraShake: true,  scorePopups: true,  ambientMotion: true,  postProcessGrade: true,  fullCanvasFilter: true,  particleCapPct: 1.00 },
 ]);
 
 const DEGRADE_FRAMETIME_MS = 22;   // ≈ 45 fps
@@ -45,16 +45,19 @@ export class AdaptiveQuality {
   /**
    * Force a tier and disable auto-scaling. Use from Settings UI ("Quality: High").
    * @param {0 | 1 | 2 | 3 | null} tierId — null = unlock auto.
+   * @param {import('../world/World.js').World | null} [world]
    */
-  setLocked(tierId) {
+  setLocked(tierId, world = null) {
     if (tierId === null || tierId === undefined) {
       this.locked = false;
+      if (world) this.#applyToWorld(this.tier, world, true);
       return;
     }
     const t = TIERS.find((entry) => entry.id === tierId);
     if (!t) return;
     this.locked = true;
-    this.#apply(t);
+    if (world) this.#applyToWorld(t, world, true);
+    else this.#apply(t);
   }
 
   /**
@@ -109,8 +112,8 @@ export class AdaptiveQuality {
     this.tier = tier;
   }
 
-  #applyToWorld(tier, world) {
-    if (tier === this.tier) return;
+  #applyToWorld(tier, world, force = false) {
+    if (!force && tier === this.tier) return;
     this.tier = tier;
     // Mutate gameFeel flags — every renderer + system already reads these
     // each frame, so there's no need to broadcast a change event.

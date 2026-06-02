@@ -32,6 +32,7 @@ const DEPTH_LAYER = {
   far:      [1.00, 1.00],  // full farDesaturate + farDarken
   mid:      [0.60, 0.40],  // 60% desaturate, 40% darken
   near:     [0.25, 0.00],  // slight desaturate only
+  forest:   [0.34, 0.10],  // soft silhouette bridge before the hills
   mground:  [0.10, 0.00],  // barely touched (closer to player)
   treeline: [0.05, 0.00],  // nearly pristine
 };
@@ -63,7 +64,9 @@ export class BackgroundRenderer {
     for (let i = 0; i < world.clouds.length; i += 1) {
       const cloud = world.clouds[i];
       const key = cloud.key;
-      const targetW = (cloud.widthPx ?? cloud.radius * 5.25) * (i < 2 || i === 3 ? 0.92 : 0.96);
+      // v4.9 — keep the sky active without letting the largest clouds steal
+      // focus from the road-to-castle axis.
+      const targetW = (cloud.widthPx ?? cloud.radius * 5.25) * (i < 2 || i === 3 ? 0.86 : 0.92);
       const x = cloud.x + parallaxOffset(p, scroll, (0.05 + (i % 3) * 0.015) * parallaxScale, i * 0.9);
       this.sprites.draw(key, x, cloud.y, targetW, 'center');
     }
@@ -82,6 +85,11 @@ export class BackgroundRenderer {
     this.ctx.fillRect(0, p.horizonY - 54, width, p.roadVanishY - p.horizonY + 186);
 
     this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
+
+    // Additional forest bridge. The reference does not expose a wide empty
+    // meadow strip beneath the mountains: a softer tree mass fills that
+    // transition while remaining behind the crisp foreground treeline.
+    this.#drawMountainLayer(['backgroundForestTreeline'], p.horizonY + 44, width + 124, 0.22 * parallaxScale, scroll, 0.62, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.forest) : 'none');
 
     // v3.8.9 wave — midground layer (designer delivery, was brief priority #5).
     // rolling_hills sits between mountains and treeline — gentle wave-form

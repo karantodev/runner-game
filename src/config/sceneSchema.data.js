@@ -560,6 +560,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: -1.9, scale: 0.28 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane: 1.84, dist: 2.3, scale: 0.47 },
+      { id: 'leaf_outer', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'leaf_clump_round', laneBand: LANE_BANDS.NATURE, lane: 2.58, dist: 2.8, scale: 0.44 },
     ],
   },
   {
@@ -576,6 +578,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -0.7, scale: 0.42 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.38, dist: 2.3, scale: 0.29 },
+      { id: 'bush_outer', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.62, dist: 2.8, scale: 0.42 },
     ],
   },
   {
@@ -699,6 +703,27 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist:  1.4, scale: 0.48 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist: -1.6, scale: 0.44 },
+    ],
+  },
+  {
+    // A complete garden-side chain in one spawn beat. The reference rarely
+    // leaves a platform isolated: a structural run is softened by foliage,
+    // capped by a mushroom landmark, and closed with a short fence.
+    id: 'garden-chain-platform-fence',
+    weight: 7,
+    items: [
+      { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -3.2, scale: 0.88, variant: 0 },
+      { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.8, scale: 0.98, variant: 1 },
+      { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.76, dist: 1.0, scale: 0.72 },
+      { id: 'mushroom', role: 'base', anchor: 'ground', zLayer: 12,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist: 2.4, scale: 0.56, variant: 'red' },
+      { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: 3.6, scale: 0.72 },
+      { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist: 1.7, scale: 0.42 },
     ],
   },
 
@@ -872,6 +897,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Signature purple brick — visible accent behind the platform.
       { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist: -1.4, scale: 0.78, variant: 0 },
+      // Outer shrub mass closes the foreground corner without moving any
+      // structural item toward the collision corridor.
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.82, dist: -2.1, scale: 0.86 },
       // Fence — frames the platform front.
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
         assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  1.6, scale: 0.80 },
@@ -903,6 +932,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Signature small purple brick behind pipe.
       { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.22, dist:  1.6, scale: 0.72, variant: 1 },
+      // Low front fence makes the right corner read as one composed garden
+      // group instead of a pipe floating beside loose flora.
+      { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  2.1, scale: 0.88 },
       // Shoulder flora.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist: -0.6, scale: 0.36 },
@@ -920,6 +953,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.94, variant: 0 },
       { id: 'brick_b', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.2, scale: 0.94, variant: 1 },
+      { id: 'brick_c', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  1.4, scale: 0.86, variant: 0 },
       // Question block — visually floats ABOVE the brick row via
       // yOffset. No graph parenting (question_block.allowedParents =
       // ['ground'] in the semantic registry; QBLOCK_FLOATING validator
@@ -930,6 +965,8 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // so the tree sorts clearly behind the wall cluster and avoids z-fighting.
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
         assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.94, dist:  8.6, scale: 0.78, yOffset: -8 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.72, dist:  3.8, scale: 0.66 },
       // Single flower on shoulder.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist:  0.7, scale: 0.34 },
@@ -946,12 +983,16 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Foundation block behind the step — visual support / volume.
       { id: 'block_support', role: 'support', anchor: 'ground', zLayer: 9,
         assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.92, variant: 1 },
+      { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  1.8, scale: 0.78, variant: 0 },
       // Mushroom topper on the support block.
       { id: 'mushroom_top', role: 'topper', parentId: 'block_support', anchor: 'top', zLayer: 12,
         assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.52, variant: 'red', yOffset: -60 },
       // Bush accent on shoulder.
       { id: 'bush_front', role: 'loose-decor', anchor: 'ground', zLayer: 6,
         assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: 0.8, scale: 0.62 },
+      { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: 2.5, scale: 0.70 },
       // Single flower for shoulder fill.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.52, dist: 1.6, scale: 0.40 },
@@ -969,6 +1010,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft', laneBand: LANE_BANDS.SHOULDER, lane:  1.74, dist:  0.0, scale: 0.34 },
       { id: 'leaf_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
         assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane:  1.66, dist:  0.9, scale: 0.40 },
+      { id: 'leaf_outer', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'leaf_clump_round', laneBand: LANE_BANDS.NATURE, lane:  2.54, dist:  1.8, scale: 0.36 },
+      { id: 'flower_edge', role: 'loose-decor', anchor: 'ground', zLayer: 4,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane:  1.52, dist: -1.0, scale: 0.22 },
     ],
   },
 ]);
@@ -1018,10 +1063,24 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   'hero-layered-brick-cascade':       'hero-landmark',
   'fence-flower-row':                 'fence-row',
   'platform-high-cliff':              'vertical-landmark',
+  'organic-meadow':                   'landscape',
+  'leaf-forest-edge':                 'flora-mix',
+  'blue-mushroom-grove':              'flora-mix',
+  'large-bush-garden':                'landscape',
+  'hanging-platform-garden':          'platform-cluster',
+  'big-bush-wall':                    'flora-mix',
+  'wall-continuous-3block':           'support-stack',
+  'elevated-platform-wall':           'platform-cluster',
+  'garden-chain-platform-fence':      'platform-cluster',
   'step-left-with-mushroom':          'step-feature',
   // v3.8.42 — Phase 7b foreground anchors.
   'foreground-left-anchor':           'hero-landmark',
   'foreground-right-anchor':          'hero-landmark',
+  'garden_foreground_left_platform_cluster': 'hero-landmark',
+  'garden_foreground_right_pipe_cluster':    'hero-landmark',
+  'garden_mid_left_purple_wall_cluster':     'hero-landmark',
+  'garden_mid_right_stone_step_cluster':     'hero-landmark',
+  'garden_far_castle_approach_cluster':      'landscape',
   // v4.0 — scatter flora patches.
   'scatter-violet-tuft':              'flora-mix',
 });
@@ -1113,6 +1172,11 @@ export const PREFAB_COMPOSITION_METADATA = Object.freeze({
     densityWeight: 1, allowedDepthRange: [155, 200],
     minSpacingFromSameType: 25, requiresSupport: false, roadClearance: 1.4,
   },
+  'garden-chain-platform-fence': {
+    zone: 'nearMid', side: 'either', role: 'structural',
+    densityWeight: 3, allowedDepthRange: [28, 70],
+    minSpacingFromSameType: 32, requiresSupport: true, roadClearance: 1.7,
+  },
 });
 
 /**
@@ -1143,9 +1207,13 @@ export const THEMES = Object.freeze({
       'brick-corridor-segment',
       'leaf-forest-edge',
       'organic-meadow',
+      // v4.10 — larger near transition groups replace two light fence rows.
+      'hero-layered-corner-brick',
+      'hero-layered-pipe-landmark',
       // v4.5 — new continuous-wall prefabs used in HERO_LAYOUT gap-fills.
       'wall-continuous-3block',
       'elevated-platform-wall',
+      'garden-chain-platform-fence',
       // v4.6 — reference-match (P3a): fence/bush prefab used for the
       // right-corner foreground framing (left corner uses fence-flower-row,
       // already listed above).
@@ -1177,13 +1245,16 @@ export const THEMES = Object.freeze({
       'fence-flower-row',
       'hanging-platform-garden',
       'big-bush-wall',
-      // v4.0 — scatter flora filler.
-      'scatter-violet-tuft',
+      // v4.10 — coherent organic masses supplement structural clusters;
+      // the independent GroundScatterSystem owns small-flora patches.
+      'large-bush-garden',
+      'blue-mushroom-grove',
       // v4.5 — continuous-wall clusters + unlocked hero-layered compositions.
       'wall-continuous-3block',
       'elevated-platform-wall',
       'hero-layered-corner-brick',
       'hero-layered-brick-cascade',
+      'garden-chain-platform-fence',
     ]),
     palette: Object.freeze({
       signatureSideStructure: ['purple_brick_single', 'green_pipe', 'stone_wall_low', 'fence_wood_short'],
@@ -1341,14 +1412,15 @@ export const HERO_LAYOUT = Object.freeze([
   // faint picket. Left nearer/larger than right keeps the corners framed
   // without being a mirror-identical copy. Both stay in FOREGROUND [0,30)
   // so the band still holds exactly 2 clusters/side (cap unchanged).
-  { distance:  11, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.16 },
-  { distance:  14, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 1.10 },
+  { distance:  11, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.28 },
+  { distance:  14, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 1.24 },
   // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
-  { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.00 },
-  { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.00 },
-  // NEAR — fence-flower transition beats per side, then structural.
-  { distance:  42, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.85 },
-  { distance:  52, side:  1, prefabId: 'fence-flower-row',                        scaleMultiplier: 0.82 },
+  { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.18 },
+  { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.16 },
+  // NEAR — layered transition groups keep the corridor composed instead of
+  // falling back to two light rows of evenly distributed flora.
+  { distance:  42, side: -1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 0.90 },
+  { distance:  52, side:  1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 0.86 },
   // v4.5 — gap-fill: right side had no NEAR entry between 52 and 82.
   // NEAR right: 52 (1/2) → adding second at 63 fills the visual hole.
   { distance:  63, side:  1, prefabId: 'wall-continuous-3block',                  scaleMultiplier: 0.82 },

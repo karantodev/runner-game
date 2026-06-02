@@ -148,7 +148,12 @@ export class RenderSystem {
     if (vCfg?.enabled
         && vCfg?.grade?.enabled
         && world.adaptiveQuality?.tier?.postProcessGrade !== false) {
-      this.#applyColorGrade(ctx, this.projection, vCfg.grade);
+      this.#applyColorGrade(
+        ctx,
+        this.projection,
+        vCfg.grade,
+        world.adaptiveQuality?.tier?.fullCanvasFilter !== false,
+      );
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -175,8 +180,9 @@ export class RenderSystem {
    * @param {CanvasRenderingContext2D} ctx
    * @param {import('../world/Projection.js').Projection} p
    * @param {object} grade  — world.config.visual.grade
+   * @param {boolean} allowFullCanvasFilter
    */
-  #applyColorGrade(ctx, p, grade) {
+  #applyColorGrade(ctx, p, grade, allowFullCanvasFilter = true) {
     const W = p.width;
     const H = p.height;
 
@@ -185,11 +191,14 @@ export class RenderSystem {
       const wc = grade.warmCool;
       // Lazy-init the warm/cool gradient. Invalidated on resize but
       // the canvas logical size never changes at runtime in this game.
-      if (!this._wcGradient || this._wcGradientH !== H) {
-        this._wcGradient = ctx.createLinearGradient(0, 0, 0, H);
+      if (!this._wcGradient || this._wcGradientW !== W || this._wcGradientH !== H) {
+        // Diagonal axis gives the existing one-pass grade a directional
+        // upper-right sunlight read without adding another full-canvas blit.
+        this._wcGradient = ctx.createLinearGradient(W * 0.92, 0, W * 0.18, H);
         this._wcGradient.addColorStop(0.00, wc.warm);
         this._wcGradient.addColorStop(0.55, 'rgba(0,0,0,0)');
         this._wcGradient.addColorStop(1.00, wc.cool);
+        this._wcGradientW = W;
         this._wcGradientH = H;
       }
       ctx.save();
@@ -230,7 +239,7 @@ export class RenderSystem {
     const con = grade.contrast ?? 1;
     const bri = grade.brightness ?? 1;
     const filterNeeded = (sat !== 1 || con !== 1 || bri !== 1);
-    if (filterNeeded) {
+    if (filterNeeded && allowFullCanvasFilter) {
       // Operate in RAW DEVICE PIXELS with an identity transform. This
       // makes the grade correct under HiDPI (canvas.width = logical*dpr)
       // and immune to the active camera-shake translate — both of which

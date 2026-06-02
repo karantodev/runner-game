@@ -5,6 +5,7 @@ import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID, THEMES } fro
 const HERO_GAP_FILL_PREFABS = Object.freeze([
   'wall-continuous-3block',
   'elevated-platform-wall',
+  'garden-chain-platform-fence',
   'fence-flower-row',
 ]);
 

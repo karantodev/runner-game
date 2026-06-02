@@ -335,6 +335,11 @@ export const GAME_CONFIG = Object.freeze({
     // carpet (GroundScatterSystem). false = prepopulate AND update no-op.
     density: { decorMultiplier: 1.5, scatterFlowers: true, groundScatter: true },
 
+    // Cheap, allocation-free surface detail. Meadow pixels scroll in world
+    // space outside the road, so the field reads as textured terrain instead
+    // of one smooth gradient without adding ECS entities.
+    detail: { meadowTexture: true },
+
     // ── Background: which cloud sprite keys appear in the sky.
     // Add/remove/reorder keys here — World picks them by index (cycling).
     // Keys must be registered in assets above and have transparent backgrounds.
@@ -350,6 +355,7 @@ export const GAME_CONFIG = Object.freeze({
     // ── Juice: grounding shadow, run dust, collect bloom.
     juice: {
       playerShadow: { enabled: true, alpha: 0.28, widthScale: 0.92 },
+      playerRimLight: { enabled: true, alpha: 0.18 },
       // v4.8 — soft contact shadows under near ground-flora so the carpet
       // reads as planted, not floating. Subtle: low alpha, narrow ellipse.
       // Only the nearest/largest flora get one (see SceneryRenderer scale
@@ -415,14 +421,19 @@ export const GAME_CONFIG = Object.freeze({
     // Curated opening groups are supplemented when a per-side gap exceeds
     // this threshold. Keeps both side walls continuous without mirroring.
     sideDecorHeroMaxGap: 16,
-    // v4.6 — reference-match: dense shoulder flora carpet — second
-    // decoration channel parallel to sideDecor. Much tighter spacing than
-    // sideDecorSpacing (15) so the green shoulders read as a continuous
-    // bed of small flora instead of empty gaps between structural clusters.
+    // v4.6 — reference-match: shoulder flora channel parallel to sideDecor.
+    // Individual bands now live inside local patches (GroundScatterSystem)
+    // instead of forming an even carpet across the whole field.
     scatterSpacing: 3.2,
-    // v4.7 perf — 8→6: with the per-sprite save/restore removed this keeps
-    // a lush carpet while leaving render headroom (and trimming the
-    // entity-churn that drives periodic GC) so the run stays smooth.
+    // v4.10 — two close bands per patch, then a larger breathing interval.
+    // This keeps the meadow stocked while reducing live scatter entities
+    // versus an evenly-spaced carpet.
+    scatterPatchSpacing: 8.4,
+    scatterPatchBands: 2,
+    scatterPatchBandSpacing: 1.35,
+    scatterClusterLaneRadius: 0.16,
+    // v4.7 perf — six items per local band keeps render headroom and trims
+    // the entity churn that drives periodic GC.
     scatterPerBand: 6,
     scatterLaneRange: [1.40, 1.84],
     // v4.6 — reference-match: cap the carpet at the visible near/mid range.
@@ -430,10 +441,10 @@ export const GAME_CONFIG = Object.freeze({
     // reinvested in denser near bands (scatterPerBand) for a lusher bed.
     scatterMaxDistance: 140,
     // v4.7 — reference-match: fraction of each band's flora placed in the
-    // wide MEADOW remap (the green field) vs the near SHOULDER strip. ~0.55
-    // spreads the bed across the whole flank like the reference instead of
-    // a thin road-edge border.
-    scatterMeadowFraction: 0.55,
+    // wide MEADOW remap (the green field) vs the near SHOULDER strip.
+    // Two thirds of each patch sits in the meadow, so local beds fill the
+    // flank without returning to a uniform lawn.
+    scatterMeadowFraction: 0.66,
     lifePickupMinDistance: 940,
     lifePickupMaxDistance: 1480,
     powerUpMinDistance: 780,
@@ -705,9 +716,8 @@ export const GAME_CONFIG = Object.freeze({
     vineBarrierSingle03: './assets/obstacles/vine_barrier/vine_barrier_single_03.png',
     vineBarrierSingle04: './assets/obstacles/vine_barrier/vine_barrier_single_04.png',
     planterPot:          './assets/obstacles/planter_pot/planter_pot.png',
-    // v3.8.34 — Golden Rule P1 pair. Designer delivered the _left /
-    // _right variants alongside the stone_brick batch. SIDE_MAPPING_
-    // BY_TYPE default is 'swapped' (visible-face convention) to match.
+    // v4.10 — canonical placement-convention pair: _left is placed on
+    // the left shoulder, _right on the right shoulder.
     planterPotLeft:      './assets/obstacles/planter_pot/planter_pot_left.png',
     planterPotRight:     './assets/obstacles/planter_pot/planter_pot_right.png',
 
@@ -720,11 +730,8 @@ export const GAME_CONFIG = Object.freeze({
     stoneBrickSingle:     './assets/structures/stone_brick/stone_brick_single.png',
     stoneWallLow:         './assets/structures/stone_brick/stone_wall_low.png',
     stoneWallStairs:      './assets/structures/stone_brick/stone_wall_stairs.png',
-    // v3.8.34 — Golden Rule P1 pair completion. Designer delivered the
-    // _left / _right variants matching the existing v3.8.27 batch
-    // (visible-face / SWAPPED convention — see sceneryDispatch.js).
-    // Mapping defaults to 'swapped' in SIDE_MAPPING_BY_TYPE so the
-    // engine picks the correct file per shoulder.
+    // v3.8.34 — Golden Rule P1 pair completion. Placement convention:
+    // _left is placed on the left shoulder, _right on the right shoulder.
     stoneBrickSingleLeft:  './assets/structures/stone_brick/stone_brick_single_left.png',
     stoneBrickSingleRight: './assets/structures/stone_brick/stone_brick_single_right.png',
     stoneWallLowLeft:      './assets/structures/stone_brick/stone_wall_low_left.png',

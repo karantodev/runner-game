@@ -29,6 +29,7 @@ export class RoadRenderer {
     // ~8 seconds at base speed — long enough to not read as obvious.
     this._noisePoints = buildNoisePattern(120, 0x9e3779b9);
     this._fringePoints = buildFringePattern(72, 0x85ebca6b);
+    this._meadowPoints = buildMeadowPattern(76, 0xc2b2ae35);
   }
 
   render(world) {
@@ -37,12 +38,17 @@ export class RoadRenderer {
     // since our parent ctx transform already applies dpr.
     this.ctx.drawImage(this._staticLayer, 0, 0, this.projection.width, this.projection.height);
     const scroll = world.scrollOffset;
+    if (world.config.visual?.detail?.meadowTexture !== false) {
+      this.#meadowTexture(scroll);
+    }
     // v4.4 — reference-match: draw the base surface per mode, THEN apply the
     // shared perspective-grid overlay in EVERY mode. Previously kit mode
     // returned early and skipped the converging edge/lane/shoulder cues, so
     // the road read as a flat green strip.
     if (this.roadStyle === 'kit') {
       this.#imageKitGrid(scroll);
+      this.#grassNoise(scroll);
+      this.#shoulderFringe(scroll);
     } else if (this.roadStyle === 'tiles') {
       this.#imageTileGrid(scroll);
     } else {
@@ -129,7 +135,6 @@ export class RoadRenderer {
    */
   #paintPathFill(ctx) {
     const p = this.projection;
-    const vpX = p.width / 2;
     const vpY = p.roadVanishY;
     const baseHalf = roadBaseHalfWidth(p);
     const topHalf = roadTopHalfWidth(p);
@@ -144,10 +149,24 @@ export class RoadRenderer {
     pathFill.addColorStop(1, 'rgba(120,196,74,0.72)');
     ctx.fillStyle = pathFill;
     ctx.beginPath();
-    ctx.moveTo(vpX - topHalf, vpY);
-    ctx.lineTo(vpX + topHalf, vpY);
-    ctx.lineTo(vpX + baseHalf, p.groundY);
-    ctx.lineTo(vpX - baseHalf, p.groundY);
+    const slices = 12;
+    // Left edge: horizon → foreground.
+    for (let i = 0; i <= slices; i += 1) {
+      const scale = i / slices;
+      const x = p.visualRoadCenterXForScale(scale);
+      const y = vpY + (p.groundY - vpY) * scale;
+      const half = topHalf + (baseHalf - topHalf) * scale;
+      if (i === 0) ctx.moveTo(x - half, y);
+      else ctx.lineTo(x - half, y);
+    }
+    // Right edge: foreground → horizon.
+    for (let i = slices; i >= 0; i -= 1) {
+      const scale = i / slices;
+      const x = p.visualRoadCenterXForScale(scale);
+      const y = vpY + (p.groundY - vpY) * scale;
+      const half = topHalf + (baseHalf - topHalf) * scale;
+      ctx.lineTo(x + half, y);
+    }
     ctx.closePath();
     ctx.fill();
   }
@@ -334,10 +353,7 @@ export class RoadRenderer {
     // Before: stop(0)=0.08, stop(0.45)=0.40, stop(1)=0.80 → lines fade
     // out before mid-distance. After: 0.22 / 0.62 / 0.92 — ~2.75× brighter
     // at the far end while still receding into the horizon.
-    const strongDividerFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    strongDividerFade.addColorStop(0,    'rgba(235,230,175,0.22)');
-    strongDividerFade.addColorStop(0.45, 'rgba(238,232,178,0.62)');
-    strongDividerFade.addColorStop(1,    'rgba(245,238,185,0.92)');
+    const strongDividerFade = this.gradients.gradients.roadDividerStrong;
 
     // v4.1 — P1 reference-match: widthPx 3.0 → 4.5 — slightly heavier
     // stroke so the dividers are legible at a glance without becoming
@@ -400,49 +416,50 @@ export class RoadRenderer {
     // stop(0) near-transparent at the vanish horizon, stop(1) near-opaque
     // cream at the camera ground so the lines converge visually like the
     // reference photo.
-    const edgeGrad = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    // v4.3 — P3 reference-match: raised far-end alpha 0.30 → 0.55 so the
-    // cream edge lines hold through mid-distance and read as a clear frame,
-    // not a ghost tint that vanishes before reaching the castle.
-    edgeGrad.addColorStop(0, 'rgba(245,238,190,0.55)');
-    edgeGrad.addColorStop(1, 'rgba(248,240,192,0.92)');
+    // v4.3 — P3 reference-match: the cached gradient keeps raised far-end
+    // alpha so the cream edge lines hold through mid-distance.
+    const edgeGrad = this.gradients.gradients.roadEdgeStrong;
 
     // v4.2 — P2 reference-match: edge line half-width in screen px at a
     // given projection scale. Near camera scale≈1 → ~5 px either side of
     // the lane centre = 10 px total strip; at the far horizon scale≈0.10
     // → ~1 px either side = 2 px total. Clamped so far lines keep 1 px.
-    // v4.3 — P3 reference-match: widened near strip 10 → 14 px so both
-    // cream borders are immediately legible as bold framing lines rather
-    // than thin accents — still scale-tapers toward the vanish point.
-    const widthPx     = 14;
+    // Keep the border visible without turning the garden path into a
+    // highway: the textured shoulder should stay readable behind it.
+    const widthPx     = 9;
     const farFloorPx  = 1.0;
-    const maxDistance = 120;
+    const maxDistance = 180;
+    const segmentDepth = 15;
 
     ctx.save();
     ctx.fillStyle = edgeGrad;
 
     for (const laneLine of [-1.5, 1.5]) {
-      const near = p.projectVisual(laneLine, 0);
-      const far  = p.projectVisual(laneLine, maxDistance);
+      // Use short quads rather than one long trapezoid so the outer frame
+      // follows the render-only fake curve instead of cutting across it.
+      for (let dNear = 0; dNear < maxDistance; dNear += segmentDepth) {
+        const dFar = Math.min(maxDistance, dNear + segmentDepth);
+        const near = p.projectVisual(laneLine, dNear);
+        const far  = p.projectVisual(laneLine, dFar);
 
-      const wNear = Math.max(farFloorPx, widthPx * near.scale);
-      const wFar  = Math.max(farFloorPx, widthPx * far.scale);
+        const wNear = Math.max(farFloorPx, widthPx * near.scale);
+        const wFar  = Math.max(farFloorPx, widthPx * far.scale);
 
-      // Pixel-snap vertices — same style as #laneDividers to avoid shimmer.
-      const nearLx = Math.round(near.sx - wNear / 2);
-      const nearRx = Math.round(near.sx + wNear / 2);
-      const farLx  = Math.round(far.sx  - wFar  / 2);
-      const farRx  = Math.round(far.sx  + wFar  / 2);
-      const nearY  = Math.round(near.sy);
-      const farY   = Math.round(far.sy);
+        const nearLx = Math.round(near.sx - wNear / 2);
+        const nearRx = Math.round(near.sx + wNear / 2);
+        const farLx  = Math.round(far.sx  - wFar  / 2);
+        const farRx  = Math.round(far.sx  + wFar  / 2);
+        const nearY  = Math.round(near.sy);
+        const farY   = Math.round(far.sy);
 
-      ctx.beginPath();
-      ctx.moveTo(farLx,  farY);
-      ctx.lineTo(farRx,  farY);
-      ctx.lineTo(nearRx, nearY);
-      ctx.lineTo(nearLx, nearY);
-      ctx.closePath();
-      ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(farLx,  farY);
+        ctx.lineTo(farRx,  farY);
+        ctx.lineTo(nearRx, nearY);
+        ctx.lineTo(nearLx, nearY);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     ctx.restore();
@@ -463,9 +480,7 @@ export class RoadRenderer {
     // Faint cream that fades toward the horizon — same vertical-gradient
     // idiom as #laneDividers / #roadEdgeLines, but lower alphas so rungs
     // stay a background cue beneath the bold lines.
-    const rungFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    rungFade.addColorStop(0, 'rgba(238,232,180,0.08)');
-    rungFade.addColorStop(1, 'rgba(245,238,185,0.22)');
+    const rungFade = this.gradients.gradients.roadRungFade;
 
     const period       = 5;
     const maxDistance  = 120;
@@ -476,8 +491,13 @@ export class RoadRenderer {
     ctx.fillStyle = rungFade;
     for (let d = -off; d < maxDistance; d += period) {
       if (d <= 0) continue;
-      const left  = p.projectVisual(-1.5, d);
-      const right = p.projectVisual( 1.5, d);
+      // Drop every fourth rung and vary the span slightly. The floor still
+      // recedes cleanly, but no longer reads as a perfectly ruled grid.
+      const worldRow = Math.floor((d + scrollOffset) / period);
+      if ((worldRow & 3) === 2) continue;
+      const inset = ((worldRow * 17) & 3) * 0.018;
+      const left  = p.projectVisual(-1.5 + inset, d);
+      const right = p.projectVisual( 1.5 - inset, d);
       // Skip horizon rungs too small to read — avoids clutter / overdraw.
       if (left.scale < 0.05) continue;
       const halfH = Math.max(0.5, (thicknessPx * left.scale) / 2);
@@ -743,16 +763,18 @@ export class RoadRenderer {
       // near road never reads as a smooth empty surface. Flower/grass
       // weighted heavier than dark; dark patches scale by distance so
       // far road still reads light (avoids the "dark blanket" failure).
-      const patchHash = (worldRow * 41) & 0xFF;
+      const patchHash = ((worldRow * 41) ^ ((worldRow >> 2) * 73)) & 0xFF;
+      const patchLane = 1.56 + ((worldRow * 13) & 3) * 0.07;
+      const patchSpan = 0.22 + ((worldRow * 19) & 3) * 0.035;
       if (patchHash < 14 && tiles.flowerPatch) {
         const side = (worldRow & 1) === 0 ? -1 : 1;
-        this.#drawKitCell(tiles.flowerPatch, side * 1.66, side * 1.66 + side * 0.28, dN, dFar);
+        this.#drawKitCell(tiles.flowerPatch, side * patchLane, side * (patchLane + patchSpan), dN, dFar);
       } else if (patchHash < 28 && tiles.grassPatch) {
         const side = (worldRow & 2) === 0 ? -1 : 1;
-        this.#drawKitCell(tiles.grassPatch, side * 1.62, side * 1.62 + side * 0.30, dN, dFar);
+        this.#drawKitCell(tiles.grassPatch, side * patchLane, side * (patchLane + patchSpan), dN, dFar);
       } else if (patchHash < 36 && tiles.darkPatch) {
         const side = (worldRow & 1) === 0 ? 1 : -1;
-        this.#drawKitCell(tiles.darkPatch, side * 1.64, side * 1.64 + side * 0.26, dN, dFar);
+        this.#drawKitCell(tiles.darkPatch, side * patchLane, side * (patchLane + patchSpan), dN, dFar);
       }
     }
     ctx.globalAlpha = 1;
@@ -800,9 +822,9 @@ export class RoadRenderer {
     ctx.save();
     // Darker green vs the inner playable corridor — the eye now reads
     // 3 lanes flanked by 2 shoulder strips rather than one flat surface.
-    // v4.4 — reference-match: alpha 0.34 → 0.52 so the corridor frame pops
-    // clearly against the meadow, still reading as grass not a black band.
-    ctx.fillStyle = 'rgba(30,88,38,0.52)';
+    // Keep enough separation from the meadow while preserving the grass
+    // texture and edge props layered over the shoulder.
+    ctx.fillStyle = 'rgba(30,88,38,0.40)';
     for (const side of [-1, 1]) {
       const inN  = p.projectVisual(side * PLAYABLE_HALF, 0);
       const inF  = p.projectVisual(side * PLAYABLE_HALF, farDist);
@@ -918,6 +940,48 @@ export class RoadRenderer {
     }
   }
 
+  /**
+   * Small world-space pixel clusters outside the road. They scroll with the
+   * terrain and scale through Projection, so the meadow gains texture and
+   * depth without static screen noise or another scenery entity channel.
+   */
+  #meadowTexture(scrollOffset) {
+    const p = this.projection;
+    const ctx = this.ctx;
+    const loop = p.maxDistance;
+    const off = ((scrollOffset % loop) + loop) % loop;
+    const points = this._meadowPoints;
+
+    ctx.save();
+    for (let i = 0; i < points.length; i += 1) {
+      const pt = points[i];
+      let d = pt.distance - off;
+      if (d < -1) d += loop;
+      if (d > loop * 0.84) continue;
+
+      const proj = p.projectVisual(pt.lane, d);
+      if (proj.scale < 0.075) continue;
+      const alpha = 0.10 + proj.scale * 0.24;
+      const x = Math.round(proj.sx);
+      const y = Math.round(proj.sy);
+      const h = Math.max(1, Math.round((pt.tall ? 5 : 3) * proj.scale));
+      const w = Math.max(1, Math.round((pt.tall ? 2 : 3) * proj.scale));
+
+      ctx.fillStyle = pt.light
+        ? `rgba(154,218,92,${alpha})`
+        : `rgba(38,112,48,${alpha * 0.82})`;
+      ctx.fillRect(x - Math.floor(w / 2), y - h, w, h);
+
+      // A restrained highlight cap makes near tufts read as intentional
+      // pixel clusters instead of isolated dots.
+      if (pt.tall && proj.scale > 0.28) {
+        ctx.fillStyle = `rgba(202,236,126,${alpha * 0.66})`;
+        ctx.fillRect(x - Math.floor(w / 2), y - h, w, 1);
+      }
+    }
+    ctx.restore();
+  }
+
   #drawQuadSprite(key, x1, y1, x2, y2, x3, y3, x4, y4, alpha = 1) {
     const image = this.assets.get(key);
     if (!image || !image.naturalWidth) return false;
@@ -1008,6 +1072,26 @@ function buildFringePattern(count, seed) {
       kind: kindRoll < 0.07 ? 'yellowFlower'
           : kindRoll < 0.14 ? 'purpleFlower'
           : 'grass',
+    };
+  }
+  return points;
+}
+
+/**
+ * Build meadow-only texture points. Lanes deliberately start past the road
+ * shoulder so these marks enrich the green fields without dirtying the
+ * gameplay corridor.
+ */
+function buildMeadowPattern(count, seed) {
+  const rng = mulberry32(seed);
+  const points = new Array(count);
+  for (let i = 0; i < count; i += 1) {
+    const side = i % 2 === 0 ? -1 : 1;
+    points[i] = {
+      lane: side * (2.72 + rng() * 3.55),
+      distance: rng() * 420,
+      light: rng() < 0.54,
+      tall: rng() < 0.38,
     };
   }
   return points;
