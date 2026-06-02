@@ -12,7 +12,10 @@ const BAND_SIZE_BIAS = Object.freeze({
   // v4.7 — MEADOW carpet flora: a touch smaller than SHOULDER so the wide
   // bed reads as fine ground-cover behind the structure clusters.
   [LANE_BANDS.MEADOW]:    0.50,
-  [LANE_BANDS.STRUCTURE]: 1.00,   // blocks / mushrooms / fences
+  // v4.20 — reference-match: bolder block walls (1.00 → 1.08) to match the
+  // reference's chunky foreground blocks, without adding clusters (keeps the
+  // open garden read from the v4.16 decorMultiplier / tree-thinning passes).
+  [LANE_BANDS.STRUCTURE]: 1.08,   // blocks / mushrooms / fences
   // v3.7.1 — trees were dominating the frame at 1.40. Reference shows
   // them as small background mass, not foreground props. Cut to 0.80 +
   // pair with the BAND_ALPHA_BIAS so they read as fading background.
