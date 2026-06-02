@@ -45,7 +45,7 @@ export const GAME_CONFIG = Object.freeze({
      * fantasy corridor without compressing the player or obstacles out
      * of useful screen real-estate.
      */
-    visualLaneScale: 0.86,
+    visualLaneScale: 0.94,   // v4.17 — reference-match: immersive default (was 0.86); ?cam=classic restores it
     // v3.7 — explicit zone boundaries in lane units. Math derived from
     // user spec: lane=35 px, divider=1 px, road total 109 px / lane=35 →
     // half-road=1.56 lu (yellow at ±1.5 + small tail), buffer 0.25 lu,
@@ -80,12 +80,12 @@ export const GAME_CONFIG = Object.freeze({
      * closer to the road surface, leaving the lower foreground band free
      * for decorative cluster props.
      */
-    bottomMargin: 50,
+    bottomMargin: 44,   // v4.17 — reference-match: immersive default (was 50); ?cam=classic restores it
     // v4.16 — reference-match: render-only hero size multiplier applied to
-    // the player sprite's bodyScale (PlayerRenderer). 1.0 = ship default;
-    // ?cam=immersive raises it for a bigger, closer hero. Pure visual —
-    // collision/hitbox stay in lane/distance units, untouched.
-    heroScale: 1.0,
+    // the player sprite's bodyScale (PlayerRenderer). v4.17 — immersive is
+    // now the DEFAULT (1.18); ?cam=classic restores the 1.0 far framing.
+    // Pure visual — collision/hitbox stay in lane/distance units, untouched.
+    heroScale: 1.18,
     gravity: 0.95,
     jumpVelocity: -16.5,
     jumpHoldBoost: -0.8,
@@ -370,7 +370,7 @@ export const GAME_CONFIG = Object.freeze({
       // reads as planted, not floating. Subtle: low alpha, narrow ellipse.
       // Only the nearest/largest flora get one (see SceneryRenderer scale
       // gate) so the cost stays bounded across the ~1k-sprite carpet.
-      floraShadow: { enabled: true, alpha: 0.20, widthScale: 0.7 },
+      floraShadow: { enabled: true, alpha: 0.22, widthScale: 0.74 },
       // v4.14 — reference-match: contact shadow under solid side structures
       // (blocks/mushrooms/fences) so they read as planted, not floating.
       // Consumed by SceneryRenderer; bounded by a scale gate so cost stays tiny.

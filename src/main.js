@@ -52,17 +52,16 @@ const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
 const requestedBlockStyle = params.get('blockStyle');
 const blockStyle = ['3d', 'voxel'].includes(requestedBlockStyle) ? 'voxel' : 'sprite';
 
-// v4.16 — reference-match: `?cam=immersive` A/B — bigger hero + slightly
-// wider visual scene for the reference's closer, more immersive framing.
-// All three knobs are RENDER-ONLY: heroScale → PlayerRenderer bodyScale,
-// visualLaneScale → projectVisual, bottomMargin → foot Y. Collision and
-// spawn stay in lane/distance units, so this never touches gameplay.
-// Must run before the Projection is built (visualLaneScale is baked into
-// Projection at construction). Default (no flag) is unchanged.
-if (params.get('cam') === 'immersive') {
-  GAME_CONFIG.player.heroScale = 1.18;
-  GAME_CONFIG.player.bottomMargin = 44;
-  GAME_CONFIG.projection.visualLaneScale = 0.94;
+// v4.17 — reference-match: immersive framing is now the DEFAULT (baked into
+// GAME_CONFIG: heroScale 1.18, bottomMargin 44, visualLaneScale 0.94). The
+// `?cam=classic` escape hatch restores the pre-v4.17 far framing for A/B.
+// All three knobs are RENDER-ONLY (heroScale → PlayerRenderer bodyScale,
+// visualLaneScale → projectVisual, bottomMargin → foot Y); collision/spawn
+// stay in lane/distance units. Must run before the Projection is built.
+if (params.get('cam') === 'classic') {
+  GAME_CONFIG.player.heroScale = 1.0;
+  GAME_CONFIG.player.bottomMargin = 50;
+  GAME_CONFIG.projection.visualLaneScale = 0.86;
 }
 
 // v4.0 — `?grade=0` switches off the master visual gate: the post-process

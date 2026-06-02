@@ -36,9 +36,10 @@ export class RoadRenderer {
     // the field scrolls.
     // v4.14 — reference-match: 560→900 points densify the flower carpet for a
     // lusher field; the per-frame far-cull in #meadowTexture bounds overdraw.
-    // v4.16 — reference-match: denser carpet (900->1040) so the purple field
-    // reads as wall-to-wall like the reference; far-culls keep overdraw bounded.
-    this._meadowPoints = buildMeadowPattern(1040, 0xc2b2ae35);
+    // v4.18 — reference-match: add an outer-field fill pass (1180→1480) so
+    // the left/right meadows stay populated beyond the road-hugging carpet.
+    // Still baked and GC-free; far-culls keep the extra overdraw bounded.
+    this._meadowPoints = buildMeadowPattern(1480, 0xc2b2ae35);
   }
 
   render(world) {
@@ -1004,12 +1005,16 @@ export class RoadRenderer {
         // Small purple flower: body + lighter cap + warm centre pixel.
         // v4.14 — reference-match: stronger alpha + larger body so flowers
         // hold their read at mid-distance in the denser carpet.
-        const a = 0.50 + s * 0.42;
+        const a = (0.50 + s * 0.42) * (pt.outer ? 0.84 : 1.0);
         const w = Math.max(1, Math.round((4.2 + pt.phase) * s));
         const h = Math.max(1, Math.round((4.4 + pt.phase) * s));
         // v4.15 — reference-match: brighter violet body + cap so the
         // purple-dominant field reads a touch lighter at distance (alpha,
         // width/height, and the warm-centre pixel are intentionally untouched).
+        if (s > 0.18) {
+          ctx.fillStyle = `rgba(30,78,34,${a * 0.24})`;
+          ctx.fillRect(x - Math.max(1, Math.round(w * 0.4)), y - 1, Math.max(2, Math.round(w * 0.8)), 1);
+        }
         ctx.fillStyle = `rgba(132,92,210,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, h);
         ctx.fillStyle = `rgba(186,150,236,${a})`;
@@ -1021,9 +1026,13 @@ export class RoadRenderer {
       } else if (pt.kind === 'yellow') {
         // v4.14 — reference-match: match the violet bump so yellow accents
         // stay legible at mid-distance in the denser carpet.
-        const a = 0.50 + s * 0.42;
+        const a = (0.50 + s * 0.42) * (pt.outer ? 0.80 : 1.0);
         const w = Math.max(1, Math.round((3.6 + pt.phase) * s));
         const h = Math.max(1, Math.round((3.6 + pt.phase) * s));
+        if (s > 0.18) {
+          ctx.fillStyle = `rgba(42,86,32,${a * 0.22})`;
+          ctx.fillRect(x - Math.max(1, Math.round(w * 0.35)), y - 1, Math.max(2, Math.round(w * 0.7)), 1);
+        }
         ctx.fillStyle = `rgba(244,200,58,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, h);
         ctx.fillStyle = `rgba(255,236,150,${a})`;
@@ -1031,9 +1040,13 @@ export class RoadRenderer {
       } else {
         // Green grass tuft (original behaviour, palette nudged to match the
         // deeper Stage A field).
-        const alpha = 0.10 + s * 0.24;
+        const alpha = (0.10 + s * 0.24) * (pt.outer ? 0.88 : 1.0);
         const h = Math.max(1, Math.round((pt.tall ? 5 : 3) * s));
         const w = Math.max(1, Math.round((pt.tall ? 2 : 3) * s));
+        if (s > 0.20) {
+          ctx.fillStyle = `rgba(28,74,32,${alpha * 0.18})`;
+          ctx.fillRect(x - 1, y - 1, 2, 1);
+        }
         ctx.fillStyle = pt.light
           ? `rgba(150,214,88,${alpha})`
           : `rgba(34,104,44,${alpha * 0.82})`;
@@ -1225,31 +1238,43 @@ function buildFringePattern(count, seed) {
 function buildMeadowPattern(count, seed) {
   const rng = mulberry32(seed);
   const points = new Array(count);
-  for (let i = 0; i < count; i += 1) {
-    const side = i % 2 === 0 ? -1 : 1;
-    const roll = rng();
-    // Violet-dominant carpet + yellow accents + green tufts, matching the
-    // reference's flowered field. Distance stays uniform across the loop so
-    // on-screen density does not pulse as the field scrolls.
-    // v4.15 — reference-match: push violet share up (54%→66%, yellow 27%→20%,
-    // tuft 19%→14%) so the carpet reads as the reference's purple-dominant
-    // violet field rather than a green/gold mix.
-    // v4.16 — reference-match: push violet share 66%->74% for a denser
-    // purple carpet (yellow 16%, tuft 10%).
-    const kind = roll < 0.74 ? 'violet' : roll < 0.90 ? 'yellow' : 'tuft';
-    points[i] = {
-      // 2.35 (just past the visual road edge, roadHalfLaneUnits 2.30) → 6.3
-      // (into the nature zone) so the carpet hugs the path and fills the flank.
-      // v4.14 — reference-match: product-of-two-uniforms biases the offset
-      // toward 0 so most flowers crowd the near road edge (lane ≈ 2.35–4.0),
-      // where the eye reads them, matching the reference's path-hugging beds.
-      lane: side * (2.35 + rng() * rng() * 3.95),
-      distance: rng() * 420,
-      kind,
-      light: rng() < 0.54,   // tuft shade variation
-      tall: rng() < 0.38,    // tuft height variation
-      phase: rng() * 1.4,    // per-flower size jitter so the bed isn't uniform
-    };
+  const PATCH_SIZE = 4;
+  for (let i = 0; i < count; i += PATCH_SIZE) {
+    const side = ((i / PATCH_SIZE) & 1) === 0 ? -1 : 1;
+    const outerPatch = rng() < 0.36;
+    const anchorLane = side * (outerPatch
+      ? 5.45 + Math.sqrt(rng()) * 2.75
+      : 2.34 + rng() * rng() * 3.50);
+    // v4.19 — reference-match: near-bias ~40% of patches so the immersive
+    // foreground field fills densely on-screen. Uniform world-distance reads
+    // sparse up close (perspective magnifies the near field); biasing the
+    // patch anchor toward d=0 plants more flower-beds in the lower frame.
+    // Same single rng() draw → determinism + built-once carpet preserved.
+    const patchIdx = i / PATCH_SIZE;
+    const dRoll = rng();
+    const anchorDistance = (patchIdx % 5 < 2 ? dRoll * dRoll : dRoll) * 420;
+    const laneSpread = outerPatch ? 0.38 + rng() * 0.56 : 0.12 + rng() * 0.34;
+    const distanceSpread = outerPatch ? 1.8 + rng() * 3.4 : 1.2 + rng() * 2.0;
+    for (let n = 0; n < PATCH_SIZE && i + n < count; n += 1) {
+      const roll = rng();
+      // v4.17 — clustered carpet: stronger violet share and patch-based
+      // distribution so the meadow reads as connected flower beds rather
+      // than isolated specks. Yellow stays sparse to preserve collectible read.
+      const kind = outerPatch
+        ? roll < 0.56 ? 'violet' : roll < 0.66 ? 'yellow' : 'tuft'
+        : roll < 0.78 ? 'violet' : roll < 0.90 ? 'yellow' : 'tuft';
+      const laneJitter = (rng() - 0.5) * laneSpread;
+      const distJitter = (rng() - 0.5) * distanceSpread;
+      points[i + n] = {
+        lane: side * Math.max(2.34, Math.min(8.95, Math.abs(anchorLane) + laneJitter)),
+        distance: (anchorDistance + distJitter + 420) % 420,
+        kind,
+        outer: outerPatch,
+        light: rng() < 0.56,
+        tall: rng() < 0.34,
+        phase: rng() * 1.4,
+      };
+    }
   }
   return points;
 }

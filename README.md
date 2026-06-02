@@ -68,6 +68,7 @@ works **offline**, anywhere.
 | `?debug=1` | Debug panel + Performance HUD (FPS, entity counts) |
 | `?autostart=1` | Skip the menu and start a debug run immediately |
 | `?debugSteps=N` | Number of update ticks to advance when `debug=1` and `debugFreeze=1` |
+| `?cam=classic` | Restore the pre-v4.17 far camera framing (A/B against the immersive default) |
 
 `debug=1` and `autostart=1` require `gameConfig.debug.allowLocalTools` and a localhost host.
 

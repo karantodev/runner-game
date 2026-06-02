@@ -86,21 +86,25 @@ export class BackgroundRenderer {
 
     this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
 
-    // Additional forest bridge. The reference does not expose a wide empty
-    // meadow strip beneath the mountains: a softer tree mass fills that
-    // transition while remaining behind the crisp foreground treeline.
-    this.#drawMountainLayer(['backgroundForestTreeline'], p.horizonY + 44, width + 124, 0.22 * parallaxScale, scroll, 0.62, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.forest) : 'none');
-
-    // v3.8.9 wave — midground layer (designer delivery, was brief priority #5).
-    // rolling_hills sits between mountains and treeline — gentle wave-form
-    // mass that fills the gap mountains+treeline previously left.
-    // treeline_far is a dark silhouette band closer to the road horizon —
-    // ties the mountains' bottom into the foreground green field.
-    // Scroll factors midway between near mountains (0.22) and the upcoming
-    // foreground decor (~0.95) so the depth ramp is continuous.
-    this.#drawMountainLayer(['midgroundHills'], p.horizonY + 52, width + 110, 0.34 * parallaxScale, scroll, 0.86, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mground) : 'none');
-    this.#drawMountainLayer(['midgroundTreeline'], p.horizonY + 78, width + 90, 0.46 * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.treeline) : 'none');
-    // treeline is closest — no depth overlay (crisp foreground silhouette).
+    // v4.18 — replace the spiky horizon treelines with a soft compressed
+    // forest band. This restores vegetation behind the road without the
+    // conifer-like peaks that were poking awkwardly into the mountain layer.
+    const distantForest = this.assets.get('backgroundForestFar');
+    if (distantForest?.naturalWidth) {
+      this.ctx.save();
+      this.ctx.filter = visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.forest) : 'none';
+      drawScrollingTile(
+        this.ctx,
+        distantForest,
+        -52,
+        p.horizonY + 84,
+        width + 104,
+        40,
+        scroll * 0.18 * parallaxScale,
+        0.24,
+      );
+      this.ctx.restore();
+    }
   }
 
   #depthFilter(farDesat, farDark, [desatScale, darkScale]) {

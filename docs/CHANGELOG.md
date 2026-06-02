@@ -1,5 +1,17 @@
 # Changelog
 
+## Phase 9 — Reference-match: visual fidelity pass (v4.14–v4.19)
+
+Drives the in-game look toward the `docs/visual-qa/` reference target. All changes are render-only — collision, spawn and prefab-composition stay in lane/distance units (verified by the collision-contract test + composition seed sweeps).
+
+- **Lush flower field** — the meadow carpet is a clustered, violet-dominant patch system (connected flower beds, not isolated specks) with an outer-field fill and a near-distance bias, so the immersive foreground reads densely up close. Baked + GC-free via a module-local PRNG; per-frame far-culls bound overdraw (`RoadRenderer.buildMeadowPattern` / `#meadowTexture`).
+- **Grounded structures** — solid contact shadows under side blocks / mushrooms / fences (`visual.juice.solidShadow`, scale-gated; floating platforms excluded), alongside the existing flora shadows.
+- **Warmer scene** — deeper, warmer ground gradient + grade (`saturate` / `contrast` / `warmCool`); the road path-fill contrast was cut so the path reads as a garden trail in the field, not a separate carpet.
+- **Open corridor** — NATURE-band trees pushed to the background (smaller, washed-back) + softer compressed horizon treelines, so mountains and sky read through instead of a tree wall.
+- **Immersive camera (default)** — bigger, closer hero (`player.heroScale`) + a slightly wider visual scene (`projection.visualLaneScale`); `?cam=classic` restores the pre-v4.17 far framing for A/B. Pure render — collision/hitbox untouched.
+
+> Iterated v4.14 → v4.19 with in-browser screenshot verification against the reference target.
+
 ## Phase 8 — Reference-match: spawn balance, game feel, visuals
 
 ### Spawn balance + fairness
