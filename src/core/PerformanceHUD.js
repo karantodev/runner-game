@@ -103,10 +103,10 @@ export class PerformanceHUD {
     if (loopMetrics.frameDeltaMs > LONG_FRAME_THRESHOLD_MS) this._longFramesTotal += 1;
   }
 
-  /** Aggregate ring buffer → { avg, min, max, p95 } for frame delta. */
+  /** Aggregate ring buffer → { avgFps, minFps, maxFrameMs, p50, p95, longRecent }. */
   #frameStats() {
     const n = this._frameFilled;
-    if (n === 0) return { avgFps: 0, minFps: 0, maxFrameMs: 0, longRecent: 0 };
+    if (n === 0) return { avgFps: 0, minFps: 0, maxFrameMs: 0, p50: 0, p95: 0, longRecent: 0 };
     let sum = 0;
     let maxDelta = 0;
     let longRecent = 0;
@@ -116,11 +116,16 @@ export class PerformanceHUD {
       if (d > maxDelta) maxDelta = d;
       if (d > LONG_FRAME_THRESHOLD_MS) longRecent += 1;
     }
+    // Percentiles: copy + sort the filled window (cheap — runs twice/second).
+    const sorted = Array.prototype.slice.call(this._frameMs, 0, n).sort((a, b) => a - b);
+    const pct = (q) => sorted[Math.min(n - 1, Math.floor(q * n))];
     const avgDelta = sum / n;
     return {
       avgFps: avgDelta > 0 ? 1000 / avgDelta : 0,
       minFps: maxDelta > 0 ? 1000 / maxDelta : 0,
       maxFrameMs: maxDelta,
+      p50: pct(0.50),
+      p95: pct(0.95),
       longRecent,
     };
   }
@@ -208,6 +213,8 @@ export class PerformanceHUD {
     const counts = this.#countEntities();
     const w = this.game.world;
     const loopMetrics = this.game.loop.metrics;
+    const rm = this.game.renderer?.metrics?.snapshot() ?? null;  // ?perf=1 only
+    const tier = w.adaptiveQuality?.tier?.label ?? 'n/a';
 
     const fpsColor = fps.avgFps >= 55 ? '#9af07a' : fps.avgFps >= 30 ? '#ffd86a' : '#ff7878';
     const minFpsColor = fps.minFps >= 50 ? '#9af07a' : fps.minFps >= 28 ? '#ffd86a' : '#ff7878';
@@ -238,8 +245,10 @@ export class PerformanceHUD {
       <div class="section">
         <div class="row"><span class="lbl">FPS avg</span><b style="color:${fpsColor}">${fps.avgFps.toFixed(1)}</b></div>
         <div class="row"><span class="lbl">FPS min</span><b style="color:${minFpsColor}">${fps.minFps.toFixed(1)}</b></div>
+        <div class="row"><span class="lbl">Frame p50/p95</span><b>${fps.p50.toFixed(1)} / ${fps.p95.toFixed(1)} ms</b></div>
         <div class="row"><span class="lbl">Worst frame</span><b>${fps.maxFrameMs.toFixed(1)} ms</b></div>
         <div class="row"><span class="lbl">Long ≥18ms</span><b>${fps.longRecent} / ${this._longFramesTotal}</b></div>
+        <div class="row"><span class="lbl">Quality tier</span><b>${tier}</b></div>
       </div>
       <div class="section">
         <div class="row"><span class="lbl">Update</span><b>${updateTiming.avg.toFixed(2)} ms <span class="muted">max ${updateTiming.max.toFixed(1)}</span></b></div>
@@ -260,6 +269,16 @@ export class PerformanceHUD {
         <div class="row sub"><span class="lbl">  particles</span><b>${counts.particles}</b></div>
         <div class="row sub"><span class="lbl">  popups</span><b>${counts.popups}</b></div>
       </div>
+      ${rm ? `
+      <div class="section">
+        <div class="row"><span class="lbl">drawImage/f</span><b>${rm.drawImage}</b></div>
+        <div class="row"><span class="lbl">scenery vis</span><b>${rm.sceneryDrawn}</b></div>
+        <div class="row sub"><span class="lbl">  clusters</span><b>${rm.clusters}</b></div>
+        <div class="row sub"><span class="lbl">  culled</span><b>${rm.sceneryCulled}</b></div>
+        <div class="row"><span class="lbl">meadow pts</span><b>${rm.meadowPoints}</b></div>
+        <div class="row sub"><span class="lbl">  flora / block</span><b>${rm.cat.flora} / ${rm.cat.block}</b></div>
+        <div class="row sub"><span class="lbl">  tree/mush/pipe</span><b>${rm.cat.tree} / ${rm.cat.mushroom} / ${rm.cat.pipe}</b></div>
+      </div>` : ''}
       <div class="section">
         ${gamepadLine}
       </div>

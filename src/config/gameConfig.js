@@ -264,6 +264,11 @@ export const GAME_CONFIG = Object.freeze({
     // each prefab group with a label "{prefabId} · {band} · {side} ·
     // density:N". Toggle via ?showCompositionGroups=1.
     showCompositionGroups: false,
+    // Debug-only per-frame render-cost counters (drawImage / visible scenery /
+    // culled / meadow points / category breakdown) surfaced in PerformanceHUD.
+    // Toggle via ?perf=1. Pure instrumentation — never changes what is drawn;
+    // when off the collector is null so every count site is a zero-cost no-op.
+    renderMetrics: false,
   },
 
   scene: {

@@ -1,6 +1,7 @@
 import { AMBIENT_MOTES, LAYERS, PARALLAX } from '../constants.js';
 import { parallaxOffset, roadBaseHalfWidth } from '../helpers.js';
 import { LANE_BANDS, SCENE_ZONES } from '../../config/sceneSchema.js';
+import { sceneryCategory } from '../RenderMetrics.js';
 
 /**
  * v3.7 per-band visual-size multipliers. SceneryRenderer multiplies the
@@ -176,7 +177,7 @@ function runtimeZoneForLane(lane) {
  * dispatcher that paints every individual scenery asset type.
  */
 export class SceneryRenderer {
-  constructor({ ctx, projection, assets, sprites, paint, gradients, voxelBlocks }) {
+  constructor({ ctx, projection, assets, sprites, paint, gradients, voxelBlocks, metrics }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
@@ -184,6 +185,7 @@ export class SceneryRenderer {
     this.paint = paint;
     this.gradients = gradients;
     this.voxelBlocks = voxelBlocks;
+    this.metrics = metrics ?? null;   // debug-only render-cost counters (?perf=1)
     this._drawDeps = { sprites, paint, voxelBlocks };
     // v4.12 — three-way draw order (allocation-free scratch arrays). Low flora
     // (SHOULDER/MEADOW) is the GROUND carpet and must sit behind solid props,
@@ -346,7 +348,7 @@ export class SceneryRenderer {
     const pos = entity.components.Position;
     const sprite = entity.components.Sprite;
     const scenic = entity.components.ScenicData;
-    if (pos.distance < -5.5) return;
+    if (pos.distance < -5.5) { this.metrics?.countSceneryCulled(); return; }
     // v3.7: remap entity lane into the wider zones before projecting.
     const projLane = remapLaneForBand(pos.lane, scenic.laneBand);
     const p = this.#projectWithParallax(projLane, pos.distance, world, layer);
@@ -401,7 +403,7 @@ export class SceneryRenderer {
     // wall; widen the recede window (10 → 16) and fade harder (0.82 → 0.68)
     // so the treeline drops back as background mass.
     if (pos.distance < 16 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.68;
-    if (alpha <= 0.03) return;
+    if (alpha <= 0.03) { this.metrics?.countSceneryCulled(); return; }
 
     // v4.0 — scatterFlip applies to non-structural shoulder flora only.
     // For structural items the existing mirror logic (lane > 0) stays.
@@ -427,6 +429,10 @@ export class SceneryRenderer {
     // + near-size so only the readable foreground carpet pays the cost.
     if (this._floraShadow && isLowFloraBand(scenic.laneBand)) {
       this.#drawFloraShadow(Math.round(p.sx), Math.round(y), scale, alpha);
+    }
+    if (this.metrics) {
+      const clusterKey = sprite.prefabId ? `${sprite.prefabId}#${Math.round(pos.distance / 20)}#${pos.lane > 0 ? 1 : -1}` : null;
+      this.metrics.countScenery(sceneryCategory(sprite.assetType ?? sprite.type), clusterKey);
     }
     this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
