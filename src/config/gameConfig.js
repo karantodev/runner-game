@@ -334,6 +334,10 @@ export const GAME_CONFIG = Object.freeze({
     depth: {
       farDesaturate: 0.11,  // v4.16 — keep the mountains/hills airy and less grey so the scene breathes like the reference
       farDarken: 0.10,      // v4.16 — ease the distant compression; castle approach should feel open, not heavy
+      // v4.21 — M7B dynamic-scenery depth haze. SceneryRenderer draws a cached
+      // band gradient over the far/mid scenery zone, scaled by `alpha` (0 = off).
+      // Keep subtle so far scenery recedes without fogging the scene.
+      sceneryHaze: { enabled: true, alpha: 0.13 },
     },
 
     // ── Collectibles: center "breadcrumb" orchid line + stronger halo.

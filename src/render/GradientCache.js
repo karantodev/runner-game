@@ -66,6 +66,21 @@ export class GradientCache {
     horizonVeil.addColorStop(0.80, 'rgba(170,218,184,0.06)');
     horizonVeil.addColorStop(1.00, 'rgba(150,206,164,0)');
 
+    // v4.21 — M7B dynamic-scenery depth haze. SceneryRenderer draws this band
+    // AFTER the scenery sprites (before gameplay/player), so far/mid scenery
+    // recedes while the near foreground (below the band) and all gameplay /
+    // player / effects (drawn later) stay crisp. Stops carry the RELATIVE alpha
+    // shape (0→peak→0); SceneryRenderer scales the whole band by
+    // visual.depth.sceneryHaze.alpha via globalAlpha. Geometry-only → cached
+    // here, rebuilt on resize with the other gradients.
+    const sceneryHazeY0 = p.roadVanishY - 90;
+    const sceneryHazeY1 = p.roadVanishY + (p.groundY - p.roadVanishY) * 0.5;
+    const sceneryHaze = ctx.createLinearGradient(0, sceneryHazeY0, 0, sceneryHazeY1);
+    sceneryHaze.addColorStop(0.00, 'rgba(214,230,226,0)');
+    sceneryHaze.addColorStop(0.32, 'rgba(214,230,226,1)');
+    sceneryHaze.addColorStop(0.66, 'rgba(206,226,220,0.45)');
+    sceneryHaze.addColorStop(1.00, 'rgba(198,222,212,0)');
+
     // A very small ground join keeps the road tip from looking pasted on.
     // It is intentionally separate from atmospheric haze and stays below
     // the mountain silhouettes.
@@ -153,6 +168,9 @@ export class GradientCache {
       sky,
       skyDepth,
       horizonVeil,
+      sceneryHaze,
+      sceneryHazeY0,
+      sceneryHazeY1,
       depthHaze,
       landmarkHaze,
       roadJoin,

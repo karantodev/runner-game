@@ -280,10 +280,35 @@ export class SceneryRenderer {
     for (const e of structural) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
 
     this.#foregroundFrame(world);
+    // v4.21 — M7B: atmospheric haze over the far/mid scenery depth band. Drawn
+    // after all scenery so the far decor recedes; gameplay, player and effects
+    // render later (on top) and stay crisp.
+    this.#drawDepthHaze(world);
     // v3.8.40 — Phase 6 parent-child support lines pass.
     this.#drawSupportLines();
     // v3.8.51 — Phase 9 prefab-group bounding box pass.
     this.#drawGroupBoxes();
+  }
+
+  /**
+   * v4.21 — M7B dynamic-scenery depth haze: one cached gradient fillRect over
+   * the far/mid scenery screen band, scaled by visual.depth.sceneryHaze.alpha.
+   * Render-only, allocation-free (gradient cached in GradientCache), no
+   * save/restore. Far/mid scenery recedes; near foreground + gameplay stay
+   * crisp (they sit below the band, or draw later in the pipeline).
+   */
+  #drawDepthHaze(world) {
+    const cfg = world.config?.visual?.depth?.sceneryHaze;
+    if (!cfg?.enabled || world.config?.visual?.enabled === false) return;
+    const a = cfg.alpha ?? 0.13;
+    if (a <= 0) return;
+    const g = this.gradients?.gradients;
+    if (!g?.sceneryHaze) return;
+    const ctx = this.ctx;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = g.sceneryHaze;
+    ctx.fillRect(0, g.sceneryHazeY0, this.projection.width, g.sceneryHazeY1 - g.sceneryHazeY0);
+    ctx.globalAlpha = 1;
   }
 
   // ── Static prefab layers ────────────────────────────────────────────────────
