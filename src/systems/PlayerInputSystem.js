@@ -43,6 +43,9 @@ export class PlayerInputSystem {
       if (PlayerActions.crouch(player)) {
         intent.crouchBuffer = 0;
         this.eventBus.emit('camera:shake', 0.9);
+        // M5-F: wire the (already-defined) CROUCH sfx via its event. Sound
+        // only — no gameplay effect and no RNG. Silent until the .ogg ships.
+        this.eventBus.emit('player:crouch', null);
       } else {
         // Crouch refused mid-jump — buffer for the landing.
         intent.crouchBuffer = cfg.crouchBufferFrames;

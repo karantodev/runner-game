@@ -100,6 +100,23 @@ canvas {
 .hud-heart { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
 .hud-energy { width: 16px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 
+/* M5-B — one-shot heart pulse on life change. Red telegraphs damage,
+ * green/gold telegraphs a heal. Pure presentation; HudSystem toggles the
+ * class on the single heart that flipped. transform: scale never reflows
+ * siblings, so the row stays put. */
+@keyframes heart-pulse-loss {
+  0%   { transform: scale(1);    filter: none; }
+  35%  { transform: scale(1.45); filter: drop-shadow(0 0 6px rgba(255, 64, 64, 0.95)); }
+  100% { transform: scale(1);    filter: none; }
+}
+@keyframes heart-pulse-gain {
+  0%   { transform: scale(1);    filter: none; }
+  35%  { transform: scale(1.45); filter: drop-shadow(0 0 6px rgba(120, 255, 140, 0.95)); }
+  100% { transform: scale(1);    filter: none; }
+}
+.hud-heart.heart-pulse-loss { animation: heart-pulse-loss 0.34s ease-out; }
+.hud-heart.heart-pulse-gain { animation: heart-pulse-gain 0.34s ease-out; }
+
 #pause { top: 18px; left: 18px; padding: 16px 18px; }
 #pause svg { fill: var(--hud-text); }
 

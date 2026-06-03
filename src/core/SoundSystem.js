@@ -104,6 +104,7 @@ const SOUND_MAP = Object.freeze({
   'hazard:nearMiss':   SOUNDS.NEAR_MISS,
   'shield:absorbed':   SOUNDS.SHIELD_ABSORB,
   'player:laneSwitch': SOUNDS.LANE_SWITCH,
+  'player:crouch':     SOUNDS.CROUCH,
 });
 
 export class SoundSystem {
