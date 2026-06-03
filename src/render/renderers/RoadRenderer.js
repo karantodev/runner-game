@@ -28,12 +28,13 @@ const MEADOW_DEFAULTS = Object.freeze({
  *   - shoulders (scrolling grass tiles at the road edge)
  */
 export class RoadRenderer {
-  constructor({ ctx, projection, assets, gradients, pixelRatio = 1, roadStyle = 'kit' }) {
+  constructor({ ctx, projection, assets, gradients, pixelRatio = 1, roadStyle = 'kit', metrics = null }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.gradients = gradients;
     this.pixelRatio = pixelRatio;
+    this.metrics = metrics;   // debug-only render-cost counters (?perf=1)
     /** Either 'procedural' (fillRect tiles) or 'tiles' (SVG image tiles). */
     this.roadStyle = roadStyle;
     this._staticLayer = this.#buildStaticLayer();
@@ -1049,6 +1050,7 @@ export class RoadRenderer {
       if (s < 0.075) continue;
       const x = Math.round(proj.sx);
       const y = Math.round(proj.sy);
+      this.metrics?.countMeadowPoint();
 
       if (pt.kind === 'violet') {
         // Small purple flower: body + lighter cap + warm centre pixel.

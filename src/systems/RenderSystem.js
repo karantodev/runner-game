@@ -12,6 +12,7 @@ import { GameplayRenderer } from '../render/renderers/GameplayRenderer.js';
 import { PlayerRenderer } from '../render/renderers/PlayerRenderer.js';
 import { EffectsRenderer } from '../render/renderers/EffectsRenderer.js';
 import { VoxelBlockRenderer } from '../render/renderers/scenery/VoxelBlockRenderer.js';
+import { RenderMetrics } from '../render/RenderMetrics.js';
 
 /**
  * Composition root for rendering. Owns the canvas + drawing dependencies
@@ -57,6 +58,9 @@ export class RenderSystem {
     this.paint = new PixelPainter(this.ctx, this.sprites);
     this.gradients = new GradientCache(this.ctx, projection);
     this.voxelBlocks = new VoxelBlockRenderer(this.ctx, { style: this.blockStyle });
+    // Debug-only render-cost collector (?perf=1). null otherwise → every
+    // `this.metrics?.…` increment site in the renderers is a zero-cost no-op.
+    this.metrics = options.metrics ? new RenderMetrics() : null;
 
     const deps = {
       ctx: this.ctx,
@@ -68,6 +72,7 @@ export class RenderSystem {
       voxelBlocks: this.voxelBlocks,
       pixelRatio: this.pixelRatio,
       roadStyle: this.roadStyle,
+      metrics: this.metrics,
     };
 
     this.roadRenderer = new RoadRenderer(deps);
@@ -130,6 +135,20 @@ export class RenderSystem {
     // used to wrap individual sprite draws.
     ctx.imageSmoothingEnabled = false;
 
+    // Debug-only (?perf=1): wrap ctx.drawImage ONCE to count main-canvas
+    // blits, then reset the per-frame counters. The wrapper calls the original
+    // verbatim → identical pixels; it only increments. Never installed when
+    // metrics is null, so production rendering is byte-for-byte unchanged.
+    if (this.metrics) {
+      if (!this._diWrapped) {
+        const orig = ctx.drawImage.bind(ctx);
+        const m = this.metrics;
+        ctx.drawImage = function metricsDrawImage(...args) { m.countDrawImage(); return orig(...args); };
+        this._diWrapped = true;
+      }
+      this.metrics.beginFrame();
+    }
+
     // v3.8.30 — Sprite Lab mode hijacks the frame: neutral background +
     // ground baseline + ONLY the player renderer. Used for pose / pixel-
     // scale QA without any scene context (road, decor, effects, HUD
@@ -158,6 +177,7 @@ export class RenderSystem {
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.metrics?.endFrame();
   }
 
   /**

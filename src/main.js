@@ -152,6 +152,13 @@ if (compositionFilter && ['all', 'obstacles', 'pickups', 'decor', 'invalid'].inc
 if (params.get('showCompositionGroups') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'showCompositionGroups', { value: true, writable: false, configurable: true });
 }
+// `?perf=1` enables debug-only per-frame render-cost counters (drawImage /
+// visible scenery / culled / meadow points / category breakdown), shown in
+// the PerformanceHUD. Pure instrumentation — never changes what is drawn.
+// Opt-in (not auto-on with ?debug) so a plain debug session renders identically.
+if (params.get('perf') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'renderMetrics', { value: true, writable: false, configurable: true });
+}
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
 // verify scale stays constant across states.

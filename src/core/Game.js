@@ -77,6 +77,8 @@ export class Game {
       pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
       roadStyle: options.roadStyle,
       blockStyle: options.blockStyle,
+      // Debug-only render-cost counters (?perf=1). null in production.
+      metrics: this.config.debug?.renderMetrics === true,
     });
     this.hud = new HudSystem(this.eventBus, this.world);
 
