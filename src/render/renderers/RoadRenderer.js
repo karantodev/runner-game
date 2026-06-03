@@ -1,5 +1,19 @@
 import { roadBaseHalfWidth, roadTopHalfWidth } from '../helpers.js';
 
+// v4.21 — Phase 1 reference-match: meadow carpet config. The seed is fixed so
+// the baked carpet is identical across reloads; defaults mirror
+// GAME_CONFIG.visual.detail.meadow and are the fallback before the first
+// render syncs with the live world config + AdaptiveQuality tier.
+const MEADOW_SEED = 0xc2b2ae35;
+const MEADOW_DEFAULTS = Object.freeze({
+  count: 2400,
+  outerPatchFraction: 0.50,
+  nearBias: 0.55,
+  violetRatio: 0.74,
+  yellowRatio: 0.14,
+  tierCounts: { low: 1400, medium: 1900, high: 2400 },
+});
+
 /**
  * Painted ground + perspective road. The "road" no longer has its own
  * trapezoid fill — the player runs on the same grass as the surrounding
@@ -39,7 +53,12 @@ export class RoadRenderer {
     // v4.18 — reference-match: add an outer-field fill pass (1180→1480) so
     // the left/right meadows stay populated beyond the road-hugging carpet.
     // Still baked and GC-free; far-culls keep the extra overdraw bounded.
-    this._meadowPoints = buildMeadowPattern(1480, 0xc2b2ae35);
+    // v4.21 — the carpet is re-synced from GAME_CONFIG.visual.detail.meadow on
+    // the first frame that has a world (so `count` can follow the live quality
+    // tier). #syncMeadow rebuilds only when the effective signature changes;
+    // this default build keeps _meadowPoints valid before the first render.
+    this._meadowSig = null;
+    this._meadowPoints = buildMeadowPattern(MEADOW_DEFAULTS.count, MEADOW_SEED, MEADOW_DEFAULTS);
   }
 
   render(world) {
@@ -49,6 +68,7 @@ export class RoadRenderer {
     this.ctx.drawImage(this._staticLayer, 0, 0, this.projection.width, this.projection.height);
     const scroll = world.scrollOffset;
     if (world.config.visual?.detail?.meadowTexture !== false) {
+      this.#syncMeadow(world);
       this.#meadowTexture(scroll);
     }
     // v4.4 — reference-match: draw the base surface per mode, THEN apply the
@@ -74,6 +94,35 @@ export class RoadRenderer {
     // read as flat ground decoration, never as a duck-under hazard.
     if (world.config.visual?.detail?.vineGarlands) {
       this.#vineGarlands(scroll);
+    }
+  }
+
+  /**
+   * v4.21 — rebuild the baked meadow carpet when its effective config or the
+   * AdaptiveQuality tier changes. Idempotent: a no-op when the signature is
+   * unchanged (the common case — config is static and the tier only steps on
+   * sustained frame-time changes), so a steady frame pays one string compare.
+   * Visual-only: buildMeadowPattern uses the local mulberry32 seed, never
+   * world.rng, so seeded gameplay is untouched.
+   */
+  #syncMeadow(world) {
+    const cfg = { ...MEADOW_DEFAULTS, ...(world.config.visual?.detail?.meadow ?? {}) };
+    const count = this.#meadowCountForTier(cfg, world.adaptiveQuality?.tier?.label);
+    const sig = `${count}|${cfg.outerPatchFraction}|${cfg.nearBias}|${cfg.violetRatio}|${cfg.yellowRatio}`;
+    if (sig === this._meadowSig) return;
+    this._meadowSig = sig;
+    this._meadowPoints = buildMeadowPattern(count, MEADOW_SEED, cfg);
+  }
+
+  /** Map the AdaptiveQuality tier label to a meadow point budget. */
+  #meadowCountForTier(cfg, tierLabel) {
+    const tiers = cfg.tierCounts ?? MEADOW_DEFAULTS.tierCounts;
+    switch (tierLabel) {
+      case 'Low':  return tiers.low ?? cfg.count;
+      case 'Mid':  return tiers.medium ?? cfg.count;
+      case 'High': return tiers.high ?? cfg.count;
+      case 'Ultra': return tiers.high ?? cfg.count;
+      default: return cfg.count;
     }
   }
 
@@ -1235,34 +1284,43 @@ function buildFringePattern(count, seed) {
  * shoulder so these marks enrich the green fields without dirtying the
  * gameplay corridor.
  */
-function buildMeadowPattern(count, seed) {
+function buildMeadowPattern(count, seed, opts = MEADOW_DEFAULTS) {
   const rng = mulberry32(seed);
+  // v4.21 — Phase 1 reference-match: density/reach/ratios are config-driven.
+  const outerPatchFraction = opts.outerPatchFraction ?? 0.42;
+  const violetRatio = opts.violetRatio ?? 0.74;
+  const yellowRatio = opts.yellowRatio ?? 0.14;
+  // near-bias = fraction of patches whose anchor is pulled toward the camera
+  // (d→0). Mapped onto the existing 5-patch cycle so the single dRoll draw is
+  // preserved: 0.55 → round(2.75) → 3 of every 5 patches near-biased.
+  const nearThreshold = Math.max(0, Math.min(5, Math.round((opts.nearBias ?? 0.55) * 5)));
   const points = new Array(count);
   const PATCH_SIZE = 4;
   for (let i = 0; i < count; i += PATCH_SIZE) {
     const side = ((i / PATCH_SIZE) & 1) === 0 ? -1 : 1;
-    const outerPatch = rng() < 0.42;   // v4.20 — reference-match: more outer-field beds (0.36 → 0.42) to fill the far foreground corners
+    const outerPatch = rng() < outerPatchFraction;   // v4.21 — config-driven outer-field bed share (fills the far green)
     const anchorLane = side * (outerPatch
       ? 5.45 + Math.sqrt(rng()) * 2.75
       : 2.34 + rng() * rng() * 3.50);
-    // v4.19 — reference-match: near-bias ~40% of patches so the immersive
+    // v4.19 — reference-match: near-bias a share of patches so the immersive
     // foreground field fills densely on-screen. Uniform world-distance reads
     // sparse up close (perspective magnifies the near field); biasing the
     // patch anchor toward d=0 plants more flower-beds in the lower frame.
     // Same single rng() draw → determinism + built-once carpet preserved.
     const patchIdx = i / PATCH_SIZE;
     const dRoll = rng();
-    const anchorDistance = (patchIdx % 5 < 2 ? dRoll * dRoll : dRoll) * 420;
+    const anchorDistance = (patchIdx % 5 < nearThreshold ? dRoll * dRoll : dRoll) * 420;
     const laneSpread = outerPatch ? 0.38 + rng() * 0.56 : 0.12 + rng() * 0.34;
     const distanceSpread = outerPatch ? 1.8 + rng() * 3.4 : 1.2 + rng() * 2.0;
     for (let n = 0; n < PATCH_SIZE && i + n < count; n += 1) {
       const roll = rng();
-      // v4.17 — clustered carpet: stronger violet share and patch-based
-      // distribution so the meadow reads as connected flower beds rather
-      // than isolated specks. Yellow stays sparse to preserve collectible read.
-      const kind = outerPatch
-        ? roll < 0.56 ? 'violet' : roll < 0.66 ? 'yellow' : 'tuft'
-        : roll < 0.78 ? 'violet' : roll < 0.90 ? 'yellow' : 'tuft';
+      // v4.21 — clustered carpet: config-driven violet-dominant share. Inner
+      // beds use the configured ratios; outer/far beds shift gold→violet so
+      // the far field fills with colour without adding gold that would compete
+      // with the on-road collectible orchids. Yellow stays the minority.
+      const violetT = outerPatch ? Math.min(0.92, violetRatio + yellowRatio * 0.5) : violetRatio;
+      const yellowT = violetT + (outerPatch ? yellowRatio * 0.5 : yellowRatio);
+      const kind = roll < violetT ? 'violet' : roll < yellowT ? 'yellow' : 'tuft';
       const laneJitter = (rng() - 0.5) * laneSpread;
       const distJitter = (rng() - 0.5) * distanceSpread;
       points[i + n] = {
