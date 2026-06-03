@@ -1501,7 +1501,11 @@ export const HERO_LAYOUT = Object.freeze([
   // NEAR — layered transition groups keep the corridor composed instead of
   // falling back to two light rows of evenly distributed flora.
   { distance:  46, side: -1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 0.88 },
-  { distance:  58, side:  1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 0.84 },
+  // v4.22 — M8 de-mirror: the 46(L)/58(R) garden-chain-platform-fence pair read
+  // as copy-paste. Swap the RIGHT echo to a softer organic flora beat (existing
+  // prefab, flora-mix) so the two sides differ in silhouette. NEAR cluster count
+  // per side is unchanged (2) → composition audit unaffected. Left opener kept.
+  { distance:  58, side:  1, prefabId: 'grass-wall-mushroom',                      scaleMultiplier: 0.84 },
   // v4.16 — soften the early right-side wall beat into a lower bush/fence
   // composition so the opening reads as a garden edge, not a corridor wall.
   { distance:  68, side:  1, prefabId: 'fence-bush-corner',                        scaleMultiplier: 0.80 },
