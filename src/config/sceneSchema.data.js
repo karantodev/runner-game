@@ -1077,6 +1077,146 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane:  1.52, dist: -1.0, scale: 0.22 },
     ],
   },
+
+  // ── v4.23 — M11 Reference-Match Garden Setpieces ─────────────────────────
+  // Five hand-composed garden setpieces built ENTIRELY from existing,
+  // already-rendered assets (verified via DecorationSystem.assetTypeToSceneryType
+  // — no stone_* / un-wired keys). Three are dual-use (HERO swap + procedural
+  // pool, replacing the 3 weakest generic stacks); two are HERO/far-only.
+  // All solids live in STRUCTURE (lane ≥1.92) or NATURE (lane ≥2.6) — well off
+  // the road; flora in SHOULDER. Gold flowers are kept minimal and away from
+  // the road so the on-road orchid trail stays the dominant gold element.
+  {
+    // (1) TERRACE — stepped grass-dirt blocks + platform edge + purple flower
+    // bed + bush mass + mushroom crown. Reads as a designed garden terrace,
+    // not isolated blocks. Dual-use (HERO 70 L + procedural).
+    id: 'garden-terrace-setpiece',
+    weight: 4,
+    proceduralOk: true,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.98, variant: 0 },
+      { id: 'block_upper', role: 'loose-decor', anchor: 'top', zLayer: 14,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.90, variant: 1, yOffset: -138 },
+      { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  1.4, scale: 0.84 },
+      { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.48, variant: 'red', yOffset: -248 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.78, dist: -1.8, scale: 0.80 },
+      { id: 'flower_bed_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.64, dist:  1.0, scale: 0.48 },
+      { id: 'flower_bed_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.54, dist: -1.2, scale: 0.44 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist:  1.9, scale: 0.46 },
+    ],
+  },
+  {
+    // (2) PIPE GARDEN — green pipe integrated with blue mushroom, flowers,
+    // bush + grass. Pipe is DECORATIVE on the side (lane 2.12, off-road) —
+    // never a lane obstacle. Dual-use (HERO 112 R + procedural).
+    id: 'pipe-garden-setpiece',
+    weight: 4,
+    proceduralOk: true,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.4, scale: 0.92, variant: 0 },
+      { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 12,
+        assetType: 'green_pipe', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 1.02, yOffset: -8 },
+      { id: 'mushroom_blue', role: 'base', anchor: 'ground', zLayer: 11,
+        assetType: 'mushroom_blue_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist:  1.2, scale: 0.56 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.64, dist: -1.0, scale: 0.56 },
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist:  0.8, scale: 0.46 },
+      { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.46, dist: -1.6, scale: 0.40 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.76, dist:  1.9, scale: 0.46 },
+    ],
+  },
+  {
+    // (3) VERTICAL PLATFORM GARDEN — block base + floating platform +
+    // hanging-vine platform (OUTER) + two staggered question blocks: height &
+    // silhouette variety. STRUCTURE band, off-road — reads as a vertical
+    // garden structure, NOT a playable obstacle. HERO-only (kept OUT of the
+    // procedural pool to avoid vertical repetition in the deep corridor).
+    id: 'vertical-platform-garden',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.96, variant: 0 },
+      { id: 'platform_mid', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist: -0.6, scale: 0.90, variant: 1 },
+      { id: 'hanging', role: 'base', anchor: 'ground', zLayer: 14,
+        assetType: 'hanging_platform_vines', laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  1.5, scale: 0.82 },
+      { id: 'qblock_a', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist: -0.6, scale: 0.80, yOffset: -150 },
+      { id: 'qblock_b', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.74, yOffset: -232 },
+      { id: 'leaf_base', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'leaf_clump_round', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: -1.4, scale: 0.50 },
+      { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist:  1.2, scale: 0.44 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist:  1.9, scale: 0.44 },
+    ],
+  },
+  {
+    // (4) TREE & BUSH ISLAND — one tree + two low bushes + leaf + flora.
+    // Organic mass that breaks up empty side fields. NATURE-band background
+    // depth (lane ≥2.66) so it never becomes a road-edge wall. Dual-use
+    // (HERO 97 R + 130 L + procedural).
+    id: 'tree-bush-island',
+    weight: 4,
+    proceduralOk: true,
+    items: [
+      { id: 'tree', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.92, dist:  0.0, scale: 0.82, variant: 0, yOffset: -8 },
+      { id: 'bush_a', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_large', laneBand: LANE_BANDS.NATURE, lane: 2.66, dist: -1.4, scale: 0.72 },
+      { id: 'bush_b', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.80, dist:  1.6, scale: 0.70 },
+      { id: 'leaf', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'leaf_clump_round', laneBand: LANE_BANDS.SHOULDER, lane: 1.78, dist:  0.8, scale: 0.54 },
+      { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -0.8, scale: 0.46 },
+      { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.48, dist:  1.4, scale: 0.30 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist: -1.8, scale: 0.48 },
+    ],
+  },
+  {
+    // (5) DISTANT LANDMARK — larger far-side scenic island: stacked blocks +
+    // platform edge + qblock + mushroom crown + tree backdrop + bush mass.
+    // Far-side lanes (block 2.10, platform/qblock 2.32, tree 3.00) keep it
+    // well off the corridor — a 300-600m "wow" silhouette with ZERO road /
+    // orchid risk. HERO/far-landmark only (proceduralOk:false).
+    id: 'distant-garden-landmark',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  0.0, scale: 1.00, variant: 0 },
+      { id: 'block_upper', role: 'loose-decor', anchor: 'top', zLayer: 14,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+      { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.32, dist:  1.7, scale: 0.92 },
+      { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  0.0, scale: 0.54, variant: 'red', yOffset: -250 },
+      { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.32, dist:  1.7, scale: 0.78, yOffset: -150 },
+      { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 3.00, dist:  2.6, scale: 0.92, variant: 0, yOffset: -10 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.74, dist: -2.0, scale: 0.80 },
+      { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist:  1.2, scale: 0.46 },
+    ],
+  },
 ]);
 
 /**
@@ -1145,6 +1285,12 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   'garden_far_castle_approach_cluster':      'landscape',
   // v4.0 — scatter flora patches.
   'scatter-violet-tuft':              'flora-mix',
+  // v4.23 — M11 garden setpieces.
+  'garden-terrace-setpiece':          'platform-cluster',
+  'pipe-garden-setpiece':             'pipe-landmark',
+  'vertical-platform-garden':         'vertical-landmark',
+  'tree-bush-island':                 'flora-mix',
+  'distant-garden-landmark':          'landscape',
 });
 
 /**
@@ -1239,6 +1385,32 @@ export const PREFAB_COMPOSITION_METADATA = Object.freeze({
     densityWeight: 3, allowedDepthRange: [28, 70],
     minSpacingFromSameType: 32, requiresSupport: true, roadClearance: 1.7,
   },
+  // v4.23 — M11 garden setpiece metadata (audit-only hints).
+  'garden-terrace-setpiece': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [55, 150],
+    minSpacingFromSameType: 50, requiresSupport: true, roadClearance: 1.7,
+  },
+  'pipe-garden-setpiece': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 2, allowedDepthRange: [90, 150],
+    minSpacingFromSameType: 50, requiresSupport: true, roadClearance: 1.7,
+  },
+  'vertical-platform-garden': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 1, allowedDepthRange: [80, 120],
+    minSpacingFromSameType: 999, requiresSupport: true, roadClearance: 1.7,
+  },
+  'tree-bush-island': {
+    zone: 'mid', side: 'either', role: 'filler',
+    densityWeight: 2, allowedDepthRange: [90, 150],
+    minSpacingFromSameType: 40, requiresSupport: false, roadClearance: 1.6,
+  },
+  'distant-garden-landmark': {
+    zone: 'far', side: 'either', role: 'landmark',
+    densityWeight: 1, allowedDepthRange: [230, 470],
+    minSpacingFromSameType: 25, requiresSupport: true, roadClearance: 1.4,
+  },
 });
 
 /**
@@ -1280,6 +1452,13 @@ export const THEMES = Object.freeze({
       // right-corner foreground framing (left corner uses fence-flower-row,
       // already listed above).
       'fence-bush-corner',
+      // v4.23 — M11 garden setpieces + far landmark + de-mirror grove.
+      'garden-terrace-setpiece',
+      'pipe-garden-setpiece',
+      'vertical-platform-garden',
+      'tree-bush-island',
+      'distant-garden-landmark',
+      'blue-mushroom-grove',
     ]),
     procedural: Object.freeze([
       // Procedural pool — garden-aesthetic clusters only. Excludes any
@@ -1289,19 +1468,21 @@ export const THEMES = Object.freeze({
       'cliff-flower-meadow',
       'grass-wall-mushroom',
       'pipe-vine-garden',
-      'blockstack-platform',
       'brick-corridor-segment',
       'qblock-floating-cluster',
       'wall-and-mushroom-grove',
       'pipe-with-flowers',
       'pipe-mushroom-platform',
-      'dense-platform-trio',
       'fence-bush-corner',
       'long-platform-with-mushroom',
       'long-platform-question-stack',
       'platform-pipe-flowers',
-      'wall-stack-near',
       'platform-qblock-stack',
+      // v4.23 — M11 C2: 3 weakest generic stacks (blockstack-platform,
+      // dense-platform-trio, wall-stack-near) replaced by composed setpieces.
+      'garden-terrace-setpiece',
+      'pipe-garden-setpiece',
+      'tree-bush-island',
       'pipe-stairs-flower-bed',
       'tall-block-stack-vertical',
       'fence-flower-row',
@@ -1510,29 +1691,33 @@ export const HERO_LAYOUT = Object.freeze([
   // composition so the opening reads as a garden edge, not a corridor wall.
   { distance:  68, side:  1, prefabId: 'fence-bush-corner',                        scaleMultiplier: 0.80 },
   // NEAR/MID — signature structural clusters.
-  { distance:  70, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.78 },
+  { distance:  70, side: -1, prefabId: 'garden-terrace-setpiece',     scaleMultiplier: 0.78 },
   { distance:  82, side:  1, prefabId: 'garden_mid_right_stone_step_cluster',     scaleMultiplier: 0.75 },
   // MID — existing strong prefabs as rhythm beats.
   // v4.6 — reference-match (P2): MID continuity beats filling the largest
   // per-side gaps (left 80→100, right 82→112) with wide continuous-span
   // walls so the mid corridor reads near-continuous, not clustered.
-  { distance:  88, side: -1, prefabId: 'qblock-floating-cluster',                 scaleMultiplier: 0.70 },
-  { distance:  97, side:  1, prefabId: 'tall-block-stack-vertical',               scaleMultiplier: 0.68 },
+  { distance:  88, side: -1, prefabId: 'vertical-platform-garden',                 scaleMultiplier: 0.70 },
+  { distance:  97, side:  1, prefabId: 'tree-bush-island',               scaleMultiplier: 0.68 },
   { distance: 100, side: -1, prefabId: 'hero-layered-platform-qblocks',           scaleMultiplier: 0.65 },
-  { distance: 112, side:  1, prefabId: 'mid-grass-block-stack',          scaleMultiplier: 0.62 },
+  { distance: 112, side:  1, prefabId: 'pipe-garden-setpiece',          scaleMultiplier: 0.62 },
   // MID — second purple-wall beat + brick-corridor for visual rhythm.
-  { distance: 130, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.50 },
+  { distance: 130, side: -1, prefabId: 'tree-bush-island',     scaleMultiplier: 0.50 },
   // v4.5 — gap-fill: left side had no MID entry between 100 and 130.
   // MID left: 100 (1/3), 130 (2/3) → adding third at 118.
   { distance: 118, side: -1, prefabId: 'platform-qblock-stack',                   scaleMultiplier: 0.58 },
   { distance: 142, side:  1, prefabId: 'brick-corridor-segment',                  scaleMultiplier: 0.48 },
   // CASTLE_APPROACH — symmetric tiny accents only.
   { distance: 165, side: -1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.40 },
-  { distance: 175, side:  1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.38 },
+  { distance: 175, side:  1, prefabId: 'blue-mushroom-grove',      scaleMultiplier: 0.38 },
   // FAR — low-detail silhouettes.
   { distance: 195, side: -1, prefabId: 'leaf-forest-edge',                        scaleMultiplier: 0.34 },
   { distance: 210, side:  1, prefabId: 'organic-meadow',                          scaleMultiplier: 0.32 },
-  // 215m+ — deliberately empty. Road axis dominates.
+  // 215–250m — deliberately empty so the road→castle axis (150–220m) stays clean.
+  // v4.23 — M11 C1: two one-shot far-landmark "wow" beats PAST the castle axis
+  // (FAR band, prepopulate-only). distant-garden-landmark is HERO/far-only.
+  { distance: 260, side: -1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.46 },
+  { distance: 430, side:  1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.40 },
 ]);
 
 /**
