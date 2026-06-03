@@ -240,7 +240,11 @@ export class Game {
       this.daily.lockForRun();
       this.world.dailyMode = true;
       this.world.leaderboard = this.daily.getLeaderboard();
+      // Reseed BOTH streams so a daily run is fully reproducible: gameplay on
+      // the day's seed, decor on the matching distinct sub-seed (mirrors the
+      // World-constructor derivation so the streams stay isolated).
       this.world.rng.reseed(this.daily.seedForToday());
+      this.world.decorRng.reseed(`${this.daily.seedForToday()}:decor`);
       this.world.start();
     });
   }

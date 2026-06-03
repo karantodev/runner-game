@@ -348,7 +348,25 @@ export const GAME_CONFIG = Object.freeze({
     // Cheap, allocation-free surface detail. Meadow pixels scroll in world
     // space outside the road, so the field reads as textured terrain instead
     // of one smooth gradient without adding ECS entities.
-    detail: { meadowTexture: true, vineGarlands: true },
+    detail: {
+      meadowTexture: true,
+      vineGarlands: true,
+      // v4.21 — Phase 1 reference-match: meadow flower-carpet density/reach.
+      // Consumed by RoadRenderer.buildMeadowPattern, which bakes the carpet
+      // with a LOCAL mulberry32 PRNG (NOT world.rng) — visual-only, so seeded
+      // gameplay is unaffected. `count` follows the live AdaptiveQuality tier
+      // via `tierCounts`; the ratios bias a violet-dominant garden bed. Yellow
+      // stays sparse + small so it never competes with the on-road collectible
+      // orchids. The per-frame far-cull in #meadowTexture bounds the overdraw.
+      meadow: {
+        count: 2400,
+        outerPatchFraction: 0.50,
+        nearBias: 0.55,
+        violetRatio: 0.74,
+        yellowRatio: 0.14,
+        tierCounts: { low: 1400, medium: 1900, high: 2400 },
+      },
+    },
 
     // ── Background: which cloud sprite keys appear in the sky.
     // Add/remove/reorder keys here — World picks them by index (cycling).

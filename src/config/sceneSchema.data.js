@@ -381,6 +381,31 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'sprout_soil',         laneBand: LANE_BANDS.SHOULDER,  lane: 1.44, dist: -1.7, scale: 0.30 },
     ],
   },
+  // ── v4.21 Phase 2 step 2B — one new mid-structure prefab ────────────────────
+  // A 3-high grass-dirt block stack for pronounced mid-corridor verticality.
+  // STRUCTURE band (remaps off-road, lane ≥ 2.55); blocks stack via yOffset
+  // (vertical only — no lane change, no road intrusion). Base flora are purple +
+  // leaf ONLY — NO gold, so nothing competes with the on-road orchid trail; no
+  // mushroom, no qblock. HERO-only (proceduralOk:false, NOT in the procedural
+  // pool) so Step 2B changes ONLY the swapped 112 R beat — it must never
+  // reshuffle the rest of the procedural corridor.
+  {
+    id: 'mid-grass-block-stack',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98, variant: 0 },
+      { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 14,
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.94, variant: 1, yOffset: -140 },
+      { id: 'block_top', role: 'loose-decor', anchor: 'top', zLayer: 18,
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.90, variant: 2, yOffset: -280 },
+      { id: 'flower_base', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.2, scale: 0.44 },
+      { id: 'leaf_base', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'leaf_clump_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.56, dist: -1.4, scale: 0.42 },
+    ],
+  },
 
   // ── v3.8.20 Hero Composition Pass — LAYERED prefabs ─────────────────────────
   // The previous "density" pass clustered everything at lane 1.86-1.96, which
@@ -880,6 +905,35 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.48, dist:  1.2, scale: 0.34 },
     ],
   },
+  // ── v4.21 Phase 1 — near-foreground frame ────────────────────────────────
+  // A small curated composition that fills the empty lower corners CLOSER to
+  // the camera than the existing fence frames (HERO_LAYOUT d11/d14). Wired
+  // ONLY through HERO_LAYOUT (proceduralOk:false, weight:0) so it never lands
+  // by random roll and draws ZERO world.rng — seeded gameplay is unaffected.
+  // Solids sit in STRUCTURE at lane ≥1.88 (remapped to visual ≥2.6, well past
+  // the road edge at 2.30); flora in SHOULDER. No obstacle assetTypes — uses
+  // the decor-registered grass_tuft_large / leaf_clump_small (validator-safe).
+  {
+    id: 'near-foreground-frame',
+    weight: 0,
+    proceduralOk: false,
+    items: [
+      // Large red mushroom — the near anchor mass.
+      { id: 'mushroom', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 0.64, variant: 'red' },
+      // Short fence segment frames the corner front.
+      { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  1.8, scale: 0.62 },
+      // Tall grass clump (decor asset, NOT the dry-grass obstacle).
+      { id: 'grass_tall', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist: -1.4, scale: 0.52 },
+      // Small flower + leaf clump fill the remaining gaps.
+      { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist:  0.9, scale: 0.46 },
+      { id: 'leaf', role: 'background-accent', anchor: 'ground', zLayer: 5,
+        assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.82, dist: -2.0, scale: 0.50 },
+    ],
+  },
   // ── v3.8.51 Phase 9 — Garden Corridor Reference clusters ───────────────
   // Five hand-composed clusters with strong signature elements (purple
   // brick, green pipe, question block, mushroom, stone step). These are
@@ -1069,6 +1123,7 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   'hero-layered-pipe-landmark':       'hero-landmark',
   'hero-layered-brick-cascade':       'hero-landmark',
   'fence-flower-row':                 'fence-row',
+  'near-foreground-frame':            'foreground-frame',
   'platform-high-cliff':              'vertical-landmark',
   'organic-meadow':                   'landscape',
   'leaf-forest-edge':                 'flora-mix',
@@ -1281,15 +1336,25 @@ export const THEMES = Object.freeze({
  * v3.8.51 — Phase 9 explicit depth bands.
  *
  * Range = [minDistance, maxDistance) in world-distance units. HERO_LAYOUT
- * entries must respect maxClustersPerSide per band per side; the
- * validator enforces it. `targetScale` is a HINT for designers tuning
- * scaleMultiplier in HERO_LAYOUT — not enforced.
+ * entries must respect maxClustersPerSide per band per side.
+ *
+ * IMPORTANT: `maxClustersPerSide` is an AUDIT-ONLY budget — enforced solely
+ * by the build-time composition audit (scripts/validate-composition.mjs). NO
+ * runtime system reads it; it is NOT part of placement/spawn logic. Changing
+ * it only affects whether `npm run audit:composition` passes, never in-game
+ * behaviour. `targetScale` is likewise a designer HINT — not enforced.
  */
 export const DEPTH_BANDS = Object.freeze({
   // v4.6 — reference-match (P3a): 1→2 so each bottom corner carries both a
   // garden anchor cluster AND a low fence/bush framing prefab (the
   // reference frames the foreground corners with fences + bushes).
-  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 2, targetScale: 1.00, roadClearanceMin: 1.7 },
+  // v4.21 — Phase 1: 2→3 to admit the curated `near-foreground-frame` layer
+  // planted in FRONT of the corner fences. This cap is a BUILD-TIME audit
+  // guard (validate-composition.mjs) on HERO_LAYOUT authoring only — the
+  // runtime never reads maxClustersPerSide, so this is a static-check
+  // allowance, not a gameplay/spawn change. Procedural fill floors at 200m,
+  // so FOREGROUND stays fully HERO_LAYOUT-curated.
+  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 3, targetScale: 1.00, roadClearanceMin: 1.7 },
   NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 0.80, roadClearanceMin: 1.5 },
   // MID is the corridor band — spec calls for "smaller repeated corridor
   // beats" so 3 clusters per side fits the dense-but-readable target.
@@ -1420,8 +1485,14 @@ export const HERO_LAYOUT = Object.freeze([
   // v4.8 — reference-match: pull both corner fences to the very front edge
   // and enlarge them so they read as a clear foreground frame instead of a
   // faint picket. Left nearer/larger than right keeps the corners framed
-  // without being a mirror-identical copy. Both stay in FOREGROUND [0,30)
-  // so the band still holds exactly 2 clusters/side (cap unchanged).
+  // without being a mirror-identical copy. With the near-foreground-frame
+  // added below, FOREGROUND [0,30) now holds 3 clusters/side (DEPTH_BANDS cap
+  // raised 2→3 for the v4.21 near layer).
+  // v4.21 Phase 1 — near-foreground frame, planted IN FRONT of the corner
+  // fences so the very-near bottom corners read rich instead of empty grass.
+  // Curated (useRng=false in DecorationSystem) → zero world.rng draws.
+  { distance:   6, side: -1, prefabId: 'near-foreground-frame',                   scaleMultiplier: 1.22 },
+  { distance:   8, side:  1, prefabId: 'near-foreground-frame',                   scaleMultiplier: 1.18 },
   { distance:  11, side: -1, prefabId: 'fence-flower-row',                        scaleMultiplier: 1.28 },
   { distance:  14, side:  1, prefabId: 'fence-bush-corner',                       scaleMultiplier: 1.24 },
   // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
@@ -1441,15 +1512,15 @@ export const HERO_LAYOUT = Object.freeze([
   // v4.6 — reference-match (P2): MID continuity beats filling the largest
   // per-side gaps (left 80→100, right 82→112) with wide continuous-span
   // walls so the mid corridor reads near-continuous, not clustered.
-  { distance:  88, side: -1, prefabId: 'elevated-platform-wall',                  scaleMultiplier: 0.70 },
-  { distance:  97, side:  1, prefabId: 'wall-continuous-3block',                  scaleMultiplier: 0.68 },
+  { distance:  88, side: -1, prefabId: 'qblock-floating-cluster',                 scaleMultiplier: 0.70 },
+  { distance:  97, side:  1, prefabId: 'tall-block-stack-vertical',               scaleMultiplier: 0.68 },
   { distance: 100, side: -1, prefabId: 'hero-layered-platform-qblocks',           scaleMultiplier: 0.65 },
-  { distance: 112, side:  1, prefabId: 'corner-platform-mushroom-frame',          scaleMultiplier: 0.62 },
+  { distance: 112, side:  1, prefabId: 'mid-grass-block-stack',          scaleMultiplier: 0.62 },
   // MID — second purple-wall beat + brick-corridor for visual rhythm.
   { distance: 130, side: -1, prefabId: 'garden_mid_left_purple_wall_cluster',     scaleMultiplier: 0.50 },
   // v4.5 — gap-fill: left side had no MID entry between 100 and 130.
   // MID left: 100 (1/3), 130 (2/3) → adding third at 118.
-  { distance: 118, side: -1, prefabId: 'elevated-platform-wall',                  scaleMultiplier: 0.58 },
+  { distance: 118, side: -1, prefabId: 'platform-qblock-stack',                   scaleMultiplier: 0.58 },
   { distance: 142, side:  1, prefabId: 'brick-corridor-segment',                  scaleMultiplier: 0.48 },
   // CASTLE_APPROACH — symmetric tiny accents only.
   { distance: 165, side: -1, prefabId: 'garden_far_castle_approach_cluster',      scaleMultiplier: 0.40 },

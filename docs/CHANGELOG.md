@@ -1,5 +1,16 @@
 # Changelog
 
+## Decor RNG isolation — separate visual/decor RNG stream
+
+Side scenery (`DecorationSystem` prefab clusters + `GroundScatterSystem` shoulder flora) now draws from a dedicated `world.decorRng` stream instead of the shared gameplay `world.rng`. Future visual/decor composition changes can no longer consume gameplay RNG draws, so they can never shift seeded gameplay spawn logs.
+
+- `world.rng` = **gameplay-critical** stream — SpawnSystem obstacle / collectible / pattern / power-up / lane picks. This is the seeded-replay contract.
+- `world.decorRng` = **visual/decor-only** stream — derived from the world seed via a distinct sub-seed (reseeded in tandem for the daily challenge). The baked meadow carpet keeps its own module-local `mulberry32` in `RoadRenderer`.
+- **Phase 2 RNG isolation intentionally rebaselines seeded layouts once. Forward same-seed determinism is preserved.** The old seed=42 layout is not byte-identical to pre-split builds (SpawnSystem no longer receives the post-decor RNG state), but same-seed runs are fully reproducible from this build forward — verified by the `seeded run — same ?seed produces same spawn log` guard.
+- Daily challenge: the fixed per-day seed rebaselines once on the build that ships this. The daily leaderboard is localStorage-local (no shared server board), so there's no live cross-player competition to disrupt; ship at a day boundary only if a device's existing daily history matters.
+
+> Green: build check, composition audit (0 hard violations), seeded-determinism + composition seed-sweep Playwright guards.
+
 ## Phase 9 — Reference-match: visual fidelity pass (v4.14–v4.19)
 
 Drives the in-game look toward the `docs/visual-qa/` reference target. All changes are render-only — collision, spawn and prefab-composition stay in lane/distance units (verified by the collision-contract test + composition seed sweeps).

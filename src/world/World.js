@@ -75,7 +75,26 @@ export class World {
     this.projection = projection;
     this.eventBus = eventBus;
     this.registry = new EntityRegistry();
+    // ── RNG streams ──────────────────────────────────────────────────────────
+    // GAMEPLAY-CRITICAL stream. Every gameplay-affecting random decision
+    // (SpawnSystem: obstacle / collectible / pattern / power-up / lane picks)
+    // MUST draw from `this.rng`. Its draw sequence IS the seeded-replay contract
+    // — the `seeded run — same ?seed produces same spawn log` guard depends on
+    // it. Do NOT route decorative / visual randomness through this stream.
     this.rng = new Rng(options.seed);
+    // VISUAL / DECOR-ONLY stream. Side scenery placement — DecorationSystem
+    // prefab clusters + GroundScatterSystem shoulder flora — draws from
+    // `this.decorRng`, NEVER `this.rng`. A separate stream means decor
+    // composition / density / draw-count changes can never perturb the gameplay
+    // stream, and so cannot shift a seeded gameplay spawn log. Derived from the
+    // world seed via a distinct sub-seed so a fixed ?seed still reproduces the
+    // decor without correlating the two streams. (The baked meadow carpet uses
+    // its own module-local mulberry32 in RoadRenderer — also outside this stream.)
+    // NOTE: introducing this split REBASELINED seeded layouts ONCE — SpawnSystem
+    // no longer receives the post-decor RNG state, so a fixed ?seed's old layout
+    // is not byte-identical to pre-split builds. Forward same-seed determinism is
+    // preserved (the `seeded run — same ?seed` guard passes on this build).
+    this.decorRng = new Rng(options.seed == null ? undefined : `${options.seed}:decor`);
     this.leaderboard = options.leaderboard ?? null;
     this.playerStats = options.playerStats ?? null;
     this.adaptiveQuality = options.adaptiveQuality ?? null;
@@ -95,10 +114,12 @@ export class World {
     // DecorationSystem consult this validator on every spawn attempt.
     this.placement = new PlacementValidator(config);
     this.spawnSystem = new SpawnSystem(config, projection, this.rng, this.adaptiveSkill, this.placement);
-    this.decorationSystem = new DecorationSystem(config, projection, this.rng, this.placement);
+    // v4.21 — Phase 2 step 1: decor systems draw from the VISUAL/DECOR-ONLY
+    // `this.decorRng`, never the gameplay `this.rng` (see the RNG-stream note above).
+    this.decorationSystem = new DecorationSystem(config, projection, this.decorRng, this.placement);
     // v4.6 — reference-match: second decoration channel for the dense
     // shoulder-flora carpet, parallel to decorationSystem's structural pass.
-    this.groundScatterSystem = new GroundScatterSystem(config, projection, this.rng);
+    this.groundScatterSystem = new GroundScatterSystem(config, projection, this.decorRng);
     this.collisionSystem = new CollisionSystem(config, eventBus);
     this.gameStateSystem = new GameStateSystem(config, eventBus);
     this.effectsSystem = new EffectsSystem(config, eventBus, projection);
