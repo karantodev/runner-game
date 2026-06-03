@@ -159,6 +159,11 @@ if (params.get('showCompositionGroups') === '1') {
 if (params.get('perf') === '1') {
   Object.defineProperty(GAME_CONFIG.debug, 'renderMetrics', { value: true, writable: false, configurable: true });
 }
+// `?patternLog=1` — console.log a compact live pattern timeline (one line per
+// spawned pattern: dist · band · bucket · id · action · validator). Display aid only.
+if (params.get('patternLog') === '1') {
+  Object.defineProperty(GAME_CONFIG.debug, 'patternLog', { value: true, writable: false, configurable: true });
+}
 // `?debugPlayer=1` overlays the player's visual bounds, foot anchor,
 // collision capsule, and state label so visual-consistency QA can
 // verify scale stays constant across states.

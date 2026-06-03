@@ -134,6 +134,20 @@ export const GAME_CONFIG = Object.freeze({
       scoreWeight: 0.55,
       waveAmplitude: 0.14,       // max downward dip of a rest window
       wavePeriodFrames: 520,     // ~8.7s rest cadence
+      // v4.22 — Milestone 4: distance-keyed difficulty bands (player-facing
+      // metres = world.distanceRun). DISTANCE is the PRIMARY gate for which
+      // difficulty buckets may spawn; the time+score `level` above is clamped
+      // INTO the active band as the secondary in-band signal (see
+      // DifficultyDirector.get → `bucket`). The 33 validated patterns + the
+      // PathValidator are untouched — this only governs which buckets are
+      // *eligible* at a given distance, so the opening stays simple and harder
+      // content unlocks gradually + predictably instead of via a time/score spike.
+      distanceBands: [
+        { untilDistance: 150,     label: 'onboarding',   minBucket: 1, maxBucket: 1 },
+        { untilDistance: 400,     label: 'early-medium', minBucket: 1, maxBucket: 3 },
+        { untilDistance: 800,     label: 'medium',       minBucket: 2, maxBucket: 4 },
+        { untilDistance: 1000000, label: 'hard',         minBucket: 3, maxBucket: 6 },
+      ],
     },
     // v3.1: open-ended tiers. After tier 6 the gameplay difficulty pool
     // saturates but score keeps milestones flowing for late-run dopamine.
@@ -269,6 +283,10 @@ export const GAME_CONFIG = Object.freeze({
     // Toggle via ?perf=1. Pure instrumentation — never changes what is drawn;
     // when off the collector is null so every count site is a zero-cost no-op.
     renderMetrics: false,
+    // Debug-only live pattern timeline: console.log one compact line per spawned
+    // pattern (dist · band · bucket · id · action · validator). Toggle ?patternLog=1.
+    // Pure display aid — never touches gameplay/RNG/determinism.
+    patternLog: false,
   },
 
   scene: {
