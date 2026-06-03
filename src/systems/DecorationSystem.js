@@ -9,6 +9,15 @@ const HERO_GAP_FILL_PREFABS = Object.freeze([
   'fence-flower-row',
 ]);
 
+// v4.22 — M8 anti-repetition. Heavy silhouettes that must be capped per rolling
+// pick window so the procedural side world never reads as a wall. intent → cap.
+const HEAVY_INTENT_CAP_KEY = Object.freeze({
+  'vertical-landmark': 'maxTall',
+  'pipe-landmark':     'maxPipe',
+  'cluster':           'maxQblock',
+});
+const PICK_HISTORY_MAX = 32;
+
 function assetTypeToSceneryType(assetType) {
   const typeMap = {
     grass_dirt_block: 'terrainBlock',
@@ -64,12 +73,15 @@ export class DecorationSystem {
   reset() {
     this.nextLeft = 0;
     this.nextRight = 3.6;
-    this.lastChunk = { '-1': null, '1': null };
-    // v3.8.38 — Phase 4 intent tracking. Avoids consecutive prefabs of
-    // the same intent on the same side (e.g., two 'support-stack' beats
-    // in a row) so the procedural fill reads as a varied corridor
-    // instead of a repeated single composition style.
-    this.lastIntent = { '-1': null, '1': null };
+    // v4.22 — M8 anti-repetition. Rolling pick history (newest last) drives
+    // per-side id/intent cooldowns, a cross-side intent guard and per-window
+    // caps on heavy silhouettes. Pick-count based — runtime decor all spawns at
+    // ~maxDistance, so spawn-distance can't separate beats but pick order can.
+    // decorRng only; never touches gameplay world.rng.
+    this.history = [];
+    // Debug-only selection stats (rerolls / least-bad fallbacks) for the
+    // seed-sweep report; read off world.decorationSystem._pickStats.
+    this._pickStats = { picks: 0, rerolls: 0, fallbacks: 0 };
   }
 
   /**
@@ -177,8 +189,7 @@ export class DecorationSystem {
 
   /** Procedural path: weighted-random chunk + RNG noise. */
   #spawnSideChunk(world, side, distance) {
-    const chunk = this.#pickChunk(side);
-    this.lastChunk[String(side)] = chunk.id;
+    const chunk = this.#pickChunk(side, world.distanceRun ?? 0);
     // v3.8.39 — Phase 5 prefab composition validation. Strict mode skips
     // the whole prefab if support graph is invalid; warn-mode logs once
     // per prefab id and proceeds.
@@ -188,7 +199,6 @@ export class DecorationSystem {
 
   /** Deterministic path: explicit prefab, no RNG noise (used by HERO_LAYOUT). */
   #spawnChunk(world, side, distance, prefab, scaleMultiplier = 1) {
-    this.lastChunk[String(side)] = prefab.id;
     if (this.placement && !this.placement.shouldSpawnPrefab(prefab, side)) return;
     this.#spawnChunkItems(world, side, distance, prefab, /* useRng */ false, scaleMultiplier);
   }
@@ -262,21 +272,98 @@ export class DecorationSystem {
     return this.rng.integer(0, 3);
   }
 
-  #pickChunk(side) {
-    // v3.8.38 — Phase 4 intent variety. Up to 4 re-rolls to avoid both
-    // the same prefab id AND the same intent as the last chunk on this
-    // side. Falls back to whatever we picked if 4 attempts can't find a
-    // distinct intent (small prefab pools, edge case).
-    const key = String(side);
-    const lastId = this.lastChunk[key];
-    const lastIntent = this.lastIntent[key];
-    let chunk = this.rng.choice(this.weightedChunks);
-    for (let i = 0; i < 4; i++) {
-      const intent = PREFAB_INTENT_BY_ID[chunk.id];
-      if (chunk.id !== lastId && intent !== lastIntent) break;
-      chunk = this.rng.choice(this.weightedChunks);
+  /**
+   * v4.22 — M8 rhythm windows, keyed on progression (world.distanceRun, the
+   * displayed metres). 0–120m clean; 120–300m moderate; 300m+ allows stronger
+   * beats but still caps heavy silhouettes. All limits are pick-count based
+   * (history scan) since runtime decor all spawns at ~maxDistance.
+   */
+  #windowParams(progress) {
+    // "Stronger beats" deep in the run = HIGHER heavy-silhouette caps (more
+    // tall/pipe/qblock landmarks allowed), NOT weaker cooldowns — relaxing the
+    // intent cooldown just lets same-intent runs grow into a wall. So the
+    // cooldowns stay firm across windows; only the caps open up at 300m+.
+    if (progress < 120) return { idCooldown: 5, intentCooldown: 4, crossSide: 3, capWindow: 6, maxTall: 1, maxPipe: 1, maxQblock: 1, sideSkew: 2 };
+    if (progress < 300) return { idCooldown: 4, intentCooldown: 3, crossSide: 3, capWindow: 7, maxTall: 1, maxPipe: 2, maxQblock: 1, sideSkew: 2 };
+    return                      { idCooldown: 4, intentCooldown: 3, crossSide: 2, capWindow: 9, maxTall: 2, maxPipe: 2, maxQblock: 2, sideSkew: 3 };
+  }
+
+  /**
+   * v4.22 — M8 repetition score for a candidate: number of anti-repeat rules it
+   * violates (0 = clean). History is pick-ordered (newest last); rules filter by
+   * side so left/right interleaving is handled. decorRng only.
+   */
+  #repetitionViolations(chunk, side, w) {
+    const intent = PREFAB_INTENT_BY_ID[chunk.id] ?? null;
+    const hist = this.history;
+    let v = 0;
+    // 1) per-side prefab-id cooldown
+    let seen = 0;
+    for (let i = hist.length - 1; i >= 0 && seen < w.idCooldown; i -= 1) {
+      if (hist[i].side !== side) continue;
+      seen += 1;
+      if (hist[i].id === chunk.id) { v += 1; break; }
     }
-    this.lastIntent[key] = PREFAB_INTENT_BY_ID[chunk.id] ?? null;
+    // 2) per-side intent cooldown
+    seen = 0;
+    for (let i = hist.length - 1; i >= 0 && seen < w.intentCooldown; i -= 1) {
+      if (hist[i].side !== side) continue;
+      seen += 1;
+      if (intent && hist[i].intent === intent) { v += 1; break; }
+    }
+    // 3) cross-side intent guard — same intent on the OTHER side recently
+    seen = 0;
+    for (let i = hist.length - 1; i >= 0 && seen < w.crossSide; i -= 1) {
+      if (hist[i].side === side) continue;
+      seen += 1;
+      if (intent && hist[i].intent === intent) { v += 1; break; }
+    }
+    // 4) per-window cap + 5) side-skew balance for HEAVY silhouettes
+    const capKey = HEAVY_INTENT_CAP_KEY[intent];
+    if (capKey) {
+      const windowN = Math.min(hist.length, w.capWindow);
+      let count = 0;
+      let thisSide = 0;
+      let otherSide = 0;
+      for (let i = hist.length - 1; i >= hist.length - windowN; i -= 1) {
+        const h = hist[i];
+        if (h.intent === intent) count += 1;
+        if (HEAVY_INTENT_CAP_KEY[h.intent]) {
+          if (h.side === side) thisSide += 1;
+          else otherSide += 1;
+        }
+      }
+      if (count >= w[capKey]) v += 1;
+      if (thisSide >= otherSide + w.sideSkew) v += 1;
+    }
+    return v;
+  }
+
+  /**
+   * v4.22 — M8 anti-repetition. Roll up to 8 candidates; take the first with
+   * zero violations, else the least-bad (safe fallback so selection always
+   * resolves). Replaces the old 4-roll immediate id+intent dedup with
+   * window-keyed cooldowns + a cross-side guard + heavy-silhouette caps.
+   * decorRng only — gameplay world.rng is never touched.
+   */
+  #pickChunk(side, progress = 0) {
+    const w = this.#windowParams(progress);
+    let best = null;
+    let bestV = Infinity;
+    let rolls = 0;
+    for (let i = 0; i < 8; i += 1) {
+      const candidate = this.rng.choice(this.weightedChunks);
+      rolls += 1;
+      const v = this.#repetitionViolations(candidate, side, w);
+      if (v === 0) { best = candidate; bestV = 0; break; }
+      if (v < bestV) { best = candidate; bestV = v; }
+    }
+    const chunk = best;
+    this.history.push({ id: chunk.id, intent: PREFAB_INTENT_BY_ID[chunk.id] ?? null, side });
+    if (this.history.length > PICK_HISTORY_MAX) this.history.shift();
+    this._pickStats.picks += 1;
+    this._pickStats.rerolls += rolls - 1;
+    if (bestV > 0) this._pickStats.fallbacks += 1;
     return chunk;
   }
 
