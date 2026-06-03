@@ -52,11 +52,18 @@ export class GradientCache {
     // grey overlays in BackgroundRenderer. Even with transparent endpoints,
     // the overlap read as a hard horizontal fog strip. Keep the sky clean
     // and use this single veil between the distant and near landscape.
+    // v4.20 — M7A horizon-haze pass: lift the veil alpha so more atmospheric
+    // air sits over the far-scenery / mid-background band, pushing the distant
+    // treeline + structures back toward the reference. Peak (~horizon) raised
+    // 0.085→0.13, faint-start 0.035→0.055, road-side stop 0.045→0.06. Hues and
+    // extent are UNCHANGED so the road tip stays readable and the scene reads
+    // airy rather than foggy. Render-only; one already-drawn fillRect — no new
+    // draw ops, no per-sprite work.
     const horizonVeil = ctx.createLinearGradient(0, p.horizonY - 54, 0, p.roadVanishY + 132);
     horizonVeil.addColorStop(0.00, 'rgba(206,236,236,0)');
-    horizonVeil.addColorStop(0.34, 'rgba(206,236,236,0.035)');
-    horizonVeil.addColorStop(0.58, 'rgba(196,230,220,0.085)');
-    horizonVeil.addColorStop(0.80, 'rgba(170,218,184,0.045)');
+    horizonVeil.addColorStop(0.34, 'rgba(206,236,236,0.055)');
+    horizonVeil.addColorStop(0.58, 'rgba(196,230,220,0.13)');
+    horizonVeil.addColorStop(0.80, 'rgba(170,218,184,0.06)');
     horizonVeil.addColorStop(1.00, 'rgba(150,206,164,0)');
 
     // A very small ground join keeps the road tip from looking pasted on.
