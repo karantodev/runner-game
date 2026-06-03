@@ -185,6 +185,7 @@ export class HudSystem {
     const lives = Math.max(0, this.world.lives);
     const capacity = Math.max(lives, this.world.config.gameplay.startLives);
     if (lives === this._last.hearts && capacity === this._last.heartsCapacity) return;
+    const prevLives = this._last.hearts;
     this._last.hearts = lives;
     this._last.heartsCapacity = capacity;
     let html = '';
@@ -193,6 +194,23 @@ export class HudSystem {
       html += `<img src="${src}" class="hud-heart" alt="">`;
     }
     this.hearts.innerHTML = html;
+    // M5-B: pulse the heart that just changed — red on loss, green/gold on
+    // gain. Skip the initial paint (prevLives < 0). Pure DOM/CSS; no gameplay.
+    if (prevLives >= 0 && lives !== prevLives) this.#pulseHeart(lives, prevLives);
+  }
+
+  /**
+   * M5-B: one-shot CSS pulse on the heart whose state just flipped. Loss → the
+   * heart that emptied (index `lives`); gain → the heart that filled
+   * (index `lives - 1`). innerHTML was just rebuilt, so each <img> is a fresh
+   * element and the animation plays once from the start when the class is added.
+   */
+  #pulseHeart(lives, prevLives) {
+    const lost = lives < prevLives;
+    const index = lost ? lives : lives - 1;
+    const heart = this.hearts.children[index];
+    if (!heart) return;
+    heart.classList.add(lost ? 'heart-pulse-loss' : 'heart-pulse-gain');
   }
 
   #renderJumpBar() {

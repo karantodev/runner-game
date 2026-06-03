@@ -607,7 +607,21 @@ export class GameplayRenderer {
       const drawH = drawW * aspect;
       const overhangTopY = overhangBottomY - drawH;   // grow UPWARD into the sky
       // imageSmoothingEnabled is set false once per frame in RenderSystem.
-      ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
+      // M5-C: readability accent — a soft cyan silhouette glow that fades in as
+      // the overhang approaches, telegraphing "duck under" earlier than the
+      // road warning band. Cyan matches the duck-band colour (120,220,255).
+      // Render-only: no collision / spacing / clearBy / pattern change. The
+      // shadow is scoped by save/restore so it never bleeds into later draws.
+      const accent = Math.max(0, Math.min(1, (34 - distance) / 30));
+      if (accent > 0.02) {
+        ctx.save();
+        ctx.shadowColor = `rgba(120,220,255,${0.5 * accent})`;
+        ctx.shadowBlur = (6 + 10 * accent) * scale;
+        ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(image, cx - drawW / 2, overhangTopY, drawW, drawH);
+      }
     } else {
       // Pass topY computed from the same bottom anchor so the fallback's
       // lowest rendered pixel also sits at overhangBottomY.
