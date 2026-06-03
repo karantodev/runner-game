@@ -312,12 +312,17 @@ export class PerformanceHUD {
     const recent = (stats && stats.recentRunDistances) || [];
     const recentLabel = recent.length ? recent.map((d) => d + 'm').join(' ') : '-';
     const nextPattern = (spawn.nextPattern != null) ? spawn.nextPattern.toFixed(1) : '-';
+    // v4.22 — last spawned pattern from the debug spawn-log (id · action · validator verdict).
+    const last = (spawn.spawnLog && spawn.spawnLog.length) ? spawn.spawnLog[spawn.spawnLog.length - 1] : null;
+    const lastLabel = last ? (last.id + ' · ' + last.action + (last.solvable ? '' : ' ✗FAIL')) : '-';
     return '<div class="section">'
+      + '<div class="row"><span class="lbl">Band</span><b>' + (diff.band ?? '-') + ' · b' + (diff.bucket ?? '-') + '</b></div>'
       + '<div class="row"><span class="lbl">Level</span><b>' + diff.level + '</b></div>'
       + '<div class="row"><span class="lbl">Skill</span><b>' + skill + '</b></div>'
       + '<div class="row sub"><span class="lbl">  pattern d</span><b>' + diff.patternSpacing.toFixed(1) + '</b></div>'
       + '<div class="row sub"><span class="lbl">  orchid d</span><b>' + diff.orchidSpacing.toFixed(1) + '</b></div>'
       + '<div class="row sub"><span class="lbl">  next pattern</span><b>' + nextPattern + '</b></div>'
+      + '<div class="row sub"><span class="lbl">  last</span><b class="small">' + lastLabel + '</b></div>'
       + '<div class="row sub"><span class="lbl">  recent</span><b class="small">' + recentLabel + '</b></div>'
       + '</div>';
   }

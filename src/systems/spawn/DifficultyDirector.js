@@ -20,12 +20,36 @@ export class DifficultyDirector {
   get(world) {
     const intensity = this.#intensity(world);
     const level = this.#applySkillBias(this.#level(world));
+    // v4.22 — Milestone 4: distance bands gate which buckets are eligible.
+    // DISTANCE is primary (the band); the time+score `level` is the secondary
+    // in-band signal, clamped into [minBucket, maxBucket]. `bucket` is what
+    // SpawnSystem feeds to PatternLibrary.pick; `level` still drives spacing.
+    const band = this.band(world);
+    const bucket = Math.max(band.minBucket, Math.min(band.maxBucket, level));
     return {
       level,
+      bucket,
+      band: band.label,
       intensity,
       patternSpacing: this.#patternSpacing(intensity, world.speed),
       orchidSpacing: this.#orchidSpacing(intensity),
     };
+  }
+
+  /**
+   * v4.22 — resolve the active distance band for the player's on-screen metres
+   * (world.distanceRun). The last band is open-ended. Pure function of distance,
+   * so seeded placement stays deterministic. Falls back to the full 1..6 range
+   * if no bands are configured.
+   */
+  band(world) {
+    const bands = this.config.gameplay.difficulty.distanceBands;
+    if (!bands || bands.length === 0) return { label: 'all', minBucket: 1, maxBucket: 6 };
+    const dist = world.distanceRun ?? 0;
+    for (const b of bands) {
+      if (dist < b.untilDistance) return b;
+    }
+    return bands[bands.length - 1];
   }
 
   /**

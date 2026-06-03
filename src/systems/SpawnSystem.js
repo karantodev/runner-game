@@ -490,10 +490,11 @@ export class SpawnSystem {
     if (snap.splitClonesActive) {
       pattern = this.library.pickSplitBonus();
     } else {
-      // Pattern pool keyed on levels 1-6. Buckets 5-6 add deep / end-game
-      // variety; speed-burst caps the pick at level 2 so a burst never throws a
-      // hard late pattern at the accelerated player.
-      const libraryLevel = Math.min(6, snap.speedBurstActive ? Math.min(diff.level, 2) : diff.level);
+      // v4.22 — Milestone 4: pick from `diff.bucket` (distance-band-gated) so the
+      // eligible difficulty is governed by DISTANCE first, time+score second.
+      // Speed-burst still caps the pick at 2 so a burst never throws a hard
+      // pattern at the accelerated player.
+      const libraryLevel = Math.min(6, snap.speedBurstActive ? Math.min(diff.bucket, 2) : diff.bucket);
       pattern = this.library.pick(libraryLevel);
       this._patternPicks += 1;
       // Reject if the pattern is unsolvable on its own OR forms an unclearable
@@ -828,12 +829,38 @@ export class SpawnSystem {
     const entry = {
       id:       pattern.id,
       d:        diff.level,
+      bucket:   diff.bucket,                          // distance-band-gated difficulty bucket
+      band:     diff.band,                            // current distance band label
+      dist:     Math.round(world.distanceRun ?? 0),   // player-facing metres
+      action:   requiredAction(pattern),              // lane-switch / jump / crouch / combo / rest
       score:    world.score,
       speed:    Number(world.speed.toFixed(3)),
-      solvable: analysis.solvable,
+      solvable: analysis.solvable,                    // validator verdict for this pattern
       reason:   analysis.rejectionReason,
     };
     this.spawnLog.push(entry);
     if (this.spawnLog.length > SPAWN_LOG_CAPACITY) this.spawnLog.shift();
+    // v4.22 — ?patternLog=1: compact live timeline line per spawn (display only).
+    if (this.config.debug.patternLog) {
+      console.log(`[pat] ${entry.dist}m · ${entry.band} · b${entry.bucket} · ${entry.id} · ${entry.action} · ${entry.solvable ? 'OK' : 'FAIL:' + entry.reason}`);
+    }
   }
+}
+
+/**
+ * v4.22 — coarse "what must the player DO" label for a pattern, for the debug
+ * timeline only. Derived from the pattern's obstacles — no gameplay effect.
+ */
+function requiredAction(pattern) {
+  const obs = (pattern.items ?? []).filter((i) => i.kind === 'obstacle');
+  if (obs.length === 0) return 'rest';
+  const crouch = obs.some((o) => o.type === 'overhang');                 // duck-under
+  const jump = obs.some((o) => o.allLanes && o.type !== 'overhang');     // vine = jump-over
+  const lane = obs.some((o) => !o.allLanes);                            // single-lane = dodge
+  // 'combo' = the genuinely-mixed / long beats; otherwise the headline action,
+  // with crouch surfaced first (the duck is the defining skill of the beat).
+  if (obs.length >= 4 || (crouch && jump) || (jump && lane)) return 'combo';
+  if (crouch) return 'crouch';
+  if (jump) return 'jump';
+  return 'lane-switch';   // one or more same-lane dodges
 }
