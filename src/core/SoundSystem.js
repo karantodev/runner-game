@@ -62,7 +62,7 @@ const SOUNDS = Object.freeze({
  * powerup-activate should not).
  */
 const SOUND_LIBRARY = Object.freeze({
-  [SOUNDS.ORCHID_COLLECT]:   { url: './assets/audio/sfx/orchid_collect.ogg', poly: 6, gain: 0.55, pitchJitter: 0.08 },
+  [SOUNDS.ORCHID_COLLECT]:   { url: './assets/audio/sfx/orchid_collect.ogg', poly: 6, gain: 0.55, pitchJitter: 0.08, debounceMs: 40 },
   [SOUNDS.RARE_COLLECT]:     { url: './assets/audio/sfx/rare_collect.ogg',   poly: 2, gain: 0.75 },
   [SOUNDS.LIFE_GAIN]:        { url: './assets/audio/sfx/life_gain.ogg',      poly: 1, gain: 0.65 },
   [SOUNDS.POWERUP_PICKUP]:   { url: './assets/audio/sfx/powerup_pickup.ogg', poly: 2, gain: 0.6 },
@@ -129,6 +129,10 @@ export class SoundSystem {
     this.deadSounds = new Set();
     this.enabled = true;
     this.unlocked = false;
+    /** Per-sound last-played timestamp (ms) for the audio-only debounce. */
+    this._lastPlay = new Map();
+    /** File extension the browser can decode (.ogg, else .mp3). Detected once. */
+    this.ext = this.#detectExt();
     this.#wire();
     this.#armAutoplayUnlock();
   }
@@ -148,6 +152,14 @@ export class SoundSystem {
     if (this.settings && this.settings.getSettings().sfx === false) return;
     const cfg = SOUND_LIBRARY[soundId];
     if (!cfg) return;
+    // Audio-only debounce (e.g. orchid pickup): collapse rapid repeats so dense
+    // collectible trails don't machine-gun the same clip. Draws no RNG and
+    // mutates no gameplay/scoring state — purely a playback gate.
+    if (cfg.debounceMs) {
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (now - (this._lastPlay.get(soundId) ?? -Infinity) < cfg.debounceMs) return;
+      this._lastPlay.set(soundId, now);
+    }
     const audio = this.#acquire(soundId, cfg);
     if (!audio) return;
     audio.volume = Math.min(1, (opts.gain ?? cfg.gain) * this.masterVolume);
@@ -183,6 +195,20 @@ export class SoundSystem {
   }
 
   /**
+   * Pick the audio extension the browser can actually decode, once. Chrome /
+   * Firefox decode Ogg Vorbis; Safari / iOS need MP3. SOUND_LIBRARY keeps .ogg
+   * URLs and #acquire swaps the extension when ogg isn't supported. Audio-only.
+   */
+  #detectExt() {
+    try {
+      const ogg = new Audio().canPlayType('audio/ogg; codecs="vorbis"');
+      return ogg === 'probably' || ogg === 'maybe' ? '.ogg' : '.mp3';
+    } catch {
+      return '.ogg';
+    }
+  }
+
+  /**
    * Lazy-init per-sound pool of HTMLAudioElements. First call constructs
    * `poly` clones; subsequent calls find the first idle one (currentTime
    * at end / paused). Silently returns null if pool full and all playing.
@@ -198,7 +224,7 @@ export class SoundSystem {
           // until we actually play it. Combined with the dead-soundId set
           // below, this kills the 404 spam from designer-pending audio.
           audio.preload = 'none';
-          audio.src = cfg.url;
+          audio.src = cfg.url.replace(/\.ogg$/, this.ext);
           // First error on ANY clip in the pool marks the whole sound as
           // dead — no point keeping the others around.
           audio.addEventListener('error', () => {
