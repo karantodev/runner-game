@@ -338,6 +338,11 @@ export const GAME_CONFIG = Object.freeze({
       // band gradient over the far/mid scenery zone, scaled by `alpha` (0 = off).
       // Keep subtle so far scenery recedes without fogging the scene.
       sceneryHaze: { enabled: true, alpha: 0.13 },
+      // v4.23 — M9 far-scenery tint. Cached tinted sprite variants (built once
+      // per sprite key, never per frame, no ctx.filter) replace the source image
+      // for FAR scenery (scale < thresholdScale) so far decor recedes. Exactly
+      // one drawImage per sprite — only the source changes.
+      sceneryTint: { enabled: true, thresholdScale: 0.13, desaturate: 0.20, lighten: 0.10, maxCacheEntries: 12 },
     },
 
     // ── Collectibles: center "breadcrumb" orchid line + stronger halo.

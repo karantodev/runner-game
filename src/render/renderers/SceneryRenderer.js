@@ -169,6 +169,87 @@ function runtimeZoneForLane(lane) {
   return 'ROAD_CORE';
 }
 
+// v4.23 — M9 far-scenery tint. Asset types whose FAR instances (final
+// scale < thresholdScale) get a cached, pre-tinted sprite variant so they
+// recede into atmosphere. Conservative far-dominant set only; small flora,
+// foreground frame and gameplay-adjacent silhouettes are intentionally absent.
+const FAR_TINT_ASSET_TYPES = new Set([
+  'tree_round', 'tree',
+  'bush_large', 'bush_large_with_purple_flowers',
+  'grass_dirt_block', 'grass_dirt_step',
+  'green_pipe',
+  'floating_platform', 'platform', 'grass_dirt_platform_long',
+]);
+
+/**
+ * v4.23 — M9. Drop-in stand-in for SpriteRenderer, used ONLY for far scenery
+ * sprites. Same geometry as SpriteRenderer.draw, but blits a cached, pre-tinted
+ * variant of the source image — built once per sprite key, never per frame, no
+ * ctx.filter. Still exactly one drawImage per sprite; only the source changes.
+ * When the cache cap is reached it falls back to the raw image (and counts it).
+ */
+class TintingSprites {
+  constructor(ctx, assets) {
+    this.ctx = ctx;
+    this.assets = assets;
+    this.config = null;
+    this.cache = new Map();   // spriteKey → tinted canvas (built once)
+    this._builtKeys = [];
+    this._bytes = 0;
+    this._skipped = 0;
+  }
+
+  draw(key, cx, baseY, targetWidth, anchor = 'bottom') {
+    const image = this.assets.get(key);
+    if (!image || !image.naturalWidth) return false;
+    const src = this.#tinted(key, image);
+    const height = targetWidth * (image.naturalHeight / image.naturalWidth);
+    const x = cx - targetWidth / 2;
+    const y = anchor === 'center' ? baseY - height / 2 : baseY - height;
+    this.ctx.drawImage(src, Math.round(x), Math.round(y), Math.round(targetWidth), Math.round(height));
+    return true;
+  }
+
+  #tinted(key, image) {
+    const cached = this.cache.get(key);
+    if (cached) return cached;
+    const cap = this.config?.maxCacheEntries ?? 12;
+    if (this.cache.size >= cap) { this._skipped += 1; return image; }   // cap hit → raw sprite
+    const canvas = this.#build(image);
+    this.cache.set(key, canvas);
+    this._builtKeys.push(key);
+    this._bytes += image.naturalWidth * image.naturalHeight * 4;
+    return canvas;
+  }
+
+  #build(image) {
+    const w = image.naturalWidth;
+    const h = image.naturalHeight;
+    const canvas = (typeof OffscreenCanvas !== 'undefined')
+      ? new OffscreenCanvas(w, h)
+      : Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const t = canvas.getContext('2d');
+    t.drawImage(image, 0, 0, w, h);
+    // source-atop keeps the tint inside the sprite's alpha (no grey box around
+    // transparent edges). Two subtle fills: desaturate toward neutral grey, then
+    // lighten toward a pale atmospheric tone. Both one-time, baked into the cache.
+    t.globalCompositeOperation = 'source-atop';
+    t.globalAlpha = this.config?.desaturate ?? 0.20;
+    t.fillStyle = 'rgb(150,160,162)';
+    t.fillRect(0, 0, w, h);
+    t.globalAlpha = this.config?.lighten ?? 0.10;
+    t.fillStyle = 'rgb(236,242,240)';
+    t.fillRect(0, 0, w, h);
+    t.globalAlpha = 1;
+    t.globalCompositeOperation = 'source-over';
+    return canvas;
+  }
+
+  stats() {
+    return { built: this.cache.size, keys: [...this._builtKeys], approxBytes: this._bytes, skipped: this._skipped };
+  }
+}
+
 /**
  * All non-gameplay world geometry: the static midground/foreground prefab
  * scenery, the per-tick spawned `world.scenery` items (split into a
@@ -187,6 +268,12 @@ export class SceneryRenderer {
     this.voxelBlocks = voxelBlocks;
     this.metrics = metrics ?? null;   // debug-only render-cost counters (?perf=1)
     this._drawDeps = { sprites, paint, voxelBlocks };
+    // v4.23 — M9 far-scenery tint. A tinting sprite proxy + a parallel deps
+    // object used ONLY for far tintable scenery; all other draws use the
+    // untinted _drawDeps. Cache builds lazily once per key; never per frame.
+    this._tintSprites = new TintingSprites(ctx, assets);
+    this._tintDeps = { sprites: this._tintSprites, paint, voxelBlocks };
+    this._tintCfg = null;
     // v4.12 — three-way draw order (allocation-free scratch arrays). Low flora
     // (SHOULDER/MEADOW) is the GROUND carpet and must sit behind solid props,
     // so the order is: NATURE backdrop → flora carpet → STRUCTURE props.
@@ -220,6 +307,10 @@ export class SceneryRenderer {
     // per-entity dispatch doesn't have to thread world through every
     // private method.
     this._world = world;
+    // v4.23 — M9 far-scenery tint config (cached variants for far sprites).
+    this._tintCfg = world.config?.visual?.depth?.sceneryTint ?? null;
+    this._tintSprites.config = this._tintCfg;
+    world.__sceneryTintStats = this._tintSprites.stats();
     // v3.8.40 — Phase 6 parent-child line drawing. Per-frame map of
     // (prefabId + itemId) → screen position, built as items render.
     // After the entire scenery pass we walk it once to draw lines from
@@ -765,10 +856,17 @@ export class SceneryRenderer {
     const side = mirrored ? 1 : -1;
     let usedSideVariant = false;
     let usedFallback = false;
+    // v4.23 — M9: far tintable scenery (final scale below threshold) draws
+    // through the tinting sprite proxy (cached tinted variant). Everything else
+    // — near scenery, road, player, orchids, obstacles — stays untinted.
+    const deps = (this._tintCfg?.enabled
+      && scale < this._tintCfg.thresholdScale
+      && FAR_TINT_ASSET_TYPES.has(assetType))
+      ? this._tintDeps : this._drawDeps;
     // v3.8.16 — side-aware dispatch ONLY for types that registered as
     // such (see SIDE_AWARE_TYPES in sceneryDispatch.js).
     if (isSideAwareSceneryType(assetType)) {
-      usedSideVariant = !!draw(this._drawDeps, x, y, scale, variant, side);
+      usedSideVariant = !!draw(deps, x, y, scale, variant, side);
       if (!usedSideVariant) {
         // v3.8.16: NO mirror fallback for side-aware types. A canvas
         // flip would reverse the sun direction on the right side and
@@ -776,7 +874,7 @@ export class SceneryRenderer {
         // billboard WITHOUT flip so the misorientation is visible to
         // QA, and warn once per asset type so the missing pair is loud.
         this.#warnMissingSideVariant(assetType, side);
-        draw(this._drawDeps, x, y, scale, variant, undefined);
+        draw(deps, x, y, scale, variant, undefined);
         usedFallback = true;
       }
     } else if (mirrored) {
@@ -785,10 +883,10 @@ export class SceneryRenderer {
       ctx.translate(x, 0);
       ctx.scale(-1, 1);
       ctx.translate(-x, 0);
-      draw(this._drawDeps, x, y, scale, variant);
+      draw(deps, x, y, scale, variant);
       ctx.restore();
     } else {
-      draw(this._drawDeps, x, y, scale, variant);
+      draw(deps, x, y, scale, variant);
     }
     ctx.globalAlpha = 1;
     // v3.8.16 debug labels — toggle via ?debugSides=1. Draws a small
