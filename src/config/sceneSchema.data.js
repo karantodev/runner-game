@@ -1716,8 +1716,8 @@ export const HERO_LAYOUT = Object.freeze([
   // 215–250m — deliberately empty so the road→castle axis (150–220m) stays clean.
   // v4.23 — M11 C1: two one-shot far-landmark "wow" beats PAST the castle axis
   // (FAR band, prepopulate-only). distant-garden-landmark is HERO/far-only.
-  { distance: 260, side: -1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.46 },
-  { distance: 430, side:  1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.40 },
+  { distance: 260, side: -1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.56 },
+  { distance: 430, side:  1, prefabId: 'distant-garden-landmark',                 scaleMultiplier: 0.50 },
 ]);
 
 /**
