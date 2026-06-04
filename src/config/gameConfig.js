@@ -420,11 +420,11 @@ export const GAME_CONFIG = Object.freeze({
       // reads as planted, not floating. Subtle: low alpha, narrow ellipse.
       // Only the nearest/largest flora get one (see SceneryRenderer scale
       // gate) so the cost stays bounded across the ~1k-sprite carpet.
-      floraShadow: { enabled: true, alpha: 0.22, widthScale: 0.74 },
+      floraShadow: { enabled: true, alpha: 0.26, widthScale: 0.78 }, // v4.26 — M15A: firmer flora grounding
       // v4.14 — reference-match: contact shadow under solid side structures
       // (blocks/mushrooms/fences) so they read as planted, not floating.
       // Consumed by SceneryRenderer; bounded by a scale gate so cost stays tiny.
-      solidShadow: { enabled: true, alpha: 0.30, widthScale: 0.62 }, // v4.16 — slightly firmer planting shadow after thinning the vertical masses
+      solidShadow: { enabled: true, alpha: 0.36, widthScale: 0.66 }, // v4.26 — M15A: stronger planting shadow for reference-grade grounding
       runDust: { enabled: true, rate: 0.5 },
       collectFlash: { enabled: true, bloom: 0.16 }, // v4.4 — reference-match: bloom dialed further down so the collect flash never buries the center orchid trail
     },

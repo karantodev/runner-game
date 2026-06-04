@@ -1,49 +1,53 @@
 const BLOCK_STYLES = new Set(['sprite', 'voxel']);
 
+// v4.26 — M15A art-direction polish. Richer, more contrasty material palettes:
+// brighter saturated tops + highlights, deeper sides + crisper darker outlines,
+// warmer dirt and a more premium violet — pushing material definition and
+// light→dark separation toward the reference WITHOUT going neon.
 const PALETTES = Object.freeze({
   grass: Object.freeze({
-    front: '#9a572d',
-    side: '#713b25',
-    top: '#76c936',
-    lip: '#4d9d2d',
-    edge: '#315f26',
-    accent: '#d78437',
-    detail: '#61351f',
-    highlight: '#a7df4c',
-    outline: '#27391d',
+    front: '#a35c27',
+    side: '#5b2d1a',
+    top: '#7ed53d',
+    lip: '#57b232',
+    edge: '#27531f',
+    accent: '#e28f3b',
+    detail: '#4f2b18',
+    highlight: '#bef15e',
+    outline: '#1b2a14',
   }),
   purple: Object.freeze({
-    front: '#7444b5',
-    side: '#4c2d82',
-    top: '#a16bd9',
-    lip: '#5d3595',
-    edge: '#37205c',
-    accent: '#9361cb',
-    detail: '#4c2a79',
-    highlight: '#bb88ea',
-    outline: '#2b1948',
+    front: '#7b3ec6',
+    side: '#422178',
+    top: '#ad71e6',
+    lip: '#5f34a2',
+    edge: '#2b1950',
+    accent: '#9d68db',
+    detail: '#391f62',
+    highlight: '#cd98f7',
+    outline: '#1f123d',
   }),
   stone: Object.freeze({
-    front: '#77706d',
-    side: '#504b4b',
+    front: '#746d6a',
+    side: '#4a4646',
     top: '#aaa29b',
     lip: '#615c5a',
-    edge: '#403b3c',
+    edge: '#3b3637',
     accent: '#938b85',
-    detail: '#585353',
-    highlight: '#c4bbb1',
-    outline: '#343031',
+    detail: '#545050',
+    highlight: '#c8bfb5',
+    outline: '#2a2727',
   }),
   question: Object.freeze({
-    front: '#d78a16',
-    side: '#9d5b10',
-    top: '#ffc742',
+    front: '#e0900f',
+    side: '#94530c',
+    top: '#ffce4d',
     lip: '#bb7110',
-    edge: '#75400e',
-    accent: '#f2aa24',
-    detail: '#70400d',
-    highlight: '#ffe064',
-    outline: '#58320d',
+    edge: '#6e3c0c',
+    accent: '#f7b22b',
+    detail: '#6a3c0c',
+    highlight: '#ffe87c',
+    outline: '#482809',
   }),
 });
 
@@ -128,6 +132,13 @@ export class VoxelBlockRenderer {
     ctx.strokeRect(left, top, w, h);
 
     this.#frontTexture(left, top, w, h, scale, palette, material, variant);
+    // v4.26 — M15A: bottom-of-front depth band. A darker base strip gives the
+    // face a light→dark vertical read (ambient occlusion at the planting line),
+    // so blocks/bricks read 3D and grounded instead of flat. One fillRect/block;
+    // uses the side shade and inherits the entity's globalAlpha (fades with it).
+    const bandH = Math.max(2, snap(h * 0.2));
+    ctx.fillStyle = palette.side;
+    ctx.fillRect(left + 1, top + h - bandH, w - 2, bandH - 1);
     this.#topTexture(left, right, top, rise, backShift, scale, palette);
     ctx.restore();
     return true;
