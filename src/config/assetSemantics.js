@@ -355,6 +355,17 @@ export const ASSET_SEMANTICS = Object.freeze({
     requiresCanonicalSideArt: false,
     notes: 'Front-facing pipe landmark. Keep neutral so one sprite works on either shoulder.',
   }),
+  // v4.24 — M14A: the REAL green-pipe sprite. `green_pipe` is redirected to a
+  // planter by the DecorationSystem type map (v3 pipe retirement); assetType
+  // 'pipe' reaches the genuine pipe draw in sceneryDispatch. Mirrors green_pipe
+  // semantics so the placement validator treats it as the same side structure.
+  pipe: make(DEFAULTS.STRUCTURE, {
+    key: 'pipe',
+    category: 'support',
+    orientationType: 'neutral',
+    requiresCanonicalSideArt: false,
+    notes: 'Real front-facing green pipe. Neutral so one sprite works on either shoulder.',
+  }),
   floating_platform: make(DEFAULTS.STRUCTURE, {
     key: 'floating_platform',
     category: 'platform',
@@ -695,6 +706,7 @@ export const ASSET_CLASS_BY_TYPE = Object.freeze({
   stone_wall_stairs:             'SIDE_STRUCTURE',
   planter_pot:                   'SIDE_STRUCTURE',
   green_pipe:                    'SIDE_STRUCTURE',
+  pipe:                          'SIDE_STRUCTURE',
   question_block:                'SIDE_STRUCTURE',
 
   // Support foundations (host stackable children)
@@ -839,6 +851,7 @@ const CANONICAL_OVERRIDES = Object.freeze({
   stone_wall_stairs:     { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
   planter_pot:           { sideFacing: 'road_facing_required', blocksRoadReadability: false },
   green_pipe:            { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
+  pipe:                  { sideFacing: 'road_facing_required', blocksRoadReadability: true  },
   purple_brick_single:   { sideFacing: 'road_facing_required', blocksRoadReadability: false },
   question_block:        { sideFacing: 'neutral',              blocksRoadReadability: false },
 
