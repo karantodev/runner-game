@@ -475,11 +475,70 @@ body.force-touch #touch-controls { display: flex; }
   #hearts-box { top: 68px; right: 12px; width: 136px; font-size: 18px; min-width: 112px; }
   #distance-box { top: 120px; right: 12px; width: 136px; min-width: 112px; font-size: 14px; }
   #tier-box { display: none; }
-  #powerups-box { bottom: 100px; left: 12px; min-width: 132px; font-size: 11px; padding: 8px 10px; }
-  #ability { bottom: 12px; left: 12px; padding: 10px 12px 10px; min-width: 84px; }
-  #ability .tool-icon { width: 56px; height: 56px; }
   #touch-controls { padding: 12px 14px 18px; }
   #touch-controls button { width: 64px; height: 64px; font-size: 24px; }
+}
+
+/* ── M13 mobile QA: modal vertical fit + bottom-left HUD scaling ──────────────
+ * Applies to phones (≤760px wide) AND any short viewport (≤600px tall, e.g.
+ * landscape phones). Desktop — wide AND tall — is unaffected. CSS-only. */
+@media (max-width: 760px), (max-height: 600px) {
+  /* A. End/score (also menu/pause) modal fit.
+   * The overlay normally lives inside the letterboxed #stage (overflow:hidden),
+   * so a tall card gets clipped to the play-area strip. Pin it to the viewport,
+   * cap the card to the safe viewport height, scroll the body internally, and
+   * keep the title + the RUN AGAIN CTA pinned so it is never cut off. */
+  .overlay {
+    position: fixed;
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px)
+             calc(env(safe-area-inset-right, 0px) + 12px)
+             calc(env(safe-area-inset-bottom, 0px) + 12px)
+             calc(env(safe-area-inset-left, 0px) + 12px);
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    width: min(460px, calc(100vw - 24px));
+    /* 100vh fallback first; dvh overrides where supported (accounts for
+     * mobile browser chrome). */
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
+    margin: auto;
+    padding: 16px 18px 14px;
+  }
+  .card > #title { flex: 0 0 auto; margin-bottom: 10px; }
+  .card > #sub {
+    flex: 1 1 auto;
+    min-height: 0;            /* let the flex child shrink so it can scroll */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+  }
+  .card > #start-button,
+  .card > .menu-buttons { flex: 0 0 auto; }
+  /* Single scroll surface — let the leaderboard flow inside the card scroll
+   * instead of creating a nested scroll region. */
+  .leaderboard-list { max-height: none; }
+
+  /* B. Bottom-left shovel + power-up HUD — scale down and lift clear of the
+   * ◀ ▶ move pad so it no longer dominates or competes with the controls.
+   * Desktop sizes (in the base rules) are preserved. */
+  #ability {
+    bottom: 90px; left: 10px;
+    padding: 6px 9px 7px;
+    min-width: 0;
+    gap: 3px;
+  }
+  #ability .tool-icon { width: 38px; height: 38px; }
+  #ability .bar { gap: 3px; }
+  #ability .hud-energy { width: 11px; height: 16px; }   /* compact the charge meter */
+  #powerups-box {
+    bottom: 172px; left: 10px;
+    width: auto; min-width: 0; max-width: 150px;
+    font-size: 10px; padding: 6px 9px;
+  }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════ */
