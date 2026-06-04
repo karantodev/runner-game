@@ -34,8 +34,8 @@ export class GradientCache {
     sky.addColorStop(0.00, '#082684');
     sky.addColorStop(0.12, '#0c3fa2');
     sky.addColorStop(0.24, '#1259c4');
-    sky.addColorStop(0.40, '#2580dc');
-    sky.addColorStop(0.55, '#4ba6ef');
+    sky.addColorStop(0.40, '#2179d9');   // v4.27 — M15B: slightly deeper premium blue
+    sky.addColorStop(0.55, '#43a0ed');   // v4.27 — M15B: richer mid-sky (horizon haze below kept)
     sky.addColorStop(0.70, '#7ec3f4');
     sky.addColorStop(0.84, '#b2dbf6');
     sky.addColorStop(0.94, '#d6e4ec');
@@ -113,9 +113,14 @@ export class GradientCache {
     // corridor reads as lush rather than pale.
     // v4.14 — reference-match: warm the field toward golden-hour and widen
     // the value range — yellower far/mid stops + a deeper, richer near stop.
-    ground.addColorStop(0, '#7cb83e');     // warmer, more yellow-green in the far field
-    ground.addColorStop(0.38, '#519632');  // warmer mid
-    ground.addColorStop(1, '#205a23');     // a touch deeper/richer near field (still readable)
+    // v4.27 — M15B reference juice: deepen + saturate the meadow toward the
+    // reference's rich verdant grass. The far/mid stops were a washed-out
+    // yellow-lime; pull them to a richer green and nudge the near a touch
+    // deeper, WITHOUT collapsing the far→near value range (atmospheric depth
+    // preserved). Deeper green also lifts gold-orchid contrast on the road.
+    ground.addColorStop(0, '#6cae34');     // richer, less-yellow far field
+    ground.addColorStop(0.38, '#46892c');  // deeper saturated mid
+    ground.addColorStop(1, '#1d5621');     // deep near field (still readable)
 
     const road = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
     road.addColorStop(0, '#7ec64c');
