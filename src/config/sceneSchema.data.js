@@ -1736,18 +1736,18 @@ export const DEPTH_BANDS = Object.freeze({
   // allowance, not a gameplay/spawn change. Procedural fill floors at 200m,
   // so FOREGROUND stays fully HERO_LAYOUT-curated.
   FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 3, targetScale: 1.00, roadClearanceMin: 1.7 },
-  NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 0.80, roadClearanceMin: 1.5 },
+  NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 1.00, roadClearanceMin: 1.5 },
   // MID is the corridor band — spec calls for "smaller repeated corridor
   // beats" so 3 clusters per side fits the dense-but-readable target.
   // v4.6 — reference-match (P2): both sides were already at the cap of 3,
   // so it was the limiting factor preventing a continuous mid corridor.
   // 3→4 opens one slot/side for a wide continuous-wall beat in the largest
   // gap (still spread across a 70-unit band — continuous-feeling, not solid).
-  MID:              { range: [ 80, 150], maxClustersPerSide: 4, targetScale: 0.55, roadClearanceMin: 1.6 },
+  MID:              { range: [ 80, 150], maxClustersPerSide: 6, targetScale: 0.90, roadClearanceMin: 1.6 },
   // CASTLE_APPROACH is the longest band (70m). Allows 2 small clusters
   // per side — one symmetric tiny accent ~165/175 + one fade-in
   // background landmark ~195/210 — without competing with the castle.
-  CASTLE_APPROACH:  { range: [150, 220], maxClustersPerSide: 2, targetScale: 0.40, roadClearanceMin: 1.4 },
+  CASTLE_APPROACH:  { range: [150, 220], maxClustersPerSide: 2, targetScale: 0.50, roadClearanceMin: 1.4 },
   FAR:              { range: [220, 999], maxClustersPerSide: 1, targetScale: 0.30, roadClearanceMin: 1.2 },
 });
 
@@ -1881,15 +1881,15 @@ export const HERO_LAYOUT = Object.freeze([
   { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.16 },
   // NEAR — layered transition groups keep the corridor composed instead of
   // falling back to two light rows of evenly distributed flora.
-  { distance:  46, side: -1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 0.88 },
+  { distance:  46, side: -1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 1.00 },
   // v4.22 — M8 de-mirror: the 46(L)/58(R) garden-chain-platform-fence pair read
   // as copy-paste. Swap the RIGHT echo to a softer organic flora beat (existing
   // prefab, flora-mix) so the two sides differ in silhouette. NEAR cluster count
   // per side is unchanged (2) → composition audit unaffected. Left opener kept.
-  { distance:  58, side:  1, prefabId: 'grass-wall-mushroom',                      scaleMultiplier: 0.84 },
+  { distance:  58, side:  1, prefabId: 'grass-wall-mushroom',                      scaleMultiplier: 0.96 },
   // v4.16 — soften the early right-side wall beat into a lower bush/fence
   // composition so the opening reads as a garden edge, not a corridor wall.
-  { distance:  68, side:  1, prefabId: 'fence-bush-corner',                        scaleMultiplier: 0.80 },
+  { distance:  68, side:  1, prefabId: 'fence-bush-corner',                        scaleMultiplier: 0.92 },
   // v4.24 — M14A: 70–175m PREMIUM GARDEN CORRIDOR rebuild. Tall terrace beats
   // (garden-terrace-grand / garden-pipe-bank) alternate with low garden-flower-
   // terrace fillers in a tall↔low rhythm so the mid corridor reads as a dense
@@ -1897,18 +1897,24 @@ export const HERO_LAYOUT = Object.freeze([
   // Side balance: MID [80,150) holds exactly 4 clusters/side; NEAR and
   // CASTLE_APPROACH stay within their per-side caps. NO tall blocks on the
   // 150–220m castle axis — only LOW flower terraces (160/175) there.
-  { distance:  70, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.70 },
-  { distance:  80, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.66 },
-  { distance:  88, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.66 },
-  { distance:  97, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.58 },
-  { distance: 105, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.58 },
-  { distance: 112, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.56 },
-  { distance: 120, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.54 },
-  { distance: 130, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 0.50 },
-  { distance: 145, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.46 },
+  // v4.28 — M20 Option C: aggressive scale-up (terraces fill the meadow gap),
+  // flower→grand-tall swaps (105R/120L) for 3-high mass, 145L flower→grand, and
+  // one new MID-right beat at 132 (MID cap raised 4→6). CASTLE_APPROACH stays
+  // LOW (160/175) so the 150–220m castle axis remains clean. Composition only —
+  // SpawnSystem doesn't import HERO_LAYOUT, so spawn-log/RNG are unaffected.
+  { distance:  70, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.94 },
+  { distance:  80, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.90 },
+  { distance:  88, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.90 },
+  { distance:  97, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.84 },
+  { distance: 105, side:  1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.82 },
+  { distance: 112, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.80 },
+  { distance: 120, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.78 },
+  { distance: 130, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 0.72 },
+  { distance: 132, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.74 },
+  { distance: 145, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 0.64 },
   // CASTLE_APPROACH [150,220) — LOW flower terraces only; castle sightline clear.
-  { distance: 160, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.42 },
-  { distance: 175, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.40 },
+  { distance: 160, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.48 },
+  { distance: 175, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.46 },
   // FAR — low-detail silhouettes.
   { distance: 195, side: -1, prefabId: 'leaf-forest-edge',                        scaleMultiplier: 0.34 },
   { distance: 210, side:  1, prefabId: 'organic-meadow',                          scaleMultiplier: 0.32 },
