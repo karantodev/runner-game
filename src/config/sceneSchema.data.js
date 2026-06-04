@@ -1297,7 +1297,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     // 150–220m castle sightline. Dense yellow + purple flowers, a bush, tuft,
     // sprout. Dual-use (HERO low filler + procedural).
     id: 'garden-flower-terrace',
-    weight: 4,
+    weight: 5,
     proceduralOk: true,
     items: [
       { id: 'block_low', role: 'base', anchor: 'ground', zLayer: 10,
@@ -1322,6 +1322,54 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist:  0.6, scale: 0.48 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'sprout_soil', laneBand: LANE_BANDS.SHOULDER, lane: 1.78, dist: -0.8, scale: 0.40 },
+    ],
+  },
+  {
+    // v4.25 — M14B (Lever 1) GARDEN TERRACE GRAND TALL. A 3-high variant of
+    // garden-terrace-grand for 2–3 selective "wow" beats only (NOT every
+    // terrace). Adds a 3rd grass-dirt course + a 3rd purple-brick course +
+    // a raised mushroom crown + a strengthened yellow-flower row, so the side
+    // wall reaches high enough to occlude the mid-field green bleed. Low
+    // procedural weight (2) → an occasional tall beat in the deep corridor.
+    // All structure off-road (STRUCTURE ≥1.92); qblock floats as side scenery.
+    id: 'garden-terrace-grand-tall',
+    weight: 2,
+    proceduralOk: true,
+    items: [
+      { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 0 },
+      { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 13,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+      { id: 'block_top', role: 'loose-decor', anchor: 'top', zLayer: 16,
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.84, variant: 0, yOffset: -268 },
+      { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.86 },
+      { id: 'step_riser', role: 'base', anchor: 'ground', zLayer: 11,
+        assetType: 'grass_dirt_step', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist: -1.4, scale: 0.74 },
+      { id: 'brick_base', role: 'base', anchor: 'ground', zLayer: 12,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.26, dist:  0.8, scale: 0.80 },
+      { id: 'brick_top', role: 'loose-decor', anchor: 'top', zLayer: 16,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.26, dist:  0.8, scale: 0.76, yOffset: -120 },
+      { id: 'brick_cap', role: 'loose-decor', anchor: 'top', zLayer: 17,
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.26, dist:  0.8, scale: 0.72, yOffset: -228 },
+      { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.74, yOffset: -206 },
+      { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.50, variant: 'red', yOffset: -384 },
+      { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
+        assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.90, dist:  2.2, scale: 0.90, variant: 0, yOffset: -8 },
+      { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
+        assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.66, dist: -2.0, scale: 0.78 },
+      { id: 'flower_y_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.58, dist:  1.2, scale: 0.32 },
+      { id: 'flower_y_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist: -0.6, scale: 0.30 },
+      { id: 'flower_y_c', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist:  2.0, scale: 0.30 },
+      { id: 'flower_p', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: -1.6, scale: 0.44 },
+      { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist:  2.0, scale: 0.46 },
     ],
   },
 ]);
@@ -1402,6 +1450,8 @@ export const PREFAB_INTENT_BY_ID = Object.freeze({
   'garden-terrace-grand':             'platform-cluster',
   'garden-pipe-bank':                 'pipe-landmark',
   'garden-flower-terrace':            'flora-mix',
+  // v4.25 — M14B 3-high terrace beat.
+  'garden-terrace-grand-tall':        'platform-cluster',
 });
 
 /**
@@ -1538,6 +1588,12 @@ export const PREFAB_COMPOSITION_METADATA = Object.freeze({
     densityWeight: 3, allowedDepthRange: [70, 200],
     minSpacingFromSameType: 32, requiresSupport: false, roadClearance: 1.6,
   },
+  // v4.25 — M14B 3-high terrace beat (selective; off the castle axis).
+  'garden-terrace-grand-tall': {
+    zone: 'mid', side: 'either', role: 'structural',
+    densityWeight: 1, allowedDepthRange: [55, 135],
+    minSpacingFromSameType: 60, requiresSupport: true, roadClearance: 1.7,
+  },
 });
 
 /**
@@ -1590,6 +1646,8 @@ export const THEMES = Object.freeze({
       'garden-terrace-grand',
       'garden-pipe-bank',
       'garden-flower-terrace',
+      // v4.25 — M14B 3-high terrace beat.
+      'garden-terrace-grand-tall',
     ]),
     procedural: Object.freeze([
       // Procedural pool — garden-aesthetic clusters only. Excludes any
@@ -1618,6 +1676,8 @@ export const THEMES = Object.freeze({
       'garden-terrace-grand',
       'garden-pipe-bank',
       'garden-flower-terrace',
+      // v4.25 — M14B: one bounded tall beat in the deep corridor (low weight 2).
+      'garden-terrace-grand-tall',
       'pipe-stairs-flower-bed',
       'tall-block-stack-vertical',
       'fence-flower-row',
@@ -1832,10 +1892,10 @@ export const HERO_LAYOUT = Object.freeze([
   // Side balance: MID [80,150) holds exactly 4 clusters/side; NEAR and
   // CASTLE_APPROACH stay within their per-side caps. NO tall blocks on the
   // 150–220m castle axis — only LOW flower terraces (160/175) there.
-  { distance:  70, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 0.74 },
+  { distance:  70, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.70 },
   { distance:  80, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.66 },
   { distance:  88, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.66 },
-  { distance:  97, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 0.62 },
+  { distance:  97, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.58 },
   { distance: 105, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.58 },
   { distance: 112, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.56 },
   { distance: 120, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.54 },
