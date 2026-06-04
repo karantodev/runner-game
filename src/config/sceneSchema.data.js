@@ -1648,6 +1648,11 @@ export const THEMES = Object.freeze({
       'garden-flower-terrace',
       // v4.25 — M14B 3-high terrace beat.
       'garden-terrace-grand-tall',
+      // v4.28 — test-hygiene: declare two prefabs HERO_LAYOUT already uses
+      // (near-foreground-frame at dist 6/8; grass-wall-mushroom at 58). Both
+      // already render — the whitelist was stale; no visual/content change.
+      'near-foreground-frame',
+      'grass-wall-mushroom',
     ]),
     procedural: Object.freeze([
       // Procedural pool — garden-aesthetic clusters only. Excludes any
