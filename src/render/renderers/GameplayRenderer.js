@@ -67,12 +67,13 @@ const COMPOSITION_FILTER_FN = (role, filter) => {
  * size — adding a new pickup never touches this renderer.
  */
 export class GameplayRenderer {
-  constructor({ ctx, projection, assets, sprites, paint }) {
+  constructor({ ctx, projection, assets, sprites, paint, voxelBlocks }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
     this.sprites = sprites;
     this.paint = paint;
+    this.voxelBlocks = voxelBlocks;
     // Reused per-frame so we don't allocate an Array + N wrapper objects
     // for every render call. Entities themselves carry `kind` + `distance`
     // already, so we can push refs directly.
@@ -479,21 +480,45 @@ export class GameplayRenderer {
     let spriteHalfH = 48 * p.scale;
 
     if (assetType === 'spiky_bush_obstacle' || box.type === 'bush') {
-      this.paint.bush(p.sx, p.sy, p.scale);   // painter path — no sprite fx (see #drawObstacleSpriteWithFx)
+      if (this.voxelBlocks?.enabled) {
+        this.voxelBlocks.drawBush(p.sx, p.sy, p.scale * 0.74, { flowers: true, variant: sprite.variant ?? 0 });
+      } else {
+        this.paint.bush(p.sx, p.sy, p.scale);   // painter path — no sprite fx (see #drawObstacleSpriteWithFx)
+      }
       spriteHalfW = 55 * p.scale; spriteHalfH = 44 * p.scale;
     }
     if (assetType === 'dry_grass_obstacle' || box.type === 'wheat') {
-      // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
-      if (!this.#drawObstacleSpriteWithFx('dryGrassObstacle', p.sx, p.sy, 130 * p.scale, fxCfg)) this.paint.wheat(p.sx, p.sy, p.scale);
+      if (this.voxelBlocks?.enabled) {
+        this.voxelBlocks.drawWheat(p.sx, p.sy, p.scale * 1.02, { dry: true, variant: sprite.variant ?? 0 });
+      } else {
+        // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
+        if (!this.#drawObstacleSpriteWithFx('dryGrassObstacle', p.sx, p.sy, 130 * p.scale, fxCfg)) this.paint.wheat(p.sx, p.sy, p.scale);
+      }
       spriteHalfW = 65 * p.scale; spriteHalfH = 40 * p.scale;
     }
     if (assetType === 'purple_brick_single' || box.type === 'wall') {
-      this.paint.wallBlock(p.sx, p.sy, p.scale, 1, sprite.variant === 2 ? 2 : 1);  // painter path — no sprite fx
+      if (this.voxelBlocks?.enabled) {
+        this.voxelBlocks.drawCube(p.sx, p.sy, p.scale, {
+          material: 'purple',
+          side: pos.lane > 0 ? 1 : -1,
+          variant: sprite.variant ?? 0,
+          width: 74,
+          height: 64,
+          depth: 14,
+          topRise: 11,
+        });
+      } else {
+        this.paint.wallBlock(p.sx, p.sy, p.scale, 1, sprite.variant === 2 ? 2 : 1);  // painter path — no sprite fx
+      }
       spriteHalfW = 50 * p.scale; spriteHalfH = 52 * p.scale;
     }
     if (assetType === 'small_center_mushroom' || box.type === 'mushroom') {
-      // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
-      if (!this.#drawObstacleSpriteWithFx('mushroomSmallRed', p.sx, p.sy, 140 * p.scale, fxCfg)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
+      if (this.voxelBlocks?.enabled) {
+        this.voxelBlocks.drawMushroom(p.sx, p.sy, p.scale * 0.74, { variant: sprite.variant === 'purple' ? 'purple' : 'red' });
+      } else {
+        // v4.4 — sprite-keyed path: tint + outline via fx helper; painter fallback unchanged.
+        if (!this.#drawObstacleSpriteWithFx('mushroomSmallRed', p.sx, p.sy, 140 * p.scale, fxCfg)) this.paint.mushroom(p.sx, p.sy, p.scale, sprite.variant);
+      }
       spriteHalfW = 58 * p.scale; spriteHalfH = 58 * p.scale;
     }
     // (the legacy `stone` type has no sprite + no paint backend; intentionally a no-op now)

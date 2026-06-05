@@ -44,6 +44,115 @@ test('structural block renderer — 2D / 3D mode stays reversible', async ({ pag
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getState().blockStyle)).toBe('sprite');
 });
 
+test('settings — block style defaults to 2D and persists 3D selection', async ({ page }) => {
+  await page.goto('/dev.html?debug=1');
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  await page.evaluate(() => window.localStorage.removeItem('orchidQuest.settings.v1'));
+  await page.reload();
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  await page.waitForFunction(() => !document.getElementById('loading')?.classList.contains('on'));
+
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('sprite');
+
+  await page.locator('#settings-button').click();
+  await expect(page.locator('#settings-modal')).toHaveClass(/on/);
+  await expect(page.locator('#settings-block-style [data-block-style="sprite"]')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#settings-block-style [data-block-style="voxel"]').click();
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
+  await expect(page.locator('#settings-block-style [data-block-style="voxel"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#debug-panel')).toContainText('Blocks: 3D cubes');
+
+  await page.reload();
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
+});
+
+test('3D scenery mode — organic and fence props use voxel renderer branches', async ({ page }) => {
+  await page.goto('/dev.html');
+  const calls = await page.evaluate(async () => {
+    const { getSceneryDraw } = await import('/src/render/renderers/scenery/sceneryDispatch.js');
+    const called = [];
+    const voxelBlocks = {
+      enabled: true,
+      drawFence: () => { called.push('fence'); return true; },
+      drawTree: () => { called.push('tree'); return true; },
+      drawMushroom: (_x, _y, _s, opts) => { called.push(`mushroom:${opts?.variant}`); return true; },
+      drawBush: (_x, _y, _s, opts) => { called.push(`bush:${opts?.large ? 'large' : 'small'}:${opts?.flowers ? 'flowers' : 'plain'}`); return true; },
+      drawPipe: () => { called.push('pipe'); return true; },
+      drawPlanter: () => { called.push('planter'); return true; },
+      drawHangingPlatform: () => { called.push('hangingPlatform'); return true; },
+      drawSmallFlower: (_x, _y, _s, opts) => { called.push(`smallFlower:${opts?.variant ?? 0}`); return true; },
+      drawSprout: () => { called.push('sprout'); return true; },
+      drawWheat: () => { called.push('wheat'); return true; },
+      drawLeafClump: (_x, _y, _s, opts) => { called.push(`leafClump:${opts?.round ? 'round' : 'low'}`); return true; },
+      drawGrassTuft: (_x, _y, _s, opts) => { called.push(`grassTuft:${opts?.large ? 'large' : 'small'}:${opts?.dry ? 'dry' : 'green'}`); return true; },
+    };
+    const sprites = {
+      assets: { get: () => ({ naturalWidth: 1, naturalHeight: 1 }) },
+      draw: () => { throw new Error('sprite path used in voxel mode'); },
+    };
+    const deps = { voxelBlocks, sprites, paint: {} };
+    const cases = [
+      ['fence_wood_short', -1],
+      ['tree_round', -1],
+      ['mushroom_red_big', -1, 'red'],
+      ['mushroom_blue_big', -1],
+      ['bush_large', -1],
+      ['bush_large_with_purple_flowers', -1],
+      ['bush_with_purple_flowers', -1],
+      ['green_pipe', -1],
+      ['planter_pot', 1],
+      ['hanging_platform_vines', -1],
+      ['yellow_flower_small', -1, 1],
+      ['sprout_soil', -1],
+      ['wheat_tuft', -1],
+      ['leaf_clump_small', -1],
+      ['leaf_clump_round', -1],
+      ['grass_tuft', -1],
+      ['grass_tuft_large', -1],
+      ['dry_grass_obstacle', -1],
+    ];
+    for (const [assetType, side, variant] of cases) {
+      const draw = getSceneryDraw(assetType);
+      if (!draw) throw new Error(`missing draw for ${assetType}`);
+      draw(deps, 100, 200, 1, variant, side);
+    }
+    return called;
+  });
+
+  expect(calls).toEqual([
+    'fence',
+    'tree',
+    'mushroom:red',
+    'mushroom:blue',
+    'bush:large:plain',
+    'bush:large:flowers',
+    'bush:small:flowers',
+    'pipe',
+    'planter',
+    'hangingPlatform',
+    'smallFlower:1',
+    'sprout',
+    'wheat',
+    'leafClump:low',
+    'leafClump:round',
+    'grassTuft:small:green',
+    'grassTuft:large:green',
+    'grassTuft:large:dry',
+  ]);
+});
+
+test('debug scenery QA sheet — opens PNG vs 3D comparison grid', async ({ page }) => {
+  await page.goto('/dev.html?debug=1&sceneryQa=1');
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__?.getSceneryQaState?.()?.open === true);
+  await expect(page.locator('.scenery-qa-sheet')).toHaveClass(/is-open/);
+  await expect(page.locator('.scenery-qa-card')).toHaveCount(await page.evaluate(() => window.__ORCHID_DEBUG__.getSceneryQaState().totalRows));
+  const state = await page.evaluate(() => window.__ORCHID_DEBUG__.getSceneryQaState());
+  expect(state.totalRows).toBeGreaterThan(20);
+  expect(state.rows).toBe(state.totalRows);
+});
+
 test('side-aware scenery — accepted re-export pairs use direct side variants', async ({ page }) => {
   await page.goto('/dev.html');
   const result = await page.evaluate(async () => {
@@ -76,6 +185,18 @@ test('side-aware scenery — accepted re-export pairs use direct side variants',
     expect(item.sideAware, item.type).toBe(true);
   }
   expect(result.purpleMapping).toBe('normal');
+});
+
+test('scenery QA sheet — dev-only PNG vs voxel comparer mounts and exposes cases', async ({ page }) => {
+  await page.goto('/dev.html?sceneryQa=1');
+  await page.waitForFunction(() => window.__ORCHID_SCENERY_QA__ !== undefined);
+  await expect(page.locator('#scenery-qa-sheet')).toHaveClass(/is-open/);
+  await expect(page.locator('.scenery-qa-card')).toHaveCount(27);
+
+  const state = await page.evaluate(() => window.__ORCHID_SCENERY_QA__.getState());
+  expect(state.open).toBe(true);
+  expect(state.caseCount).toBe(27);
+  expect(state.visibleCount).toBe(27);
 });
 
 test('touch controls — buttons exist and bind to actions', async ({ page }) => {

@@ -828,6 +828,11 @@ button:focus, [tabindex]:focus {
   gap: 10px;
   cursor: pointer;
 }
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .settings-list input[type="checkbox"] {
   width: 14px;
   height: 14px;
@@ -847,6 +852,44 @@ button:focus, [tabindex]:focus {
   color: var(--hud-text-muted);
   font-size: 8px;
   margin-left: 4px;
+}
+.settings-segmented {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--hud-outline);
+  background: var(--hud-bg);
+  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+}
+.settings-segmented button {
+  min-width: 48px;
+  border: 0;
+  border-right: 1px solid var(--hud-outline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--hud-text-muted);
+  padding: 5px 9px;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.settings-segmented button:last-child {
+  border-right: 0;
+}
+.settings-segmented button.is-active,
+.settings-segmented button[aria-pressed="true"] {
+  background: var(--hud-gold);
+  color: var(--hud-gold-dark);
+}
+.settings-segmented button:hover,
+.settings-segmented button:focus-visible {
+  color: var(--hud-text);
+}
+.settings-segmented button.is-active:hover,
+.settings-segmented button.is-active:focus-visible,
+.settings-segmented button[aria-pressed="true"]:hover,
+.settings-segmented button[aria-pressed="true"]:focus-visible {
+  color: var(--hud-gold-dark);
 }
 .settings-danger {
   display: flex;
@@ -980,4 +1023,381 @@ button:focus, [tabindex]:focus {
   color: var(--hud-blue);
   font-family: var(--pixel-font);
   font-size: 11px;
+}
+
+/* Debug-only 3D asset comparison sheet. Injected from src/debug/SceneryQaSheet.js. */
+.scenery-qa-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: none;
+  padding: 18px;
+  background: rgba(5, 12, 18, 0.72);
+}
+.scenery-qa-sheet.is-open {
+  display: block;
+}
+.scenery-qa-panel {
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 36px);
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #142416;
+  border: 2px solid #071009;
+  box-shadow: inset 2px 2px 0 #5fb54c, inset -2px -2px 0 #071009, 0 18px 42px rgba(0,0,0,0.36);
+  color: #ecffd8;
+}
+.scenery-qa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border-bottom: 2px solid #071009;
+  background: #20371e;
+}
+.scenery-qa-header h2 {
+  margin: 0;
+  font-family: var(--pixel-font);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.scenery-qa-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.scenery-qa-controls input,
+.scenery-qa-controls select,
+.scenery-qa-controls button {
+  min-height: 34px;
+  border: 2px solid #071009;
+  background: #f0f5e8;
+  color: #172314;
+  font: 11px/1 var(--ui-font);
+  padding: 6px 9px;
+}
+.scenery-qa-controls button {
+  cursor: pointer;
+  font-weight: 700;
+}
+.scenery-qa-grid {
+  overflow: auto;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 10px;
+}
+.scenery-qa-card {
+  background: #eff7e8;
+  color: #182415;
+  border: 2px solid #071009;
+  box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #b5c7a4;
+  padding: 10px;
+}
+.scenery-qa-card-title {
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.scenery-qa-canvases {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.scenery-qa-canvases figure {
+  margin: 0;
+}
+.scenery-qa-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+  background: #f0f5e8;
+}
+.scenery-qa-canvases figcaption,
+.scenery-qa-meta {
+  margin-top: 4px;
+  font: 11px/1.2 var(--ui-font);
+  color: #48633d;
+}
+.scenery-qa-meta {
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .scenery-qa-sheet {
+    padding: 8px;
+  }
+  .scenery-qa-panel {
+    max-height: calc(100vh - 16px);
+  }
+  .scenery-qa-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .scenery-qa-controls {
+    justify-content: stretch;
+  }
+  .scenery-qa-controls input,
+  .scenery-qa-controls select,
+  .scenery-qa-controls button {
+    flex: 1 1 120px;
+  }
+  .scenery-qa-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* v4.27 — dev-only scenery QA sheet. Mounted only from localhost tools
+ * via ?sceneryQa=1 or the Orchid debug panel; production gameplay never
+ * toggles this surface on.
+ */
+#scenery-qa-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: none;
+  padding: 24px;
+  background: rgba(8, 13, 20, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+#scenery-qa-sheet.is-open {
+  display: block;
+}
+
+.scenery-qa-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(1480px, 100%);
+  height: 100%;
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid rgba(142, 190, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(10, 18, 28, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+  color: #edf5ff;
+}
+
+.scenery-qa-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scenery-qa-titleblock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scenery-qa-title {
+  margin: 0;
+  font: 700 20px/1.1 'Silkscreen', monospace;
+  color: #eff6ff;
+}
+
+.scenery-qa-subtitle {
+  margin: 0;
+  color: rgba(222, 237, 255, 0.72);
+  font-size: 12px;
+}
+
+.scenery-qa-close,
+.scenery-qa-action {
+  border: 0;
+  border-radius: 6px;
+  background: #8fe35e;
+  color: #12220d;
+  font: 700 12px/1.1 inherit;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.scenery-qa-close:hover,
+.scenery-qa-action:hover {
+  filter: brightness(1.04);
+}
+
+.scenery-qa-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.6fr) repeat(3, minmax(160px, 0.8fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.scenery-qa-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  color: rgba(222, 237, 255, 0.8);
+}
+
+.scenery-qa-field--compact {
+  max-width: 220px;
+}
+
+.scenery-qa-field input,
+.scenery-qa-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(143, 227, 94, 0.2);
+  border-radius: 6px;
+  background: rgba(15, 25, 38, 0.96);
+  color: #eff6ff;
+  font: 12px/1.2 inherit;
+}
+
+.scenery-qa-field input[type="range"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.scenery-qa-summary {
+  font-size: 12px;
+  color: rgba(222, 237, 255, 0.68);
+}
+
+.scenery-qa-grid {
+  flex: 1;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 14px;
+  align-content: start;
+  padding-right: 4px;
+}
+
+.scenery-qa-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(142, 190, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(16, 28, 42, 0.92);
+}
+
+.scenery-qa-cardhead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scenery-qa-heading {
+  font: 700 13px/1.2 inherit;
+  color: #f8fbff;
+}
+
+.scenery-qa-badge {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(96, 149, 255, 0.14);
+  color: #a8d4ff;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.scenery-qa-meta,
+.scenery-qa-status {
+  font: 11px/1.35 monospace;
+  word-break: break-word;
+}
+
+.scenery-qa-meta {
+  color: rgba(222, 237, 255, 0.74);
+}
+
+.scenery-qa-status {
+  color: #9be8a3;
+}
+
+.scenery-qa-status[data-level="warn"] {
+  color: #ffc77d;
+}
+
+.scenery-qa-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scenery-qa-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.scenery-qa-pane-label {
+  color: rgba(222, 237, 255, 0.8);
+  font-size: 11px;
+}
+
+.scenery-qa-preview {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%),
+    #111b27;
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  outline: 1px solid rgba(142, 190, 255, 0.12);
+}
+
+.scenery-qa-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 1180px) {
+  .scenery-qa-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scenery-qa-field--compact {
+    max-width: none;
+  }
+}
+
+@media (max-width: 860px) {
+  #scenery-qa-sheet {
+    padding: 12px;
+  }
+
+  .scenery-qa-frame {
+    padding: 14px;
+  }
+
+  .scenery-qa-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scenery-qa-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenery-qa-preview-grid {
+    grid-template-columns: 1fr;
+  }
 }

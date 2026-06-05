@@ -17,6 +17,8 @@ const requestedDebug =
   || params.get('debugPlayerStates') === '1';  // v3.8.27 — implies debug mode
 const debugAllowed = (isLocalDev && GAME_CONFIG.debug.allowLocalTools) || GAME_CONFIG.debug.allowRemoteTools;
 const debugEnabled = requestedDebug && debugAllowed;
+const sceneryQaRequested = params.get('sceneryQa') === '1';
+const sceneryQaEnabled = sceneryQaRequested && debugAllowed;
 const autostart = debugEnabled && (params.get('autostart') === '1' || params.get('debugRun') === '1');
 const freezeFrame = debugEnabled && params.get('debugFreeze') !== '0';
 const captureSteps = debugEnabled ? Math.max(0, Number(params.get('debugSteps') || 12) || 12) : 0;
@@ -189,6 +191,45 @@ const game = new Game(canvas, {
   blockStyle,
 });
 
+let sceneryQaController = null;
+let resolveBootReady = null;
+let bootFailure = null;
+const bootReady = new Promise((resolve) => {
+  resolveBootReady = resolve;
+});
+
+async function ensureSceneryQaSheet() {
+  if (!debugAllowed) return null;
+  await bootReady;
+  if (bootFailure) throw bootFailure;
+  if (!sceneryQaController) {
+    const { createSceneryQaSheet } = await import('./debug/SceneryQaSheet.js');
+    sceneryQaController = createSceneryQaSheet({
+      game,
+      initialFilter: params.get('sceneryQaFilter') ?? '',
+      initialGroup: params.get('sceneryQaGroup') ?? 'all',
+      initialOpen: false,
+    });
+    window.__ORCHID_SCENERY_QA__ = sceneryQaController;
+    if (window.__ORCHID_DEBUG__) {
+      window.__ORCHID_DEBUG__.openSceneryQaSheet = openSceneryQaSheet;
+      window.__ORCHID_DEBUG__.toggleSceneryQaSheet = toggleSceneryQaSheet;
+      window.__ORCHID_DEBUG__.getSceneryQaState = () => sceneryQaController?.getState() ?? null;
+    }
+  }
+  return sceneryQaController;
+}
+
+async function openSceneryQaSheet() {
+  const controller = await ensureSceneryQaSheet();
+  return controller?.open() ?? null;
+}
+
+async function toggleSceneryQaSheet(force) {
+  const controller = await ensureSceneryQaSheet();
+  return controller?.toggle(force) ?? null;
+}
+
 // Live road-style toggle. Available in every build (not gated on debug)
 // so the user can flip between procedural and image tiles to compare.
 window.addEventListener('keydown', (event) => {
@@ -206,7 +247,7 @@ window.addEventListener('keydown', (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   const target = event.target;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-  game.renderer.toggleBlockStyle();
+  game.settings.toggleBlockStyle();
   updateDebugPanel();
 });
 
@@ -255,6 +296,8 @@ function updateDebugPanel() {
     debugState.blockStyleNode.textContent = `Blocks: ${game.renderer.blockStyle === 'voxel' ? '3D cubes' : '2D sprites'}`;
   }
 }
+
+window.addEventListener('orchid:blockStyleChanged', updateDebugPanel);
 
 function recordDebugError(kind, payload) {
   debugState.errors.push({
@@ -327,12 +370,27 @@ function installDebugPanel(debugApi) {
   blocksButton.type = 'button';
   blocksButton.textContent = 'Toggle 2D / 3D Blocks';
   blocksButton.addEventListener('click', () => {
-    game.renderer.toggleBlockStyle();
+    game.settings.toggleBlockStyle();
     updateDebugPanel();
   });
   panel.appendChild(blocksButton);
 
-  for (const button of [captureButton, restartButton, blocksButton]) {
+  const sceneryQaButton = document.createElement('button');
+  sceneryQaButton.type = 'button';
+  sceneryQaButton.textContent = 'Toggle Scenery QA';
+  sceneryQaButton.addEventListener('click', async () => {
+    sceneryQaButton.disabled = true;
+    try {
+      await toggleSceneryQaSheet();
+    } catch (error) {
+      console.error('[Orchid Debug] scenery QA toggle failed', error);
+    } finally {
+      sceneryQaButton.disabled = false;
+    }
+  });
+  panel.appendChild(sceneryQaButton);
+
+  for (const button of [captureButton, restartButton, blocksButton, sceneryQaButton]) {
     Object.assign(button.style, {
       padding: '6px 8px',
       border: '0',
@@ -436,12 +494,12 @@ function createDebugApi() {
       return game.renderer.blockStyle;
     },
     setBlockStyle(style) {
-      const next = game.renderer.setBlockStyle(style);
+      const next = game.settings.setBlockStyle(style);
       updateDebugPanel();
       return next;
     },
     toggleBlockStyle() {
-      const next = game.renderer.toggleBlockStyle();
+      const next = game.settings.toggleBlockStyle();
       updateDebugPanel();
       return next;
     },
@@ -578,6 +636,9 @@ const PLAYER_DEBUG_KEY_MAP = {
 if (debugEnabled) {
   const debugApi = createDebugApi();
   window.__ORCHID_DEBUG__ = debugApi;
+  debugApi.openSceneryQaSheet = openSceneryQaSheet;
+  debugApi.toggleSceneryQaSheet = toggleSceneryQaSheet;
+  debugApi.getSceneryQaState = () => sceneryQaController?.getState() ?? null;
   // v3.8.41 — Phase 7 visual-QA. Expose the live game instance behind
   // the same debug flag so capture scripts can read / poke world state
   // directly (e.g., set Health.invulnerabilityFrames high so the
@@ -1173,12 +1234,19 @@ function installPlayerStateQAPanel(debugApi, modes, applyPreset) {
   document.body.appendChild(panel);
 }
 
-game.boot().catch((error) => {
-  console.error('[Orchid Quest] boot failed', error);
-  if (debugEnabled) {
-    recordDebugError('boot', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-  }
-});
+game.boot()
+  .then(async () => {
+    resolveBootReady?.();
+    if (sceneryQaEnabled) await openSceneryQaSheet();
+  })
+  .catch((error) => {
+    bootFailure = error;
+    resolveBootReady?.();
+    console.error('[Orchid Quest] boot failed', error);
+    if (debugEnabled) {
+      recordDebugError('boot', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  });

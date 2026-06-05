@@ -38,6 +38,28 @@ const PALETTES = Object.freeze({
     highlight: '#c8bfb5',
     outline: '#2a2727',
   }),
+  wood: Object.freeze({
+    front: '#b8662d',
+    side: '#74401f',
+    top: '#d58a3d',
+    lip: '#8f4b23',
+    edge: '#4c2a18',
+    accent: '#e3a456',
+    detail: '#663719',
+    highlight: '#f1bd67',
+    outline: '#2b1a12',
+  }),
+  leaf: Object.freeze({
+    front: '#3fa34d',
+    side: '#1f6f38',
+    top: '#74c957',
+    lip: '#2e8c43',
+    edge: '#174b2b',
+    accent: '#5dbd48',
+    detail: '#1b5a33',
+    highlight: '#9ce36a',
+    outline: '#123720',
+  }),
   question: Object.freeze({
     front: '#e0900f',
     side: '#94530c',
@@ -132,6 +154,7 @@ export class VoxelBlockRenderer {
     ctx.strokeRect(left, top, w, h);
 
     this.#frontTexture(left, top, w, h, scale, palette, material, variant);
+    this.#materialAccents(left, top, w, h, scale, palette, material, variant);
     // v4.26 — M15A: bottom-of-front depth band. A darker base strip gives the
     // face a light→dark vertical read (ambient occlusion at the planting line),
     // so blocks/bricks read 3D and grounded instead of flat. One fillRect/block;
@@ -188,9 +211,10 @@ export class VoxelBlockRenderer {
     return true;
   }
 
-  drawQuestionCube(x, y, scale = 1) {
+  drawQuestionCube(x, y, scale = 1, { variant = 0 } = {}) {
     this.drawCube(x, y, scale, {
       material: 'question',
+      variant,
       width: 74,
       height: 64,
       depth: 14,
@@ -198,16 +222,525 @@ export class VoxelBlockRenderer {
     });
     const ctx = this.ctx;
     ctx.save();
-    ctx.fillStyle = '#fff2aa';
-    ctx.strokeStyle = '#70400d';
-    ctx.lineWidth = Math.max(1, snap(scale * 2));
-    ctx.font = `bold ${Math.max(10, snap(34 * scale))}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.strokeText('?', snap(x), snap(y - 30 * scale));
-    ctx.fillText('?', snap(x), snap(y - 30 * scale));
+    this.#pixelQuestionGlyph(x, y - 30 * scale, scale);
+    ctx.fillStyle = '#ffe87c';
+    const stud = Math.max(2, snap(5 * scale));
+    for (const [dx, dy] of [[-24, -50], [24, -50], [-24, -12], [24, -12]]) {
+      ctx.fillRect(snap(x + dx * scale - stud / 2), snap(y + dy * scale - stud / 2), stud, stud);
+    }
     ctx.restore();
     return true;
+  }
+
+  drawHangingPlatform(x, y, scale = 1, {
+    side = -1,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const direction = side > 0 ? -1 : 1;
+    const palette = PALETTES.wood;
+    const deckY = y - 18 * s;
+
+    ctx.save();
+    this.#board3d(x, deckY, 126 * s, 18 * s, 9 * s, direction, palette);
+    this.#board3d(x - 36 * s, deckY + 7 * s, 22 * s, 20 * s, 5 * s, direction, palette);
+    this.#board3d(x + 36 * s, deckY + 7 * s, 22 * s, 20 * s, 5 * s, direction, palette);
+
+    ctx.strokeStyle = '#1b5a33';
+    ctx.lineWidth = Math.max(1, snap(3 * s));
+    for (let i = 0; i < 4; i += 1) {
+      const vx = x - 48 * s + i * 32 * s + direction * ((variant + i) % 2) * 4 * s;
+      ctx.beginPath();
+      ctx.moveTo(snap(vx), snap(deckY - 70 * s));
+      ctx.bezierCurveTo(snap(vx + direction * 13 * s), snap(deckY - 47 * s), snap(vx - direction * 10 * s), snap(deckY - 28 * s), snap(vx + direction * 3 * s), snap(deckY - 4 * s));
+      ctx.stroke();
+      this.#leafBlade(vx + direction * 8 * s, deckY - 36 * s, 8 * s, 15 * s, direction * 0.65, PALETTES.leaf.top, PALETTES.leaf.outline);
+      this.#leafBlade(vx - direction * 6 * s, deckY - 18 * s, 7 * s, 13 * s, direction * -0.55, PALETTES.leaf.front, PALETTES.leaf.outline);
+    }
+
+    this.#grassTuft(x - 52 * s, y + 2 * s, s * 0.6, variant);
+    this.#grassTuft(x + 50 * s, y + 2 * s, s * 0.58, variant + 2);
+    ctx.restore();
+    return true;
+  }
+
+  drawSmallFlower(x, y, scale = 1, {
+    variant = 0,
+  } = {}) {
+    const s = scale;
+    const ctx = this.ctx;
+    const purple = (variant ?? 0) % 2 === 1;
+    ctx.save();
+    ctx.strokeStyle = PALETTES.leaf.outline;
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x), snap(y));
+    ctx.lineTo(snap(x + (((variant ?? 0) % 3) - 1) * 3 * s), snap(y - 31 * s));
+    ctx.stroke();
+    this.#leafBlade(x - 7 * s, y - 12 * s, 6 * s, 13 * s, -0.65, PALETTES.leaf.front, null);
+    this.#leafBlade(x + 8 * s, y - 17 * s, 6 * s, 12 * s, 0.62, PALETTES.leaf.top, null);
+    this.#flowerDot(x, y - 36 * s, Math.max(2, 6 * s), purple ? '#b05cff' : '#ffd94d');
+    ctx.restore();
+    return true;
+  }
+
+  drawSprout(x, y, scale = 1, {
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    ctx.save();
+    this.#ellipse(x, y - 2 * s, 20 * s, 5 * s, '#5b2d1a', '#2b1a12');
+    ctx.strokeStyle = PALETTES.leaf.outline;
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x), snap(y - 4 * s));
+    ctx.lineTo(snap(x + ((variant & 1) ? 3 : -3) * s), snap(y - 32 * s));
+    ctx.stroke();
+    this.#leafBlade(x - 8 * s, y - 25 * s, 9 * s, 18 * s, -0.8, PALETTES.leaf.top, PALETTES.leaf.outline);
+    this.#leafBlade(x + 9 * s, y - 27 * s, 9 * s, 18 * s, 0.75, PALETTES.leaf.front, PALETTES.leaf.outline);
+    ctx.restore();
+    return true;
+  }
+
+  drawWheat(x, y, scale = 1, {
+    dry = false,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const stem = dry ? '#b58a37' : '#d6aa38';
+    const head = dry ? '#d8b24b' : '#f1ca4b';
+    ctx.save();
+    ctx.strokeStyle = '#5a3b17';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    for (let i = 0; i < 7; i += 1) {
+      const bx = x + (i - 3) * 8 * s;
+      const topY = y - (46 + ((i + variant) % 3) * 8) * s;
+      ctx.strokeStyle = stem;
+      ctx.beginPath();
+      ctx.moveTo(snap(bx), snap(y));
+      ctx.lineTo(snap(bx + (i - 3) * 2 * s), snap(topY));
+      ctx.stroke();
+      ctx.fillStyle = head;
+      for (let k = 0; k < 4; k += 1) {
+        const py = topY + k * 6 * s;
+        this.#ellipse(bx - 4 * s, py, 4 * s, 3 * s, head, null);
+        this.#ellipse(bx + 4 * s, py + 2 * s, 4 * s, 3 * s, '#f7d86e', null);
+      }
+    }
+    ctx.restore();
+    return true;
+  }
+
+  drawLeafClump(x, y, scale = 1, {
+    round = false,
+    variant = 0,
+  } = {}) {
+    return this.drawBush(x, y, scale * (round ? 0.72 : 0.62), {
+      large: false,
+      flowers: false,
+      variant,
+    });
+  }
+
+  drawGrassTuft(x, y, scale = 1, {
+    large = false,
+    dry = false,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale * (large ? 1.12 : 0.92);
+    ctx.save();
+    if (dry) {
+      ctx.strokeStyle = '#b98932';
+      ctx.lineWidth = Math.max(1, snap(2 * s));
+      for (let i = 0; i < 9; i += 1) {
+        const bx = x + (i - 4) * 7 * s;
+        const lean = ((i + variant) % 3 - 1) * 8 * s;
+        ctx.beginPath();
+        ctx.moveTo(snap(bx), snap(y));
+        ctx.lineTo(snap(bx + lean), snap(y - (28 + (i % 3) * 9) * s));
+        ctx.stroke();
+      }
+    } else {
+      this.#grassTuft(x, y, s, variant);
+      this.#grassTuft(x - 16 * s, y + 1 * s, s * 0.72, variant + 1);
+      if (large) this.#grassTuft(x + 16 * s, y + 1 * s, s * 0.74, variant + 2);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  drawFence(x, y, scale = 1, {
+    side = -1,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const direction = side > 0 ? -1 : 1;
+    const s = scale;
+    const palette = PALETTES.wood;
+    const postW = Math.max(6, snap(12 * s));
+    const postDepth = Math.max(3, snap(6 * s));
+    const railH = Math.max(4, snap(9 * s));
+    const railDepth = Math.max(2, snap(5 * s));
+    const postY = y - 4 * s;
+    const posts = [-46, -16, 16, 46].map((offset, i) => ({
+      x: x + offset * s + direction * i * 2 * s,
+      h: (66 + ((variant + i) % 2) * 8) * s,
+    }));
+
+    ctx.save();
+    ctx.lineJoin = 'miter';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.strokeStyle = palette.outline;
+
+    this.#board3d(x + direction * 5 * s, y - 48 * s, 112 * s, railH, railDepth, direction, palette);
+    this.#board3d(x - direction * 2 * s, y - 27 * s, 108 * s, railH, railDepth, direction, palette);
+    for (const post of posts) {
+      this.#board3d(post.x, postY, postW, post.h, postDepth, direction, palette);
+      ctx.fillStyle = palette.highlight;
+      ctx.fillRect(
+        snap(post.x - postW * 0.30),
+        snap(postY - post.h + 9 * s),
+        Math.max(1, snap(3 * s)),
+        snap(post.h * 0.46),
+      );
+      ctx.fillStyle = '#3a210f';
+      ctx.fillRect(snap(post.x + postW * 0.18), snap(postY - post.h + 13 * s), Math.max(1, snap(2 * s)), Math.max(1, snap(2 * s)));
+      ctx.fillRect(snap(post.x - postW * 0.05), snap(postY - 25 * s), Math.max(1, snap(2 * s)), Math.max(1, snap(2 * s)));
+    }
+
+    this.#grassTuft(x - 49 * s, y + 2 * s, s * 0.85, 4);
+    this.#grassTuft(x - 18 * s, y + 1 * s, s * 0.78, 2);
+    this.#grassTuft(x + 15 * s, y + 1 * s, s * 0.82, 1);
+    this.#grassTuft(x + 47 * s, y + 2 * s, s * 0.86, 5);
+    ctx.restore();
+    return true;
+  }
+
+  drawPipe(x, y, scale = 1, {
+    side = -1,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const direction = side > 0 ? -1 : 1;
+    const outline = '#153215';
+    const front = '#2aa43a';
+    const sideCol = '#17682d';
+    const top = '#73df55';
+    const lip = '#1d7f31';
+    const w = Math.max(26, snap(64 * s));
+    const h = Math.max(34, snap(90 * s));
+    const d = Math.max(5, snap(13 * s));
+    const lipH = Math.max(13, snap(25 * s));
+
+    ctx.save();
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.strokeStyle = outline;
+
+    ctx.fillStyle = sideCol;
+    ctx.fillRect(snap(x - w / 2 + direction * d), snap(y - h + lipH * 0.35), w, h - lipH * 0.25);
+    ctx.strokeRect(snap(x - w / 2 + direction * d), snap(y - h + lipH * 0.35), w, h - lipH * 0.25);
+
+    ctx.fillStyle = front;
+    ctx.fillRect(snap(x - w / 2), snap(y - h + lipH * 0.56), w, h - lipH * 0.56);
+    ctx.strokeRect(snap(x - w / 2), snap(y - h + lipH * 0.56), w, h - lipH * 0.56);
+
+    ctx.fillStyle = lip;
+    ctx.fillRect(snap(x - w * 0.58), snap(y - h + lipH * 0.25), snap(w * 1.16), lipH);
+    ctx.strokeRect(snap(x - w * 0.58), snap(y - h + lipH * 0.25), snap(w * 1.16), lipH);
+    this.#ellipse(x + direction * d * 0.45, y - h + lipH * 0.24, w * 0.62, 14 * s, top, outline);
+    this.#ellipse(x + direction * d * 0.45, y - h + lipH * 0.24, w * 0.42, 8 * s, '#0d3b22', null);
+
+    ctx.fillStyle = '#8bf276';
+    ctx.fillRect(snap(x - w * 0.27), snap(y - h + lipH * 0.74), Math.max(2, snap(7 * s)), Math.max(8, snap(h * 0.44)));
+    ctx.fillStyle = '#0d5729';
+    ctx.fillRect(snap(x + w * 0.24), snap(y - h + lipH * 0.82), Math.max(2, snap(4 * s)), Math.max(8, snap(h * 0.54)));
+    ctx.restore();
+    return true;
+  }
+
+  drawPlanter(x, y, scale = 1, {
+    side = -1,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const direction = side > 0 ? -1 : 1;
+    const pot = { front: '#b85f31', side: '#74361f', top: '#e08a4a', outline: '#3e2117', soil: '#4f2919' };
+    const leaf = PALETTES.leaf;
+    const w = Math.max(22, snap(58 * s));
+    const h = Math.max(22, snap(52 * s));
+    const d = Math.max(4, snap(9 * s));
+    const left = x - w / 2;
+    const right = x + w / 2;
+    const topY = y - h;
+
+    ctx.save();
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.strokeStyle = pot.outline;
+    this.#polygon([[left, topY], [left + direction * d, topY - d], [right + direction * d, topY - d], [right, topY]], pot.top);
+    this.#polygon([[right, topY], [right + direction * d, topY - d], [right + direction * d * 0.6, y - 5 * s], [right - 8 * s, y]], pot.side);
+    ctx.fillStyle = pot.front;
+    ctx.beginPath();
+    ctx.moveTo(snap(left), snap(topY));
+    ctx.lineTo(snap(right), snap(topY));
+    ctx.lineTo(snap(right - 8 * s), snap(y));
+    ctx.lineTo(snap(left + 8 * s), snap(y));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = pot.side;
+    ctx.fillRect(snap(left + 9 * s), snap(y - 14 * s), snap(w - 18 * s), Math.max(3, snap(7 * s)));
+    this.#ellipse(x + direction * d * 0.25, topY - 1 * s, w * 0.46, 7 * s, pot.soil, pot.outline);
+
+    ctx.strokeStyle = leaf.outline;
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x + direction * 2 * s), snap(topY - 2 * s));
+    ctx.lineTo(snap(x + direction * (variant & 1 ? 4 : -4) * s), snap(topY - 32 * s));
+    ctx.stroke();
+    this.#leafBlade(x - 8 * s, topY - 24 * s, 18 * s, 28 * s, -0.62, leaf.top, leaf.outline);
+    this.#leafBlade(x + 10 * s, topY - 30 * s, 17 * s, 32 * s, 0.58, leaf.front, leaf.outline);
+    this.#leafBlade(x + 2 * s, topY - 18 * s, 12 * s, 22 * s, 0.18, leaf.highlight, leaf.outline);
+    ctx.restore();
+    return true;
+  }
+
+  drawMushroom(x, y, scale = 1, {
+    variant = 'red',
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const cap =
+      variant === 'blue'
+        ? { front: '#4c8fe8', side: '#2854a8', top: '#70b7ff', spot: '#dff5ff' }
+        : variant === 'purple'
+          ? { front: '#9a55d8', side: '#5b2f91', top: '#c283f1', spot: '#f5dfff' }
+          : { front: '#d94836', side: '#8f231d', top: '#ef7358', spot: '#ffe2c8' };
+    const stem = { front: '#f1d39a', side: '#b9854b', top: '#ffe7b6', outline: '#5a321e' };
+    const capW = Math.max(34, snap((variant === 'blue' ? 116 : 136) * s));
+    const capH = Math.max(18, snap((variant === 'blue' ? 66 : 70) * s));
+    const stemW = Math.max(10, snap((variant === 'purple' ? 36 : 31) * s));
+    const stemH = Math.max(24, snap((variant === 'purple' ? 72 : 66) * s));
+    const capY = y - stemH - 8 * s;
+
+    ctx.save();
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.strokeStyle = stem.outline;
+
+    ctx.fillStyle = stem.side;
+    ctx.beginPath();
+    ctx.moveTo(snap(x - stemW * 0.42), snap(y));
+    ctx.bezierCurveTo(snap(x - stemW * 0.70), snap(y - stemH * 0.30), snap(x - stemW * 0.38), snap(y - stemH * 0.86), snap(x - stemW * 0.20), snap(y - stemH));
+    ctx.lineTo(snap(x + stemW * 0.34), snap(y - stemH));
+    ctx.bezierCurveTo(snap(x + stemW * 0.62), snap(y - stemH * 0.46), snap(x + stemW * 0.54), snap(y - stemH * 0.18), snap(x + stemW * 0.46), snap(y));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = stem.front;
+    ctx.beginPath();
+    ctx.moveTo(snap(x - stemW * 0.25), snap(y - 4 * s));
+    ctx.bezierCurveTo(snap(x - stemW * 0.42), snap(y - stemH * 0.34), snap(x - stemW * 0.18), snap(y - stemH * 0.82), snap(x + stemW * 0.05), snap(y - stemH));
+    ctx.bezierCurveTo(snap(x + stemW * 0.30), snap(y - stemH * 0.65), snap(x + stemW * 0.32), snap(y - stemH * 0.24), snap(x + stemW * 0.22), snap(y - 4 * s));
+    ctx.closePath();
+    ctx.fill();
+    this.#ellipse(x, y - 2 * s, stemW * 0.58, 7 * s, stem.top, stem.outline);
+
+    this.#mushroomCap(x, capY, capW, capH, cap.front, cap.side, stem.outline, variant === 'blue');
+    this.#ellipse(x - capW * 0.18, capY - capH * 0.22, capW * 0.26, capH * 0.13, cap.top, null);
+    ctx.fillStyle = cap.spot;
+    const spots = [
+      [-0.34, -0.11, 0.09], [-0.08, -0.31, 0.10], [0.28, -0.13, 0.10],
+      [0.02, 0.08, 0.06], [0.40, 0.08, 0.05],
+    ];
+    for (const [dx, dy, r] of spots) {
+      this.#ellipse(x + capW * dx, capY + capH * dy, capW * r, capH * r * 0.82, cap.spot, null);
+    }
+    ctx.fillStyle = 'rgba(60, 35, 25, 0.28)';
+    for (let i = -3; i <= 3; i += 1) {
+      ctx.fillRect(snap(x + i * capW * 0.08), snap(capY + capH * 0.24), Math.max(1, snap(2 * s)), Math.max(3, snap(12 * s)));
+    }
+    ctx.restore();
+    return true;
+  }
+
+  drawBush(x, y, scale = 1, {
+    flowers = false,
+    large = false,
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale * (large ? 1.16 : 1);
+    const leaf = PALETTES.leaf;
+    const w = (large ? 170 : 118) * s;
+    const h = (large ? 98 : 72) * s;
+
+    ctx.save();
+    ctx.lineWidth = Math.max(1, snap(2 * scale));
+    this.#bushSilhouette(x, y - h * 0.08, w, h, leaf, variant);
+    this.#leafMosaic(x, y - h * 0.31, w * 0.74, h * 0.48, scale, large ? 34 : 24, variant);
+    if (flowers) {
+      const flowerColor = ['#c46dff', '#a455e6', '#f3d14b'];
+      for (let i = 0; i < (large ? 7 : 5); i += 1) {
+        const px = x - w * 0.34 + ((i * 43 + variant * 13) % Math.max(1, w * 0.68));
+        const py = y - h * 0.54 + ((i * 23 + variant * 7) % Math.max(1, h * 0.42));
+        this.#flowerDot(px, py, Math.max(2, (large ? 6 : 5) * scale), flowerColor[i % flowerColor.length]);
+      }
+    }
+    ctx.restore();
+    return true;
+  }
+
+  drawTree(x, y, scale = 1, {
+    variant = 0,
+  } = {}) {
+    const ctx = this.ctx;
+    const s = scale;
+    const wood = PALETTES.wood;
+    const leaf = PALETTES.leaf;
+    const trunkW = Math.max(14, snap(32 * s));
+    const trunkH = Math.max(40, snap(104 * s));
+    const canopyW = Math.max(74, snap(156 * s));
+    const canopyH = Math.max(66, snap(136 * s));
+    const cy = y - trunkH - canopyH * 0.08;
+
+    ctx.save();
+    this.#board3d(x, y, trunkW, trunkH, 9 * s, variant & 1 ? -1 : 1, wood);
+    ctx.fillStyle = wood.highlight;
+    ctx.fillRect(snap(x - trunkW * 0.24), snap(y - trunkH + 12 * s), Math.max(1, snap(4 * s)), snap(trunkH * 0.62));
+    ctx.strokeStyle = wood.outline;
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x - 2 * s), snap(y - trunkH * 0.64));
+    ctx.lineTo(snap(x - 25 * s), snap(y - trunkH * 0.94));
+    ctx.moveTo(snap(x + 4 * s), snap(y - trunkH * 0.58));
+    ctx.lineTo(snap(x + 28 * s), snap(y - trunkH * 0.90));
+    ctx.stroke();
+
+    this.#treeCanopy(x, cy, canopyW, canopyH, leaf, variant, scale);
+    ctx.restore();
+    return true;
+  }
+
+  #mushroomCap(x, y, w, h, front, side, outline, pointed = false) {
+    const ctx = this.ctx;
+    ctx.fillStyle = side;
+    ctx.strokeStyle = outline;
+    ctx.beginPath();
+    ctx.moveTo(snap(x - w * 0.46), snap(y + h * 0.20));
+    ctx.bezierCurveTo(snap(x - w * 0.38), snap(y - h * 0.36), snap(x - w * 0.10), snap(y - h * 0.58), snap(x), snap(y - h * (pointed ? 0.64 : 0.50)));
+    ctx.bezierCurveTo(snap(x + w * 0.22), snap(y - h * 0.38), snap(x + w * 0.46), snap(y - h * 0.06), snap(x + w * 0.50), snap(y + h * 0.22));
+    ctx.lineTo(snap(x + w * 0.34), snap(y + h * 0.30));
+    ctx.lineTo(snap(x - w * 0.36), snap(y + h * 0.30));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = front;
+    ctx.beginPath();
+    ctx.moveTo(snap(x - w * 0.50), snap(y + h * 0.13));
+    ctx.bezierCurveTo(snap(x - w * 0.40), snap(y - h * 0.34), snap(x - w * 0.11), snap(y - h * 0.68), snap(x + w * 0.02), snap(y - h * (pointed ? 0.74 : 0.56)));
+    ctx.bezierCurveTo(snap(x + w * 0.30), snap(y - h * 0.48), snap(x + w * 0.50), snap(y - h * 0.03), snap(x + w * 0.52), snap(y + h * 0.16));
+    ctx.lineTo(snap(x + w * 0.38), snap(y + h * 0.25));
+    ctx.lineTo(snap(x - w * 0.42), snap(y + h * 0.25));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  #bushSilhouette(x, y, w, h, palette, variant) {
+    const lobes = [
+      [-0.42, 0.02, 0.26, 0.26],
+      [-0.24, -0.18, 0.31, 0.31],
+      [0.00, -0.29, 0.34, 0.32],
+      [0.24, -0.18, 0.31, 0.31],
+      [0.43, 0.02, 0.25, 0.25],
+      [0.00, 0.08, 0.43, 0.30],
+    ];
+    for (const [dx, dy, rw, rh] of lobes) {
+      this.#ellipse(x + w * dx, y + h * dy, w * rw, h * rh, palette.side, palette.outline);
+      this.#ellipse(x + w * (dx - 0.03), y + h * (dy - 0.04), w * rw * 0.76, h * rh * 0.70, (variant + dx * 10) % 2 ? palette.front : palette.top, null);
+    }
+    this.#ellipse(x - w * 0.16, y - h * 0.34, w * 0.14, h * 0.05, palette.highlight, null);
+    this.#ellipse(x + w * 0.18, y - h * 0.30, w * 0.12, h * 0.045, palette.highlight, null);
+  }
+
+  #treeCanopy(x, y, w, h, palette, variant, scale) {
+    const lobes = [
+      [-0.31, 0.03, 0.30, 0.28],
+      [-0.18, -0.22, 0.34, 0.30],
+      [0.08, -0.32, 0.36, 0.32],
+      [0.31, -0.12, 0.30, 0.28],
+      [0.24, 0.16, 0.28, 0.25],
+      [-0.08, 0.20, 0.36, 0.26],
+    ];
+    for (const [dx, dy, rw, rh] of lobes) {
+      this.#ellipse(x + w * dx, y + h * dy, w * rw, h * rh, palette.side, palette.outline);
+      this.#ellipse(x + w * (dx - 0.035), y + h * (dy - 0.055), w * rw * 0.74, h * rh * 0.68, palette.front, null);
+    }
+    this.#leafMosaic(x, y - h * 0.08, w * 0.72, h * 0.58, scale, 42, variant);
+    this.#ellipse(x - w * 0.17, y - h * 0.32, w * 0.11, h * 0.04, palette.highlight, null);
+    this.#ellipse(x + w * 0.12, y - h * 0.28, w * 0.09, h * 0.035, palette.highlight, null);
+  }
+
+  #leafMosaic(cx, cy, w, h, scale, count, variant) {
+    const ctx = this.ctx;
+    const colors = ['#8bd84a', '#67bd3d', '#3fa34d', '#2d7d3c', '#b5ec5b'];
+    const size = Math.max(3, snap(8 * scale));
+    for (let i = 0; i < count; i += 1) {
+      const angle = ((i * 137 + variant * 23) % 360) * Math.PI / 180;
+      const radius = (((i * 47 + variant * 17) % 100) / 100) ** 0.55;
+      const px = cx + Math.cos(angle) * w * 0.48 * radius;
+      const py = cy + Math.sin(angle) * h * 0.48 * radius;
+      const leafW = size * (0.8 + ((i + variant) % 3) * 0.18);
+      const leafH = size * (0.55 + ((i + 1) % 3) * 0.16);
+      ctx.fillStyle = colors[(i + variant) % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(snap(px), snap(py - leafH));
+      ctx.lineTo(snap(px + leafW), snap(py));
+      ctx.lineTo(snap(px), snap(py + leafH));
+      ctx.lineTo(snap(px - leafW), snap(py));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  #grassTuft(x, y, scale, variant = 0) {
+    const ctx = this.ctx;
+    const blades = [-9, -4, 1, 6, 11];
+    ctx.strokeStyle = '#206f2b';
+    ctx.lineWidth = Math.max(1, snap(2 * scale));
+    for (let i = 0; i < blades.length; i += 1) {
+      const bx = x + blades[i] * scale;
+      const lean = ((i + variant) % 3 - 1) * 5 * scale;
+      ctx.beginPath();
+      ctx.moveTo(snap(bx), snap(y));
+      ctx.lineTo(snap(bx + lean), snap(y - (10 + (i % 2) * 5) * scale));
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#67bd3d';
+    ctx.fillRect(snap(x - 13 * scale), snap(y - 3 * scale), snap(26 * scale), Math.max(2, snap(5 * scale)));
+  }
+
+  #leafBlade(cx, cy, w, h, tilt, fill, stroke) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(snap(cx), snap(cy));
+    ctx.rotate(tilt);
+    ctx.beginPath();
+    ctx.moveTo(0, snap(-h * 0.50));
+    ctx.bezierCurveTo(snap(w * 0.52), snap(-h * 0.30), snap(w * 0.46), snap(h * 0.26), 0, snap(h * 0.50));
+    ctx.bezierCurveTo(snap(-w * 0.44), snap(h * 0.22), snap(-w * 0.46), snap(-h * 0.28), 0, snap(-h * 0.50));
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   #polygon(points, fill) {
@@ -221,6 +754,131 @@ export class VoxelBlockRenderer {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  }
+
+  #board3d(cx, bottomY, width, height, depth, direction, palette) {
+    const ctx = this.ctx;
+    const w = Math.max(4, snap(width));
+    const h = Math.max(4, snap(height));
+    const d = Math.max(1, snap(depth));
+    const left = snap(cx - w / 2);
+    const right = left + w;
+    const top = snap(bottomY - h);
+    const bottom = snap(bottomY);
+    const shift = direction * d;
+
+    ctx.strokeStyle = palette.outline;
+    this.#polygon([[left, top], [left + shift, top - d], [right + shift, top - d], [right, top]], palette.top);
+    this.#polygon([[right, top], [right + shift, top - d], [right + shift, bottom - d], [right, bottom]], palette.side);
+    ctx.fillStyle = palette.front;
+    ctx.fillRect(left, top, w, h);
+    ctx.strokeRect(left, top, w, h);
+  }
+
+  #ellipse(cx, cy, rx, ry, fill, stroke) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.ellipse(snap(cx), snap(cy), Math.max(1, snap(rx)), Math.max(1, snap(ry)), 0, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    }
+  }
+
+  #flowerDot(x, y, size, fill) {
+    const ctx = this.ctx;
+    const r = Math.max(1, snap(size));
+    this.#ellipse(x - r * 0.65, y, r * 0.55, r * 0.42, fill, null);
+    this.#ellipse(x + r * 0.65, y, r * 0.55, r * 0.42, fill, null);
+    this.#ellipse(x, y - r * 0.55, r * 0.48, r * 0.42, fill, null);
+    ctx.fillStyle = '#ffe67a';
+    ctx.fillRect(snap(x), snap(y), Math.max(1, snap(r * 0.38)), Math.max(1, snap(r * 0.38)));
+  }
+
+  #materialAccents(left, top, w, h, scale, palette, material, variant) {
+    const ctx = this.ctx;
+    const px = Math.max(1, snap(3 * scale));
+    if (material === 'grass') {
+      ctx.fillStyle = '#2d7d3c';
+      for (let i = 0; i < 5; i += 1) {
+        const x = left + px * 3 + ((i * 19 + variant * 11) % Math.max(px, w - px * 8));
+        const y = top - px + ((i + variant) % 2) * px;
+        ctx.fillRect(snap(x), snap(y), px, px * 4);
+      }
+      ctx.fillStyle = '#7a3f1f';
+      for (let i = 0; i < 4; i += 1) {
+        const rx = left + px * 4 + ((i * 23 + variant * 7) % Math.max(px, w - px * 9));
+        const ry = top + h * 0.44 + ((i * 13 + variant * 5) % Math.max(px, h * 0.28));
+        ctx.fillRect(snap(rx), snap(ry), px * 2, px);
+      }
+      if ((variant ?? 0) % 4 >= 2) {
+        for (let i = 0; i < 3; i += 1) {
+          const fx = left + w * (0.24 + i * 0.24);
+          this.#flowerDot(fx, top - px * 2, Math.max(2, 4 * scale), i % 2 ? '#b05cff' : '#ffd94d');
+        }
+      }
+      return;
+    }
+
+    if (material === 'stone') {
+      ctx.fillStyle = palette.highlight;
+      ctx.fillRect(left + px * 3, top + px * 3, Math.max(px * 3, snap(w * 0.18)), px);
+      ctx.fillStyle = palette.edge;
+      for (let i = 0; i < 5; i += 1) {
+        const rx = left + px * 2 + ((i * 31 + variant * 17) % Math.max(px, w - px * 6));
+        const ry = top + px * 5 + ((i * 11 + variant * 5) % Math.max(px, h - px * 10));
+        ctx.fillRect(snap(rx), snap(ry), px * 2, px);
+      }
+      return;
+    }
+
+    if (material === 'purple') {
+      ctx.fillStyle = '#c38cff';
+      ctx.fillRect(left + px * 3, top + px * 3, Math.max(px * 3, snap(w * 0.20)), px);
+      ctx.fillStyle = '#2a1648';
+      for (let i = 0; i < 4; i += 1) {
+        const rx = left + px * 3 + ((i * 37 + variant * 9) % Math.max(px, w - px * 8));
+        const ry = top + px * 7 + ((i * 17 + variant * 3) % Math.max(px, h - px * 11));
+        ctx.fillRect(snap(rx), snap(ry), px, px);
+      }
+      return;
+    }
+
+    if (material === 'question') {
+      ctx.fillStyle = '#fff2aa';
+      ctx.fillRect(left + px * 3, top + px * 2, Math.max(px * 4, snap(w * 0.28)), px);
+      ctx.fillStyle = '#9a5e12';
+      ctx.fillRect(left + px * 2, top + h - px * 5, w - px * 4, px);
+    }
+  }
+
+  #pixelQuestionGlyph(cx, cy, scale) {
+    const ctx = this.ctx;
+    const p = Math.max(2, snap(5 * scale));
+    const cells = [
+      [1, 0], [2, 0], [3, 0],
+      [0, 1], [4, 1],
+      [4, 2],
+      [3, 3],
+      [2, 4],
+      [2, 6],
+    ];
+    const left = snap(cx - 2.5 * p);
+    const top = snap(cy - 3.5 * p);
+    ctx.fillStyle = '#70400d';
+    for (const [gx, gy] of cells) {
+      ctx.fillRect(left + gx * p + Math.max(1, snap(scale)), top + gy * p + Math.max(1, snap(scale)), p, p);
+    }
+    ctx.fillStyle = '#fff2aa';
+    for (const [gx, gy] of cells) {
+      ctx.fillRect(left + gx * p, top + gy * p, p, p);
+    }
+    ctx.fillStyle = '#ffe87c';
+    for (const [gx, gy] of [[1, 0], [2, 0], [0, 1], [3, 3], [2, 6]]) {
+      ctx.fillRect(left + gx * p, top + gy * p, Math.max(1, snap(p * 0.45)), Math.max(1, snap(p * 0.45)));
+    }
   }
 
   #frontTexture(left, top, w, h, scale, palette, material, variant) {
@@ -292,4 +950,3 @@ export class VoxelBlockRenderer {
     );
   }
 }
-
