@@ -1084,15 +1084,30 @@ export class SceneryRenderer {
   }
 }
 
+// A prefab item whose zLayer marks it as solid structure (base / stack / topper).
+// Below this, entities are ground flora / scatter that must keep pure depth order.
+const STRUCTURE_Z = 10;
+
 function byDistanceComponent(a, b) {
-  // v3.8.40 — Phase 6 z-layer tie-break. Far → near remains the primary
-  // ordering; entities at the same depth tier sort by Sprite.zLayer
-  // ascending so background-accent draws before base, base before
-  // topper, topper before foreground-accent. Matches the role enum's
-  // implicit depth ordering.
+  // v3.8.40 — Phase 6 z-layer tie-break. Far → near is the primary ordering;
+  // entities at the same depth tier sort by Sprite.zLayer ascending so
+  // background-accent draws before base, base before topper, topper before
+  // foreground-accent.
+  const sa = a.components.Sprite;
+  const sb = b.components.Sprite;
+  const zA = sa?.zLayer ?? 0;
+  const zB = sb?.zLayer ?? 0;
   const distDiff = b.components.Position.distance - a.components.Position.distance;
+  // M23A — keep ONE prefab instance's solid stack in its authored paint order.
+  // Toppers are authored at a small dist offset from their base; under pure
+  // distance sort that offset (> 0.05) let a topper fall behind/over the wrong
+  // base. Within a single cluster (same prefabId) BOTH-structural items
+  // therefore sort by zLayer, not distance. Cross-cluster pairs and ground
+  // flora keep the depth-first ordering unchanged — minimal blast radius.
+  if (sa && sb && sa.prefabId != null && sa.prefabId === sb.prefabId
+      && zA >= STRUCTURE_Z && zB >= STRUCTURE_Z) {
+    return zA !== zB ? zA - zB : distDiff;
+  }
   if (Math.abs(distDiff) > 0.05) return distDiff;
-  const zA = a.components.Sprite?.zLayer ?? 0;
-  const zB = b.components.Sprite?.zLayer ?? 0;
   return zA - zB;
 }
