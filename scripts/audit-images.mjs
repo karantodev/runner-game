@@ -139,6 +139,9 @@ async function main() {
   // are still expected to match. See Phase 7d sidePair split.
   const isRoadKitPair = (relPath) => /^assets\/terrain\/road\//.test(relPath);
   const RUNTIME_NORMALIZED_SIDE_PAIRS = new Set([
+    // The side block PNGs are alpha-tight exports. sceneryDispatch keeps
+    // their old visible in-scene size with per-side draw widths.
+    'assets/terrain/blocks/grass_dirt_block',
     // sceneryDispatch draws both halves by a shared visual height, so the
     // shipped canvas mismatch no longer creates an in-game scale pop.
     'assets/terrain/blocks/grass_dirt_step',

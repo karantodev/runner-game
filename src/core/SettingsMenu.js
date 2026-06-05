@@ -8,11 +8,13 @@
  *     music: boolean,       // same
  *     cameraShake: boolean, // mirrors world.config.gameFeel.cameraShake
  *     particles: boolean,   // mirrors world.config.gameFeel.particles
- *     qualityLock: 0|1|2|3|null   // null = auto-scale
+ *     qualityLock: 0|1|2|3|null,  // null = auto-scale
+ *     blockStyle: 'sprite'|'voxel' // 2D sprite blocks or 3D voxel blocks
  *   }
  *
  * Dependencies passed in:
  *   - world  → mutates gameFeel for camera shake / particles
+ *   - renderer → switches structural block rendering
  *   - adaptiveQuality → locks/unlocks quality tier
  *   - playerStats / leaderboard → reset buttons
  *   - tutorial → reset-stats also re-arms the tutorial (re-onboard)
@@ -25,24 +27,49 @@ const DEFAULT_SETTINGS = Object.freeze({
   cameraShake: true,
   particles: true,
   qualityLock: null,
+  blockStyle: 'sprite',
 });
 
 export class SettingsMenu {
-  constructor({ storageKey, world, adaptiveQuality, playerStats, leaderboard, tutorial, achievements, sound }) {
+  constructor({
+    storageKey,
+    world,
+    renderer,
+    adaptiveQuality,
+    playerStats,
+    leaderboard,
+    tutorial,
+    achievements,
+    sound,
+    defaultBlockStyle,
+  }) {
     this.storageKey = storageKey;
     this.world = world;
+    this.renderer = renderer ?? null;
     this.adaptiveQuality = adaptiveQuality;
     this.playerStats = playerStats;
     this.leaderboard = leaderboard;
     this.tutorial = tutorial;
     this.achievements = achievements;
     this.sound = sound ?? null;
+    this.defaultBlockStyle = normalizeBlockStyle(defaultBlockStyle, DEFAULT_SETTINGS.blockStyle);
+    this.blockStyleButtons = [];
     this.settings = this.#load();
     this.modalEl = null;
     this.#applyToWorld();
   }
 
   getSettings() { return { ...this.settings }; }
+
+  setBlockStyle(style) {
+    const next = normalizeBlockStyle(style, this.settings.blockStyle);
+    this.#update('blockStyle', next);
+    return this.settings.blockStyle;
+  }
+
+  toggleBlockStyle() {
+    return this.setBlockStyle(this.settings.blockStyle === 'voxel' ? 'sprite' : 'voxel');
+  }
 
   /** Attach DOM listeners to the #settings-modal markup. Idempotent. */
   bind() {
@@ -56,6 +83,9 @@ export class SettingsMenu {
     bindSelect('settings-quality',
       this.settings.qualityLock === null ? 'auto' : String(this.settings.qualityLock),
       (v) => this.#update('qualityLock', v === 'auto' ? null : Number(v)));
+    bindSegmentedButtons('settings-block-style', this.settings.blockStyle, (v) => this.setBlockStyle(v));
+    this.blockStyleButtons = Array.from(document.querySelectorAll('#settings-block-style [data-block-style]'));
+    this.#syncBlockStyleControls();
 
     // v3.5 language dropdown. Populated dynamically so adding a language
     // in i18n.js doesn't require touching index.html.
@@ -117,6 +147,12 @@ export class SettingsMenu {
     this.settings[key] = value;
     this.#persist();
     this.#applyToWorld();
+    if (key === 'blockStyle') {
+      this.#syncBlockStyleControls();
+      window.dispatchEvent(new CustomEvent('orchid:blockStyleChanged', {
+        detail: { blockStyle: this.settings.blockStyle },
+      }));
+    }
   }
 
   /** Push toggle state to the systems that actually care. */
@@ -131,12 +167,15 @@ export class SettingsMenu {
     if (this.sound) {
       this.sound.setEnabled(!!this.settings.sfx);
     }
+    if (this.renderer && this.renderer.blockStyle !== this.settings.blockStyle) {
+      this.settings.blockStyle = this.renderer.setBlockStyle(this.settings.blockStyle);
+    }
   }
 
   #load() {
     try {
       const raw = window.localStorage.getItem(this.storageKey);
-      if (!raw) return { ...DEFAULT_SETTINGS };
+      if (!raw) return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle };
       const parsed = JSON.parse(raw);
       return {
         sfx: !!(parsed?.sfx ?? DEFAULT_SETTINGS.sfx),
@@ -144,13 +183,22 @@ export class SettingsMenu {
         cameraShake: parsed?.cameraShake === undefined ? DEFAULT_SETTINGS.cameraShake : !!parsed.cameraShake,
         particles: parsed?.particles === undefined ? DEFAULT_SETTINGS.particles : !!parsed.particles,
         qualityLock: validQualityLock(parsed?.qualityLock),
+        blockStyle: normalizeBlockStyle(parsed?.blockStyle, this.defaultBlockStyle),
       };
-    } catch { return { ...DEFAULT_SETTINGS }; }
+    } catch { return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle }; }
   }
 
   #persist() {
     try { window.localStorage.setItem(this.storageKey, JSON.stringify(this.settings)); }
     catch { /* unavailable — degrade to session-only */ }
+  }
+
+  #syncBlockStyleControls() {
+    for (const button of this.blockStyleButtons) {
+      const active = normalizeBlockStyle(button.dataset.blockStyle, DEFAULT_SETTINGS.blockStyle) === this.settings.blockStyle;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
   }
 }
 
@@ -174,8 +222,27 @@ function bindSelect(id, initial, onChange) {
   el.addEventListener('change', (e) => onChange(e.target.value));
 }
 
+function bindSegmentedButtons(id, initial, onChange) {
+  const root = document.getElementById(id);
+  if (!root) return;
+  const current = normalizeBlockStyle(initial, DEFAULT_SETTINGS.blockStyle);
+  for (const button of root.querySelectorAll('[data-block-style]')) {
+    button.classList.toggle(
+      'is-active',
+      normalizeBlockStyle(button.dataset.blockStyle, DEFAULT_SETTINGS.blockStyle) === current,
+    );
+    button.addEventListener('click', () => onChange(button.dataset.blockStyle));
+  }
+}
+
 function bindClick(id, fn) {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('click', fn);
+}
+
+function normalizeBlockStyle(value, fallback = DEFAULT_SETTINGS.blockStyle) {
+  if (value === 'voxel' || value === '3d') return 'voxel';
+  if (value === 'sprite' || value === '2d') return 'sprite';
+  return fallback === 'voxel' ? 'voxel' : 'sprite';
 }

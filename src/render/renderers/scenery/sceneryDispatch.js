@@ -56,6 +56,12 @@ function drawByHeight({ sprites }, key, x, y, height) {
 //   0 = block_01, 1 = block_02, 2 = block_flower_01, 3 = block_flower_02
 const NEW_TERRAIN_BLOCK_KEYS = ['grassDirtBlock01', 'grassDirtBlock02', 'grassDirtBlockFlower01', 'grassDirtBlockFlower02'];
 const TERRAIN_BLOCK_KEYS = ['grassBlockFrontRect', 'grassBlockCube01', 'grassBlockCube02', 'grassBlockColumnTall'];
+// The side-aware grass/dirt block PNGs are alpha-tight exported. Keep the
+// in-scene visible width equal to the old 256px-canvas art drawn at 185px.
+const GRASS_DIRT_BLOCK_SIDE_WIDTH = Object.freeze({
+  Left: 185 * (183 / 256),
+  Right: 185 * (182 / 256),
+});
 // v3.8.18 side-aware mapping — supports per-type override.
 //
 // Canonical semantic per docs/designer-asset-brief.md § 1.4.1:
@@ -127,7 +133,13 @@ register(['grass_dirt_block', 'terrainBlock'], (deps, x, y, scale, variant, side
     });
   }
   if (side === -1 || side === 1) {
-    return deps.sprites.draw(`grassDirtBlock${SIDE_KEY_FOR(side, 'grass_dirt_block')}`, x, y, 185 * scale);
+    const sideKey = SIDE_KEY_FOR(side, 'grass_dirt_block');
+    return deps.sprites.draw(
+      `grassDirtBlock${sideKey}`,
+      x,
+      y,
+      GRASS_DIRT_BLOCK_SIDE_WIDTH[sideKey] * scale,
+    );
   }
   const v = variant ?? 0;
   const newKey = NEW_TERRAIN_BLOCK_KEYS[v % 4];
@@ -309,13 +321,19 @@ register(['question_block', 'questionBlock'], (deps, x, y, scale) => {
 // v4.3 — P3 reference-match: green_pipe / pipe should render the actual pipe
 // sprite so the reference's green pipe appears. planter_pot / planterPot keep
 // the planter sprite with side-aware variant support as before.
-register(['green_pipe', 'pipe'], (deps, x, y, scale) => {
+register(['green_pipe', 'pipe'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawPipe(x, y, scale, { side });
+  }
   tryDraw(deps, ['pipeGreenSprite', 'planterPot'], x, y, 130 * scale,
     () => deps.paint.pipe(x, y, scale));
   return false;
 });
 
 register(['planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawPlanter(x, y, scale, { side, variant });
+  }
   // v3.8.34 — side-aware variant pass.
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`planterPot${SIDE_KEY_FOR(side, 'planter_pot')}`, x, y, 130 * scale);
@@ -326,6 +344,9 @@ register(['planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
 });
 
 register(['fence_wood_short', 'fence'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawFence(x, y, scale, { side, variant });
+  }
   // M22A — fence dispatch scale 220 → 160 so the foreground fence frames the
   // scene like the reference instead of dominating it (retuned 175 → 160).
   // Render-only; no PNG / prefab / collision change. Bump back up if too small.
@@ -338,6 +359,9 @@ register(['fence_wood_short', 'fence'], (deps, x, y, scale, variant, side) => {
 });
 
 register(['hanging_platform_vines', 'hangingPlatform'], (deps, x, y, scale, variant, side) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawHangingPlatform(x, y, scale, { side, variant });
+  }
   if (side === -1 || side === 1) {
     return deps.sprites.draw(`platformHangingVines${SIDE_KEY_FOR(side, 'hanging_platform_vines')}`, x, y, 280 * scale);
   }
@@ -348,68 +372,112 @@ register(['hanging_platform_vines', 'hangingPlatform'], (deps, x, y, scale, vari
 // ── Large organic / flora ────────────────────────────────────────────────────
 
 register(['tree_round', 'tree'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawTree(x, y, scale, { variant });
+  }
   tryDraw(deps, ['treeRoundSprite'], x, y, 280 * scale,
     () => deps.paint.tree(x, y, scale, variant ?? 0));
 });
 
 register(['mushroom_red_big', 'mushroom'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawMushroom(x, y, scale, {
+      variant: variant === 'red' ? 'red' : 'purple',
+    });
+  }
   const key = variant === 'red' ? 'mushroomRed' : 'mushroomPurple';
   tryDraw(deps, [key], x, y, 180 * scale,
     () => deps.paint.mushroom(x, y, scale, variant));
 });
 
-register(['purple_flower_single', 'flowerbush', 'bush_with_purple_flowers'], (deps, x, y, scale) => {
+register(['purple_flower_single', 'flowerbush', 'bush_with_purple_flowers'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawBush(x, y, scale, { flowers: true, variant });
+  }
   tryDraw(deps, ['bushWithFlowers'], x, y, 160 * scale,
     () => deps.paint.flowerBush(x, y, scale));
 });
 
-register(['bush_large', 'bushLarge'], (deps, x, y, scale) => {
+register(['bush_large', 'bushLarge'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawBush(x, y, scale, { large: true, variant });
+  }
   tryDraw(deps, ['bushLarge'], x, y, 240 * scale);
 });
 
-register(['bush_large_with_purple_flowers', 'bushLargeFlower'], (deps, x, y, scale) => {
+register(['bush_large_with_purple_flowers', 'bushLargeFlower'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawBush(x, y, scale, { large: true, flowers: true, variant });
+  }
   tryDraw(deps, ['bushLargeFlower'], x, y, 240 * scale);
 });
 
 // ── Small organic / ground cover ─────────────────────────────────────────────
 
 register(['yellow_flower_small', 'smallFlower'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawSmallFlower(x, y, scale, { variant });
+  }
   const key = (variant ?? 0) % 2 === 0 ? 'yellowFlowerSmall' : 'purpleFlowerCluster';
   tryDraw(deps, [key], x, y, 80 * scale,
     () => deps.paint.smallFlower(x, y, scale));
 });
 
-register(['sprout_soil', 'sprout'], (deps, x, y, scale) => {
+register(['sprout_soil', 'sprout'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawSprout(x, y, scale, { variant });
+  }
   tryDraw(deps, ['sproutSoil'], x, y, 75 * scale,
     () => deps.paint.sprout(x, y, scale));
 });
 
-register(['wheat_tuft', 'wheat'], (deps, x, y, scale) => {
+register(['wheat_tuft', 'wheat'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawWheat(x, y, scale, { variant });
+  }
   deps.paint.wheat(x, y, scale);
 });
 
 register(['mushroom_blue_big', 'mushroomBlue'], (deps, x, y, scale) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawMushroom(x, y, scale, { variant: 'blue' });
+  }
   tryDraw(deps, ['mushroomBlue'], x, y, 170 * scale);
 });
 
-register(['leaf_clump_small', 'leafClusterLow'], (deps, x, y, scale) => {
+register(['leaf_clump_small', 'leafClusterLow'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawLeafClump(x, y, scale, { variant });
+  }
   tryDraw(deps, ['leafClusterLow'], x, y, 190 * scale);
 });
 
-register(['leaf_clump_round', 'leafClusterCompact'], (deps, x, y, scale) => {
+register(['leaf_clump_round', 'leafClusterCompact'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawLeafClump(x, y, scale, { round: true, variant });
+  }
   tryDraw(deps, ['leafClumpRound', 'leafClusterCompact'], x, y, 150 * scale);
 });
 
 register(['grass_tuft', 'grass_tuft_small', 'grassTuft'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawGrassTuft(x, y, scale, { variant });
+  }
   const key = (variant ?? 0) % 2 === 0 ? 'grassTuftSmall' : 'grassTuftLarge';
   tryDraw(deps, [key, 'grassTuft'], x, y, 130 * scale);
 });
 
-register(['grass_tuft_large'], (deps, x, y, scale) => {
+register(['grass_tuft_large'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawGrassTuft(x, y, scale, { large: true, variant });
+  }
   tryDraw(deps, ['grassTuftLarge', 'grassTuft'], x, y, 150 * scale);
 });
 
-register(['dry_grass_obstacle', 'dryGrass'], (deps, x, y, scale) => {
+register(['dry_grass_obstacle', 'dryGrass'], (deps, x, y, scale, variant) => {
+  if (deps.voxelBlocks?.enabled) {
+    return deps.voxelBlocks.drawGrassTuft(x, y, scale, { large: true, dry: true, variant });
+  }
   tryDraw(deps, ['dryGrass'], x, y, 150 * scale);
 });
 

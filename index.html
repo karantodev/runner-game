@@ -82,6 +82,15 @@
             <li><label><input type="checkbox" id="settings-music"> Music <span class="muted">(coming soon)</span></label></li>
             <li><label><input type="checkbox" id="settings-motion" checked> Camera shake</label></li>
             <li><label><input type="checkbox" id="settings-particles" checked> Particles</label></li>
+            <li>
+              <div class="settings-row">
+                <span>Block style</span>
+                <div id="settings-block-style" class="settings-segmented" role="group" aria-label="Block style">
+                  <button type="button" data-block-style="sprite" aria-pressed="true">2D</button>
+                  <button type="button" data-block-style="voxel" aria-pressed="false">3D</button>
+                </div>
+              </div>
+            </li>
             <li><label>Quality
               <select id="settings-quality">
                 <option value="auto">Auto</option>

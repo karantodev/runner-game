@@ -61,18 +61,6 @@ export class Game {
       adaptiveQuality: this.adaptiveQuality,
       share: this.share,
     });
-    this.settings = new SettingsMenu({
-      storageKey: this.config.gameplay.settingsKey,
-      world: this.world,
-      adaptiveQuality: this.adaptiveQuality,
-      playerStats: this.playerStats,
-      leaderboard: this.leaderboard,
-      tutorial: this.tutorial,
-      achievements: this.achievements,
-      sound: this.sound,
-    });
-    // Late-wire sound ↔ settings so the SFX toggle works immediately.
-    this.sound.settings = this.settings;
     this.renderer = new RenderSystem(canvas, this.assets, this.projection, {
       pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
       roadStyle: options.roadStyle,
@@ -80,6 +68,20 @@ export class Game {
       // Debug-only render-cost counters (?perf=1). null in production.
       metrics: this.config.debug?.renderMetrics === true,
     });
+    this.settings = new SettingsMenu({
+      storageKey: this.config.gameplay.settingsKey,
+      world: this.world,
+      renderer: this.renderer,
+      adaptiveQuality: this.adaptiveQuality,
+      playerStats: this.playerStats,
+      leaderboard: this.leaderboard,
+      tutorial: this.tutorial,
+      achievements: this.achievements,
+      sound: this.sound,
+      defaultBlockStyle: this.renderer.blockStyle,
+    });
+    // Late-wire sound ↔ settings so the SFX toggle works immediately.
+    this.sound.settings = this.settings;
     this.hud = new HudSystem(this.eventBus, this.world);
 
     // Combo tier-up → trigger pulse in EffectsRenderer (visual-only;
