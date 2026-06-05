@@ -312,9 +312,13 @@ export class RoadRenderer {
       //   darkAlpha   = 0.055 + 0.095*t  (peak 0.150, hue shifted #4A8C4E
       //                                   — lighter/more-saturated mid-green)
       // → peak contrast ratio: ~1.3×, reads as mottled texture not a grid.
-      const lightAlpha = 0.060 + 0.100 * fadeT;
-      const mediumAlpha = 0.050 + 0.095 * fadeT;
-      const darkAlpha   = 0.055 + 0.095 * fadeT;
+      // M22A retune — very subtle organic grass-grain lift (base alphas
+      // +~0.01) so the path reads as natural grass, not a flat green lane.
+      // Kept well under the old checker levels (light 0.080 / dark 0.120) and
+      // the same ~1.3× contrast ratio, so it stays mottled texture, not a grid.
+      const lightAlpha = 0.072 + 0.100 * fadeT;
+      const mediumAlpha = 0.060 + 0.095 * fadeT;
+      const darkAlpha   = 0.066 + 0.095 * fadeT;
       const lightFill  = `rgba(196,242,128,${lightAlpha})`;
       const mediumFill = `rgba(126,194,88,${mediumAlpha})`;
       const darkFill   = `rgba(74,140,78,${darkAlpha})`;
@@ -434,7 +438,7 @@ export class RoadRenderer {
     // stroke so the dividers are legible at a glance without becoming
     // highway-thick. Far-floor 0.18 → 0.28 keeps a visible pixel even
     // at the furthest rendered dashes.
-    const widthPx = 4.5;
+    const widthPx = 3.3;  // M22A — slimmer lane dividers (was 4.5) for a softer path read
     const segLen = 1.2;
     const segGap = 0.9;
     const period = segLen + segGap;
@@ -501,7 +505,7 @@ export class RoadRenderer {
     // → ~1 px either side = 2 px total. Clamped so far lines keep 1 px.
     // Keep the border visible without turning the garden path into a
     // highway: the textured shoulder should stay readable behind it.
-    const widthPx     = 9;
+    const widthPx     = 6;    // M22A — less-bold edge lines (was 9) so the boundary frames, not highways
     const farFloorPx  = 1.0;
     const maxDistance = 180;
     const segmentDepth = 15;
@@ -559,7 +563,7 @@ export class RoadRenderer {
 
     const period       = 5;
     const maxDistance  = 120;
-    const thicknessPx  = 2.1;  // v4.11 Stage C: 1.5→2.1 so the panel cross-lines read like the reference's grid
+    const thicknessPx  = 1.4;  // M22A — thinner rungs (2.1 → 1.6 → 1.4) to soften the grid toward the reference path
     const off = ((scrollOffset % period) + period) % period;
 
     ctx.save();

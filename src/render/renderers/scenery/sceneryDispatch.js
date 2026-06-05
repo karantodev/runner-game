@@ -326,10 +326,13 @@ register(['planter_pot', 'planterPot'], (deps, x, y, scale, variant, side) => {
 });
 
 register(['fence_wood_short', 'fence'], (deps, x, y, scale, variant, side) => {
+  // M22A — fence dispatch scale 220 → 160 so the foreground fence frames the
+  // scene like the reference instead of dominating it (retuned 175 → 160).
+  // Render-only; no PNG / prefab / collision change. Bump back up if too small.
   if (side === -1 || side === 1) {
-    return deps.sprites.draw(`fenceWoodSprite${SIDE_KEY_FOR(side, 'fence_wood_short')}`, x, y, 220 * scale);
+    return deps.sprites.draw(`fenceWoodSprite${SIDE_KEY_FOR(side, 'fence_wood_short')}`, x, y, 160 * scale);
   }
-  tryDraw(deps, ['fenceWoodSprite'], x, y, 220 * scale,
+  tryDraw(deps, ['fenceWoodSprite'], x, y, 160 * scale,
     () => deps.paint.fence(x, y, scale));
   return false;
 });
