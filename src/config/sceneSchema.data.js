@@ -13,7 +13,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 2,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 1.06, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: 0.0, scale: 1.06, variant: 0 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: 0.9, scale: 0.48 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -29,7 +29,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 2,
     items: [
       { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: 0.2, scale: 1.04, variant: 1 },
+        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: 0.2, scale: 1.04, variant: 1 },
       { id: 'mushroom_shoulder', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'mushroom_red_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist: -0.7, scale: 0.52, variant: 'red' },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -49,9 +49,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 3,
     items: [
       { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -0.1, scale: 0.98, variant: 0 },
+        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: -0.1, scale: 0.98, variant: 0 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -0.8, scale: 0.72 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: -0.8, scale: 0.72 },
       { id: 'leaf', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'leaf_clump_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.76, dist: 1.1, scale: 0.58 },
       { id: 'mushroom_shoulder', role: 'base', anchor: 'ground', zLayer: 10,
@@ -65,11 +65,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 3,
     items: [
       { id: 'brick', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 0.84, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: 0.0, scale: 0.84, variant: 1 },
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -0.9, scale: 0.78, variant: 0 },
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -0.9, scale: 0.78, variant: 0 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: 0.5, scale: 0.70 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: 0.5, scale: 0.70 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.44, dist: -1.5, scale: 0.30 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -86,11 +86,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'brick_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.88, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.88, variant: 0 },
       { id: 'brick_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.4, scale: 0.86, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -1.4, scale: 0.86, variant: 1 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.7, scale: 0.74, yOffset: -42 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -0.7, scale: 0.74, yOffset: -42 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft_small',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.4, scale: 0.42 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -106,11 +106,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 3,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.96, variant: 0 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.96, variant: 0 },
       { id: 'qblock_low', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.0, scale: 0.72, yOffset: -90 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.0, scale: 0.72, yOffset: -90 },
       { id: 'qblock_high', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.70, yOffset: -150 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.70, yOffset: -150 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.66, dist:  1.3, scale: 0.42 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -122,9 +122,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'wall_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 0 },
+        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 0 },
       { id: 'wall_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.6, scale: 0.94, variant: 1 },
+        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -1.6, scale: 0.94, variant: 1 },
       { id: 'mushroom_shoulder', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.SHOULDER,  lane: 1.74, dist: -0.6, scale: 0.54, variant: 'red' },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -148,7 +148,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // green_pipe canonical name; dispatcher redirects to planter_pot sprite.
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 0.92 },
+        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 0.92 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.0, scale: 0.48 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -166,11 +166,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 5,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.94, variant: 0 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.94, variant: 0 },
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.6, scale: 0.84 },
+        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.6, scale: 0.84 },
       { id: 'mushroom_top', role: 'topper', parentId: 'block', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.42, variant: 'red', yOffset: -135 },
+        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.42, variant: 'red', yOffset: -135 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.4, scale: 0.34 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -185,13 +185,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 5,
     items: [
       { id: 'block_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 1.00, variant: 1 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 1.00, variant: 1 },
       { id: 'block_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -1.4, scale: 0.92, variant: 2 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: -1.4, scale: 0.92, variant: 2 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.70, yOffset: -125 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.70, yOffset: -125 },
       { id: 'brick', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  1.4, scale: 0.78, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.4, scale: 0.78, variant: 0 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.50, dist: -1.9, scale: 0.30 },
     ],
@@ -203,7 +203,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // v4.8 — reference-match: heavier fence (0.84→0.98) so the right
       // bottom-corner frame matches the left in visual weight.
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98 },
+        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.98 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist: -1.0, scale: 0.62 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -226,9 +226,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 5,
     items: [
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.95 },
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.95 },
       { id: 'mushroom_top', role: 'topper', parentId: 'platform', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big',         laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.50, variant: 'red',    yOffset: -120 },
+        assetType: 'mushroom_red_big',         laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.50, variant: 'red',    yOffset: -120 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',     laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.0, scale: 0.44 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -244,11 +244,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.92 },
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.92 },
       { id: 'qblock_a', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',           laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.7, scale: 0.78, yOffset: -118 },
+        assetType: 'question_block',           laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -0.7, scale: 0.78, yOffset: -118 },
       { id: 'qblock_b', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',           laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.7, scale: 0.74, yOffset: -118 },
+        assetType: 'question_block',           laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.7, scale: 0.74, yOffset: -118 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft_small',         laneBand: LANE_BANDS.SHOULDER,  lane: 1.66, dist:  1.5, scale: 0.40 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -260,9 +260,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.96, variant: 1 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.96, variant: 1 },
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  1.5, scale: 0.88 },
+        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  1.5, scale: 0.88 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: -1.1, scale: 0.52 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -280,11 +280,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Near-depth cluster — tight, visually heavy. Spawns frequently with the
       // new sideDecorSpacing=18; fills middle depths.
       { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall',  laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 0 },
+        assetType: 'grass_dirt_wall',  laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 0 },
       { id: 'brick_top', role: 'loose-decor', anchor: 'top', zLayer: 18,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.74, variant: 1, yOffset: -110 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.74, variant: 1, yOffset: -110 },
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.5, scale: 0.74 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.5, scale: 0.74 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.50, dist:  1.4, scale: 0.32 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -310,13 +310,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 5,
     items: [
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
+        assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  0.0, scale: 1.05 },
       { id: 'mushroom_top', role: 'topper', parentId: 'platform', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.56, variant: 'red',    yOffset: -130 },
+        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  0.0, scale: 0.56, variant: 'red',    yOffset: -130 },
       { id: 'brick', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.7, scale: 0.84, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -1.7, scale: 0.84, variant: 0 },
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  1.6, scale: 0.78 },
+        assetType: 'fence_wood_short',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.6, scale: 0.78 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  0.8, scale: 0.46 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -331,13 +331,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.92, variant: 1 },
+        assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.92, variant: 1 },
       { id: 'brick_top', role: 'loose-decor', anchor: 'top', zLayer: 18,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.76, variant: 1, yOffset: -100 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.76, variant: 1, yOffset: -100 },
       { id: 'qblock_a', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.74, yOffset: -170 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.74, yOffset: -170 },
       { id: 'qblock_b', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.3, scale: 0.70, yOffset: -110 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -1.3, scale: 0.70, yOffset: -110 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER,  lane: 1.48, dist:  1.5, scale: 0.30 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -352,9 +352,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 4,
     items: [
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 0.96 },
+        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 0.96 },
       { id: 'step', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_step_left',laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.94 },
+        assetType: 'grass_dirt_step_left',laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.4, scale: 0.94 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.66, dist:  1.2, scale: 0.54 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -370,11 +370,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 3,
     items: [
       { id: 'block_lower', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98, variant: 0 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.98, variant: 0 },
       { id: 'block_upper', role: 'loose-decor', anchor: 'top', zLayer: 18,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
       { id: 'mushroom_top', role: 'topper', parentId: 'block_lower', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.46, variant: 'red', yOffset: -250 },
+        assetType: 'mushroom_red_big',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.46, variant: 'red', yOffset: -250 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.60, dist:  1.4, scale: 0.46 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -395,11 +395,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: false,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.98, variant: 0 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.98, variant: 0 },
       { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 14,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.94, variant: 1, yOffset: -140 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.94, variant: 1, yOffset: -140 },
       { id: 'block_top', role: 'loose-decor', anchor: 'top', zLayer: 18,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.90, variant: 2, yOffset: -280 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.90, variant: 2, yOffset: -280 },
       { id: 'flower_base', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single',laneBand: LANE_BANDS.SHOULDER,  lane: 1.62, dist:  1.2, scale: 0.44 },
       { id: 'leaf_base', role: 'background-accent', anchor: 'ground', zLayer: 5,
@@ -433,9 +433,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // INNER tier (right at road edge)
       { id: 'brick_inner_a', role: 'base', anchor: 'ground',
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.88, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  0.0, scale: 0.88, variant: 1 },
       { id: 'brick_inner_b', role: 'base', anchor: 'ground',
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.4, scale: 0.86, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist: -1.4, scale: 0.86, variant: 0 },
       // MID tier (longer platform set further out)
       { id: 'platform_mid', role: 'base', anchor: 'ground',
         assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist:  0.7, scale: 1.00 },
@@ -462,14 +462,14 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // INNER: low brick accent at road edge
       { id: 'brick_inner', role: 'base', anchor: 'ground',
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  0.0, scale: 0.78, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  0.0, scale: 0.78, variant: 0 },
       // MID: platform with two visible question_blocks "floating" above it
       { id: 'platform_mid', role: 'base', anchor: 'ground',
-        assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.96, variant: 1 },
+        assetType: 'floating_platform',   laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  0.0, scale: 0.96, variant: 1 },
       { id: 'qblock_a', role: 'loose-decor', anchor: 'ground',
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.3, scale: 1.05, yOffset: -215 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  0.3, scale: 1.05, yOffset: -215 },
       { id: 'qblock_b', role: 'loose-decor', anchor: 'ground',
-        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist: -0.9, scale: 0.96, yOffset: -150 },
+        assetType: 'question_block',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist: -0.9, scale: 0.96, yOffset: -150 },
       // OUTER: wall with a mushroom topper on the outer frame
       { id: 'wall_outer', role: 'base', anchor: 'ground',
         assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  1.5, scale: 0.94, variant: 1 },
@@ -491,7 +491,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // INNER: pipe right at road edge — the centerpiece landmark
       { id: 'pipe_inner', role: 'base', anchor: 'ground',
-        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 1.05 },
+        assetType: 'pipe',          laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  0.0, scale: 1.05 },
       // MID: brick base + flower bed behind/beside pipe
       { id: 'brick_mid', role: 'base', anchor: 'ground',
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.00, dist: -1.4, scale: 0.84, variant: 0 },
@@ -519,9 +519,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // INNER bricks
       { id: 'brick_inner_a', role: 'base', anchor: 'ground',
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  0.0, scale: 0.86, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  0.0, scale: 0.86, variant: 1 },
       { id: 'brick_inner_b', role: 'base', anchor: 'ground',
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist: -1.2, scale: 0.84, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist: -1.2, scale: 0.84, variant: 0 },
       // MID brick + question_block "topper" (renders above brick via yOffset)
       { id: 'brick_mid', role: 'base', anchor: 'ground',
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.04, dist:  0.4, scale: 0.82, variant: 1 },
@@ -545,7 +545,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // v4.8 — reference-match: heavier fence (0.78→0.96) so the left
       // bottom-corner frame reads clearly at the new near distance.
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist: 0.1, scale: 0.96 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist: 0.1, scale: 0.96 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.68, dist: -1.0, scale: 0.46 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -563,7 +563,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
         assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist: 0.3, scale: 0.82, variant: 1 },
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist: -1.1, scale: 0.90, variant: 2 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist: -1.1, scale: 0.90, variant: 2 },
       { id: 'leaf', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'leaf_clump_round', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist: 0.8, scale: 0.54 },
       { id: 'sprout', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -656,7 +656,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 1,
     items: [
       { id: 'hanging', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'hanging_platform_vines', laneBand: LANE_BANDS.STRUCTURE, lane: 1.98, dist:  0.0, scale: 0.82 },
+        assetType: 'hanging_platform_vines', laneBand: LANE_BANDS.STRUCTURE, lane: 2.20, dist:  0.0, scale: 0.82 },
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'grass_dirt_block',       laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.2, scale: 0.90, variant: 0 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
@@ -672,7 +672,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 1,
     items: [
       { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.1, scale: 1.02, variant: 0 },
+        assetType: 'grass_dirt_wall',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.1, scale: 1.02, variant: 0 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_large',          laneBand: LANE_BANDS.SHOULDER,  lane: 1.78, dist: -0.8, scale: 0.66 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -699,13 +699,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 6,
     items: [
       { id: 'block_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -3.2, scale: 0.98, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -3.2, scale: 0.98, variant: 0 },
       { id: 'block_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 1 },
       { id: 'block_c', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  3.2, scale: 0.96, variant: 2 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  3.2, scale: 0.96, variant: 2 },
       { id: 'mushroom', role: 'topper', parentId: 'block_b', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 0.50, variant: 'red', yOffset: -130 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: 0.0, scale: 0.50, variant: 'red', yOffset: -130 },
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.60, dist: -2.0, scale: 0.44 },
       { id: 'flower_b', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -722,11 +722,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 5,
     items: [
       { id: 'wall', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist:  0.0, scale: 1.02, variant: 0 },
+        assetType: 'grass_dirt_wall', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 1.02, variant: 0 },
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -2.8, scale: 0.88, variant: 0 },
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: -2.8, scale: 0.88, variant: 0 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: -2.8, scale: 0.82, yOffset: -160 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: -2.8, scale: 0.82, yOffset: -160 },
       { id: 'brick_back', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  2.0, scale: 0.80, variant: 1 },
       { id: 'tuft', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -743,15 +743,15 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 7,
     items: [
       { id: 'platform', role: 'base', anchor: 'ground', zLayer: 15,
-        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -3.2, scale: 0.88, variant: 0 },
+        assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -3.2, scale: 0.88, variant: 0 },
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.8, scale: 0.98, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -0.8, scale: 0.98, variant: 1 },
       { id: 'bush', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.76, dist: 1.0, scale: 0.72 },
       { id: 'mushroom', role: 'base', anchor: 'ground', zLayer: 12,
         assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist: 2.4, scale: 0.56, variant: 'red' },
       { id: 'fence', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.90, dist: 3.6, scale: 0.72 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist: 3.6, scale: 0.72 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist: 1.7, scale: 0.42 },
     ],
@@ -774,9 +774,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 1,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 1.00, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 1.00, variant: 1 },
       { id: 'mushroom_top', role: 'topper', parentId: 'block', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 0.48, variant: 'red', yOffset: -150 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 0.48, variant: 'red', yOffset: -150 },
     ],
   },
   {
@@ -784,9 +784,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 2,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.96, variant: 0 },
+        assetType: 'grass_dirt_block',    laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.96, variant: 0 },
       { id: 'flower_top', role: 'topper', parentId: 'block', anchor: 'top', zLayer: 20,
-        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.0, scale: 0.42, yOffset: -120 },
+        assetType: 'yellow_flower_small', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 0.42, yOffset: -120 },
     ],
   },
   {
@@ -794,9 +794,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 1,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 2 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 2 },
       { id: 'tuft_top', role: 'topper', parentId: 'block', anchor: 'top', zLayer: 20,
-        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.52, yOffset: -145 },
+        assetType: 'grass_tuft_large', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.52, yOffset: -145 },
     ],
   },
   {
@@ -804,9 +804,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     weight: 1,
     items: [
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.95, dist:  0.0, scale: 0.95, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.17, dist:  0.0, scale: 0.95, variant: 1 },
       { id: 'sprout_top', role: 'topper', parentId: 'block', anchor: 'top', zLayer: 20,
-        assetType: 'sprout_soil',      laneBand: LANE_BANDS.STRUCTURE, lane: 1.95, dist:  0.0, scale: 0.45, yOffset: -130 },
+        assetType: 'sprout_soil',      laneBand: LANE_BANDS.STRUCTURE, lane: 2.17, dist:  0.0, scale: 0.45, yOffset: -130 },
     ],
   },
   {
@@ -816,7 +816,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Designer-delivered composite: block with flower painted into it.
       // Variant 2 maps to grassDirtBlockFlower01 via the dispatcher.
       { id: 'block', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 1.00, variant: 2 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 1.00, variant: 2 },
     ],
   },
   {
@@ -827,9 +827,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // we get a step that "leans inward" relative to the road on both
       // sides without needing a separate _right asset.
       { id: 'step', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_step_left', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 1.00 },
+        assetType: 'grass_dirt_step_left', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 1.00 },
       { id: 'mushroom_top', role: 'topper', parentId: 'step', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big',     laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 0.40, variant: 'red', yOffset: -120 },
+        assetType: 'mushroom_red_big',     laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 0.40, variant: 'red', yOffset: -120 },
       ],
   },
 
@@ -878,7 +878,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist: 0.0, scale: 0.58, variant: 'red', yOffset: -140 },
       // Inner brick — smaller, closer to road, reinforces perspective.
       { id: 'brick_inner', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.78, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.4, scale: 0.78, variant: 0 },
       // Front flora — fills the bottom-left corner.
       { id: 'flower_front', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist:  1.0, scale: 0.50 },
@@ -898,7 +898,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.72, dist: -0.7, scale: 0.68 },
       // Inner brick + fence — small, close to road.
       { id: 'brick_inner', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  1.5, scale: 0.74, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  1.5, scale: 0.74, variant: 1 },
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
         assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.06, dist:  1.8, scale: 0.80 },
       { id: 'flower_front', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -920,10 +920,10 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // Large red mushroom — the near anchor mass.
       { id: 'mushroom', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.96, dist:  0.0, scale: 0.64, variant: 'red' },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.18, dist:  0.0, scale: 0.64, variant: 'red' },
       // Short fence segment frames the corner front.
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  1.8, scale: 0.62 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  1.8, scale: 0.62 },
       // Tall grass clump (decor asset, NOT the dry-grass obstacle).
       { id: 'grass_tall', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'grass_tuft_large', laneBand: LANE_BANDS.SHOULDER, lane: 1.74, dist: -1.4, scale: 0.52 },
@@ -964,7 +964,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.82, dist: -2.1, scale: 0.86 },
       // Fence — frames the platform front.
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.86, dist:  1.6, scale: 0.80 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  1.6, scale: 0.80 },
       // Shoulder flora.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'purple_flower_single', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: -0.8, scale: 0.46 },
@@ -996,7 +996,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // Low front fence makes the right corner read as one composed garden
       // group instead of a pipe floating beside loose flora.
       { id: 'fence_front', role: 'foreground-accent', anchor: 'ground', zLayer: 25,
-        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 1.88, dist:  2.1, scale: 0.88 },
+        assetType: 'fence_wood_short', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  2.1, scale: 0.88 },
       // Shoulder flora.
       { id: 'flower_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
         assetType: 'yellow_flower_small', laneBand: LANE_BANDS.SHOULDER, lane: 1.56, dist: -0.6, scale: 0.36 },
@@ -1011,9 +1011,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // Two-brick wall row — clear "wall" silhouette in the mid band.
       { id: 'brick_a', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.94, variant: 0 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.94, variant: 0 },
       { id: 'brick_b', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: -1.2, scale: 0.94, variant: 1 },
+        assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: -1.2, scale: 0.94, variant: 1 },
       { id: 'brick_c', role: 'base', anchor: 'ground', zLayer: 10,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.10, dist:  1.4, scale: 0.86, variant: 0 },
       // Question block — visually floats ABOVE the brick row via
@@ -1021,7 +1021,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       // ['ground'] in the semantic registry; QBLOCK_FLOATING validator
       // accepts proximity to a structural sibling instead).
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -0.5, scale: 0.78, yOffset: -52 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -0.5, scale: 0.78, yOffset: -52 },
       // v4.2 — P2 reference-match: pushed +8 beyond structural items (dist 0.0/−1.2)
       // so the tree sorts clearly behind the wall cluster and avoids z-fighting.
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
@@ -1040,15 +1040,15 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     items: [
       // Stone step — signature side structure.
       { id: 'step', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_step', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist: 0.0, scale: 0.96 },
+        assetType: 'grass_dirt_step', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist: 0.0, scale: 0.96 },
       // Foundation block behind the step — visual support / volume.
       { id: 'block_support', role: 'support', anchor: 'ground', zLayer: 9,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.92, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.4, scale: 0.92, variant: 1 },
       { id: 'brick_back', role: 'support', anchor: 'ground', zLayer: 8,
         assetType: 'purple_brick_single', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  1.8, scale: 0.78, variant: 0 },
       // Mushroom topper on the support block.
       { id: 'mushroom_top', role: 'topper', parentId: 'block_support', anchor: 'top', zLayer: 12,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist: -1.4, scale: 0.52, variant: 'red', yOffset: -60 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist: -1.4, scale: 0.52, variant: 'red', yOffset: -60 },
       // Bush accent on shoulder.
       { id: 'bush_front', role: 'loose-decor', anchor: 'ground', zLayer: 6,
         assetType: 'bush_with_purple_flowers', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: 0.8, scale: 0.62 },
@@ -1095,13 +1095,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.98, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.98, variant: 0 },
       { id: 'block_upper', role: 'loose-decor', anchor: 'top', zLayer: 14,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.90, variant: 1, yOffset: -138 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.90, variant: 1, yOffset: -138 },
       { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
         assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.08, dist:  1.4, scale: 0.84 },
       { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.48, variant: 'red', yOffset: -248 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.48, variant: 'red', yOffset: -248 },
       { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
         assetType: 'bush_large_with_purple_flowers', laneBand: LANE_BANDS.NATURE, lane: 2.78, dist: -1.8, scale: 0.80 },
       { id: 'flower_bed_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -1121,7 +1121,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.4, scale: 0.92, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.4, scale: 0.92, variant: 0 },
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 12,
         assetType: 'pipe', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  0.0, scale: 1.02, yOffset: -8 },
       { id: 'mushroom_blue', role: 'base', anchor: 'ground', zLayer: 11,
@@ -1147,7 +1147,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: false,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.96, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.96, variant: 0 },
       { id: 'platform_mid', role: 'base', anchor: 'ground', zLayer: 15,
         assetType: 'floating_platform', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist: -0.6, scale: 0.90, variant: 1 },
       { id: 'hanging', role: 'base', anchor: 'ground', zLayer: 14,
@@ -1155,7 +1155,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { id: 'qblock_a', role: 'loose-decor', anchor: 'ground', zLayer: 18,
         assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.02, dist: -0.6, scale: 0.80, yOffset: -150 },
       { id: 'qblock_b', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.74, yOffset: -232 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.74, yOffset: -232 },
       { id: 'leaf_base', role: 'background-accent', anchor: 'ground', zLayer: 5,
         assetType: 'leaf_clump_round', laneBand: LANE_BANDS.SHOULDER, lane: 1.62, dist: -1.4, scale: 0.50 },
       { id: 'flower', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -1229,9 +1229,9 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 0 },
       { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 13,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
       { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
         assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.86 },
       { id: 'step_riser', role: 'base', anchor: 'ground', zLayer: 11,
@@ -1243,7 +1243,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
         assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.74, yOffset: -206 },
       { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.50, variant: 'red', yOffset: -250 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.50, variant: 'red', yOffset: -250 },
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
         assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.88, dist:  2.2, scale: 0.86, variant: 0, yOffset: -8 },
       { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,
@@ -1269,13 +1269,13 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.4, scale: 0.94, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.4, scale: 0.94, variant: 0 },
       { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 13,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.4, scale: 0.86, variant: 1, yOffset: -132 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.4, scale: 0.86, variant: 1, yOffset: -132 },
       { id: 'pipe', role: 'base', anchor: 'ground', zLayer: 12,
         assetType: 'pipe', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.0, scale: 1.00 },
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
-        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.94, dist:  0.4, scale: 0.74, yOffset: -290 },
+        assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.16, dist:  0.4, scale: 0.74, yOffset: -290 },
       { id: 'mushroom_blue', role: 'base', anchor: 'ground', zLayer: 11,
         assetType: 'mushroom_blue_big', laneBand: LANE_BANDS.SHOULDER, lane: 1.70, dist:  1.2, scale: 0.56 },
       { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 5,
@@ -1301,7 +1301,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_low', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.78, variant: 1 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.78, variant: 1 },
       { id: 'step', role: 'base', anchor: 'ground', zLayer: 11,
         assetType: 'grass_dirt_step', laneBand: LANE_BANDS.STRUCTURE, lane: 2.06, dist:  1.4, scale: 0.66 },
       { id: 'flower_y_a', role: 'loose-decor', anchor: 'ground', zLayer: 5,
@@ -1337,11 +1337,11 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
     proceduralOk: true,
     items: [
       { id: 'block_base', role: 'base', anchor: 'ground', zLayer: 10,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 1.00, variant: 0 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 1.00, variant: 0 },
       { id: 'block_mid', role: 'loose-decor', anchor: 'top', zLayer: 13,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.92, variant: 1, yOffset: -140 },
       { id: 'block_top', role: 'loose-decor', anchor: 'top', zLayer: 16,
-        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.84, variant: 0, yOffset: -268 },
+        assetType: 'grass_dirt_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.84, variant: 0, yOffset: -268 },
       { id: 'platform_edge', role: 'base', anchor: 'ground', zLayer: 15,
         assetType: 'grass_dirt_platform_long', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.86 },
       { id: 'step_riser', role: 'base', anchor: 'ground', zLayer: 11,
@@ -1355,7 +1355,7 @@ export const SIDE_DECORATION_PREFABS = Object.freeze([
       { id: 'qblock', role: 'loose-decor', anchor: 'ground', zLayer: 18,
         assetType: 'question_block', laneBand: LANE_BANDS.STRUCTURE, lane: 2.12, dist:  1.6, scale: 0.74, yOffset: -206 },
       { id: 'mushroom_crown', role: 'topper', parentId: 'block_base', anchor: 'top', zLayer: 20,
-        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 1.92, dist:  0.0, scale: 0.50, variant: 'red', yOffset: -384 },
+        assetType: 'mushroom_red_big', laneBand: LANE_BANDS.STRUCTURE, lane: 2.14, dist:  0.0, scale: 0.50, variant: 'red', yOffset: -384 },
       { id: 'tree_back', role: 'background-accent', anchor: 'ground', zLayer: 3,
         assetType: 'tree_round', laneBand: LANE_BANDS.NATURE, lane: 2.90, dist:  2.2, scale: 0.90, variant: 0, yOffset: -8 },
       { id: 'bush_back', role: 'background-accent', anchor: 'ground', zLayer: 4,

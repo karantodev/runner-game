@@ -170,12 +170,16 @@ export class GradientCache {
 
     // v4.11 — reference-match P4: stronger perspective "rungs" so the road
     // reads as panelled like the reference instead of a smooth fill.
-    // M22A — calm the panel "rungs" (was 0.16 / 0.40, retuned 0.10 / 0.24 →
-    // 0.06 / 0.15) so the road stops reading as a ruled grid/ladder and feels
-    // like a natural path. Still a faint motion cue, not removed.
+    // M22A — calm the panel "rungs" (was 0.16 / 0.40 → 0.10 / 0.24 → 0.06 /
+    // 0.15) so the road stops reading as a ruled grid/ladder.
+    // M23A — the 0.06 / 0.15 over-softened it: the road lost its forward-depth
+    // panelling and read as a flat runway. Restore PARTWAY (0.10 / 0.24, the
+    // earlier intermediate) so the rungs give a soft sense of receding ground
+    // again — still well under the old 0.16 / 0.40 grid, so no sports-field
+    // read returns. Lane dividers + edge lines stay at their soft M22A alphas.
     const roadRungFade = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    roadRungFade.addColorStop(0, 'rgba(238,232,180,0.06)');
-    roadRungFade.addColorStop(1, 'rgba(245,238,185,0.15)');
+    roadRungFade.addColorStop(0, 'rgba(238,232,180,0.10)');
+    roadRungFade.addColorStop(1, 'rgba(245,238,185,0.24)');
 
     this.gradients = {
       sky,

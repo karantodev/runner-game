@@ -563,7 +563,7 @@ export class RoadRenderer {
 
     const period       = 5;
     const maxDistance  = 120;
-    const thicknessPx  = 1.4;  // M22A — thinner rungs (2.1 → 1.6 → 1.4) to soften the grid toward the reference path
+    const thicknessPx  = 1.7;  // M22A thinned 2.1→1.4 to soften the grid; M23A nudges 1.4→1.7 so the rungs read as soft receding panels (paired with the roadRungFade alpha lift), still below the old 2.1 grid
     const off = ((scrollOffset % period) + period) % period;
 
     ctx.save();
