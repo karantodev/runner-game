@@ -419,13 +419,14 @@ export class ThreeEnvironmentManager {
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
       [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
       [ASSETS.flowersYellow, -2.8, 0, 0.8], [ASSETS.flowersYellow, 2.65, 0, -3.6],
-      [ASSETS.dryGrass, 1.55, 0, 2.1],
+      // Spiky/dry accents just behind the player — match reference right-side spiky plant
+      [ASSETS.dryGrass, 3.4, 0, -6.5], [ASSETS.spikyBush, -3.2, 0, -5.0],
     ];
 
     for (const [asset, x, baseY, z] of sideProps) add(asset, x, baseY, z);
 
     for (const vz of [-12, -27]) {
-      const vine = this.makeProp(ASSETS.vineBarrier, { x: 0, y: 0.6, z: vz, width: 5.6, height: 1.05 });
+      const vine = this.makeProp(ASSETS.vineBarrier, { x: 0, y: 0.7, z: vz, width: 5.8, height: 1.5 });
       vine.renderOrder = 2;
       group.add(vine);
     }
