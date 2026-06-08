@@ -368,10 +368,10 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // Wide overlapping panels form a near-solid treeline wall matching reference density
-    add(ASSETS.forest, -15, 1.0, -50, 32, 5.2, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 1.0, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
-    add(ASSETS.forest,   0, 0.8, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
+    // Raised y closes the gap between mountain bases and tree tops at the horizon
+    add(ASSETS.forest, -15, 2.2, -50, 32, 5.2, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 2.2, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,   0, 2.0, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
 
     const castle = add(ASSETS.castle, 0, 4.8, -44, 13.0, 13.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
@@ -417,10 +417,15 @@ export class ThreeEnvironmentManager {
       [ASSETS.purpleBrick, -4.0, 0, -20.5], [ASSETS.purpleBrick, 4.0, 0, -11.5],
       [ASSETS.questionBlock, -4.4, 0, -26],
       [ASSETS.questionBlock, 4.7, 0, -32],
-      // Flowers
+      // Flowers — near road edge
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
       [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
       [ASSETS.flowersYellow, -2.8, 0, 0.8], [ASSETS.flowersYellow, 2.65, 0, -3.6],
+      // Flowers — outer shoulder fill (matches reference's flower-covered meadow)
+      [ASSETS.flowersPurple, -6.2, 0, -4.0], [ASSETS.flowersPurple, 6.0, 0, -7.5],
+      [ASSETS.flowersPurple, -6.5, 0, -16.0], [ASSETS.flowersPurple, 6.3, 0, -21.0],
+      [ASSETS.flowersYellow, -5.8, 0, -1.5], [ASSETS.flowersYellow, 5.6, 0, -9.0],
+      [ASSETS.flowersYellow, -6.0, 0, -22.0], [ASSETS.flowersYellow, 6.1, 0, -29.5],
       // Spiky/dry accents just behind the player — match reference right-side spiky plant
       [ASSETS.dryGrass, 3.4, 0, -6.5], [ASSETS.spikyBush, -3.2, 0, -5.0],
     ];
