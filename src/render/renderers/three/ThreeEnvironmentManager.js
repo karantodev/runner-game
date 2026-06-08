@@ -369,7 +369,9 @@ export class ThreeEnvironmentManager {
     };
 
     add(ASSETS.forest, -12, 0.8, -51, 24, 4.5, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest, 15, 0.8, -52, 24, 4.5, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,  15, 0.8, -52, 24, 4.5, { opacity: 0.96, renderOrder: -35 });
+    // Center panel fills the gap and thickens the mid-ground treeline
+    add(ASSETS.forest,   0, 0.6, -53, 20, 4.0, { opacity: 0.92, renderOrder: -35 });
 
     const castle = add(ASSETS.castle, 0, 4.5, -44, 11.0, 11.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
@@ -525,9 +527,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.56],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.56],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.50],
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.68],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.65],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.56],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
