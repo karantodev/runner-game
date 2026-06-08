@@ -370,7 +370,7 @@ export class ThreeEnvironmentManager {
     add(ASSETS.forest, -12, 0.8, -51, 24, 4.5, { opacity: 0.98, renderOrder: -35 });
     add(ASSETS.forest, 15, 0.8, -52, 24, 4.5, { opacity: 0.96, renderOrder: -35 });
 
-    const castle = add(ASSETS.castle, 0, 4.5, -46, 9.0, 9.0, { opacity: 1.0, renderOrder: -10 });
+    const castle = add(ASSETS.castle, 0, 4.5, -44, 11.0, 11.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
