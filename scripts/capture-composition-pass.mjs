@@ -26,6 +26,9 @@ const OUT_DIR = path.join(ROOT, 'docs/visual-qa/composition-current');
 const HOST = process.env.CAPTURE_HOST ?? 'http://localhost:5173';
 const SEED = process.env.CAPTURE_SEED ?? '42';
 const TARGETS = [10, 30, 70, 120, 180];
+const DEFAULT_WAIT_TIMEOUT = 90000;
+const OVERLAY_DISTANCE = 50;
+const OVERLAY_PATH = path.join(OUT_DIR, 'debug_overlay_50m.png');
 
 const SIGNATURE_ELEMENTS = {
   purple_brick:   ['purple_brick_single'],
@@ -40,27 +43,83 @@ async function ensureOutDir() {
   await fs.mkdir(OUT_DIR, { recursive: true });
 }
 
-async function captureAtDistance(page, distance) {
-  // Wait for game.world.distanceRun to reach the target. Poll via the
-  // debug API rather than fixed timeouts so a slow CI environment still
-  // produces deterministic captures.
+async function waitForDebugApi(page) {
+  await page.waitForFunction(() => !!window.__ORCHID_DEBUG__, null, { timeout: 30000 });
+}
+
+async function hideDebugHud(page) {
+  await page.addStyleTag({ content: `
+    #debug-panel, #perf-hud { display: none !important; }
+  ` });
+}
+
+async function bootstrapCapturePage(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForDebugApi(page);
+  await hideDebugHud(page);
+  await page.waitForTimeout(400);
+}
+
+async function ensureRunStarted(page) {
+  await page.evaluate(() => {
+    const api = window.__ORCHID_DEBUG__;
+    if (!api) return;
+    const s = typeof api.getState === 'function' ? api.getState() : null;
+    if (s?.worldState === 'paused' && typeof api.resumeLiveUpdates === 'function') {
+      api.resumeLiveUpdates();
+      return;
+    }
+    if (s?.worldState !== 'running' && s?.worldState !== 'playing') {
+      if (typeof api.startDebugRun === 'function') api.startDebugRun();
+    }
+  });
+  await page.waitForTimeout(300);
+}
+
+async function waitForDistance(page, distance, { timeout = DEFAULT_WAIT_TIMEOUT } = {}) {
   await page.waitForFunction((d) => {
     const api = window.__ORCHID_DEBUG__;
     if (!api) return false;
-    const s = api.getState();
-    // Re-apply invuln in case the game state cycled.
+    const state = typeof api.getState === 'function' ? api.getState() : null;
+    if (state?.worldState === 'paused' && typeof api.resumeLiveUpdates === 'function') {
+      api.resumeLiveUpdates();
+    } else if (state?.worldState !== 'running' && state?.worldState !== 'playing') {
+      if (typeof api.startDebugRun === 'function') api.startDebugRun();
+    }
     if (window.__ORCHID_GAME__) {
       const players = [...window.__ORCHID_GAME__.world.registry.query('Health')];
       for (const p of players) p.components.Health.invulnerabilityFrames = 99999;
     }
-    return s.distanceRun >= d;
-  }, distance, { timeout: 90000 });
+    return (state?.distanceRun ?? window.__ORCHID_GAME__?.world?.distanceRun ?? 0) >= d;
+  }, distance, { timeout });
+}
+
+async function screenshotGameCanvas(page, outPath) {
+  await page.locator('#game').screenshot({ path: outPath, omitBackground: false });
+}
+
+async function readRunState(page) {
+  return page.evaluate(() => {
+    const api = window.__ORCHID_DEBUG__;
+    const state = typeof api?.getState === 'function' ? api.getState() : null;
+    const game = window.__ORCHID_GAME__;
+    return {
+      distanceRun: state?.distanceRun ?? game?.world?.distanceRun ?? null,
+      worldState: state?.worldState ?? game?.world?.state ?? null,
+    };
+  });
+}
+
+async function captureAtDistance(page, distance) {
+  // Wait for game.world.distanceRun to reach the target. Poll via the
+  // debug API rather than fixed timeouts so a slow CI environment still
+  // produces deterministic captures.
+  await waitForDistance(page, distance);
   // Small settle so the frame after the threshold renders.
   await page.waitForTimeout(120);
   // Snapshot canvas only — not the whole page (HUD etc).
-  const canvas = await page.locator('#game');
   const screenshotPath = path.join(OUT_DIR, `distance_${String(distance).padStart(3, '0')}.png`);
-  await canvas.screenshot({ path: screenshotPath, omitBackground: false });
+  await screenshotGameCanvas(page, screenshotPath);
   // Inspect live scene to feed the analysis report.
   const snapshot = await page.evaluate(() => {
     const game = window.__ORCHID_GAME__;
@@ -159,7 +218,7 @@ async function buildContactSheet(browser, captures) {
 
 function fmtCheck(yes) { return yes ? '✅ YES' : '❌ NO'; }
 
-async function buildAnalysisDoc(captures) {
+async function buildAnalysisDoc(captures, overlayCapture) {
   // Aggregate signature-element presence across all captures.
   const allTypes = new Set();
   let totalViolations = 0;
@@ -268,9 +327,21 @@ async function buildAnalysisDoc(captures) {
 
   lines.push('## Debug overlay capture');
   lines.push('');
-  lines.push('![debug overlay at 50m](./debug_overlay_50m.png)');
+  if (overlayCapture?.captured) {
+    lines.push('![debug overlay at 50m](./debug_overlay_50m.png)');
+  } else {
+    lines.push('Overlay capture was unavailable in this run.');
+  }
   lines.push('');
-  lines.push('`debug_overlay_50m.png` is captured with `?debugComposition=1&showCompositionGroups=1` so the prefab group bounding boxes, depth-band tag, side shoulder, and the 6-line semantic badge are visible per entity. Use it to verify: every cluster has a yellow dashed bbox; every badge reads `role · zone · side · coll · sup`; no entity shows `INVALID`.');
+  if (overlayCapture?.captured) {
+    lines.push('`debug_overlay_50m.png` is captured with `?debugComposition=1&showCompositionGroups=1` so the prefab group bounding boxes, depth-band tag, side shoulder, and the 6-line semantic badge are visible per entity. Use it to verify: every cluster has a yellow dashed bbox; every badge reads `role · zone · side · coll · sup`; no entity shows `INVALID`.');
+    if (!overlayCapture.reachedTarget) {
+      lines.push(`This run fell back before ${OVERLAY_DISTANCE}m and captured the current canvas at ${overlayCapture.distanceLabel} while keeping the rest of the report build intact.`);
+    }
+  } else {
+    lines.push(`The debug overlay page did not produce a screenshot. Build continued so contact-sheet and the programmatic checks still refreshed.`);
+    if (overlayCapture?.warning) lines.push(`Warning: ${overlayCapture.warning}`);
+  }
   lines.push('');
 
   lines.push('## Notes');
@@ -304,30 +375,16 @@ async function main() {
   // v3.8.51 — capture under strict placement enforcement so the scene
   // visibly drops violating spawns. The 'strict enforcement' playwright
   // test guarantees this mode reaches end-of-run with zero violations.
-  await page.goto(`${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1`, { waitUntil: 'domcontentloaded' });
-  // Wait for __ORCHID_DEBUG__ to mount + game to begin running.
-  await page.waitForFunction(() => !!window.__ORCHID_DEBUG__, null, { timeout: 30000 });
+  await bootstrapCapturePage(page, `${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1`);
   // v3.8.51 — hide the developer HUD panels so the screenshot reflects
   // the real player-facing scene. `?debug=1` is required to expose
   // __ORCHID_DEBUG__ but it also installs:
   //   #debug-panel    — bottom-right capture/restart buttons
   //   #perf-hud       — top-left FPS / quality / gamepad readout
   // We hide them with a stylesheet so canvas screenshots stay clean.
-  await page.addStyleTag({ content: `
-    #debug-panel, #perf-hud { display: none !important; }
-  ` });
-  await page.waitForTimeout(400);
   // Trigger the game loop. dev.html exposes startDebugRun() which
   // either resumes the autostart flow OR fires world.start({ skipCountdown:true }).
-  await page.evaluate(() => {
-    const api = window.__ORCHID_DEBUG__;
-    if (!api) return;
-    const s = api.getState();
-    if (s.worldState !== 'running' && s.worldState !== 'playing') {
-      if (typeof api.startDebugRun === 'function') api.startDebugRun();
-    }
-  });
-  await page.waitForTimeout(300);
+  await ensureRunStarted(page);
   // v3.8.51 — Make the autostart player invulnerable so the run can
   // reach far distances without dying. Per main.js:494-498 comment
   // ("set Health.invulnerabilityFrames high so the autostart-driven
@@ -350,41 +407,57 @@ async function main() {
   // bands, side tags, and the 6-line semantic badge. Reuses the same
   // browser + seed so the scene matches the clean captures byte-for-byte.
   console.log('[capture] capturing debug overlay shot');
+  const overlayCapture = {
+    captured: false,
+    reachedTarget: false,
+    warning: null,
+    distanceRun: null,
+    worldState: null,
+    distanceLabel: 'unknown distance',
+  };
   const debugPage = await ctx.newPage();
-  // v3.8.51 — Use showCompositionGroups=1 alone (no per-entity
-  // ?debugComposition=1) so the overlay shows just the dashed prefab
-  // bboxes + cluster labels. The dense 5-line semantic badges are a
-  // separate inspect mode toggleable independently.
-  await debugPage.goto(`${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1&showCompositionGroups=1`, { waitUntil: 'domcontentloaded' });
-  await debugPage.waitForFunction(() => !!window.__ORCHID_DEBUG__, null, { timeout: 30000 });
-  await debugPage.addStyleTag({ content: `
-    #debug-panel, #perf-hud { display: none !important; }
-  ` });
-  await debugPage.waitForTimeout(400);
-  await debugPage.evaluate(() => {
-    const api = window.__ORCHID_DEBUG__;
-    if (api && typeof api.startDebugRun === 'function') api.startDebugRun();
-  });
-  await debugPage.waitForFunction(() => {
-    const game = window.__ORCHID_GAME__;
-    if (!game) return false;
-    for (const p of game.world.registry.query('Health')) {
-      p.components.Health.invulnerabilityFrames = 99999;
+  try {
+    // v3.8.51 — Use showCompositionGroups=1 alone (no per-entity
+    // ?debugComposition=1) so the overlay shows just the dashed prefab
+    // bboxes + cluster labels. The dense 5-line semantic badges are a
+    // separate inspect mode toggleable independently.
+    await bootstrapCapturePage(debugPage, `${HOST}/dev.html?seed=${SEED}&debug=1&enforcePlacement=1&showCompositionGroups=1`);
+    await ensureRunStarted(debugPage);
+    try {
+      await waitForDistance(debugPage, OVERLAY_DISTANCE, { timeout: DEFAULT_WAIT_TIMEOUT });
+      overlayCapture.reachedTarget = true;
+    } catch (error) {
+      const state = await readRunState(debugPage);
+      overlayCapture.warning = error instanceof Error ? error.message : String(error);
+      overlayCapture.distanceRun = state.distanceRun;
+      overlayCapture.worldState = state.worldState;
+      overlayCapture.distanceLabel = state.distanceRun == null
+        ? 'unknown distance'
+        : `${Math.floor(state.distanceRun)}m`;
+      console.warn(`[capture] warning: overlay did not reach ${OVERLAY_DISTANCE}m before timeout; capturing fallback at ${overlayCapture.distanceLabel} (state=${state.worldState ?? 'unknown'})`);
     }
-    return game.world.distanceRun >= 50;
-  }, null, { timeout: 60000 });
-  await debugPage.waitForTimeout(150);
-  await debugPage.locator('#game').screenshot({
-    path: path.join(OUT_DIR, 'debug_overlay_50m.png'),
-  });
-  await debugPage.close();
-  console.log('[capture] wrote debug_overlay_50m.png');
+    await debugPage.waitForTimeout(overlayCapture.reachedTarget ? 150 : 250);
+    await screenshotGameCanvas(debugPage, OVERLAY_PATH);
+    overlayCapture.captured = true;
+    if (overlayCapture.reachedTarget) {
+      overlayCapture.distanceRun = OVERLAY_DISTANCE;
+      overlayCapture.distanceLabel = `${OVERLAY_DISTANCE}m`;
+      console.log('[capture] wrote debug_overlay_50m.png');
+    } else {
+      console.log(`[capture] wrote debug_overlay_50m.png (fallback at ${overlayCapture.distanceLabel})`);
+    }
+  } catch (error) {
+    overlayCapture.warning = error instanceof Error ? error.message : String(error);
+    console.warn(`[capture] warning: debug overlay capture failed: ${overlayCapture.warning}`);
+  } finally {
+    await debugPage.close();
+  }
 
   console.log('[capture] building contact-sheet.png');
   const sheetPath = await buildContactSheet(browser, captures);
   console.log(`[capture] wrote ${path.relative(ROOT, sheetPath)}`);
   console.log('[capture] building analysis.md');
-  await buildAnalysisDoc(captures);
+  await buildAnalysisDoc(captures, overlayCapture);
   console.log(`[capture] wrote ${path.relative(ROOT, path.join(OUT_DIR, 'analysis.md'))}`);
   if (errors.length) {
     console.error('[capture] page errors during capture:');
