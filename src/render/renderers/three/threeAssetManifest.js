@@ -52,8 +52,8 @@ export const PROP_METRICS = new Map([
   [ASSETS.questionBlock, [0.62, 1.0, 0.18]],
   [ASSETS.flowersPurple, [0.34, 1.3, 0.30]],
   [ASSETS.flowersYellow, [0.30, 1.25, 0.30]],
-  [ASSETS.dryGrass, [0.5, 1.2, 0.24]],
-  [ASSETS.spikyBush, [0.5, 1.1, 0.20]],
+  [ASSETS.dryGrass, [0.90, 1.2, 0.24]],
+  [ASSETS.spikyBush, [0.85, 1.1, 0.20]],
   [ASSETS.grassTuft, [0.42, 1.25, 0.30]],
   [ASSETS.vineBarrier, [0.8, 2.4, 0.10]],
 ]);
