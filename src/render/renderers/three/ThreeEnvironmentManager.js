@@ -301,11 +301,12 @@ export class ThreeEnvironmentManager {
     let ri = 0;
     for (let side = -1; side <= 1; side += 2) {
       let ci = 0;
-      for (let z = 5; z >= -70; z -= 6.0, ci += 1) {
+      for (let z = 5; z >= -70; z -= 4.0, ci += 1) {
         const h0 = hash((side + 2) * 131 + ci * 7);
         const h1 = hash((side + 2) * 131 + ci * 7 + 3);
         const h2 = hash((side + 2) * 131 + ci * 7 + 11);
-        const x = side * (6.7 + h2 * 1.1);
+        // Move blocks to ±4.3-5.0 — right at the road edge (±2.7), was ±6.7-7.8
+        const x = side * (4.3 + h2 * 0.7);
         if (h0 > 0.55) {
           const stack = 1 + Math.round(h1);
           const base = CUBE * (0.8 + h2 * 0.8);
@@ -391,18 +392,32 @@ export class ThreeEnvironmentManager {
     };
 
     const sideProps = [
+      // Trees — mid/far background, away from road
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
       [ASSETS.tree, -5.6, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      [ASSETS.mushroom, -4.75, 0, 0.2], [ASSETS.mushroom, 4.9, 0, -7.4],
+      // Mushrooms — close foreground, tight to road edge
+      [ASSETS.mushroom, -3.9, 0, 0.2], [ASSETS.mushroom, 4.1, 0, -7.4],
+      [ASSETS.mushroom, -4.3, 0, -19.5], [ASSETS.mushroom, 4.0, 0, -26.5],
+      // Pipe
       [ASSETS.pipe, 4.18, 0, -16],
-      [ASSETS.fence, -6.2, 0, 3.1], [ASSETS.fence, 6.15, 0, -2.1],
-      [ASSETS.bush, -5.2, 0, -4.4], [ASSETS.bush, 5.3, 0, 1.8],
-      [ASSETS.grassBlockLeft, -5.0, 0, -1.1], [ASSETS.grassBlockRight, 5.0, 0, -9.4],
-      [ASSETS.grassBlock, -5.9, 0, -16.5], [ASSETS.grassBlock, 5.9, 0, -24],
-      [ASSETS.purpleWall, -5.8, 0, -6.5], [ASSETS.purpleStairs, 5.8, 0, -22.5],
-      [ASSETS.purpleBrick, -4.9, 0, -20.5], [ASSETS.questionBlock, -4.4, 0, -26],
+      // Fences
+      [ASSETS.fence, -4.8, 0, 3.1], [ASSETS.fence, 4.85, 0, -2.1],
+      [ASSETS.fence, -5.1, 0, -28], [ASSETS.fence, 5.0, 0, -34],
+      // Bushes
+      [ASSETS.bush, -4.5, 0, -4.4], [ASSETS.bush, 4.6, 0, 1.8],
+      // Grass-dirt blocks — form a continuous side wall close to road
+      [ASSETS.grassBlockLeft, -4.0, 0, 1.5],   [ASSETS.grassBlockRight, 4.0, 0, -4.5],
+      [ASSETS.grassBlock, -4.2, 0, -9.5],       [ASSETS.grassBlock, 4.2, 0, -14.5],
+      [ASSETS.grassBlockLeft, -4.1, 0, -19.0],  [ASSETS.grassBlockRight, 4.1, 0, -23.5],
+      [ASSETS.grassBlock, -4.3, 0, -28.0],      [ASSETS.grassBlock, 4.3, 0, -33.0],
+      // Purple structures
+      [ASSETS.purpleWall, -4.8, 0, -6.5], [ASSETS.purpleStairs, 4.8, 0, -22.5],
+      [ASSETS.purpleBrick, -4.0, 0, -20.5], [ASSETS.purpleBrick, 4.0, 0, -11.5],
+      [ASSETS.questionBlock, -4.4, 0, -26],
       [ASSETS.questionBlock, 4.7, 0, -32],
+      // Flowers
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
+      [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
       [ASSETS.flowersYellow, -2.8, 0, 0.8], [ASSETS.flowersYellow, 2.65, 0, -3.6],
       [ASSETS.dryGrass, 1.55, 0, 2.1],
     ];
