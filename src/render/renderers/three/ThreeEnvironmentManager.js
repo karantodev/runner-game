@@ -213,7 +213,7 @@ export class ThreeEnvironmentManager {
     road.position.set(0, -0.08, -31);
     roadGroup.add(road);
 
-    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x3db832, roughness: 0.95 });
+    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x44cc34, roughness: 0.95 });
     for (const x of [-5.35, 5.35]) {
       const shoulder = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.07, 98), shoulderMat);
       shoulder.position.set(x, -0.1, -31);
@@ -707,7 +707,7 @@ export class ThreeEnvironmentManager {
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#58b82e';
+    ctx.fillStyle = '#62cc2a';
     ctx.fillRect(0, 0, 64, 64);
     // Use deterministic noise so QA screenshots are reproducible.
     const seed = name === 'ground' ? 1000 : name === 'road' ? 2000 : 3000;
@@ -715,7 +715,7 @@ export class ThreeEnvironmentManager {
       const x = prand(seed + i * 2.1) * 64;
       const y = prand(seed + i * 3.7) * 64;
       const w = 1 + prand(seed + i * 5.3) * 2;
-      ctx.fillStyle = prand(seed + i * 7.1) > 0.5 ? '#6cc836' : '#48a024';
+      ctx.fillStyle = prand(seed + i * 7.1) > 0.5 ? '#74d830' : '#52b824';
       ctx.fillRect(x, y, w, w);
     }
     const tex = new THREE.CanvasTexture(canvas);
