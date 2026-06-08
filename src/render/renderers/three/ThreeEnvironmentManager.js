@@ -637,7 +637,7 @@ export class ThreeEnvironmentManager {
 
     const CAP = 12;
     const rBase = 50;
-    const yBase = 10;
+    const yBase = 5;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
       // Distribute clouds in the front-facing sector only (±22° from forward/-Z axis)
@@ -646,7 +646,7 @@ export class ThreeEnvironmentManager {
       const radius = rBase + r * 22;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
-      const h = yBase + prand(i * 7.7 + 3) * 6;
+      const h = yBase + prand(i * 7.7 + 3) * 4;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
       const scale = 1.0 + prand(i * 11.1 + 4) * 0.8;
       // Billboard sprite always faces camera, visible from any orbit angle
