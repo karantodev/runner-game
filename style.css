@@ -18,6 +18,11 @@
   --hud-glass-border: rgba(232, 246, 255, 0.24);
   --hud-glass-shine: rgba(255, 255, 255, 0.13);
   --hud-glass-shadow: rgba(2, 8, 16, 0.36);
+  --hud-panel-fill: linear-gradient(180deg, rgba(30, 52, 80, 0.96) 0%, rgba(12, 25, 42, 0.97) 54%, rgba(5, 13, 24, 0.99) 100%);
+  --hud-panel-fill-pressed: linear-gradient(180deg, rgba(13, 25, 41, 0.98) 0%, rgba(7, 16, 28, 0.99) 100%);
+  --hud-panel-frame: rgba(137, 171, 201, 0.24);
+  --hud-panel-edge: #030914;
+  --hud-panel-drop: rgba(0, 0, 0, 0.52);
   --hud-tilt-x: 0deg;
   --hud-tilt-y: 0deg;
   --hud-drift-x: 0px;
@@ -76,44 +81,50 @@ canvas {
   background: #77bdf0;
 }
 
-/* Spatial glass HUD: still sharp/pixel-readable, but translucent enough
- * for the scene to breathe underneath. */
+/* Primary in-run HUD panels: denser pixel-art slabs with a hard bevel and
+ * outline, closer to the premium reference than the old glass treatment. */
 .hud-box {
   position: absolute;
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--hud-glass-border);
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, var(--hud-glass-shine), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 14px 32px var(--hud-glass-shadow);
-  backdrop-filter: blur(12px) saturate(1.25);
-  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  gap: 10px;
+  padding: 10px 14px;
+  border: 2px solid var(--hud-panel-edge);
+  border-radius: 4px;
+  background: var(--hud-panel-fill);
+  box-shadow:
+    inset 1px 1px 0 var(--hud-highlight),
+    inset -1px -1px 0 var(--hud-shadow),
+    0 0 0 1px var(--hud-panel-frame),
+    3px 3px 0 var(--hud-panel-drop);
   font-family: var(--pixel-font);
   font-weight: 400;          /* Press Start 2P only has one weight */
   color: var(--hud-text);
-  letter-spacing: 1px;
+  letter-spacing: 0;
+  overflow: hidden;
   transform: perspective(900px) rotateX(var(--hud-tilt-x)) rotateY(var(--hud-tilt-y)) translate3d(var(--hud-drift-x), var(--hud-drift-y), 0);
   transform-origin: center;
   transition: transform 120ms linear, background-color 160ms ease, border-color 160ms ease;
 }
 
 .icon-button {
-  border: 1px solid var(--hud-glass-border);
-  border-radius: 8px;
+  border: 2px solid var(--hud-panel-edge);
+  border-radius: 4px;
   color: var(--hud-text);
   cursor: pointer;
-  background: var(--hud-bg-translucent);
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 10px 24px var(--hud-glass-shadow);
-  backdrop-filter: blur(12px) saturate(1.25);
-  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  background: var(--hud-panel-fill);
+  box-shadow:
+    inset 1px 1px 0 var(--hud-highlight),
+    inset -1px -1px 0 var(--hud-shadow),
+    0 0 0 1px var(--hud-panel-frame),
+    3px 3px 0 var(--hud-panel-drop);
 }
 
-.icon-button:hover { transform: translateY(-1px); }
+.icon-button:hover {
+  transform: translateY(-1px);
+  background: var(--hud-panel-fill);
+}
 .icon-button svg { width: 28px; height: 28px; fill: currentColor; }
 .hud-button-img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; display: block; }
 .hud-flower-icon { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
@@ -137,7 +148,7 @@ canvas {
 .hud-heart.heart-pulse-loss { animation: heart-pulse-loss 0.34s ease-out; }
 .hud-heart.heart-pulse-gain { animation: heart-pulse-gain 0.34s ease-out; }
 
-#pause { top: 18px; left: 18px; padding: 16px 18px; }
+#pause { top: 18px; left: 18px; padding: 14px 16px; }
 #pause svg { fill: var(--hud-text); }
 
 /* v3.8.4 HUD polish — top-right column has stable 8 px gaps, fixed 160 px
@@ -146,7 +157,7 @@ canvas {
 #hearts-box,
 #distance-box {
   right: 18px;
-  width: 184px;
+  width: 176px;
   min-width: 0;
 }
 
@@ -154,10 +165,7 @@ canvas {
   top: 18px;
   justify-content: flex-start;
   font-size: 22px;
-  /* drop the legacy wooden panel PNG background — pixel emboss handles it */
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
+  background: var(--hud-panel-fill);
 }
 #score-box .hud-flower-icon { width: 34px; height: 34px; }
 #score-box #score {
@@ -168,21 +176,17 @@ canvas {
 }
 
 #hearts-box {
-  top: 88px;
+  top: 82px;
   justify-content: center;
   gap: 6px;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
+  background: var(--hud-panel-fill);
 }
 
 #distance-box {
-  top: 158px;
+  top: 146px;
   justify-content: space-between;
   font-size: 12px;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
+  background: var(--hud-panel-fill);
 }
 #distance-box #distance {
   color: var(--hud-text);
@@ -197,14 +201,12 @@ canvas {
  * panel aligned to the same left edge as #ability. */
 #powerups-box {
   bottom: 174px; left: 18px;
-  width: 168px;
+  width: 162px;
   min-height: 44px;
   align-items: stretch;
   font-size: 10px;
   line-height: 1.35;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
+  background: var(--hud-panel-fill);
 }
 #powerups-box .muted { color: var(--hud-text-muted); font-family: var(--pixel-font-body); }
 
@@ -214,7 +216,7 @@ canvas {
  * room, charge segments enlarged 30×14 → 26×18 so they read as a meter
  * not as dots. */
 .tool-icon {
-  width: 78px; height: 78px;
+  width: 72px; height: 72px;
   object-fit: contain;
   image-rendering: pixelated;
   display: block;
@@ -224,12 +226,10 @@ canvas {
   bottom: 18px; left: 18px;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 16px 12px;
-  min-width: 118px;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
-    var(--hud-bg-translucent);
+  gap: 4px;
+  padding: 12px 14px 10px;
+  min-width: 110px;
+  background: var(--hud-panel-fill);
 }
 #ability .bar {
   display: flex;
@@ -1286,30 +1286,30 @@ button:focus, [tabindex]:focus {
   font-size: 11px;
 }
 
-/* TEMP dev mode switcher — remove before ship.
-   Fixed bottom-center pill so it clears the top-left pause button,
-   top-right score/hearts/distance column, and the bottom touch pad.
-   High z-index so it floats above the canvas; pointer-events only on
-   the widget itself so gameplay input elsewhere is unaffected. */
+/* TEMP dev mode switcher — hidden in normal play and revealed only when the
+   existing debug panel is mounted (?debug=1 and related local debug flows). */
 #mode-switch {
   position: absolute;
   top: 64px;
   left: 16px;
   z-index: 200;
-  display: inline-flex;
-  border: 1px solid var(--hud-glass-border);
-  border-radius: 8px;
-  background: var(--hud-bg-translucent);
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.12), inset -1px -1px 0 rgba(0,0,0,0.28), 0 6px 18px var(--hud-glass-shadow);
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  display: none;
+  border: 2px solid var(--hud-panel-edge);
+  border-radius: 4px;
+  background: var(--hud-panel-fill);
+  box-shadow:
+    inset 1px 1px 0 var(--hud-highlight),
+    inset -1px -1px 0 var(--hud-shadow),
+    0 0 0 1px var(--hud-panel-frame),
+    3px 3px 0 var(--hud-panel-drop);
   overflow: hidden;
   pointer-events: auto;
   user-select: none;
 }
+body:has(#debug-panel) #mode-switch { display: inline-flex; }
 #mode-switch button {
   border: 0;
-  border-right: 1px solid var(--hud-glass-border);
+  border-right: 1px solid var(--hud-panel-frame);
   border-radius: 0;
   background: transparent;
   color: var(--hud-text-muted);
@@ -1326,7 +1326,10 @@ button:focus, [tabindex]:focus {
   background: var(--hud-gold);
   color: var(--hud-gold-dark);
 }
-#mode-switch button:hover:not(.active) { color: var(--hud-text); }
+#mode-switch button:hover:not(.active) {
+  color: var(--hud-text);
+  background: var(--hud-panel-fill-pressed);
+}
 
 /* Debug-only 3D asset comparison sheet. Injected from src/debug/SceneryQaSheet.js. */
 .scenery-qa-sheet {

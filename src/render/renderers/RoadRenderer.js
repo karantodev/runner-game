@@ -78,14 +78,15 @@ export class RoadRenderer {
     // the road read as a flat green strip.
     if (this.roadStyle === 'kit') {
       this.#imageKitGrid(scroll);
-      this.#grassNoise(scroll);
-      this.#shoulderFringe(scroll);
     } else if (this.roadStyle === 'tiles') {
       this.#imageTileGrid(scroll);
     } else {
       this.#roadBands(scroll);
-      this.#grassNoise(scroll);
       this.#roadShoulders(scroll);
+    }
+    this.#roadTextureOverlay(scroll);
+    if (this.roadStyle !== 'tiles') {
+      this.#grassNoise(scroll);
       this.#shoulderFringe(scroll);
     }
     this.#perspectiveGridOverlay(scroll);
@@ -216,8 +217,9 @@ export class RoadRenderer {
     // carpet; road readability is carried by the cream edge lines, lane
     // dividers, rungs, and shoulder strips, so this low-contrast fill is safe.
     const pathFill = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    pathFill.addColorStop(0, 'rgba(148,212,96,0.18)');
-    pathFill.addColorStop(1, 'rgba(126,194,80,0.42)');
+    pathFill.addColorStop(0, 'rgba(132,186,84,0.15)');
+    pathFill.addColorStop(0.58, 'rgba(110,160,70,0.24)');
+    pathFill.addColorStop(1, 'rgba(88,128,58,0.34)');
     ctx.fillStyle = pathFill;
     ctx.beginPath();
     const slices = 12;
@@ -240,6 +242,32 @@ export class RoadRenderer {
     }
     ctx.closePath();
     ctx.fill();
+
+    // Static tonal shaping so the path reads as a softer grassy corridor
+    // instead of one flat green trapezoid.
+    ctx.save();
+    ctx.clip();
+    const lateralShade = ctx.createLinearGradient(
+      (p.width * 0.5) - baseHalf,
+      0,
+      (p.width * 0.5) + baseHalf,
+      0,
+    );
+    lateralShade.addColorStop(0, 'rgba(48,74,36,0.22)');
+    lateralShade.addColorStop(0.18, 'rgba(72,104,46,0.08)');
+    lateralShade.addColorStop(0.50, 'rgba(188,212,122,0.05)');
+    lateralShade.addColorStop(0.82, 'rgba(72,104,46,0.08)');
+    lateralShade.addColorStop(1, 'rgba(48,74,36,0.22)');
+    ctx.fillStyle = lateralShade;
+    ctx.fillRect((p.width * 0.5) - baseHalf - 8, vpY, baseHalf * 2 + 16, p.groundY - vpY);
+
+    const nearShade = ctx.createLinearGradient(0, vpY, 0, p.groundY);
+    nearShade.addColorStop(0, 'rgba(0,0,0,0)');
+    nearShade.addColorStop(0.62, 'rgba(44,66,30,0.02)');
+    nearShade.addColorStop(1, 'rgba(40,58,28,0.12)');
+    ctx.fillStyle = nearShade;
+    ctx.fillRect((p.width * 0.5) - baseHalf - 8, vpY, baseHalf * 2 + 16, p.groundY - vpY);
+    ctx.restore();
   }
 
   // ── Dynamic elements (per-frame, scrolling) ─────────────────────────────────
@@ -316,12 +344,12 @@ export class RoadRenderer {
       // +~0.01) so the path reads as natural grass, not a flat green lane.
       // Kept well under the old checker levels (light 0.080 / dark 0.120) and
       // the same ~1.3× contrast ratio, so it stays mottled texture, not a grid.
-      const lightAlpha = 0.072 + 0.100 * fadeT;
-      const mediumAlpha = 0.060 + 0.095 * fadeT;
-      const darkAlpha   = 0.066 + 0.095 * fadeT;
-      const lightFill  = `rgba(196,242,128,${lightAlpha})`;
-      const mediumFill = `rgba(126,194,88,${mediumAlpha})`;
-      const darkFill   = `rgba(74,140,78,${darkAlpha})`;
+      const lightAlpha = 0.060 + 0.082 * fadeT;
+      const mediumAlpha = 0.056 + 0.088 * fadeT;
+      const darkAlpha   = 0.068 + 0.098 * fadeT;
+      const lightFill  = `rgba(174,214,112,${lightAlpha})`;
+      const mediumFill = `rgba(118,170,80,${mediumAlpha})`;
+      const darkFill   = `rgba(70,112,66,${darkAlpha})`;
 
       for (let cIdx = -NUM_LATERAL; cIdx < NUM_LATERAL; cIdx += 1) {
         let laneL = cIdx * TILE_LANE_W;
@@ -339,10 +367,15 @@ export class RoadRenderer {
         //   bucket 6   (14%) → dark
         // Dark variant is now rare (was ~33%) so the road reads as
         // mottled-grass, not a chessboard with dark squares.
-        const hash = (((worldRow * 17) ^ (cIdx * 31) ^ (worldRow + cIdx) * 7) & 0xFF) % 7;
-        ctx.fillStyle = hash < 3 ? lightFill
-                       : hash < 6 ? mediumFill
-                       : darkFill;
+        const clusterRow = worldRow >> 1;
+        const clusterCol = cIdx >> 1;
+        const macroHash = (((clusterRow * 17) ^ (clusterCol * 31) ^ ((clusterRow + clusterCol) * 7)) & 0xFF) % 11;
+        const microHash = (((worldRow * 11) ^ (cIdx * 13)) & 0x03);
+        ctx.fillStyle = macroHash < 3 ? lightFill
+                       : macroHash < 8 ? mediumFill
+                       : macroHash < 10 ? darkFill
+                       : microHash < 2 ? lightFill
+                       : mediumFill;
         const nl = p.projectVisual(laneL, dN);
         const nr = p.projectVisual(laneR, dN);
         const fr = p.projectVisual(laneR, dFar);
@@ -353,6 +386,83 @@ export class RoadRenderer {
         // tile edges between frames, producing the "shimmer / highlight
         // flicker" the user reported. Rounding to int snaps adjacent
         // tiles to the same pixel grid so seams stay solid.
+        ctx.beginPath();
+        ctx.moveTo(Math.round(nl.sx), Math.round(nl.sy));
+        ctx.lineTo(Math.round(nr.sx) + 1, Math.round(nr.sy));
+        ctx.lineTo(Math.round(fr.sx) + 1, Math.round(fr.sy) - 1);
+        ctx.lineTo(Math.round(fl.sx), Math.round(fl.sy) - 1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  /**
+   * Structured near-field tint overlay shared by kit / tile / procedural
+   * roads. It adds clustered square-ish patches instead of relying only on
+   * random speckle, which gives the foreground a stronger pixel-art grass
+   * tile read without turning the whole lane into noise.
+   */
+  #roadTextureOverlay(scrollOffset) {
+    const ctx = this.ctx;
+    const p = this.projection;
+    const ROAD_HALF = p.roadHalfLaneUnits;
+    const TILE_DEPTH = 2.4;
+    const TILE_LANE_W = 0.16;
+    const FAR_VISIBLE = 58;
+    const MAX_ROWS = 28;
+    const NUM_LATERAL = Math.ceil(ROAD_HALF / TILE_LANE_W);
+
+    const off = ((scrollOffset % TILE_DEPTH) + TILE_DEPTH) % TILE_DEPTH;
+    const rowOffset = Math.floor(scrollOffset / TILE_DEPTH);
+
+    for (let dIdx = 0; dIdx < MAX_ROWS; dIdx += 1) {
+      const dNear = dIdx * TILE_DEPTH - off;
+      const dFar = dNear + TILE_DEPTH;
+      if (dFar <= 0) continue;
+      if (dNear > FAR_VISIBLE) break;
+
+      const dN = Math.max(0, dNear);
+      const fadeT = 1 - Math.min(1, dN / FAR_VISIBLE);
+      if (fadeT <= 0.04) continue;
+      const worldRow = rowOffset + dIdx;
+
+      for (let cIdx = -NUM_LATERAL; cIdx < NUM_LATERAL; cIdx += 1) {
+        let laneL = cIdx * TILE_LANE_W;
+        let laneR = laneL + TILE_LANE_W;
+        if (laneR <= -ROAD_HALF) continue;
+        if (laneL >= ROAD_HALF) continue;
+        if (laneL < -ROAD_HALF) laneL = -ROAD_HALF;
+        if (laneR > ROAD_HALF) laneR = ROAD_HALF;
+
+        const clusterRow = worldRow >> 1;
+        const clusterCol = cIdx >> 1;
+        const macroHash = (((clusterRow * 19) ^ (clusterCol * 29) ^ ((clusterRow + clusterCol) * 7)) & 0x0F);
+        const microHash = (((worldRow * 11) ^ (cIdx * 17)) & 0x03);
+        const laneMid = (laneL + laneR) * 0.5;
+        const shoulderMul = Math.abs(laneMid) > 1.5 ? 0.86 : 1.0;
+
+        let fillStyle = null;
+        if (macroHash < 4) {
+          if (microHash === 3 && fadeT < 0.55) continue;
+          const alpha = (0.028 + 0.074 * fadeT) * shoulderMul;
+          fillStyle = `rgba(56,96,46,${alpha})`;
+        } else if (macroHash < 7) {
+          if ((microHash & 1) === 1 && fadeT < 0.48) continue;
+          const alpha = (0.018 + 0.056 * fadeT) * shoulderMul;
+          fillStyle = `rgba(178,206,118,${alpha})`;
+        } else if (macroHash === 11 && fadeT > 0.28) {
+          const alpha = (0.012 + 0.026 * fadeT) * shoulderMul;
+          fillStyle = `rgba(154,168,96,${alpha})`;
+        } else {
+          continue;
+        }
+
+        const nl = p.projectVisual(laneL, dN);
+        const nr = p.projectVisual(laneR, dN);
+        const fr = p.projectVisual(laneR, dFar);
+        const fl = p.projectVisual(laneL, dFar);
+        ctx.fillStyle = fillStyle;
         ctx.beginPath();
         ctx.moveTo(Math.round(nl.sx), Math.round(nl.sy));
         ctx.lineTo(Math.round(nr.sx) + 1, Math.round(nr.sy));
@@ -438,9 +548,10 @@ export class RoadRenderer {
     // stroke so the dividers are legible at a glance without becoming
     // highway-thick. Far-floor 0.18 → 0.28 keeps a visible pixel even
     // at the furthest rendered dashes.
-    const widthPx = 3.3;  // M22A — slimmer lane dividers (was 4.5) for a softer path read
-    const segLen = 1.2;
-    const segGap = 0.9;
+    const widthPx = 3.4;
+    const baseWidthPx = 2.0;
+    const segLen = 1.5;
+    const segGap = 0.55;
     const period = segLen + segGap;
     // v4.1 — P1 reference-match: maxVisibleDistance 120 → 160 so dashes
     // persist well into the middle of the road (toward the castle).
@@ -450,29 +561,25 @@ export class RoadRenderer {
     ctx.save();
     ctx.fillStyle = strongDividerFade;
     for (const laneLine of [-0.5, 0.5]) {
+      ctx.globalAlpha = 0.32;
+      for (let dNear = 0; dNear < maxVisibleDistance; dNear += 16) {
+        const dFar = Math.min(maxVisibleDistance, dNear + 16);
+        const near = p.projectVisual(laneLine, dNear);
+        const farP = p.projectVisual(laneLine, dFar);
+        const wNear = Math.max(0.9, baseWidthPx * near.scale);
+        const wFar  = Math.max(0.40, baseWidthPx * farP.scale);
+        this.#fillProjectedStrip(near, farP, wNear, wFar);
+      }
+      ctx.globalAlpha = 1;
       for (let dStart = -off; dStart < maxVisibleDistance; dStart += period) {
         const start = Math.max(0, dStart);
         const end = dStart + segLen;
         if (end <= 0) continue;
         const near = p.projectVisual(laneLine, start);
         const farP = p.projectVisual(laneLine, end);
-        const wNear = Math.max(1.0, widthPx * near.scale);
-        const wFar  = Math.max(0.28, widthPx * farP.scale);
-        // v3.8.13 — pixel-snap dash vertices so the divider doesn't
-        // shimmer between frames as scroll advances.
-        const farLx  = Math.round(farP.sx - wFar / 2);
-        const farRx  = Math.round(farP.sx + wFar / 2);
-        const nearLx = Math.round(near.sx - wNear / 2);
-        const nearRx = Math.round(near.sx + wNear / 2);
-        const farY   = Math.round(farP.sy);
-        const nearY  = Math.round(near.sy);
-        ctx.beginPath();
-        ctx.moveTo(farLx,  farY);
-        ctx.lineTo(farRx,  farY);
-        ctx.lineTo(nearRx, nearY);
-        ctx.lineTo(nearLx, nearY);
-        ctx.closePath();
-        ctx.fill();
+        const wNear = Math.max(1.05, widthPx * near.scale);
+        const wFar  = Math.max(0.34, widthPx * farP.scale);
+        this.#fillProjectedStrip(near, farP, wNear, wFar);
       }
     }
     ctx.restore();
@@ -505,17 +612,27 @@ export class RoadRenderer {
     // → ~1 px either side = 2 px total. Clamped so far lines keep 1 px.
     // Keep the border visible without turning the garden path into a
     // highway: the textured shoulder should stay readable behind it.
-    const widthPx     = 6;    // M22A — less-bold edge lines (was 9) so the boundary frames, not highways
+    const widthPx     = 5.4;
+    const shadowWidthPx = 6.4;
     const farFloorPx  = 1.0;
     const maxDistance = 180;
-    const segmentDepth = 15;
+    const segmentDepth = 12;
 
     ctx.save();
-    ctx.fillStyle = edgeGrad;
-
     for (const laneLine of [-1.5, 1.5]) {
       // Use short quads rather than one long trapezoid so the outer frame
       // follows the render-only fake curve instead of cutting across it.
+      ctx.fillStyle = 'rgba(34,70,32,0.22)';
+      for (let dNear = 0; dNear < maxDistance; dNear += segmentDepth) {
+        const dFar = Math.min(maxDistance, dNear + segmentDepth);
+        const shadowNear = p.projectVisual(laneLine, dNear);
+        const shadowFar  = p.projectVisual(laneLine, dFar);
+        const shadowWNear = Math.max(farFloorPx, shadowWidthPx * shadowNear.scale);
+        const shadowWFar  = Math.max(farFloorPx, shadowWidthPx * shadowFar.scale);
+        this.#fillProjectedStrip(shadowNear, shadowFar, shadowWNear, shadowWFar);
+      }
+
+      ctx.fillStyle = edgeGrad;
       for (let dNear = 0; dNear < maxDistance; dNear += segmentDepth) {
         const dFar = Math.min(maxDistance, dNear + segmentDepth);
         const near = p.projectVisual(laneLine, dNear);
@@ -523,21 +640,7 @@ export class RoadRenderer {
 
         const wNear = Math.max(farFloorPx, widthPx * near.scale);
         const wFar  = Math.max(farFloorPx, widthPx * far.scale);
-
-        const nearLx = Math.round(near.sx - wNear / 2);
-        const nearRx = Math.round(near.sx + wNear / 2);
-        const farLx  = Math.round(far.sx  - wFar  / 2);
-        const farRx  = Math.round(far.sx  + wFar  / 2);
-        const nearY  = Math.round(near.sy);
-        const farY   = Math.round(far.sy);
-
-        ctx.beginPath();
-        ctx.moveTo(farLx,  farY);
-        ctx.lineTo(farRx,  farY);
-        ctx.lineTo(nearRx, nearY);
-        ctx.lineTo(nearLx, nearY);
-        ctx.closePath();
-        ctx.fill();
+        this.#fillProjectedStrip(near, far, wNear, wFar);
       }
     }
 
@@ -954,12 +1057,29 @@ export class RoadRenderer {
       // light so the visual hierarchy still points toward the castle.
       // v4.4 — reference-match: alpha dialed down ~40% so the clean
       // perspective grid reads over the texture (geometry unchanged).
-      const alpha = 0.14 + 0.38 * proj.scale;
+      const alpha = 0.11 + 0.28 * proj.scale;
       ctx.fillStyle = pt.dark
-        ? `rgba(46,118,40,${alpha * 0.72})`
-        : `rgba(196,238,124,${alpha})`;
+        ? `rgba(54,108,44,${alpha * 0.76})`
+        : `rgba(180,214,116,${alpha})`;
       ctx.fillRect(Math.round(proj.sx - sz / 2), Math.round(proj.sy - sz), sz, sz);
     }
+  }
+
+  #fillProjectedStrip(near, far, wNear, wFar) {
+    const ctx = this.ctx;
+    const farLx  = Math.round(far.sx - wFar / 2);
+    const farRx  = Math.round(far.sx + wFar / 2);
+    const nearLx = Math.round(near.sx - wNear / 2);
+    const nearRx = Math.round(near.sx + wNear / 2);
+    const farY   = Math.round(far.sy);
+    const nearY  = Math.round(near.sy);
+    ctx.beginPath();
+    ctx.moveTo(farLx,  farY);
+    ctx.lineTo(farRx,  farY);
+    ctx.lineTo(nearRx, nearY);
+    ctx.lineTo(nearLx, nearY);
+    ctx.closePath();
+    ctx.fill();
   }
 
   /**
