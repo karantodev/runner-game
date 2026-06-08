@@ -34,7 +34,7 @@ export const ASSETS = {
   grassTuft: 'decor_small/grass/grass_tuft_large.png',
 };
 
-export const FARMER_UNIT = 2.0;
+export const FARMER_UNIT = 2.4;
 
 export const PROP_METRICS = new Map([
   [ASSETS.tree, [2.35, 0.78, 0.12]],

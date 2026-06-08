@@ -150,7 +150,7 @@ export class ThreeEnvironmentManager {
     const aspect = (this.projection?.width ?? 1536) / (this.projection?.height ?? 864);
     const perspective = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, aspect, 0.1, 900);
     perspective.position.set(0, 4.0, 15.5);
-    perspective.lookAt(0, 2.0, -26);
+    perspective.lookAt(0, 0.5, -26);
 
     // Orthographic position is set in buildOrthoBackdrop after group parenting.
     const orthographic = new THREE.OrthographicCamera(
@@ -221,7 +221,7 @@ export class ThreeEnvironmentManager {
       roadGroup.add(shoulder);
     }
 
-    const laneMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a });
+    const laneMat = new THREE.MeshBasicMaterial({ color: 0xddf07a });
     for (const x of [-1.08, 1.08]) {
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.014, 96), laneMat);
       line.position.set(x, 0.012, -31);
@@ -367,8 +367,8 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    add(ASSETS.forest, -11, 1.2, -51, 26, 5.5, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest, 13, 1.2, -52, 26, 5.5, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest, -12, 0.8, -51, 24, 4.5, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest, 15, 0.8, -52, 24, 4.5, { opacity: 0.96, renderOrder: -35 });
 
     const castle = add(ASSETS.castle, 0, 4.5, -46, 9.0, 9.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
@@ -509,9 +509,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 200, 28, 4.5, 0x9cd858, true, 0.0, 0.52],
-      [ASSETS.mountainsMid, 175, 24, 4.0, 0x88d454, true, 0.37, 0.52],
-      [ASSETS.mountainsNear, 150, 20, 3.5, 0x88d454, true, 0.68, 0.48],
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.48],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.48],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.44],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -561,9 +561,10 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
+    // renderOrder -38/-37: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      [ASSETS.mountainsFar, -75, 10.0, 190, 32, 0x9cd858, -20],
-      [ASSETS.forest, -65, 3.0, 150, 14, 0x88c040, -19],
+      [ASSETS.mountainsFar, -65, 6.0, 170, 22, 0xbcee50, -38],
+      [ASSETS.forest, -56, 2.0, 140, 10, 0x90cc3c, -37],
     ];
     for (const [asset, z, y, w, h, tint, ro] of layers) {
       const mesh = new THREE.Mesh(
@@ -634,20 +635,20 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.cloudGroup = group;
 
-    const CAP = 14;
-    const rBase = 55;
-    const yBase = 9;
+    const CAP = 12;
+    const rBase = 50;
+    const yBase = 10;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // Distribute clouds in the front-facing sector only (±20° from forward/-Z axis)
+      // Distribute clouds in the front-facing sector only (±22° from forward/-Z axis)
       // so they are always within the narrow horizontal FOV instead of orbiting off-screen
-      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 0.7;
-      const radius = rBase + r * 25;
+      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 0.8;
+      const radius = rBase + r * 22;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
-      const h = yBase + prand(i * 7.7 + 3) * 5;
+      const h = yBase + prand(i * 7.7 + 3) * 6;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
-      const scale = 0.9 + prand(i * 11.1 + 4) * 0.8;
+      const scale = 1.0 + prand(i * 11.1 + 4) * 0.8;
       // Billboard sprite always faces camera, visible from any orbit angle
       const mat = new THREE.SpriteMaterial({
         map: this.textureCache.get(asset),
@@ -658,7 +659,7 @@ export class ThreeEnvironmentManager {
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      sprite.scale.set(16 * scale, 9 * scale, 1);
+      sprite.scale.set(20 * scale, 11 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
       group.add(sprite);
