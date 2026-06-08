@@ -577,7 +577,7 @@ export class ThreeEnvironmentManager {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `horizon:${assetPath}`;
-      mesh.position.y = 2.8;
+      mesh.position.y = 2.2;
       mesh.scale.y = scaleY;
       mesh.frustumCulled = false;
       mesh.renderOrder = -40;
@@ -604,13 +604,13 @@ export class ThreeEnvironmentManager {
       [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0xbcee50, -38],
       [ASSETS.forest, -56, 2.5, 140, 12, 0x90cc3c, -37],
     ];
-    // Horizon bridge — solid green band that hides sky-gradient bleed between mountain bases and treeline
+    // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
     const bridge = new THREE.Mesh(
-      new THREE.PlaneGeometry(220, 6),
-      new THREE.MeshBasicMaterial({ color: 0x5cb83a, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.PlaneGeometry(220, 12),
+      new THREE.MeshBasicMaterial({ color: 0x62b836, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, 2.0, -49);
+    bridge.position.set(0, 4.0, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
