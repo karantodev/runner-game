@@ -509,9 +509,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 200, 28, 4.5, 0x88d454, true, 0.0, 0.32],
-      [ASSETS.mountainsMid, 175, 24, 4.0, 0x88d454, true, 0.37, 0.40],
-      [ASSETS.mountainsNear, 150, 20, 3.5, 0x88d454, true, 0.68, 0.31],
+      [ASSETS.mountainsFar, 200, 28, 4.5, 0x9cd858, true, 0.0, 0.52],
+      [ASSETS.mountainsMid, 175, 24, 4.0, 0x88d454, true, 0.37, 0.52],
+      [ASSETS.mountainsNear, 150, 20, 3.5, 0x88d454, true, 0.68, 0.48],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -539,7 +539,7 @@ export class ThreeEnvironmentManager {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `horizon:${assetPath}`;
-      mesh.position.y = 1.2;
+      mesh.position.y = 2.8;
       mesh.scale.y = scaleY;
       mesh.frustumCulled = false;
       mesh.renderOrder = -40;
@@ -562,8 +562,8 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.farSilhouettesGroup = group;
     const layers = [
-      [ASSETS.mountainsFar, -82, 6.5, 190, 36, 0x7ecf48, -20],
-      [ASSETS.forest, -72, 3.6, 150, 16, 0x88c040, -19],
+      [ASSETS.mountainsFar, -75, 10.0, 190, 32, 0x9cd858, -20],
+      [ASSETS.forest, -65, 3.0, 150, 14, 0x88c040, -19],
     ];
     for (const [asset, z, y, w, h, tint, ro] of layers) {
       const mesh = new THREE.Mesh(
