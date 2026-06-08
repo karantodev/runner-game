@@ -72,7 +72,7 @@ export class ThreeSceneRenderer {
       powerPreference: 'high-performance',
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.setClearColor(0x78bff2, this.options.alpha ? 0 : 1);
+    this.renderer.setClearColor(0x4ab4e8, this.options.alpha ? 0 : 1);
     this.renderer.setPixelRatio(this.pixelRatio);
 
     this.environment.renderer = this.renderer;
@@ -231,7 +231,7 @@ export class ThreeSceneRenderer {
     if (this.environment.shoulderTiersGroup) this.environment.shoulderTiersGroup.visible = !is25d;
 
     if (this.postProcessing) {
-      this.postProcessing.setVignetteDarkness(is25d ? 0.15 : 1.25);
+      this.postProcessing.setVignetteDarkness(is25d ? 0.15 : 0.35);
       this.postProcessing.setSSAOEnabled(!is25d);
     }
     this._bloomBase = is25d ? 0.25 : 0.2;

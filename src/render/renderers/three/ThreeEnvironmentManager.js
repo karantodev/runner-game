@@ -7,7 +7,7 @@ import {
 
 const ORTHO_HEIGHT = 28;
 const PERSPECTIVE_FOV = 18;
-const HAZE_COLOR = 0xccd0e4;
+const HAZE_COLOR = 0xb8e0f7;
 
 function applyVerticalGradientColors(geometry, bottomHex, midHex, topHex) {
   const bottom = new THREE.Color(bottomHex);
@@ -104,7 +104,7 @@ export class ThreeEnvironmentManager {
   build() {
     this.skyGradientTex = this.buildSkyGradient();
     this.scene.background = this.skyGradientTex;
-    this.scene.fog = new THREE.FogExp2(HAZE_COLOR, 0.010);
+    this.scene.fog = new THREE.FogExp2(HAZE_COLOR, 0.003);
 
     this.buildEnvironment();
     this.buildCameras();
@@ -125,9 +125,9 @@ export class ThreeEnvironmentManager {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 512, 0, 0);
-    grad.addColorStop(0, '#ccd0e4');
-    grad.addColorStop(0.35, '#cfe8f2');
-    grad.addColorStop(1, '#78bff2');
+    grad.addColorStop(0, '#c8e8f7');
+    grad.addColorStop(0.35, '#4ab4e8');
+    grad.addColorStop(1, '#1a68d4');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -150,7 +150,7 @@ export class ThreeEnvironmentManager {
     const aspect = (this.projection?.width ?? 1536) / (this.projection?.height ?? 864);
     const perspective = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, aspect, 0.1, 900);
     perspective.position.set(0, 4.0, 15.5);
-    perspective.lookAt(0, 2.4, -26);
+    perspective.lookAt(0, 4.2, -26);
 
     // Orthographic position is set in buildOrthoBackdrop after group parenting.
     const orthographic = new THREE.OrthographicCamera(
@@ -165,12 +165,12 @@ export class ThreeEnvironmentManager {
   }
 
   buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0xeaf7ff, 0x6f9a52, 1.5));
-    const sun = new THREE.DirectionalLight(0xfff3d6, 2.2);
+    this.scene.add(new THREE.HemisphereLight(0xeef7ff, 0x8ac858, 2.2));
+    const sun = new THREE.DirectionalLight(0xfff8e8, 2.8);
     sun.position.set(-5, 8, 5);
     sun.castShadow = false;
     this.scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x8fd8ff, 0.75);
+    const rim = new THREE.DirectionalLight(0x8fd8ff, 0.9);
     rim.position.set(4, 3, -6);
     this.scene.add(rim);
   }
@@ -213,7 +213,7 @@ export class ThreeEnvironmentManager {
     road.position.set(0, -0.08, -31);
     roadGroup.add(road);
 
-    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x277f31, roughness: 0.95 });
+    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x3db832, roughness: 0.95 });
     for (const x of [-5.35, 5.35]) {
       const shoulder = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.07, 98), shoulderMat);
       shoulder.position.set(x, -0.1, -31);
@@ -276,7 +276,7 @@ export class ThreeEnvironmentManager {
     const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.95, metalness: 0 });
     const grassMats = [dirtMat, dirtMat, grassTopMat, dirtMat, dirtMat, dirtMat];
 
-    const brickMat = new THREE.MeshStandardMaterial({ color: 0x7a5fa0, roughness: 0.8, metalness: 0 });
+    const brickMat = new THREE.MeshStandardMaterial({ color: 0xa060d4, roughness: 0.8, metalness: 0 });
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x7a7570, roughness: 0.95, metalness: 0 });
 
     const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 128);
@@ -367,10 +367,10 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    add(ASSETS.forest, -11, 2.2, -51, 26, 7.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest, 13, 2.2, -52, 26, 7.0, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest, -11, 1.2, -51, 26, 5.5, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest, 13, 1.2, -52, 26, 5.5, { opacity: 0.96, renderOrder: -35 });
 
-    const castle = add(ASSETS.castle, 0, 5.5, -46, 9.0, 9.0, { opacity: 1.0, renderOrder: -10 });
+    const castle = add(ASSETS.castle, 0, 4.5, -46, 9.0, 9.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
@@ -509,9 +509,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 200, 28, 4.5, 0xdaf0e2, true, 0.0, 0.32],
-      [ASSETS.mountainsMid, 175, 24, 4.0, 0xffffff, true, 0.37, 0.40],
-      [ASSETS.mountainsNear, 150, 20, 3.5, 0xffffff, true, 0.68, 0.31],
+      [ASSETS.mountainsFar, 200, 28, 4.5, 0x88d454, true, 0.0, 0.32],
+      [ASSETS.mountainsMid, 175, 24, 4.0, 0x88d454, true, 0.37, 0.40],
+      [ASSETS.mountainsNear, 150, 20, 3.5, 0x88d454, true, 0.68, 0.31],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -535,7 +535,7 @@ export class ThreeEnvironmentManager {
         depthTest: true,
         depthWrite: false,
         side: THREE.BackSide,
-        fog: true,
+        fog: false,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `horizon:${assetPath}`;
@@ -562,8 +562,8 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.farSilhouettesGroup = group;
     const layers = [
-      [ASSETS.mountainsFar, -82, 6.5, 190, 36, 0xc4cbe0, -20],
-      [ASSETS.forest, -72, 3.6, 150, 16, 0x9fb0c4, -19],
+      [ASSETS.mountainsFar, -82, 6.5, 190, 36, 0x7ecf48, -20],
+      [ASSETS.forest, -72, 3.6, 150, 16, 0x88c040, -19],
     ];
     for (const [asset, z, y, w, h, tint, ro] of layers) {
       const mesh = new THREE.Mesh(
@@ -693,7 +693,7 @@ export class ThreeEnvironmentManager {
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#6f9a52';
+    ctx.fillStyle = '#58b82e';
     ctx.fillRect(0, 0, 64, 64);
     // Use deterministic noise so QA screenshots are reproducible.
     const seed = name === 'ground' ? 1000 : name === 'road' ? 2000 : 3000;
@@ -701,7 +701,7 @@ export class ThreeEnvironmentManager {
       const x = prand(seed + i * 2.1) * 64;
       const y = prand(seed + i * 3.7) * 64;
       const w = 1 + prand(seed + i * 5.3) * 2;
-      ctx.fillStyle = prand(seed + i * 7.1) > 0.5 ? '#7eb05d' : '#5d8145';
+      ctx.fillStyle = prand(seed + i * 7.1) > 0.5 ? '#6cc836' : '#48a024';
       ctx.fillRect(x, y, w, w);
     }
     const tex = new THREE.CanvasTexture(canvas);
