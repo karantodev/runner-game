@@ -12,7 +12,7 @@ const PIXELATION_SHADER = {
   uniforms: {
     tDiffuse: { value: null },
     uResolution: { value: new THREE.Vector2(480, 270) },
-    uLevels: { value: 16 },
+    uLevels: { value: 24 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -73,9 +73,9 @@ export class ThreePostProcessingManager {
     composer.addPass(this.renderPass);
 
     this.ssaoPass = new SSAOPass(this.scene, this.camera, w, h);
-    this.ssaoPass.kernelRadius = 4;
+    this.ssaoPass.kernelRadius = 2;
     this.ssaoPass.minDistance = 0.002;
-    this.ssaoPass.maxDistance = 0.05;
+    this.ssaoPass.maxDistance = 0.02;
     this.ssaoPass.output = SSAOPass.OUTPUT.Default;
     composer.addPass(this.ssaoPass);
 
@@ -84,7 +84,7 @@ export class ThreePostProcessingManager {
 
     this.vignettePass = new ShaderPass(VignetteShader);
     this.vignettePass.uniforms['offset'].value = 0.95;
-    this.vignettePass.uniforms['darkness'].value = 1.25;
+    this.vignettePass.uniforms['darkness'].value = 0.35;
     composer.addPass(this.vignettePass);
 
     this.pixelPass = new ShaderPass(PIXELATION_SHADER);
