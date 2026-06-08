@@ -11,6 +11,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/node_modules/three/build/three.module.js",
+      "three/addons/": "/node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <main id="app">
@@ -77,37 +85,52 @@
       <section id="settings-modal" class="settings-modal" aria-hidden="true">
         <div class="settings-card">
           <h2>Settings</h2>
-          <ul class="settings-list">
-            <li><label><input type="checkbox" id="settings-sfx"> Sound Effects</label></li>
-            <li><label><input type="checkbox" id="settings-music"> Music <span class="muted">(coming soon)</span></label></li>
-            <li><label><input type="checkbox" id="settings-motion" checked> Camera shake</label></li>
-            <li><label><input type="checkbox" id="settings-particles" checked> Particles</label></li>
-            <li>
+          <div class="settings-bento">
+
+            <!-- Left column: toggle switches -->
+            <div class="settings-bento-cell settings-bento-cell--toggles">
+              <div class="settings-bento-cell-label">Options</div>
+              <label><input type="checkbox" id="settings-sfx"> Sound Effects</label>
+              <label><input type="checkbox" id="settings-music"> Music <span class="muted">(soon)</span></label>
+              <label><input type="checkbox" id="settings-motion" checked> Camera shake</label>
+              <label><input type="checkbox" id="settings-particles" checked> Particles</label>
+              <label><input type="checkbox" id="settings-player-3d" checked> 3D farmer</label>
+            </div>
+
+            <!-- Right column: block style + quality -->
+            <div class="settings-bento-cell settings-bento-cell--controls">
+              <div class="settings-bento-cell-label">Rendering</div>
               <div class="settings-row">
-                <span>Block style</span>
+                <span>Blocks</span>
                 <div id="settings-block-style" class="settings-segmented" role="group" aria-label="Block style">
                   <button type="button" data-block-style="sprite" aria-pressed="true">2D</button>
                   <button type="button" data-block-style="voxel" aria-pressed="false">3D</button>
                 </div>
               </div>
-            </li>
-            <li><label>Quality
-              <select id="settings-quality">
-                <option value="auto">Auto</option>
-                <option value="3">Ultra</option>
-                <option value="2">High</option>
-                <option value="1">Mid</option>
-                <option value="0">Low</option>
-              </select>
-            </label></li>
-            <li><label>Language
-              <select id="settings-lang"></select>
-            </label></li>
-            <li class="settings-danger">
+              <label>Quality
+                <select id="settings-quality">
+                  <option value="auto">Auto</option>
+                  <option value="3">Ultra</option>
+                  <option value="2">High</option>
+                  <option value="1">Mid</option>
+                  <option value="0">Low</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- Language: full-width row -->
+            <div class="settings-bento-cell settings-bento-cell--lang">
+              <span>Language</span>
+              <select id="settings-lang" style="margin-left:auto"></select>
+            </div>
+
+            <!-- Danger zone: full-width row -->
+            <div class="settings-bento-cell settings-bento-cell--danger">
               <button type="button" id="settings-reset-stats">Reset lifetime stats</button>
               <button type="button" id="settings-reset-leaderboard">Reset leaderboard</button>
-            </li>
-          </ul>
+            </div>
+
+          </div>
           <button type="button" id="settings-close" class="menu-secondary">Close</button>
         </div>
       </section>
@@ -118,6 +141,19 @@
       </section>
 
       <p id="hint">Keyboard: ← → / A D move · SPACE jump · ↓ / S crouch · R restart · ESC pause · Gamepad + touch supported</p>
+
+      <!-- TEMP dev mode switcher — remove before ship.
+           Two independent axes:
+             blockStyle (canvas2d only): sprite = flat 2D images, voxel = 3D-look blocks.
+               Hot-swaps live via game.settings.setBlockStyle() — NO reload needed.
+             renderer: canvas2d vs three. Switching requires a page reload because
+               a canvas can't hot-swap its 2D ↔ WebGL context; set via URL params. -->
+      <div id="mode-switch" aria-label="Renderer mode">
+        <button type="button" id="mode-2d"    data-mode="2d"    title="Canvas2D flat sprites">2D</button>
+        <button type="button" id="mode-voxel" data-mode="voxel" title="Canvas2D voxel blocks">Voxel</button>
+        <button type="button" id="mode-3d"    data-mode="3d"    title="Three.js 3D perspective">3D</button>
+        <button type="button" id="mode-25d"   data-mode="25d"   title="Three.js 2.5D ortho">2.5D</button>
+      </div>
 
       <aside id="touch-controls" aria-label="Touch controls">
         <div class="touch-pad touch-pad--left">

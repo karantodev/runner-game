@@ -53,6 +53,14 @@ const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
 // lightweight Canvas voxel renderer. Press Y to switch live.
 const requestedBlockStyle = params.get('blockStyle');
 const blockStyle = ['3d', 'voxel'].includes(requestedBlockStyle) ? 'voxel' : 'sprite';
+const playerVoxelEnabled = params.get('player3d') !== '0';
+const requestedRenderer = params.get('renderer');
+const rendererStrategy = ['three', 'webgl', 'three-scene'].includes(requestedRenderer)
+  ? 'three-scene'
+  : 'canvas2d';
+const threeMode = ['2.5d', 'orthographic', 'ortho'].includes(params.get('threeMode'))
+  ? '2.5d'
+  : '3d';
 
 // v4.17 — reference-match: immersive framing is now the DEFAULT (baked into
 // GAME_CONFIG: heroScale 1.18, bottomMargin 44, visualLaneScale 0.94). The
@@ -189,7 +197,97 @@ const game = new Game(canvas, {
   pixelRatio: pixelRatioChoice.value,
   roadStyle,
   blockStyle,
+  playerVoxelEnabled,
+  rendererStrategy,
+  threeMode,
 });
+
+// TEMP dev mode switcher — remove before ship.
+// Exposes all four visual modes across two independent axes:
+//   blockStyle (canvas2d only): 'sprite' (flat 2D) | 'voxel' (3D-look).
+//     Toggled live via game.settings.setBlockStyle() — no reload needed.
+//   renderer: canvas2d | three. Requires page reload because a canvas
+//     cannot hot-swap its 2D ↔ WebGL context; driven by URL params.
+// Preserves all existing params (debug, seed, perf, roadStyle, …) on every
+// reload so a debugging session survives the switch intact.
+function setupModeSwitch() {
+  const container = document.getElementById('mode-switch');
+  if (!container) return;
+
+  // Mark the button matching the current active mode as .active.
+  // Called on load and after every live blockStyle change so the
+  // highlight stays in sync without a reload.
+  function syncActiveButton() {
+    const isThree = game.renderer.kind === 'three-scene';
+    let activeMode;
+    if (isThree) {
+      activeMode = game.renderer.mode === '2.5d' ? '25d' : '3d';
+    } else {
+      // blockStyle defaults to 'sprite' when the property is absent.
+      activeMode = (game.renderer.blockStyle ?? 'sprite') === 'voxel' ? 'voxel' : '2d';
+    }
+    for (const btn of container.querySelectorAll('button[data-mode]')) {
+      btn.classList.toggle('active', btn.dataset.mode === activeMode);
+    }
+  }
+
+  syncActiveButton();
+
+  // Re-sync the highlight when block style changes outside the switcher — the
+  // Settings menu and the `Y` hotkey both dispatch orchid:blockStyleChanged.
+  // Without this the switcher would show a stale active button after such a toggle.
+  window.addEventListener('orchid:blockStyleChanged', syncActiveButton);
+
+  for (const btn of container.querySelectorAll('button[data-mode]')) {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+
+      if (mode === '2d' || mode === 'voxel') {
+        // blockStyle is a live, settings-persisted toggle — no reload needed
+        // when already on canvas2d. Only reload when coming from three, where
+        // the WebGL context must be torn down and rebuilt as canvas2d.
+        const style = mode === 'voxel' ? 'voxel' : 'sprite';
+        game.settings.setBlockStyle(style);
+        if (game.renderer.kind === 'three-scene') {
+          // Drop renderer + threeMode params to land on canvas2d.
+          const next = new URLSearchParams(window.location.search);
+          next.delete('renderer');
+          next.delete('threeMode');
+          window.location.search = next.toString();
+        } else {
+          // Already canvas2d — blockStyle change is instant; just update highlight.
+          syncActiveButton();
+        }
+        return;
+      }
+
+      // '3d' and '25d' both target the three renderer; reload required.
+      const next = new URLSearchParams(window.location.search);
+      next.set('renderer', 'three');
+      if (mode === '25d') {
+        next.set('threeMode', '2.5d');
+      } else {
+        // '3d' is the three default — omit threeMode to keep the URL minimal.
+        next.delete('threeMode');
+      }
+      window.location.search = next.toString();
+    });
+  }
+
+  // Live retro-pixel resolution toggle (270p ⇄ 360p) for on-the-fly comparison — three
+  // renderer only (canvas2d has no pixelation pass). Dev-only; removed with the switcher.
+  if (game.renderer.kind === 'three-scene' && typeof game.renderer.togglePixelHeight === 'function') {
+    const pxBtn = document.createElement('button');
+    pxBtn.dataset.px = '1';
+    pxBtn.textContent = `PX ${game.renderer.pixelHeight ?? 270}`;
+    pxBtn.addEventListener('click', () => {
+      pxBtn.textContent = `PX ${game.renderer.togglePixelHeight()}`;
+    });
+    container.appendChild(pxBtn);
+  }
+}
+
+setupModeSwitch();
 
 let sceneryQaController = null;
 let resolveBootReady = null;
@@ -281,6 +379,8 @@ const debugState = {
   errorCountNode: null,
   captureNode: null,
   blockStyleNode: null,
+  playerStyleNode: null,
+  rendererNode: null,
 };
 
 function updateDebugPanel() {
@@ -295,9 +395,17 @@ function updateDebugPanel() {
   if (debugState.blockStyleNode) {
     debugState.blockStyleNode.textContent = `Blocks: ${game.renderer.blockStyle === 'voxel' ? '3D cubes' : '2D sprites'}`;
   }
+  if (debugState.playerStyleNode) {
+    const active = game.renderer.blockStyle === 'voxel' && game.renderer.playerVoxelEnabled;
+    debugState.playerStyleNode.textContent = `Farmer: ${active ? '3D voxel' : '2D sprite'}`;
+  }
+  if (debugState.rendererNode) {
+    debugState.rendererNode.textContent = `Renderer: ${game.rendererStrategy}`;
+  }
 }
 
 window.addEventListener('orchid:blockStyleChanged', updateDebugPanel);
+window.addEventListener('orchid:playerVoxelChanged', updateDebugPanel);
 
 function recordDebugError(kind, payload) {
   debugState.errors.push({
@@ -344,8 +452,14 @@ function installDebugPanel(debugApi) {
   debugState.captureNode = document.createElement('div');
   panel.appendChild(debugState.captureNode);
 
+  debugState.rendererNode = document.createElement('div');
+  panel.appendChild(debugState.rendererNode);
+
   debugState.blockStyleNode = document.createElement('div');
   panel.appendChild(debugState.blockStyleNode);
+
+  debugState.playerStyleNode = document.createElement('div');
+  panel.appendChild(debugState.playerStyleNode);
 
   const captureButton = document.createElement('button');
   captureButton.type = 'button';
@@ -473,7 +587,11 @@ function createDebugApi() {
         collectibles,
         scenery,
         pooledEntities: r.freeCount,
+        rendererStrategy: game.rendererStrategy,
+        rendererKind: game.renderer.kind ?? game.rendererStrategy,
+        threeMode: game.renderer.mode ?? null,
         blockStyle: game.renderer.blockStyle,
+        playerVoxelEnabled: game.renderer.playerVoxelEnabled,
         // v3.8.37 — Phase 2 placement validation counter. 0 means no
         // spawn attempted by SpawnSystem / DecorationSystem violated a
         // zone / adjacency rule in this run. Regression-tested by the
@@ -492,6 +610,14 @@ function createDebugApi() {
     },
     getBlockStyle() {
       return game.renderer.blockStyle;
+    },
+    getPlayerVoxelEnabled() {
+      return game.renderer.playerVoxelEnabled;
+    },
+    setPlayerVoxelEnabled(enabled) {
+      const next = game.renderer.setPlayerVoxelEnabled(enabled);
+      updateDebugPanel();
+      return next;
     },
     setBlockStyle(style) {
       const next = game.settings.setBlockStyle(style);

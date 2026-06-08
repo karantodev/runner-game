@@ -12,6 +12,7 @@ import { GameplayRenderer } from '../render/renderers/GameplayRenderer.js';
 import { PlayerRenderer } from '../render/renderers/PlayerRenderer.js';
 import { EffectsRenderer } from '../render/renderers/EffectsRenderer.js';
 import { VoxelBlockRenderer } from '../render/renderers/scenery/VoxelBlockRenderer.js';
+import { ThreeModelRenderer } from '../render/renderers/three/ThreeModelRenderer.js';
 import { RenderMetrics } from '../render/RenderMetrics.js';
 
 /**
@@ -32,7 +33,7 @@ export class RenderSystem {
    * @param {HTMLCanvasElement} canvas
    * @param {import('../core/AssetManager.js').AssetManager} assets
    * @param {import('../world/Projection.js').Projection} projection
-   * @param {{ pixelRatio?: number, roadStyle?: 'procedural' | 'tiles' | 'kit', blockStyle?: 'sprite' | 'voxel' }} [options]
+   * @param {{ pixelRatio?: number, roadStyle?: 'procedural' | 'tiles' | 'kit', blockStyle?: 'sprite' | 'voxel', playerVoxelEnabled?: boolean }} [options]
    */
   constructor(canvas, assets, projection, options = {}) {
     this.canvas = canvas;
@@ -45,6 +46,7 @@ export class RenderSystem {
       // v4.13 — procedural pixel-art road is the default (see main.js).
       : 'procedural';
     this.blockStyle = options.blockStyle === 'voxel' ? 'voxel' : 'sprite';
+    this.playerVoxelEnabled = options.playerVoxelEnabled !== false;
 
     // Resize the backing store to logical * pixelRatio. The projection
     // and renderers keep operating in logical units; setTransform() in
@@ -57,7 +59,11 @@ export class RenderSystem {
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
     this.gradients = new GradientCache(this.ctx, projection);
-    this.voxelBlocks = new VoxelBlockRenderer(this.ctx, { style: this.blockStyle });
+    this.threeModels = new ThreeModelRenderer({ enabled: true });
+    this.voxelBlocks = new VoxelBlockRenderer(this.ctx, {
+      style: this.blockStyle,
+      threeModels: this.threeModels,
+    });
     // Debug-only render-cost collector (?perf=1). null otherwise → every
     // `this.metrics?.…` increment site in the renderers is a zero-cost no-op.
     this.metrics = options.metrics ? new RenderMetrics() : null;
@@ -70,6 +76,8 @@ export class RenderSystem {
       paint: this.paint,
       gradients: this.gradients,
       voxelBlocks: this.voxelBlocks,
+      threeModels: this.threeModels,
+      playerVoxelEnabled: this.playerVoxelEnabled,
       pixelRatio: this.pixelRatio,
       roadStyle: this.roadStyle,
       metrics: this.metrics,
@@ -119,6 +127,13 @@ export class RenderSystem {
 
   toggleBlockStyle() {
     return this.setBlockStyle(this.voxelBlocks.enabled ? 'sprite' : 'voxel');
+  }
+
+  setPlayerVoxelEnabled(enabled) {
+    this.playerVoxelEnabled = enabled !== false;
+    this.playerRenderer?.setVoxelEnabled(this.playerVoxelEnabled);
+    console.info(`[RenderSystem] playerVoxelEnabled -> ${this.playerVoxelEnabled}`);
+    return this.playerVoxelEnabled;
   }
 
   render(world) {

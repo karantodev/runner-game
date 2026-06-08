@@ -9,7 +9,8 @@
  *     cameraShake: boolean, // mirrors world.config.gameFeel.cameraShake
  *     particles: boolean,   // mirrors world.config.gameFeel.particles
  *     qualityLock: 0|1|2|3|null,  // null = auto-scale
- *     blockStyle: 'sprite'|'voxel' // 2D sprite blocks or 3D voxel blocks
+ *     blockStyle: 'sprite'|'voxel', // 2D sprite blocks or 3D voxel blocks
+ *     playerVoxel: boolean, // whether the farmer also converts in 3D mode
  *   }
  *
  * Dependencies passed in:
@@ -28,6 +29,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   particles: true,
   qualityLock: null,
   blockStyle: 'sprite',
+  playerVoxel: true,
 });
 
 export class SettingsMenu {
@@ -42,6 +44,7 @@ export class SettingsMenu {
     achievements,
     sound,
     defaultBlockStyle,
+    defaultPlayerVoxel,
   }) {
     this.storageKey = storageKey;
     this.world = world;
@@ -53,6 +56,7 @@ export class SettingsMenu {
     this.achievements = achievements;
     this.sound = sound ?? null;
     this.defaultBlockStyle = normalizeBlockStyle(defaultBlockStyle, DEFAULT_SETTINGS.blockStyle);
+    this.defaultPlayerVoxel = defaultPlayerVoxel !== false;
     this.blockStyleButtons = [];
     this.settings = this.#load();
     this.modalEl = null;
@@ -80,6 +84,7 @@ export class SettingsMenu {
     bindCheckbox('settings-music',     this.settings.music,     (v) => this.#update('music', v));
     bindCheckbox('settings-motion',    this.settings.cameraShake, (v) => this.#update('cameraShake', v));
     bindCheckbox('settings-particles', this.settings.particles, (v) => this.#update('particles', v));
+    bindCheckbox('settings-player-3d',  this.settings.playerVoxel, (v) => this.#update('playerVoxel', v));
     bindSelect('settings-quality',
       this.settings.qualityLock === null ? 'auto' : String(this.settings.qualityLock),
       (v) => this.#update('qualityLock', v === 'auto' ? null : Number(v)));
@@ -153,6 +158,11 @@ export class SettingsMenu {
         detail: { blockStyle: this.settings.blockStyle },
       }));
     }
+    if (key === 'playerVoxel') {
+      window.dispatchEvent(new CustomEvent('orchid:playerVoxelChanged', {
+        detail: { playerVoxel: this.settings.playerVoxel },
+      }));
+    }
   }
 
   /** Push toggle state to the systems that actually care. */
@@ -170,12 +180,15 @@ export class SettingsMenu {
     if (this.renderer && this.renderer.blockStyle !== this.settings.blockStyle) {
       this.settings.blockStyle = this.renderer.setBlockStyle(this.settings.blockStyle);
     }
+    if (this.renderer) {
+      this.settings.playerVoxel = this.renderer.setPlayerVoxelEnabled(this.settings.playerVoxel);
+    }
   }
 
   #load() {
     try {
       const raw = window.localStorage.getItem(this.storageKey);
-      if (!raw) return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle };
+      if (!raw) return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle, playerVoxel: this.defaultPlayerVoxel };
       const parsed = JSON.parse(raw);
       return {
         sfx: !!(parsed?.sfx ?? DEFAULT_SETTINGS.sfx),
@@ -184,8 +197,9 @@ export class SettingsMenu {
         particles: parsed?.particles === undefined ? DEFAULT_SETTINGS.particles : !!parsed.particles,
         qualityLock: validQualityLock(parsed?.qualityLock),
         blockStyle: normalizeBlockStyle(parsed?.blockStyle, this.defaultBlockStyle),
+        playerVoxel: parsed?.playerVoxel === undefined ? this.defaultPlayerVoxel : !!parsed.playerVoxel,
       };
-    } catch { return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle }; }
+    } catch { return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle, playerVoxel: this.defaultPlayerVoxel }; }
   }
 
   #persist() {

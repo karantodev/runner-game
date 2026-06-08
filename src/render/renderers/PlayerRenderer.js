@@ -1,4 +1,5 @@
 const CLONE_TINT = '#a978ff';
+const TRAIL_TINT = '#7dff64';
 
 /**
  * v3.8.29 — Canonical Player Frame Model.
@@ -101,15 +102,27 @@ function getRenderScale(spriteImg, pixelScale) {
  * fails to load, the canvas draws a blank where the player was and the
  * developer fixes the asset.
  */
+function playerSnap(value) {
+  return Math.round(value);
+}
+
 export class PlayerRenderer {
-  constructor({ ctx, projection, assets }) {
+  constructor({ ctx, projection, assets, voxelBlocks, threeModels, playerVoxelEnabled = true }) {
     this.ctx = ctx;
     this.projection = projection;
     this.assets = assets;
+    this.voxelBlocks = voxelBlocks ?? null;
+    this.threeModels = threeModels ?? null;
+    this.voxelEnabled = playerVoxelEnabled !== false;
     // v4.9 — cached unit shadow sprite. The old path rebuilt a radial
     // CanvasGradient every frame; drawImage scaling gives the same ellipse
     // while keeping the run loop allocation-free.
     this._shadowSprite = null;
+  }
+
+  setVoxelEnabled(enabled) {
+    this.voxelEnabled = enabled !== false;
+    return this.voxelEnabled;
   }
 
   render(world) {
@@ -242,6 +255,29 @@ export class PlayerRenderer {
       if (alpha <= 0.02) continue;
       const frameCount = g.crouching ? 4 : 8;
       const frameIndex = Math.floor(Math.abs(g.runFrame) / 3.15) % frameCount;
+      const bodyScale = (p.height / 720) * 1.23 * (world.config.player.heroScale ?? 1);
+      const x = p.width / 2 + g.laneX * p.visualLaneWidth;
+      const bottomMargin = world.config.player.bottomMargin ?? 0;
+      const y = p.groundY - bottomMargin + g.y;
+
+      if (this.#shouldDrawVoxelPlayer()) {
+        if (this.#drawThreePlayer(x, y, bodyScale, {
+          pose: g.crouching ? 'crouch' : 'run',
+          frameIndex,
+          tint: TRAIL_TINT,
+        }, alpha)) continue;
+        this.#drawVoxelFigure({
+          x,
+          y,
+          bodyScale,
+          alpha,
+          pose: g.crouching ? 'crouch' : 'run',
+          frameIndex,
+          tint: TRAIL_TINT,
+        });
+        continue;
+      }
+
       const prefix = g.crouching ? 'playerFarmerCrouch' : 'playerFarmerRun';
       const key = `${prefix}${String(frameIndex + 1).padStart(2, '0')}`;
       const img = this.assets.get(key);
@@ -251,7 +287,6 @@ export class PlayerRenderer {
       // match the live player's per-sprite proportions exactly.
       // v3.8.31 — fit-to-canonical guard so oversized source frames don't
       // spill ghosts across the whole canvas.
-      const bodyScale = (p.height / 720) * 1.23 * (world.config.player.heroScale ?? 1);
       const pixelScale = (120 * bodyScale) / CANONICAL_PLAYER.w;
       const renderScale = getRenderScale(img, pixelScale);
       const meta = getFrameMeta(img, key);
@@ -261,9 +296,6 @@ export class PlayerRenderer {
       const anchorYInSprite = meta.footY - meta.spriteOffsetY;
       const drawLeft = Math.round(-anchorXInSprite * renderScale);
       const drawTop = Math.round(-anchorYInSprite * renderScale);
-      const x = p.width / 2 + g.laneX * p.visualLaneWidth;
-      const bottomMargin = world.config.player.bottomMargin ?? 0;
-      const y = p.groundY - bottomMargin + g.y;
 
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -318,6 +350,74 @@ export class PlayerRenderer {
     const justHit = health.hitFlash > 0 && health.invulnerabilityFrames > world.config.gameplay.invulnerabilityFrames - 18;
     const airborne = vert.isJumping || vert.y < -2;
 
+    const getJumpFrameIndex = () => {
+      const vy = vert.vy;
+      if (vy < -10) return 0;        // hard accel up
+      if (vy < -4) return 1;         // late takeoff
+      if (vy < 0) return 2;          // apex up
+      if (vy < 4) return 3;          // apex down
+      if (vy < 10) return 4;         // pre-landing
+      return 5;                      // hard impact
+    };
+    const getHitFrameIndex = () => {
+      const hitElapsed = world.config.gameplay.invulnerabilityFrames - health.invulnerabilityFrames;
+      return hitElapsed < 4 ? 0 : hitElapsed < 8 ? 1 : hitElapsed < 16 ? 2 : 3;
+    };
+    const loopFrameIndex = (frameCount) => Math.floor(Math.abs(anim.runFrame) / 3.15) % frameCount;
+
+    if (this.#shouldDrawVoxelPlayer()) {
+      const pose =
+        inMenuOrDead ? 'idle' :
+        justHit ? 'hit' :
+        airborne ? 'jump' :
+        crouching ? 'crouch' : 'run';
+      const frameIndex =
+        pose === 'idle' ? Math.floor(anim.idleTime / 12) % 4 :
+        pose === 'hit' ? getHitFrameIndex() :
+        pose === 'jump' ? getJumpFrameIndex() :
+        loopFrameIndex(pose === 'crouch' ? 4 : 8);
+
+      if (this.#drawThreePlayer(x, y, bodyScale, {
+        pose,
+        frameIndex,
+        tilt,
+        tint: isClone ? CLONE_TINT : null,
+      }, alpha)) {
+        if (!isClone && world.config.debug?.showPlayer) {
+          const visualW = Math.round(CANONICAL_PLAYER.w * pixelScale);
+          const visualH = Math.round(CANONICAL_PLAYER.h * pixelScale);
+          this.#drawPlayerDebug(world, {
+            x, y, visualW, visualH, drawW: visualW, drawH: visualH,
+            drawLeft: -Math.round(visualW / 2), drawTop: -visualH,
+            alpha, runKey: `three:${pose}:${frameIndex}`, crouching, airborne, justHit, pixelScale,
+            sourceW: 64, sourceH: 96,
+          });
+        }
+        return;
+      }
+      this.#drawVoxelFigure({
+        x,
+        y,
+        bodyScale,
+        alpha,
+        pose,
+        frameIndex,
+        tilt,
+        tint: isClone ? CLONE_TINT : null,
+      });
+      if (!isClone && world.config.debug?.showPlayer) {
+        const visualW = Math.round(CANONICAL_PLAYER.w * pixelScale);
+        const visualH = Math.round(CANONICAL_PLAYER.h * pixelScale);
+        this.#drawPlayerDebug(world, {
+          x, y, visualW, visualH, drawW: visualW, drawH: visualH,
+          drawLeft: -Math.round(visualW / 2), drawTop: -visualH,
+          alpha, runKey: `voxel:${pose}:${frameIndex}`, crouching, airborne, justHit, pixelScale,
+          sourceW: 64, sourceH: 96,
+        });
+      }
+      return;
+    }
+
     let prefix, frameCount, frameIndex, fallbackKey;
     if (inMenuOrDead && this.assets.get('playerFarmerIdle01')?.naturalWidth) {
       prefix = 'playerFarmerIdle';
@@ -329,27 +429,20 @@ export class PlayerRenderer {
       prefix = 'playerFarmerHit';
       frameCount = 4;
       // Hit: 4 frames over the first ~16 render-frames of invuln (4/4/8/8 holds).
-      const hitElapsed = world.config.gameplay.invulnerabilityFrames - health.invulnerabilityFrames;
-      frameIndex = hitElapsed < 4 ? 0 : hitElapsed < 8 ? 1 : hitElapsed < 16 ? 2 : 3;
+      frameIndex = getHitFrameIndex();
       fallbackKey = 'playerFarmerHit01';
     } else if (airborne && this.assets.get('playerFarmerJump01')?.naturalWidth) {
       prefix = 'playerFarmerJump';
       frameCount = 6;
       // Jump pose driven by vy: takeoff (0-1) → apex up (2) → apex down (3) →
       // landing (4-5). vy is positive going down, negative going up.
-      const vy = vert.vy;
-      if (vy < -10) frameIndex = 0;        // hard accel up
-      else if (vy < -4) frameIndex = 1;    // late takeoff
-      else if (vy < 0)  frameIndex = 2;    // apex up
-      else if (vy < 4)  frameIndex = 3;    // apex down
-      else if (vy < 10) frameIndex = 4;    // pre-landing
-      else              frameIndex = 5;    // hard impact
+      frameIndex = getJumpFrameIndex();
       fallbackKey = 'playerFarmerJump01';
     } else {
       // Run / crouch — the legacy looped tempo.
       prefix = crouching ? 'playerFarmerCrouch' : 'playerFarmerRun';
       frameCount = crouching ? 4 : 8;
-      frameIndex = Math.floor(Math.abs(anim.runFrame) / 3.15) % frameCount;
+      frameIndex = loopFrameIndex(frameCount);
       fallbackKey = crouching ? 'playerFarmerCrouch01' : 'playerFarmerRun01';
     }
 
@@ -518,5 +611,187 @@ export class PlayerRenderer {
     ctx.fillStyle = sizeMismatch ? '#ffb060' : '#9be8a3';
     ctx.fillText(line2, rx, ry - visualH - 8);
     ctx.restore();
+  }
+
+  #shouldDrawVoxelPlayer() {
+    return this.voxelEnabled && this.voxelBlocks?.enabled;
+  }
+
+  #drawThreePlayer(x, y, bodyScale, options, alpha) {
+    if (!this.threeModels?.enabled) return false;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const drawn = this.threeModels.draw(ctx, 'player', x, y, bodyScale, {
+      ...options,
+      width: 96,
+      height: 176,
+      preservePoseScale: true,
+    });
+    ctx.restore();
+    return drawn;
+  }
+
+  #drawVoxelFigure({
+    x,
+    y,
+    bodyScale,
+    alpha = 1,
+    pose = 'run',
+    frameIndex = 0,
+    tilt = 0,
+    tint = null,
+  }) {
+    const ctx = this.ctx;
+    const s = bodyScale;
+    const crouch = pose === 'crouch';
+    const jump = pose === 'jump';
+    const hit = pose === 'hit';
+    const idle = pose === 'idle';
+    const stride = Math.sin(frameIndex * Math.PI * 0.5) * (pose === 'run' ? 1 : 0);
+    const bob = idle ? Math.sin(frameIndex * Math.PI * 0.5) * 1.5 * s : 0;
+    const palette = this.#voxelPlayerPalette(tint, hit);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(playerSnap(x), playerSnap(y + bob));
+    ctx.rotate(tilt + (hit ? -0.10 : 0));
+
+    const hipY = crouch ? -38 * s : -52 * s;
+    const torsoY = crouch ? -84 * s : -116 * s;
+    const headY = crouch ? -120 * s : -154 * s;
+    const hatY = headY - 23 * s;
+    const bodyW = crouch ? 58 * s : 52 * s;
+    const bodyH = crouch ? 42 * s : 58 * s;
+    const depth = 8 * s;
+
+    this.#voxelFoot(-18 * s - stride * 4 * s, -5 * s, s, palette, stride < -0.1);
+    this.#voxelFoot(18 * s + stride * 4 * s, -5 * s, s, palette, stride > 0.1);
+    this.#voxelLeg(-15 * s, hipY, crouch ? 36 * s : 48 * s, s, palette, stride, crouch || jump);
+    this.#voxelLeg(15 * s, hipY, crouch ? 32 * s : 48 * s, s, palette, -stride, crouch);
+
+    this.#voxelBox(-bodyW / 2, torsoY, bodyW, bodyH, depth, palette.shirtFront, palette.shirtSide, palette.shirtTop, palette.outline);
+    this.#voxelBox(-18 * s, torsoY + 6 * s, 9 * s, bodyH - 8 * s, 4 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+    this.#voxelBox(9 * s, torsoY + 6 * s, 9 * s, bodyH - 8 * s, 4 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+    this.#voxelBox(-10 * s, torsoY + 31 * s, 20 * s, 14 * s, 4 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+
+    const armSwing = pose === 'run' ? stride * 10 * s : jump ? -12 * s : crouch ? 8 * s : 0;
+    this.#voxelArm(-bodyW / 2 - 8 * s, torsoY + 12 * s + armSwing, s, palette, -1);
+    this.#voxelArm(bodyW / 2 - 2 * s, torsoY + 12 * s - armSwing, s, palette, 1);
+
+    this.#voxelBox(-20 * s, headY, 40 * s, 34 * s, 7 * s, palette.skinFront, palette.skinSide, palette.skinTop, palette.outline);
+    this.#voxelBox(-16 * s, headY + 11 * s, 9 * s, 6 * s, 2 * s, '#1d221d', '#121712', '#2a3128', palette.outline);
+    this.#voxelBox(7 * s, headY + 11 * s, 9 * s, 6 * s, 2 * s, '#1d221d', '#121712', '#2a3128', palette.outline);
+    this.#voxelBox(-8 * s, headY + 22 * s, 16 * s, 4 * s, 2 * s, palette.mouth, palette.mouth, palette.mouth, null);
+
+    this.#voxelBox(-38 * s, hatY + 18 * s, 76 * s, 11 * s, 6 * s, palette.hatBrim, palette.hatSide, palette.hatTop, palette.outline);
+    this.#voxelBox(-25 * s, hatY, 50 * s, 24 * s, 8 * s, palette.hatFront, palette.hatSide, palette.hatTop, palette.outline);
+
+    ctx.restore();
+  }
+
+  #voxelPlayerPalette(tint, hit) {
+    if (tint) {
+      return {
+        outline: '#21152e',
+        skinFront: tint,
+        skinSide: tint,
+        skinTop: '#f0d6ff',
+        hatFront: tint,
+        hatSide: '#65409a',
+        hatTop: '#d7b9ff',
+        hatBrim: tint,
+        shirtFront: tint,
+        shirtSide: '#65409a',
+        shirtTop: '#d7b9ff',
+        overall: '#6d58c8',
+        overallSide: '#4d3a96',
+        overallTop: '#9f8cff',
+        boot: '#302047',
+        bootSide: '#171026',
+        mouth: '#21152e',
+      };
+    }
+    return {
+      outline: hit ? '#5b1320' : '#3a2210',
+      skinFront: hit ? '#ff9aa8' : '#d98b55',
+      skinSide: hit ? '#d75265' : '#a85f34',
+      skinTop: hit ? '#ffc1ca' : '#f0b77b',
+      hatFront: hit ? '#ffd16b' : '#e7b248',
+      hatSide: hit ? '#b76f24' : '#9b611f',
+      hatTop: hit ? '#ffe28a' : '#f8cf66',
+      hatBrim: hit ? '#f0a642' : '#c9892e',
+      shirtFront: hit ? '#ff625d' : '#e64639',
+      shirtSide: hit ? '#bd3439' : '#9b2c25',
+      shirtTop: hit ? '#ff9188' : '#ff6f5e',
+      overall: hit ? '#5aa7ff' : '#2466b8',
+      overallSide: hit ? '#2868b5' : '#18467d',
+      overallTop: hit ? '#8cc3ff' : '#3f86de',
+      boot: '#45311f',
+      bootSide: '#21170e',
+      mouth: '#4c2216',
+    };
+  }
+
+  #voxelLeg(x, hipY, length, s, palette, swing, bent) {
+    const lean = swing * 7 * s;
+    const kneeY = hipY + length * 0.46;
+    const footY = -18 * s;
+    if (bent) {
+      this.#voxelBox(x - 7 * s, hipY, 14 * s, length * 0.46, 5 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+      this.#voxelBox(x - 4 * s + lean * 0.45, kneeY - 2 * s, 13 * s, footY - kneeY, 5 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+      return;
+    }
+    this.#voxelBox(x - 7 * s + lean * 0.2, hipY, 14 * s, footY - hipY, 5 * s, palette.overall, palette.overallSide, palette.overallTop, palette.outline);
+  }
+
+  #voxelFoot(x, y, s, palette, forward) {
+    const w = forward ? 25 * s : 21 * s;
+    this.#voxelBox(x - w / 2, y - 10 * s, w, 10 * s, 5 * s, palette.boot, palette.bootSide, '#5a412a', palette.outline);
+  }
+
+  #voxelArm(x, y, s, palette, side) {
+    this.#voxelBox(x, y, 10 * s, 36 * s, 5 * s, palette.shirtFront, palette.shirtSide, palette.shirtTop, palette.outline);
+    this.#voxelBox(x + side * 1 * s, y + 30 * s, 10 * s, 12 * s, 4 * s, palette.skinFront, palette.skinSide, palette.skinTop, palette.outline);
+  }
+
+  #voxelBox(x, y, w, h, d, front, side, top, outline) {
+    const ctx = this.ctx;
+    const sx = playerSnap(x);
+    const sy = playerSnap(y);
+    const sw = playerSnap(w);
+    const sh = playerSnap(h);
+    const sd = playerSnap(d);
+    if (outline) {
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = Math.max(1, playerSnap(Math.max(1, d * 0.20)));
+    }
+    if (top) {
+      ctx.fillStyle = top;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + sd, sy - sd);
+      ctx.lineTo(sx + sw + sd, sy - sd);
+      ctx.lineTo(sx + sw, sy);
+      ctx.closePath();
+      ctx.fill();
+      if (outline) ctx.stroke();
+    }
+    if (side) {
+      ctx.fillStyle = side;
+      ctx.beginPath();
+      ctx.moveTo(sx + sw, sy);
+      ctx.lineTo(sx + sw + sd, sy - sd);
+      ctx.lineTo(sx + sw + sd, sy + sh - sd);
+      ctx.lineTo(sx + sw, sy + sh);
+      ctx.closePath();
+      ctx.fill();
+      if (outline) ctx.stroke();
+    }
+    ctx.fillStyle = front;
+    ctx.fillRect(sx, sy, sw, sh);
+    if (outline) {
+      ctx.strokeRect(sx, sy, sw, sh);
+    }
   }
 }

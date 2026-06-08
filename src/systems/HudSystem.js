@@ -40,6 +40,18 @@ const ENERGY_ICON_EMPTY = './assets/ui/icons/energy_segment_empty.png';
 const JUMP_BAR_SEGMENTS = 5;
 
 export class HudSystem {
+  // Smoothed mouse-tilt target, normalized to [-1, 1] on each axis.
+  // These are lerped toward each frame so motion is buttery, not jittery.
+  #mouseTargetX = 0;
+  #mouseTargetY = 0;
+  // Current smoothed value (what's actually written to CSS vars).
+  #mouseX = 0;
+  #mouseY = 0;
+  // Bound so we can remove it if teardown is ever added.
+  #onMouseMove = null;
+  // Coarse-pointer devices (touch) get a much-reduced mouse contribution.
+  #isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+
   constructor(eventBus, world) {
     this.world = world;
     this.score = document.getElementById('score');
@@ -51,9 +63,21 @@ export class HudSystem {
     this.powerupsBox = document.getElementById('powerups-box');
     this.jumpbar = document.getElementById('jumpbar');
     this.overlay = document.getElementById('overlay');
+    this.stage = document.getElementById('stage');
     this.title = document.getElementById('title');
     this.sub = document.getElementById('sub');
     this.startButton = document.getElementById('start-button');
+
+    // Mouse parallax: track pointer position relative to the stage so the
+    // HUD tilts subtly toward the cursor. Disabled on coarse-pointer devices.
+    this.#onMouseMove = (e) => {
+      const rect = this.stage?.getBoundingClientRect();
+      if (!rect) return;
+      // Normalize to [-1, 1] with origin at stage center.
+      this.#mouseTargetX = ((e.clientX - rect.left) / rect.width  - 0.5) * 2;
+      this.#mouseTargetY = ((e.clientY - rect.top)  / rect.height - 0.5) * 2;
+    };
+    window.addEventListener('mousemove', this.#onMouseMove, { passive: true });
 
     // Last-rendered cache so the DOM is touched only when a value actually changes.
     this._last = {
@@ -67,6 +91,10 @@ export class HudSystem {
       powerupsText: null,
       comboMultiplier: 1,
       comboWarning: false,
+      hudTiltX: null,
+      hudTiltY: null,
+      hudDriftX: null,
+      hudDriftY: null,
     };
 
     eventBus.on('scoreChanged', () => { this.#renderScore(); this.#renderTier(); });
@@ -111,6 +139,42 @@ export class HudSystem {
     this.#renderJumpBar();
     this.#updatePowerMeters();
     this.#updateComboWarning();
+    this.#updateSpatialHud();
+  }
+
+  #updateSpatialHud() {
+    if (!this.stage) return;
+    const player = this.world.player;
+    const lane = player?.components.LaneState;
+    const vert = player?.components.VerticalState;
+    const speed = this.world.speed ?? this.world.config?.gameplay?.baseSpeed ?? 0;
+    const baseSpeed = this.world.config?.gameplay?.baseSpeed ?? 1;
+    const laneTilt = Math.max(-1, Math.min(1, lane?.laneTilt ?? 0));
+    const laneOffset = Math.max(-1, Math.min(1, lane?.laneX ?? 0));
+    const air = Math.max(0, Math.min(1, -((vert?.y ?? 0) / 140)));
+    const speedPush = Math.max(0, Math.min(1, (speed - baseSpeed) / Math.max(1, baseSpeed * 1.8)));
+
+    // Lerp mouse toward target each frame (α=0.08 ≈ 120ms settle).
+    // Coarse-pointer devices (touch) get a 10× smaller contribution so the
+    // effect is invisible rather than distracting on mobile.
+    const mouseScale = this.#isCoarsePointer ? 0.02 : 0.22;
+    const alpha = 0.08;
+    this.#mouseX += (this.#mouseTargetX - this.#mouseX) * alpha;
+    this.#mouseY += (this.#mouseTargetY - this.#mouseY) * alpha;
+
+    // Add mouse term on top of the lane/speed-driven motion. Keep small so
+    // gameplay tilt still dominates.
+    const next = {
+      hudTiltX: `${(-0.55 - air * 1.15 + speedPush * 0.45 + this.#mouseY * mouseScale * -0.8).toFixed(2)}deg`,
+      hudTiltY: `${(laneTilt * 2.4 + laneOffset * 0.45 + this.#mouseX * mouseScale * 1.2).toFixed(2)}deg`,
+      hudDriftX: `${(laneTilt * 2.8 + this.#mouseX * mouseScale * 1.8).toFixed(2)}px`,
+      hudDriftY: `${(-air * 2.2 + speedPush * 1.2 + this.#mouseY * mouseScale * -1.4).toFixed(2)}px`,
+    };
+    for (const [key, value] of Object.entries(next)) {
+      if (this._last[key] === value) continue;
+      this._last[key] = value;
+      this.stage.style.setProperty(`--${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`, value);
+    }
   }
 
   /**
@@ -308,14 +372,14 @@ export class HudSystem {
     }
 
     if (state === 'paused') {
-      // v3.4: explicit pause menu actions instead of a single "Start" CTA
-      // that would discard the current run. Continue is the primary +
-      // gets initial focus; Restart asks confirm via inline message;
-      // Quit returns to the main menu.
+      // Bento grid: Resume is the full-width hero tile; Restart/Settings/Quit
+      // fill a 2×2 sub-grid below it. Continue is the existing #start-button.
       this.#show(
         t('pause.title'),
-        `<div class="pause-actions">
-           <button type="button" id="pause-restart" class="pixel-btn">${t('pause.restart')}</button>
+        `<div class="pause-bento">
+           <div class="pause-bento-resume">
+             <button type="button" id="pause-restart" class="pixel-btn" style="width:100%">${t('pause.restart')}</button>
+           </div>
            <button type="button" id="pause-settings" class="pixel-btn">${t('pause.settings')}</button>
            <button type="button" id="pause-quit" class="pixel-btn">${t('pause.quit')}</button>
          </div>`,
@@ -416,14 +480,41 @@ export class HudSystem {
     const causeRow = causeKey
       ? `<div class="death-cause">${t('death.youHit')} <b>${t(causeKey)}</b>!</div>`
       : '';
+    // Bento grid: score is the hero tile (full-width), remaining stats fill
+    // a 2-column grid. .run-summary kept as wrapper for external CSS targeting.
+    const orchidExtra = w.rareOrchidsCollectedThisRun > 0
+      ? `<span class="hud-rare"> +${w.rareOrchidsCollectedThisRun}r</span>`
+      : '';
     const summary = `
       ${causeRow}
       <div class="run-summary">
-        ${dailyTag}${t('death.score')}: <b>${w.score}</b><br>
-        ${t('death.distance')}: <b>${Math.floor(w.distanceRun)}m</b><br>
-        ${t('death.orchids')}: <b>${w.orchidsCollectedThisRun}</b>${w.rareOrchidsCollectedThisRun > 0 ? `<span class="hud-rare"> + ${w.rareOrchidsCollectedThisRun} rare</span>` : ''}<br>
-        ${t('death.nearMisses')}: <b>${w.nearMissesThisRun}</b><br>
-        ${this.#tierLabel()} · ${t('death.best')}: <b>${w.bestScore}</b>
+        ${dailyTag ? `<div style="margin-bottom:6px">${dailyTag}</div>` : ''}
+        <div class="death-bento">
+          <div class="death-bento-cell death-bento-cell--score">
+            <span class="death-bento-label">${t('death.score')}</span>
+            <b>${w.score}</b>
+          </div>
+          <div class="death-bento-cell death-bento-cell--best">
+            <span class="death-bento-label">${t('death.best')}</span>
+            <b>${w.bestScore}</b>
+          </div>
+          <div class="death-bento-cell death-bento-cell--dist">
+            <span class="death-bento-label">${t('death.distance')}</span>
+            <b>${Math.floor(w.distanceRun)}m</b>
+          </div>
+          <div class="death-bento-cell death-bento-cell--orchids">
+            <span class="death-bento-label">${t('death.orchids')}</span>
+            <b>${w.orchidsCollectedThisRun}${orchidExtra}</b>
+          </div>
+          <div class="death-bento-cell death-bento-cell--miss">
+            <span class="death-bento-label">${t('death.nearMisses')}</span>
+            <b>${w.nearMissesThisRun}</b>
+          </div>
+          <div class="death-bento-cell death-bento-cell--tier">
+            <span class="death-bento-label">Tier</span>
+            <b>${this.#tierLabel()}</b>
+          </div>
+        </div>
       </div>
     `;
     // v3.8.35 — secondary action row near the top. RUN AGAIN remains the

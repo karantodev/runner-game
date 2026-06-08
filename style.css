@@ -1,9 +1,9 @@
 :root {
   /* v3.3 pixel-art palette (matches the in-game reference) */
   --hud-bg: #0a1728;
-  --hud-bg-translucent: rgba(10, 23, 40, 0.94);
-  --hud-bg-inner: #172b46;
-  --hud-outline: #000000;
+  --hud-bg-translucent: rgba(9, 22, 36, 0.58);
+  --hud-bg-inner: rgba(23, 43, 70, 0.42);
+  --hud-outline: rgba(224, 242, 255, 0.26);
   --hud-highlight: #42688d;      /* cool steel-blue bevel highlight */
   --hud-shadow: #04101c;         /* deep navy bevel shadow */
   --hud-drop: rgba(0, 0, 0, 0.34);
@@ -15,6 +15,13 @@
   --hud-red-dark: #7a2018;
   --hud-green: #74c050;
   --hud-blue: #5ab8ff;
+  --hud-glass-border: rgba(232, 246, 255, 0.24);
+  --hud-glass-shine: rgba(255, 255, 255, 0.13);
+  --hud-glass-shadow: rgba(2, 8, 16, 0.36);
+  --hud-tilt-x: 0deg;
+  --hud-tilt-y: 0deg;
+  --hud-drift-x: 0px;
+  --hud-drift-y: 0px;
   --pixel-font: 'Press Start 2P', 'Silkscreen', 'Courier New', monospace;
   --pixel-font-body: 'Silkscreen', 'Press Start 2P', 'Courier New', monospace;
 }
@@ -53,6 +60,11 @@ body {
   overflow: hidden;
   background: #77bdf0;
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+  perspective: 1200px;
+  --hud-tilt-x: 0deg;
+  --hud-tilt-y: 0deg;
+  --hud-drift-x: 0px;
+  --hud-drift-y: 0px;
 }
 
 canvas {
@@ -64,9 +76,8 @@ canvas {
   background: #77bdf0;
 }
 
-/* All HUD panels: solid dark-navy with pixel emboss (1px top-left light,
- * 1px bottom-right dark) + hard 2px black outline. No rounded corners,
- * no blur, no gradient — pure pixel-art panel. */
+/* Spatial glass HUD: still sharp/pixel-readable, but translucent enough
+ * for the scene to breathe underneath. */
 .hud-box {
   position: absolute;
   z-index: 5;
@@ -74,23 +85,32 @@ canvas {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border: 3px solid var(--hud-outline);
-  border-radius: 0;
-  background: var(--hud-bg);
-  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow), 0 4px 0 var(--hud-drop);
-  backdrop-filter: none;
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, var(--hud-glass-shine), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 14px 32px var(--hud-glass-shadow);
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
   font-family: var(--pixel-font);
   font-weight: 400;          /* Press Start 2P only has one weight */
   color: var(--hud-text);
   letter-spacing: 1px;
+  transform: perspective(900px) rotateX(var(--hud-tilt-x)) rotateY(var(--hud-tilt-y)) translate3d(var(--hud-drift-x), var(--hud-drift-y), 0);
+  transform-origin: center;
+  transition: transform 120ms linear, background-color 160ms ease, border-color 160ms ease;
 }
 
 .icon-button {
-  border: 3px solid var(--hud-outline);
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 8px;
   color: var(--hud-text);
   cursor: pointer;
-  background: var(--hud-bg);
-  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow), 0 3px 0 var(--hud-drop);
+  background: var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 10px 24px var(--hud-glass-shadow);
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
 }
 
 .icon-button:hover { transform: translateY(-1px); }
@@ -135,7 +155,9 @@ canvas {
   justify-content: flex-start;
   font-size: 22px;
   /* drop the legacy wooden panel PNG background — pixel emboss handles it */
-  background: var(--hud-bg);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
 }
 #score-box .hud-flower-icon { width: 34px; height: 34px; }
 #score-box #score {
@@ -149,14 +171,18 @@ canvas {
   top: 88px;
   justify-content: center;
   gap: 6px;
-  background: var(--hud-bg);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
 }
 
 #distance-box {
   top: 158px;
   justify-content: space-between;
   font-size: 12px;
-  background: var(--hud-bg);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
 }
 #distance-box #distance {
   color: var(--hud-text);
@@ -176,7 +202,9 @@ canvas {
   align-items: stretch;
   font-size: 10px;
   line-height: 1.35;
-  background: var(--hud-bg);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
 }
 #powerups-box .muted { color: var(--hud-text-muted); font-family: var(--pixel-font-body); }
 
@@ -199,7 +227,9 @@ canvas {
   gap: 6px;
   padding: 14px 16px 12px;
   min-width: 118px;
-  background: var(--hud-bg);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
 }
 #ability .bar {
   display: flex;
@@ -256,9 +286,14 @@ canvas {
 .lifetime-stats {
   margin-top: 16px;
   padding: 12px;
-  border: 2px solid var(--hud-outline);
-  background: var(--hud-bg);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, var(--hud-glass-shine), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.14), inset -1px -1px 0 rgba(0,0,0,0.24), 0 8px 20px var(--hud-glass-shadow);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
   font-family: var(--pixel-font-body);
   font-size: 12px;
   text-align: left;
@@ -292,21 +327,29 @@ canvas {
   padding: 24px;
   pointer-events: none;
   opacity: 0;
-  background: rgba(6, 12, 24, 0.78);
-  backdrop-filter: none;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255,255,255,0.10), rgba(6,12,24,0.34) 42%, rgba(6,12,24,0.56)),
+    rgba(6, 12, 24, 0.38);
+  backdrop-filter: blur(10px) saturate(1.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.18);
   transition: opacity 200ms steps(4);
 }
 .overlay.on { opacity: 1; pointer-events: auto; }
 .card {
   width: min(480px, calc(100vw - 48px));
   padding: 28px 30px;
-  border-radius: 0;
-  background: var(--hud-bg);
-  border: 3px solid var(--hud-outline);
-  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 40%),
+    rgba(9, 22, 36, 0.68);
+  border: 1px solid var(--hud-glass-border);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 24px 70px rgba(0,0,0,0.46);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
   color: var(--hud-text);
   text-align: center;
   font-family: var(--pixel-font-body);
+  transform: perspective(900px) rotateX(calc(var(--hud-tilt-x) * -0.55)) rotateY(calc(var(--hud-tilt-y) * -0.55));
 }
 .card h1 {
   margin: 0 0 14px;
@@ -356,9 +399,10 @@ canvas {
 .leaderboard-prompt {
   margin: 10px 0 14px;
   padding: 12px;
-  background: var(--hud-bg-inner);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  background: rgba(23, 43, 70, 0.36);
+  border: 1px solid rgba(232, 246, 255, 0.16);
+  border-radius: 6px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.22);
   text-align: center;
 }
 .leaderboard-prompt p {
@@ -371,11 +415,11 @@ canvas {
 .leaderboard-prompt input {
   width: 60%;
   padding: 8px 10px;
-  background: var(--hud-bg);
+  background: rgba(6, 14, 24, 0.58);
   color: var(--hud-text);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-shadow);
-  border-radius: 0;
+  border: 1px solid var(--hud-glass-border);
+  box-shadow: inset 1px 1px 0 rgba(0,0,0,0.22);
+  border-radius: 6px;
   font-family: var(--pixel-font-body);
   font-size: 13px;
   margin-right: 6px;
@@ -589,10 +633,14 @@ button:focus, [tabindex]:focus {
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--hud-text);
-  background: var(--hud-bg);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
-  border-radius: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 44%),
+    rgba(10, 23, 40, 0.66);
+  border: 1px solid var(--hud-glass-border);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 10px 24px rgba(0,0,0,0.28);
+  border-radius: 8px;
+  backdrop-filter: blur(10px) saturate(1.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.18);
   padding: 12px 18px;
   cursor: pointer;
   transition: none;
@@ -671,7 +719,9 @@ button:focus, [tabindex]:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--hud-bg);
+  background: rgba(6, 12, 24, 0.58);
+  backdrop-filter: blur(10px) saturate(1.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.18);
   opacity: 1;
   transition: opacity 320ms steps(8);
 }
@@ -680,9 +730,10 @@ button:focus, [tabindex]:focus {
   text-align: center;
   max-width: 360px;
   padding: 28px 36px;
-  background: var(--hud-bg-inner);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  background: rgba(9, 22, 36, 0.70);
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 8px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.14), inset -1px -1px 0 rgba(0,0,0,0.24), 0 22px 60px rgba(0,0,0,0.42);
 }
 .loading-card h1 {
   margin: 0 0 14px;
@@ -746,10 +797,14 @@ button:focus, [tabindex]:focus {
 }
 .tutorial.on { opacity: 1; }
 .tutorial-card {
-  background: var(--hud-bg);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
-  border-radius: 0;
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, var(--hud-glass-shine), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.14), inset -1px -1px 0 rgba(0,0,0,0.24), 0 10px 26px var(--hud-glass-shadow);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
   padding: 10px 18px;
   display: flex;
   align-items: center;
@@ -783,17 +838,26 @@ button:focus, [tabindex]:focus {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(6, 12, 24, 0.78);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,0.10), rgba(6,12,24,0.26) 44%, rgba(6,12,24,0.58)),
+    rgba(6, 12, 24, 0.36);
+  backdrop-filter: blur(10px) saturate(1.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.18);
 }
 .settings-modal.on { display: flex; }
 .settings-card {
-  background: var(--hud-bg);
-  border: 3px solid var(--hud-outline);
-  box-shadow: inset 2px 2px 0 var(--hud-highlight), inset -2px -2px 0 var(--hud-shadow);
-  border-radius: 0;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 42%),
+    rgba(9, 22, 36, 0.72);
+  border: 1px solid var(--hud-glass-border);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.16), inset -1px -1px 0 rgba(0,0,0,0.28), 0 24px 70px rgba(0,0,0,0.46);
+  border-radius: 8px;
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
   padding: 24px 28px;
   min-width: 320px;
   max-width: 420px;
+  transform: perspective(900px) rotateX(calc(var(--hud-tilt-x) * -0.45)) rotateY(calc(var(--hud-tilt-y) * -0.45));
 }
 .settings-card h2 {
   margin: 0 0 20px;
@@ -811,9 +875,10 @@ button:focus, [tabindex]:focus {
   font-family: var(--pixel-font);
   font-size: 10px;
   letter-spacing: 1px;
-  background: var(--hud-bg-inner);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  background: rgba(23, 43, 70, 0.38);
+  border: 1px solid rgba(232, 246, 255, 0.16);
+  border-radius: 6px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.09), inset -1px -1px 0 rgba(0,0,0,0.22);
 }
 .settings-list li {
   padding: 10px 14px;
@@ -841,9 +906,10 @@ button:focus, [tabindex]:focus {
 }
 .settings-list select {
   margin-left: auto;
-  background: var(--hud-bg);
+  background: rgba(6, 14, 24, 0.58);
   color: var(--hud-text);
-  border: 1px solid var(--hud-outline);
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 6px;
   padding: 4px 8px;
   font-family: var(--pixel-font);
   font-size: 9px;
@@ -856,9 +922,11 @@ button:focus, [tabindex]:focus {
 .settings-segmented {
   display: inline-flex;
   margin-left: auto;
-  border: 1px solid var(--hud-outline);
-  background: var(--hud-bg);
-  box-shadow: inset 1px 1px 0 var(--hud-highlight), inset -1px -1px 0 var(--hud-shadow);
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 7px;
+  background: rgba(6, 14, 24, 0.44);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.10), inset -1px -1px 0 rgba(0,0,0,0.22);
+  overflow: hidden;
 }
 .settings-segmented button {
   min-width: 48px;
@@ -928,10 +996,14 @@ button:focus, [tabindex]:focus {
   display: flex;
   gap: 12px;
   align-items: center;
-  background: var(--hud-bg);
-  border: 2px solid var(--hud-outline);
-  box-shadow: inset 1px 1px 0 var(--hud-gold), inset -1px -1px 0 var(--hud-shadow);
-  border-radius: 0;
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, var(--hud-glass-shine), rgba(255,255,255,0) 42%),
+    var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.18), inset -1px -1px 0 rgba(0,0,0,0.28), 0 12px 30px var(--hud-glass-shadow);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
   padding: 12px 22px;
   font-family: var(--pixel-font);
   font-size: 10px;
@@ -995,14 +1067,203 @@ button:focus, [tabindex]:focus {
   opacity: 0.78;
 }
 .death-details .lifetime-stats {
-  border: 1px solid var(--hud-outline);
-  background: transparent;
-  box-shadow: none;
+  /* Glass recipe stays but with slightly less opacity in context */
+  opacity: 0.88;
   margin-top: 8px;
   font-size: 11px;
 }
 .death-details .leaderboard-list {
   font-size: 11px;
+}
+
+/* ── Phase 5.1 Bento grid ─────────────────────────────────────────────────── */
+
+/* Settings bento: two-column asymmetric grid using named areas so
+ * placement is explicit and never conflicts with auto-flow. */
+.settings-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "toggles  controls"
+    "lang     lang"
+    "danger   danger";
+  gap: 6px;
+  margin: 0 0 18px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.settings-bento-cell {
+  padding: 10px 14px;
+  background: rgba(23, 43, 70, 0.38);
+  border: 1px solid rgba(232, 246, 255, 0.16);
+  border-radius: 6px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.09), inset -1px -1px 0 rgba(0,0,0,0.22);
+}
+/* Toggles cell: checkboxes stacked vertically in the left column */
+.settings-bento-cell--toggles {
+  grid-area: toggles;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Controls cell: block style + quality stacked in the right column */
+.settings-bento-cell--controls {
+  grid-area: controls;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Language cell: spans full width */
+.settings-bento-cell--lang {
+  grid-area: lang;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Danger cell: spans full width */
+.settings-bento-cell--danger {
+  grid-area: danger;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 8px 0 0 !important;
+  border-top: 1px solid var(--hud-shadow) !important;
+  border-radius: 0 !important;
+}
+.settings-bento-cell--danger button {
+  flex: 1 1 auto;
+  color: var(--hud-text-muted);
+  background: var(--hud-bg);
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  padding: 8px 10px;
+  letter-spacing: 1px;
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.settings-bento-cell--danger button:hover {
+  background: var(--hud-bg-inner);
+  color: var(--hud-text);
+}
+.settings-bento-cell--danger button::before {
+  content: '✕ ';
+  color: var(--hud-text-muted);
+}
+
+.settings-bento-cell label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.settings-bento-cell .settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-bento-cell-label {
+  color: var(--hud-text-muted);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* On very narrow screens: collapse to single column. */
+@media (max-width: 320px) {
+  .settings-bento {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "toggles"
+      "controls"
+      "lang"
+      "danger";
+  }
+}
+
+/* Death-screen bento: asymmetric tile layout for the run summary */
+.death-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "score  best"
+    "dist   orchids"
+    "miss   tier";
+  gap: 6px;
+  margin: 4px 0 14px;
+  font-family: var(--pixel-font-body);
+  font-size: 12px;
+}
+/* Score tile spans both columns — it's the hero number */
+.death-bento-cell--score {
+  grid-area: score;
+  grid-column: 1 / -1;
+}
+.death-bento-cell--best   { grid-area: best; }
+.death-bento-cell--dist   { grid-area: dist; }
+.death-bento-cell--orchids{ grid-area: orchids; }
+.death-bento-cell--miss   { grid-area: miss; }
+.death-bento-cell--tier   { grid-area: tier; }
+
+.death-bento-cell {
+  padding: 9px 12px;
+  background: rgba(23, 43, 70, 0.36);
+  border: 1px solid rgba(232, 246, 255, 0.14);
+  border-radius: 6px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.22);
+  line-height: 1.5;
+}
+.death-bento-cell b {
+  display: block;
+  font-size: 15px;
+  color: var(--hud-text);
+  font-family: var(--pixel-font);
+  margin-top: 2px;
+}
+.death-bento-cell--score b {
+  font-size: 20px;
+  color: var(--hud-gold);
+  text-shadow: 1px 1px 0 var(--hud-gold-dark);
+}
+.death-bento-label {
+  color: var(--hud-text-muted);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Pause bento: 2×2 grid of action tiles */
+.pause-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+/* Resume is the hero tile — full width */
+.pause-bento-resume {
+  grid-column: 1 / -1;
+}
+.pause-bento button {
+  width: 100%;
+}
+
+/* Collapse death bento to single column on very narrow screens */
+@media (max-width: 400px) {
+  .death-bento {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "score"
+      "best"
+      "dist"
+      "orchids"
+      "miss"
+      "tier";
+  }
 }
 
 /* Daily-challenge badge inline in death body. */
@@ -1024,6 +1285,48 @@ button:focus, [tabindex]:focus {
   font-family: var(--pixel-font);
   font-size: 11px;
 }
+
+/* TEMP dev mode switcher — remove before ship.
+   Fixed bottom-center pill so it clears the top-left pause button,
+   top-right score/hearts/distance column, and the bottom touch pad.
+   High z-index so it floats above the canvas; pointer-events only on
+   the widget itself so gameplay input elsewhere is unaffected. */
+#mode-switch {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: 200;
+  display: inline-flex;
+  border: 1px solid var(--hud-glass-border);
+  border-radius: 8px;
+  background: var(--hud-bg-translucent);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.12), inset -1px -1px 0 rgba(0,0,0,0.28), 0 6px 18px var(--hud-glass-shadow);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  overflow: hidden;
+  pointer-events: auto;
+  user-select: none;
+}
+#mode-switch button {
+  border: 0;
+  border-right: 1px solid var(--hud-glass-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--hud-text-muted);
+  /* Narrower padding for 4 buttons — still legible at 9px pixel font. */
+  padding: 6px 9px;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: none;
+}
+#mode-switch button:last-child { border-right: 0; }
+#mode-switch button.active {
+  background: var(--hud-gold);
+  color: var(--hud-gold-dark);
+}
+#mode-switch button:hover:not(.active) { color: var(--hud-text); }
 
 /* Debug-only 3D asset comparison sheet. Injected from src/debug/SceneryQaSheet.js. */
 .scenery-qa-sheet {

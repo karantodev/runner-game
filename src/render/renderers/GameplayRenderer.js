@@ -559,6 +559,11 @@ export class GameplayRenderer {
     ctx.fillRect(vineCx - vineW / 2, p1.sy - 6 * scale, vineW, 8 * scale);
     ctx.restore();
 
+    if (this.voxelBlocks?.enabled) {
+      this.voxelBlocks.drawVineBarrier(vineCx, p1.sy, vineW, scale, { phase: scrollOffset * 0.05 });
+      return;
+    }
+
     const drewSprite = this.sprites.draw('vineBarrierFull', vineCx, p1.sy, vineW, 'bottom');
     if (!drewSprite) {
       this.sprites.draw('vineCoiled', vineCx, p1.sy + 4 * scale, 220 * scale, 'bottom');
@@ -626,7 +631,13 @@ export class GameplayRenderer {
     ctx.fill();
     ctx.restore();
 
-    if (image?.naturalWidth) {
+    if (this.voxelBlocks?.enabled) {
+      const accent = Math.max(0, Math.min(1, (34 - distance) / 30));
+      this.voxelBlocks.drawOverhang(cx, overhangBottomY, roadW, scale, {
+        variant: assetType === 'spider_web_overhang' ? 'web' : 'branch',
+        accent,
+      });
+    } else if (image?.naturalWidth) {
       const aspect = image.naturalHeight / image.naturalWidth;
       const drawW = roadW;
       const drawH = drawW * aspect;
@@ -819,11 +830,19 @@ function gameplayPriority(entity) {
  */
 const COLLECTIBLE_DRAWERS = {
   life(self, x, y, scale, pop) {
+    if (self.voxelBlocks?.enabled) {
+      self.voxelBlocks.drawHeartPickup(x, y, scale * 1.08 * pop);
+      return;
+    }
     self.paint.heart(x, y, scale * 1.35 * pop);
   },
 
   power(self, x, y, scale, pop, r) {
     self.drawPowerGlow(x, y - 22 * scale, scale * pop, r.glowColor ?? '#a7ff7e');
+    if (self.voxelBlocks?.enabled) {
+      self.voxelBlocks.drawPowerPickup(x, y, scale * pop, { color: r.glowColor ?? '#a7ff7e' });
+      return;
+    }
     // Speed-burst + split-clones reuse painter routines for back-compat;
     // every other power-up renders from a sprite key + fallback dot.
     if (r.glowColor === '#72ff66') { self.paint.tree(x, y + 28 * scale, scale * 0.64 * pop); return; }
@@ -846,6 +865,11 @@ const COLLECTIBLE_DRAWERS = {
   },
 
   rare(self, x, y, scale, pop, r) {
+    if (self.voxelBlocks?.enabled) {
+      self.drawPowerGlow(x, y - 28 * scale, scale * pop * 1.15, r.glowColor ?? '#5ab8ff');
+      self.voxelBlocks.drawPickupFlower(x, y, scale * 1.35 * pop, { rare: true });
+      return;
+    }
     // v3.8.9 — designer-delivered halo PNG drawn beneath the orchid
     // (when present); procedural glow stays as fallback so empty-asset
     // builds still get a glow. Halo size ~1.6× sprite for the "aura"
@@ -886,6 +910,11 @@ const COLLECTIBLE_DRAWERS = {
     const glowColor = glowCfg?.flowerColor ?? r.glowColor ?? '#ffcf3a';
     if (!glowCfg || glowCfg.enabled !== false) {
       self.drawFlowerGlow(x, y, scale, data.t, glowColor, w * 0.5, glowCfg);
+    }
+
+    if (self.voxelBlocks?.enabled) {
+      self.voxelBlocks.drawPickupFlower(x, y, scale * foreground * pop * szMod, { rich: (r.sizeScale ?? 1) > 1 });
+      return;
     }
 
     // v4.5 — the designer's orchid_gold art is now at canonical 96px (the
