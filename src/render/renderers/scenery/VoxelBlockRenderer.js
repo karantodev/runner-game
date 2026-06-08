@@ -83,6 +83,10 @@ function snap(value) {
   return Math.round(value);
 }
 
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
 /**
  * Lightweight Canvas-only 3D-like blocks. This is deliberately not a
  * WebGL scene: the runner keeps its sprite pipeline and collision model,
@@ -90,9 +94,10 @@ function snap(value) {
  * proportions, palettes and road-facing perspective.
  */
 export class VoxelBlockRenderer {
-  constructor(ctx, { style = 'sprite' } = {}) {
+  constructor(ctx, { style = 'sprite', threeModels = null } = {}) {
     this.ctx = ctx;
     this.style = normalizedStyle(style);
+    this.threeModels = threeModels;
   }
 
   get enabled() {
@@ -117,6 +122,7 @@ export class VoxelBlockRenderer {
     depth = 18,
     topRise = 14,
   } = {}) {
+    if (this.#drawThree('cube', x, y, scale, { material, side, variant, width, height })) return true;
     const ctx = this.ctx;
     const palette = PALETTES[material] ?? PALETTES.grass;
     const direction = side > 0 ? -1 : 1;
@@ -131,6 +137,7 @@ export class VoxelBlockRenderer {
     const backShift = direction * d;
 
     ctx.save();
+    this.#contactShadow(x, y + 2 * scale, w * 0.62, Math.max(4, h * 0.11), scale, 0.20);
     ctx.lineJoin = 'miter';
     ctx.lineWidth = Math.max(1, snap(scale * 2));
     ctx.strokeStyle = palette.outline;
@@ -163,6 +170,8 @@ export class VoxelBlockRenderer {
     ctx.fillStyle = palette.side;
     ctx.fillRect(left + 1, top + h - bandH, w - 2, bandH - 1);
     this.#topTexture(left, right, top, rise, backShift, scale, palette);
+    this.#blockBevel(left, top, w, h, scale, palette);
+    this.#sideRibs(direction > 0 ? right : left, top, h, d, rise, direction, scale, palette);
     ctx.restore();
     return true;
   }
@@ -173,6 +182,7 @@ export class VoxelBlockRenderer {
     variant = 0,
     units = 3,
   } = {}) {
+    if (this.#drawThree('platform', x, y, scale, { material, side, variant })) return true;
     return this.drawCube(x, y, scale, {
       material,
       side,
@@ -190,6 +200,7 @@ export class VoxelBlockRenderer {
     variant = 0,
     steps = 3,
   } = {}) {
+    if (this.#drawThree('steps', x, y, scale, { material, side, variant })) return true;
     const direction = side > 0 ? -1 : 1;
     const stepScale = scale * 0.78;
     for (let i = steps - 1; i >= 0; i -= 1) {
@@ -212,6 +223,7 @@ export class VoxelBlockRenderer {
   }
 
   drawQuestionCube(x, y, scale = 1, { variant = 0 } = {}) {
+    if (this.#drawThree('question', x, y, scale, { variant })) return true;
     this.drawCube(x, y, scale, {
       material: 'question',
       variant,
@@ -236,6 +248,7 @@ export class VoxelBlockRenderer {
     side = -1,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('hangingPlatform', x, y, scale, { side, variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     const direction = side > 0 ? -1 : 1;
@@ -243,9 +256,11 @@ export class VoxelBlockRenderer {
     const deckY = y - 18 * s;
 
     ctx.save();
+    this.#contactShadow(x, y + 6 * s, 74 * s, 11 * s, s, 0.18);
     this.#board3d(x, deckY, 126 * s, 18 * s, 9 * s, direction, palette);
     this.#board3d(x - 36 * s, deckY + 7 * s, 22 * s, 20 * s, 5 * s, direction, palette);
     this.#board3d(x + 36 * s, deckY + 7 * s, 22 * s, 20 * s, 5 * s, direction, palette);
+    this.#plankLines(x, deckY, 126 * s, 18 * s, s, palette);
 
     ctx.strokeStyle = '#1b5a33';
     ctx.lineWidth = Math.max(1, snap(3 * s));
@@ -268,10 +283,12 @@ export class VoxelBlockRenderer {
   drawSmallFlower(x, y, scale = 1, {
     variant = 0,
   } = {}) {
+    if (this.#drawThree('smallFlower', x, y, scale, { variant })) return true;
     const s = scale;
     const ctx = this.ctx;
     const purple = (variant ?? 0) % 2 === 1;
     ctx.save();
+    this.#contactShadow(x, y + 1 * s, 13 * s, 3 * s, s, 0.14);
     ctx.strokeStyle = PALETTES.leaf.outline;
     ctx.lineWidth = Math.max(1, snap(2 * s));
     ctx.beginPath();
@@ -288,9 +305,11 @@ export class VoxelBlockRenderer {
   drawSprout(x, y, scale = 1, {
     variant = 0,
   } = {}) {
+    if (this.#drawThree('sprout', x, y, scale, { variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     ctx.save();
+    this.#contactShadow(x, y + 1 * s, 18 * s, 4 * s, s, 0.14);
     this.#ellipse(x, y - 2 * s, 20 * s, 5 * s, '#5b2d1a', '#2b1a12');
     ctx.strokeStyle = PALETTES.leaf.outline;
     ctx.lineWidth = Math.max(1, snap(2 * s));
@@ -308,11 +327,13 @@ export class VoxelBlockRenderer {
     dry = false,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('wheat', x, y, scale, { dry, variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     const stem = dry ? '#b58a37' : '#d6aa38';
     const head = dry ? '#d8b24b' : '#f1ca4b';
     ctx.save();
+    this.#contactShadow(x, y + 1 * s, 38 * s, 6 * s, s, 0.16);
     ctx.strokeStyle = '#5a3b17';
     ctx.lineWidth = Math.max(1, snap(2 * s));
     for (let i = 0; i < 7; i += 1) {
@@ -338,6 +359,7 @@ export class VoxelBlockRenderer {
     round = false,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('leafClump', x, y, scale, { round, variant })) return true;
     return this.drawBush(x, y, scale * (round ? 0.72 : 0.62), {
       large: false,
       flowers: false,
@@ -350,9 +372,11 @@ export class VoxelBlockRenderer {
     dry = false,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('grassTuft', x, y, scale, { large, dry, variant })) return true;
     const ctx = this.ctx;
     const s = scale * (large ? 1.12 : 0.92);
     ctx.save();
+    this.#contactShadow(x, y + 1 * s, (large ? 42 : 28) * s, 5 * s, s, dry ? 0.12 : 0.16);
     if (dry) {
       ctx.strokeStyle = '#b98932';
       ctx.lineWidth = Math.max(1, snap(2 * s));
@@ -373,10 +397,206 @@ export class VoxelBlockRenderer {
     return true;
   }
 
+  drawVineBarrier(cx, y, width, scale = 1, {
+    phase = 0,
+  } = {}) {
+    if (this.#drawThree('vineBarrier', cx, y, scale, { width, phase })) return true;
+    const ctx = this.ctx;
+    const s = scale;
+    const w = Math.max(40, width);
+    const left = cx - w / 2;
+    const right = cx + w / 2;
+    const baseY = y - 12 * s;
+    const amp = 10 * s;
+
+    ctx.save();
+    this.#contactShadow(cx, y + 1 * s, w * 0.48, 6 * s, s, 0.18);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = '#123720';
+    ctx.lineWidth = Math.max(4, snap(18 * s));
+    this.#vinePath(left, right, baseY + 2 * s, amp, phase);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#2b7f35';
+    ctx.lineWidth = Math.max(3, snap(13 * s));
+    this.#vinePath(left, right, baseY, amp, phase);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#7ad94a';
+    ctx.lineWidth = Math.max(1, snap(4 * s));
+    this.#vinePath(left + 8 * s, right - 8 * s, baseY - 4 * s, amp * 0.72, phase + 1.1);
+    ctx.stroke();
+
+    for (let i = 1; i < 9; i += 1) {
+      const t = i / 9;
+      const x = left + w * t;
+      const yy = baseY - Math.sin(t * Math.PI * 3 + phase) * amp;
+      const dir = i % 2 ? -1 : 1;
+      this.#leafBlade(x + dir * 11 * s, yy - 8 * s, 9 * s, 18 * s, dir * 0.82, i % 3 ? PALETTES.leaf.top : PALETTES.leaf.front, PALETTES.leaf.outline);
+      ctx.fillStyle = '#1b4a23';
+      ctx.fillRect(snap(x - 2 * s), snap(yy - 2 * s), Math.max(1, snap(4 * s)), Math.max(1, snap(4 * s)));
+    }
+
+    ctx.restore();
+    return true;
+  }
+
+  drawOverhang(cx, bottomY, width, scale = 1, {
+    variant = 'branch',
+    accent = 0,
+  } = {}) {
+    if (this.#drawThree('overhang', cx, bottomY, scale, { width, variant, accent })) return true;
+    const ctx = this.ctx;
+    const s = scale;
+    const w = Math.max(80, width);
+    if (variant === 'web') {
+      return this.#drawWebOverhang(cx, bottomY, w, s, accent);
+    }
+
+    const wood = PALETTES.wood;
+    const y = bottomY - 10 * s;
+    const left = cx - w / 2;
+    const right = cx + w / 2;
+
+    ctx.save();
+    this.#contactShadow(cx, bottomY + 8 * s, w * 0.36, 7 * s, s, 0.12);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = `rgba(120,220,255,${0.34 * accent})`;
+    ctx.shadowBlur = (5 + 12 * accent) * s;
+
+    ctx.strokeStyle = wood.outline;
+    ctx.lineWidth = Math.max(5, snap(26 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(left), snap(y - 38 * s));
+    ctx.bezierCurveTo(snap(cx - w * 0.24), snap(y - 70 * s), snap(cx + w * 0.20), snap(y - 25 * s), snap(right), snap(y - 58 * s));
+    ctx.stroke();
+
+    ctx.strokeStyle = wood.front;
+    ctx.lineWidth = Math.max(4, snap(18 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(left + 4 * s), snap(y - 39 * s));
+    ctx.bezierCurveTo(snap(cx - w * 0.22), snap(y - 66 * s), snap(cx + w * 0.19), snap(y - 28 * s), snap(right - 4 * s), snap(y - 56 * s));
+    ctx.stroke();
+
+    ctx.strokeStyle = wood.highlight;
+    ctx.lineWidth = Math.max(1, snap(4 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(left + w * 0.14), snap(y - 50 * s));
+    ctx.bezierCurveTo(snap(cx - w * 0.06), snap(y - 60 * s), snap(cx + w * 0.16), snap(y - 37 * s), snap(right - w * 0.20), snap(y - 54 * s));
+    ctx.stroke();
+
+    for (let i = 0; i < 7; i += 1) {
+      const t = (i + 0.5) / 7;
+      const bx = left + w * t;
+      const by = y - (42 + ((i + 1) % 3) * 7) * s;
+      const dir = i % 2 ? -1 : 1;
+      ctx.strokeStyle = PALETTES.leaf.outline;
+      ctx.lineWidth = Math.max(1, snap(3 * s));
+      ctx.beginPath();
+      ctx.moveTo(snap(bx), snap(by));
+      ctx.lineTo(snap(bx + dir * 20 * s), snap(by + 32 * s));
+      ctx.stroke();
+      this.#leafBlade(bx + dir * 22 * s, by + 24 * s, 11 * s, 22 * s, dir * 0.7, i % 2 ? PALETTES.leaf.top : PALETTES.leaf.front, PALETTES.leaf.outline);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  drawPickupFlower(x, y, scale = 1, {
+    rare = false,
+    rich = false,
+  } = {}) {
+    if (this.#drawThree('pickupFlower', x, y, scale, { rare, rich })) return true;
+    const ctx = this.ctx;
+    const s = scale;
+    const petal = rare ? '#5ab8ff' : '#ffd54a';
+    const petalDark = rare ? '#2754a8' : '#c78612';
+    const center = rare ? '#e8f8ff' : '#fff2aa';
+    const r = (rich ? 15 : 12) * s;
+    ctx.save();
+    this.#contactShadow(x, y + 1 * s, 14 * s, 4 * s, s, 0.16);
+    ctx.strokeStyle = rare ? '#17395f' : '#6a3c0c';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x), snap(y));
+    ctx.lineTo(snap(x), snap(y - 24 * s));
+    ctx.stroke();
+    this.#leafBlade(x - 9 * s, y - 9 * s, 7 * s, 14 * s, -0.7, PALETTES.leaf.front, null);
+    this.#leafBlade(x + 9 * s, y - 13 * s, 7 * s, 14 * s, 0.7, PALETTES.leaf.top, null);
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2;
+      this.#ellipse(x + Math.cos(a) * r * 0.62, y - 31 * s + Math.sin(a) * r * 0.44, r * 0.42, r * 0.28, i % 2 ? petal : petalDark, null);
+    }
+    this.#ellipse(x, y - 31 * s, r * 0.32, r * 0.24, center, '#70400d');
+    this.#ellipse(x - r * 0.16, y - 35 * s, r * 0.13, r * 0.08, rare ? '#ffffff' : '#fff8c8', null);
+    ctx.restore();
+    return true;
+  }
+
+  drawHeartPickup(x, y, scale = 1) {
+    if (this.#drawThree('heart', x, y + 18 * scale, scale, {})) return true;
+    const ctx = this.ctx;
+    const s = scale;
+    ctx.save();
+    this.#contactShadow(x, y + 21 * s, 24 * s, 6 * s, s, 0.18);
+    ctx.fillStyle = '#8f1e2b';
+    ctx.strokeStyle = '#4a1019';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    ctx.beginPath();
+    ctx.moveTo(snap(x), snap(y + 18 * s));
+    ctx.bezierCurveTo(snap(x - 34 * s), snap(y - 4 * s), snap(x - 26 * s), snap(y - 32 * s), snap(x - 7 * s), snap(y - 22 * s));
+    ctx.bezierCurveTo(snap(x), snap(y - 36 * s), snap(x + 26 * s), snap(y - 32 * s), snap(x + 27 * s), snap(y - 8 * s));
+    ctx.bezierCurveTo(snap(x + 27 * s), snap(y + 4 * s), snap(x + 15 * s), snap(y + 12 * s), snap(x), snap(y + 18 * s));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    this.#ellipse(x - 10 * s, y - 13 * s, 7 * s, 4 * s, '#ff8fa1', null);
+    this.#ellipse(x + 11 * s, y - 8 * s, 5 * s, 3 * s, '#c94150', null);
+    ctx.restore();
+    return true;
+  }
+
+  drawPowerPickup(x, y, scale = 1, {
+    color = '#a7ff7e',
+  } = {}) {
+    if (this.#drawThree('power', x, y, scale, { color })) return true;
+    const ctx = this.ctx;
+    const s = scale;
+    const w = 46 * s;
+    const h = 42 * s;
+    const d = 10 * s;
+    const top = y - h;
+    const left = x - w / 2;
+    ctx.save();
+    this.#contactShadow(x, y + 2 * s, 24 * s, 6 * s, s, 0.17);
+    ctx.strokeStyle = '#173020';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    this.#polygon([[left, top], [left + d, top - d], [left + w + d, top - d], [left + w, top]], '#d6f7c5');
+    this.#polygon([[left + w, top], [left + w + d, top - d], [left + w + d, y - d], [left + w, y]], '#4d8b4b');
+    ctx.fillStyle = color;
+    ctx.fillRect(snap(left), snap(top), snap(w), snap(h));
+    ctx.strokeRect(snap(left), snap(top), snap(w), snap(h));
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.fillRect(snap(left + 8 * s), snap(top + 8 * s), snap(w * 0.34), Math.max(2, snap(5 * s)));
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(snap(left + 2 * s), snap(y - 10 * s), snap(w - 4 * s), Math.max(2, snap(8 * s)));
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(snap(left + w * 0.72), snap(top + 7 * s));
+    ctx.lineTo(snap(left + w * 0.92), snap(top + 16 * s));
+    ctx.stroke();
+    ctx.restore();
+    return true;
+  }
+
   drawFence(x, y, scale = 1, {
     side = -1,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('fence', x, y, scale, { side, variant })) return true;
     const ctx = this.ctx;
     const direction = side > 0 ? -1 : 1;
     const s = scale;
@@ -392,6 +612,7 @@ export class VoxelBlockRenderer {
     }));
 
     ctx.save();
+    this.#contactShadow(x, y + 3 * s, 66 * s, 8 * s, s, 0.18);
     ctx.lineJoin = 'miter';
     ctx.lineWidth = Math.max(1, snap(2 * s));
     ctx.strokeStyle = palette.outline;
@@ -423,6 +644,7 @@ export class VoxelBlockRenderer {
   drawPipe(x, y, scale = 1, {
     side = -1,
   } = {}) {
+    if (this.#drawThree('pipe', x, y, scale, { side })) return true;
     const ctx = this.ctx;
     const s = scale;
     const direction = side > 0 ? -1 : 1;
@@ -437,6 +659,7 @@ export class VoxelBlockRenderer {
     const lipH = Math.max(13, snap(25 * s));
 
     ctx.save();
+    this.#contactShadow(x, y + 3 * s, 36 * s, 8 * s, s, 0.22);
     ctx.lineWidth = Math.max(1, snap(2 * s));
     ctx.strokeStyle = outline;
 
@@ -458,6 +681,8 @@ export class VoxelBlockRenderer {
     ctx.fillRect(snap(x - w * 0.27), snap(y - h + lipH * 0.74), Math.max(2, snap(7 * s)), Math.max(8, snap(h * 0.44)));
     ctx.fillStyle = '#0d5729';
     ctx.fillRect(snap(x + w * 0.24), snap(y - h + lipH * 0.82), Math.max(2, snap(4 * s)), Math.max(8, snap(h * 0.54)));
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fillRect(snap(x - w * 0.07), snap(y - h + lipH * 1.2), Math.max(1, snap(3 * s)), Math.max(8, snap(h * 0.50)));
     ctx.restore();
     return true;
   }
@@ -466,6 +691,7 @@ export class VoxelBlockRenderer {
     side = -1,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('planter', x, y, scale, { side, variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     const direction = side > 0 ? -1 : 1;
@@ -479,6 +705,7 @@ export class VoxelBlockRenderer {
     const topY = y - h;
 
     ctx.save();
+    this.#contactShadow(x, y + 2 * s, 33 * s, 6 * s, s, 0.18);
     ctx.lineWidth = Math.max(1, snap(2 * s));
     ctx.strokeStyle = pot.outline;
     this.#polygon([[left, topY], [left + direction * d, topY - d], [right + direction * d, topY - d], [right, topY]], pot.top);
@@ -495,6 +722,7 @@ export class VoxelBlockRenderer {
     ctx.fillStyle = pot.side;
     ctx.fillRect(snap(left + 9 * s), snap(y - 14 * s), snap(w - 18 * s), Math.max(3, snap(7 * s)));
     this.#ellipse(x + direction * d * 0.25, topY - 1 * s, w * 0.46, 7 * s, pot.soil, pot.outline);
+    this.#ellipse(x + direction * d * 0.20, topY - 4 * s, w * 0.30, 4 * s, '#6a3822', null);
 
     ctx.strokeStyle = leaf.outline;
     ctx.lineWidth = Math.max(1, snap(2 * s));
@@ -512,6 +740,7 @@ export class VoxelBlockRenderer {
   drawMushroom(x, y, scale = 1, {
     variant = 'red',
   } = {}) {
+    if (this.#drawThree('mushroom', x, y, scale, { variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     const cap =
@@ -528,6 +757,7 @@ export class VoxelBlockRenderer {
     const capY = y - stemH - 8 * s;
 
     ctx.save();
+    this.#contactShadow(x, y + 3 * s, capW * 0.34, 9 * s, s, 0.20);
     ctx.lineWidth = Math.max(1, snap(2 * s));
     ctx.strokeStyle = stem.outline;
 
@@ -572,6 +802,7 @@ export class VoxelBlockRenderer {
     large = false,
     variant = 0,
   } = {}) {
+    if (this.#drawThree('bush', x, y, scale, { flowers, large, variant })) return true;
     const ctx = this.ctx;
     const s = scale * (large ? 1.16 : 1);
     const leaf = PALETTES.leaf;
@@ -579,6 +810,7 @@ export class VoxelBlockRenderer {
     const h = (large ? 98 : 72) * s;
 
     ctx.save();
+    this.#contactShadow(x, y + 2 * scale, w * 0.34, h * 0.10, scale, 0.18);
     ctx.lineWidth = Math.max(1, snap(2 * scale));
     this.#bushSilhouette(x, y - h * 0.08, w, h, leaf, variant);
     this.#leafMosaic(x, y - h * 0.31, w * 0.74, h * 0.48, scale, large ? 34 : 24, variant);
@@ -597,6 +829,7 @@ export class VoxelBlockRenderer {
   drawTree(x, y, scale = 1, {
     variant = 0,
   } = {}) {
+    if (this.#drawThree('tree', x, y, scale, { variant })) return true;
     const ctx = this.ctx;
     const s = scale;
     const wood = PALETTES.wood;
@@ -608,6 +841,7 @@ export class VoxelBlockRenderer {
     const cy = y - trunkH - canopyH * 0.08;
 
     ctx.save();
+    this.#contactShadow(x, y + 4 * s, canopyW * 0.30, 12 * s, s, 0.20);
     this.#board3d(x, y, trunkW, trunkH, 9 * s, variant & 1 ? -1 : 1, wood);
     ctx.fillStyle = wood.highlight;
     ctx.fillRect(snap(x - trunkW * 0.24), snap(y - trunkH + 12 * s), Math.max(1, snap(4 * s)), snap(trunkH * 0.62));
@@ -621,6 +855,71 @@ export class VoxelBlockRenderer {
     ctx.stroke();
 
     this.#treeCanopy(x, cy, canopyW, canopyH, leaf, variant, scale);
+    ctx.restore();
+    return true;
+  }
+
+  #drawThree(kind, x, y, scale, options) {
+    if (!this.enabled || !this.threeModels?.enabled) return false;
+    return this.threeModels.draw(this.ctx, kind, x, y, scale, options);
+  }
+
+  #vinePath(left, right, y, amp, phase) {
+    const ctx = this.ctx;
+    const width = right - left;
+    const segments = 16;
+    ctx.beginPath();
+    for (let i = 0; i <= segments; i += 1) {
+      const t = i / segments;
+      const x = left + width * t;
+      const yy = y - Math.sin(t * Math.PI * 3 + phase) * amp;
+      if (i === 0) ctx.moveTo(snap(x), snap(yy));
+      else ctx.lineTo(snap(x), snap(yy));
+    }
+  }
+
+  #drawWebOverhang(cx, bottomY, width, scale, accent) {
+    const ctx = this.ctx;
+    const s = scale;
+    const topY = bottomY - 108 * s;
+    const halfW = width * 0.48;
+    const cy = topY + 54 * s;
+    ctx.save();
+    ctx.shadowColor = `rgba(120,220,255,${0.42 * accent})`;
+    ctx.shadowBlur = (5 + 12 * accent) * s;
+    const drawWebLines = (strokeStyle, lineWidth, yOffset = 0) => {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = Math.max(1, snap(lineWidth * s));
+      for (let i = 0; i < 9; i += 1) {
+        const t = i / 8;
+        const x = cx - halfW + halfW * 2 * t;
+        ctx.beginPath();
+        ctx.moveTo(snap(cx), snap(cy - 20 * s + yOffset));
+        ctx.lineTo(snap(x), snap(bottomY - 14 * s + yOffset));
+        ctx.stroke();
+      }
+      for (let r = 1; r <= 4; r += 1) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 4 * s + yOffset, halfW * (r / 4), 48 * s * (r / 4), 0, 0, Math.PI);
+        ctx.stroke();
+      }
+    };
+
+    drawWebLines('rgba(58,72,102,0.44)', 4, 1.5 * s);
+    drawWebLines('rgba(248,252,255,0.94)', 1.8);
+    ctx.fillStyle = '#3a2454';
+    this.#ellipse(cx + 10 * s, cy + 18 * s, 9 * s, 12 * s, '#3a2454', '#160b22');
+    this.#ellipse(cx + 8 * s, cy + 8 * s, 6 * s, 7 * s, '#4c326d', '#160b22');
+    ctx.strokeStyle = '#160b22';
+    ctx.lineWidth = Math.max(1, snap(2 * s));
+    for (let i = 0; i < 4; i += 1) {
+      const dir = i < 2 ? -1 : 1;
+      const yy = cy + (i % 2 ? 16 : 22) * s;
+      ctx.beginPath();
+      ctx.moveTo(snap(cx + 8 * s), snap(yy));
+      ctx.lineTo(snap(cx + dir * 22 * s), snap(yy + 8 * s));
+      ctx.stroke();
+    }
     ctx.restore();
     return true;
   }
@@ -725,6 +1024,84 @@ export class VoxelBlockRenderer {
     ctx.fillRect(snap(x - 13 * scale), snap(y - 3 * scale), snap(26 * scale), Math.max(2, snap(5 * scale)));
   }
 
+  #contactShadow(cx, cy, rx, ry, scale = 1, alpha = 0.18) {
+    const ctx = this.ctx;
+    const a = clamp01(alpha);
+    if (a <= 0 || rx <= 0 || ry <= 0) return;
+    ctx.save();
+    ctx.globalAlpha *= a;
+    ctx.fillStyle = '#120d08';
+    ctx.beginPath();
+    ctx.ellipse(
+      snap(cx),
+      snap(cy),
+      Math.max(1, snap(rx)),
+      Math.max(1, snap(ry)),
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(snap(cx - rx * 0.35), snap(cy - ry * 0.35), Math.max(1, snap(rx * 0.46)), Math.max(1, snap(scale)));
+    ctx.restore();
+  }
+
+  #blockBevel(left, top, w, h, scale, palette) {
+    const ctx = this.ctx;
+    const px = Math.max(1, snap(2 * scale));
+    ctx.save();
+    ctx.fillStyle = palette.highlight;
+    ctx.globalAlpha *= 0.58;
+    ctx.fillRect(left + px, top + px, Math.max(px, snap(w * 0.38)), px);
+    ctx.fillRect(left + px, top + px, px, Math.max(px, snap(h * 0.32)));
+    ctx.globalAlpha *= 0.70;
+    ctx.fillStyle = palette.edge;
+    ctx.fillRect(left + w - px * 2, top + px * 2, px, Math.max(px, h - px * 4));
+    ctx.fillRect(left + px * 2, top + h - px * 2, Math.max(px, w - px * 4), px);
+    ctx.restore();
+  }
+
+  #sideRibs(edgeX, top, h, depth, rise, direction, scale, palette) {
+    const ctx = this.ctx;
+    const px = Math.max(1, snap(2 * scale));
+    const count = Math.max(2, Math.floor(h / Math.max(10, 18 * scale)));
+    ctx.save();
+    ctx.strokeStyle = palette.edge;
+    ctx.lineWidth = px;
+    ctx.globalAlpha *= 0.50;
+    for (let i = 1; i < count; i += 1) {
+      const y = top + (h * i) / count;
+      ctx.beginPath();
+      ctx.moveTo(snap(edgeX), snap(y));
+      ctx.lineTo(snap(edgeX + direction * depth), snap(y - rise));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  #plankLines(cx, bottomY, width, height, scale, palette) {
+    const ctx = this.ctx;
+    const left = cx - width / 2;
+    const top = bottomY - height;
+    const count = 4;
+    ctx.save();
+    ctx.strokeStyle = palette.edge;
+    ctx.lineWidth = Math.max(1, snap(2 * scale));
+    ctx.globalAlpha *= 0.72;
+    for (let i = 1; i < count; i += 1) {
+      const x = left + (width * i) / count;
+      ctx.beginPath();
+      ctx.moveTo(snap(x), snap(top + 2 * scale));
+      ctx.lineTo(snap(x), snap(bottomY - 2 * scale));
+      ctx.stroke();
+    }
+    ctx.fillStyle = palette.highlight;
+    ctx.globalAlpha *= 0.7;
+    ctx.fillRect(snap(left + 8 * scale), snap(top + 3 * scale), Math.max(2, snap(width * 0.22)), Math.max(1, snap(2 * scale)));
+    ctx.restore();
+  }
+
   #leafBlade(cx, cy, w, h, tilt, fill, stroke) {
     const ctx = this.ctx;
     ctx.save();
@@ -735,6 +1112,13 @@ export class VoxelBlockRenderer {
     ctx.bezierCurveTo(snap(w * 0.52), snap(-h * 0.30), snap(w * 0.46), snap(h * 0.26), 0, snap(h * 0.50));
     ctx.bezierCurveTo(snap(-w * 0.44), snap(h * 0.22), snap(-w * 0.46), snap(-h * 0.28), 0, snap(-h * 0.50));
     ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(0, snap(-h * 0.34));
+    ctx.lineTo(snap(w * 0.18), 0);
+    ctx.lineTo(0, snap(h * 0.30));
+    ctx.closePath();
     ctx.fill();
     if (stroke) {
       ctx.strokeStyle = stroke;
@@ -773,6 +1157,10 @@ export class VoxelBlockRenderer {
     ctx.fillStyle = palette.front;
     ctx.fillRect(left, top, w, h);
     ctx.strokeRect(left, top, w, h);
+    ctx.fillStyle = palette.highlight;
+    ctx.fillRect(left + Math.max(1, snap(w * 0.12)), top + Math.max(1, snap(h * 0.16)), Math.max(1, snap(w * 0.20)), Math.max(1, snap(2)));
+    ctx.fillStyle = palette.detail;
+    ctx.fillRect(left + Math.max(1, snap(w * 0.55)), top + Math.max(1, snap(h * 0.56)), Math.max(1, snap(w * 0.22)), Math.max(1, snap(2)));
   }
 
   #ellipse(cx, cy, rx, ry, fill, stroke) {

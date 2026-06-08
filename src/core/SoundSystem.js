@@ -26,6 +26,21 @@
 import { stringToSeed } from '../utils/rng.js';
 
 /**
+ * SFX whose audio files are not in `assets/audio/sfx/` yet (designer-pending).
+ * Pre-seeded into `deadSounds` at construction so play() skips them WITHOUT
+ * issuing a request: a missing-file request 404s in the console even from a
+ * caught fetch, so the only way to keep the console clean is to never request
+ * a file we know is absent. Remove an ID the moment its .ogg/.mp3 ships and the
+ * sound goes live (a later regression to missing self-heals via the dead-set).
+ */
+const PENDING_SFX = new Set([
+  'rare_collect', 'powerup_pickup', 'powerup_activate', 'hazard_cleared',
+  'near_miss', 'shield_absorb', 'lane_switch', 'combo_mega', 'milestone',
+  'speed_tier', 'death', 'menu_hover', 'menu_select', 'menu_back',
+  'countdown_tick', 'countdown_go',
+]);
+
+/**
  * Logical sound IDs. Each gameplay event maps to one of these.
  * Adding a sound = one row here + one row in SOUND_LIBRARY.
  */
@@ -133,6 +148,9 @@ export class SoundSystem {
     this._lastPlay = new Map();
     /** File extension the browser can decode (.ogg, else .mp3). Detected once. */
     this.ext = this.#detectExt();
+    // Designer-pending sounds have no file yet — mark them dead up front so
+    // play() never requests them (a missing-file request 404s in the console).
+    for (const soundId of PENDING_SFX) this.deadSounds.add(soundId);
     this.#wire();
     this.#armAutoplayUnlock();
   }

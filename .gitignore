@@ -15,6 +15,12 @@ __pycache__/
 # tracked from earlier; run `git rm -r --cached assets/_source` to slim those too.
 assets/_source/
 
+# Artist hand-off scratch — candidate ZIPs, contact sheets, reference + current
+# screenshots assembled for the human pixel-artist (M17/M18… redraw packages).
+# ~97 MB of binaries the engine never reads; kept local-only so they never bloat
+# the repo. Regenerate from the hand-off capture specs on demand.
+docs/art-handoff/
+
 # Generated docs — written by scripts/{audit-assets,audit-images,generate-asset-
 # contact-sheets,generate-semantic-registry,validate-composition,capture-composition-
 # pass}.mjs. No script READS them; they regenerate on demand. Kept out of git so the

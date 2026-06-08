@@ -1,4 +1,5 @@
 import { VoxelBlockRenderer } from '../render/renderers/scenery/VoxelBlockRenderer.js';
+import { ThreeModelRenderer } from '../render/renderers/three/ThreeModelRenderer.js';
 
 const ROWS = Object.freeze([
   { group: 'Blocks', label: 'Grass block L', ref: 'grassDirtBlockLeft', draw: (r, x, y) => r.drawCube(x, y, 1.18, { material: 'grass', side: -1, variant: 0, width: 92, height: 68 }) },
@@ -31,6 +32,14 @@ const ROWS = Object.freeze([
   { group: 'Low Flora', label: 'Large tuft', ref: 'grassTuftLarge', draw: (r, x, y) => r.drawGrassTuft(x, y, 1.25, { large: true, variant: 3 }) },
   { group: 'Low Flora', label: 'Dry grass', ref: 'dryGrassObstacle', draw: (r, x, y) => r.drawGrassTuft(x, y, 1.18, { large: true, dry: true, variant: 2 }) },
   { group: 'Low Flora', label: 'Leaf clump', ref: 'leafClumpRound', draw: (r, x, y) => r.drawLeafClump(x, y, 1.05, { round: true, variant: 2 }) },
+
+  { group: 'Gameplay', label: 'Vine barrier', ref: 'vineBarrierFull', draw: (r, x, y) => r.drawVineBarrier(x, y, 150, 0.9, { phase: 0.7 }) },
+  { group: 'Gameplay', label: 'Low overhang', ref: 'lowBranchOverhang', draw: (r, x, y) => r.drawOverhang(x, y - 12, 156, 0.92, { variant: 'branch', accent: 0.5 }) },
+  { group: 'Gameplay', label: 'Web overhang', ref: 'spiderWebOverhang', draw: (r, x, y) => r.drawOverhang(x, y - 12, 156, 0.92, { variant: 'web', accent: 0.5 }) },
+  { group: 'Gameplay', label: 'Orchid pickup', ref: 'orchidGoldMain', draw: (r, x, y) => r.drawPickupFlower(x, y, 1.45, { rich: false }) },
+  { group: 'Gameplay', label: 'Rare orchid', ref: 'orchidBlueRare', draw: (r, x, y) => r.drawPickupFlower(x, y, 1.45, { rare: true }) },
+  { group: 'Gameplay', label: 'Life heart', ref: 'lifeHeart', draw: (r, x, y) => r.drawHeartPickup(x, y - 22, 1.35) },
+  { group: 'Gameplay', label: 'Power pickup', ref: 'pickupMagnet', draw: (r, x, y) => r.drawPowerPickup(x, y, 1.28, { color: '#ff7ad6' }) },
 ]);
 
 const GROUPS = ['all', ...new Set(ROWS.map((row) => row.group))];
@@ -153,7 +162,10 @@ export function createSceneryQaSheet({
 
     paintCell(refCanvas, (ctx) => drawReference(ctx, game.assets.get(row.ref), refCanvas.width, refCanvas.height, 138));
     paintCell(voxelCanvas, (ctx) => {
-      const renderer = new VoxelBlockRenderer(ctx, { style: 'voxel' });
+      const renderer = new VoxelBlockRenderer(ctx, {
+        style: 'voxel',
+        threeModels: game.renderer.threeModels ?? new ThreeModelRenderer({ enabled: true }),
+      });
       row.draw(renderer, voxelCanvas.width / 2, 138);
     });
 

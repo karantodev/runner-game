@@ -1,5 +1,105 @@
 import { test, expect } from '@playwright/test';
 
+function collectRuntimeErrors(page) {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (text.includes('Failed to load resource') && text.includes('404')) return;
+    errors.push(text);
+  });
+  return errors;
+}
+
+async function waitForDebugRuntime(page, url) {
+  await page.goto(url);
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  await page.waitForFunction(() => !document.getElementById('loading')?.classList.contains('on'));
+  await expect(page.locator('#game')).toBeVisible();
+}
+
+async function resetPersistedSettings(page) {
+  await waitForDebugRuntime(page, '/dev.html?debug=1');
+  await page.evaluate(() => window.localStorage.removeItem('orchidQuest.settings.v1'));
+}
+
+async function readRendererDebugSnapshot(page) {
+  return page.evaluate(() => {
+    const state = window.__ORCHID_DEBUG__?.getState?.() ?? null;
+    const panelText = document.getElementById('debug-panel')?.innerText ?? '';
+    const panelMatch = panelText.match(/(?:renderer(?:\s+(?:strategy|kind|type))?|strategy|kind|type)\s*:\s*([^\n]+)/i);
+    return {
+      stateKeys: state ? Object.keys(state) : [],
+      stateRenderer:
+        state?.rendererStrategy
+        ?? state?.rendererKind
+        ?? state?.rendererType
+        ?? state?.renderer
+        ?? null,
+      panelRenderer: panelMatch?.[1]?.trim() ?? null,
+      panelText,
+    };
+  });
+}
+
+function inferRendererStrategy(snapshot) {
+  const values = [snapshot.stateRenderer, snapshot.panelRenderer]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  if (values.some((value) => value.includes('three-scene'))) return 'three-scene';
+  if (values.some((value) => value.includes('canvas2d') || value.includes('canvas 2d') || value.includes('canvas-2d'))) {
+    return 'canvas2d';
+  }
+  return values[0] ?? null;
+}
+
+async function expectRendererStrategy(page, expected) {
+  const snapshot = await readRendererDebugSnapshot(page);
+  const actual = inferRendererStrategy(snapshot);
+  expect(
+    actual,
+    `Expected renderer strategy "${expected}" but debug state exposed keys [${snapshot.stateKeys.join(', ')}] and panel text:\n${snapshot.panelText || '(empty)'}`
+  ).toBe(expected);
+}
+
+async function renderAtLeastOneFrame(page) {
+  return page.evaluate(async () => {
+    const debug = window.__ORCHID_DEBUG__;
+    const game = window.__ORCHID_GAME__;
+    const canvas = document.getElementById('game');
+    const blank = document.createElement('canvas');
+    blank.width = canvas?.width ?? 0;
+    blank.height = canvas?.height ?? 0;
+    const blankDataUrl = blank.toDataURL('image/png');
+    const before = game?.loop?.metrics?.frameCount ?? 0;
+
+    debug?.startDebugRun?.();
+
+    const deadline = performance.now() + 4000;
+    while (performance.now() < deadline) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      const after = game?.loop?.metrics?.frameCount ?? 0;
+      if (after > before) {
+        return {
+          before,
+          after,
+          canvasDataUrl: canvas?.toDataURL?.('image/png') ?? null,
+          blankDataUrl,
+        };
+      }
+    }
+
+    return {
+      before,
+      after: game?.loop?.metrics?.frameCount ?? 0,
+      canvasDataUrl: canvas?.toDataURL?.('image/png') ?? null,
+      blankDataUrl,
+    };
+  });
+}
+
 test('runtime — start, move, jump, crouch, restart, no console errors', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -36,6 +136,7 @@ test('structural block renderer — 2D / 3D mode stays reversible', async ({ pag
   await page.goto('/dev.html?debug=1&blockStyle=3d');
   await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
 
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getState().rendererStrategy)).toBe('canvas2d');
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.setBlockStyle('2d'))).toBe('sprite');
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.toggleBlockStyle())).toBe('voxel');
@@ -57,15 +158,319 @@ test('settings — block style defaults to 2D and persists 3D selection', async 
   await page.locator('#settings-button').click();
   await expect(page.locator('#settings-modal')).toHaveClass(/on/);
   await expect(page.locator('#settings-block-style [data-block-style="sprite"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#settings-player-3d')).toBeChecked();
 
   await page.locator('#settings-block-style [data-block-style="voxel"]').click();
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
   await expect(page.locator('#settings-block-style [data-block-style="voxel"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#debug-panel')).toContainText('Blocks: 3D cubes');
 
+  await page.locator('#settings-player-3d').uncheck();
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getPlayerVoxelEnabled())).toBe(false);
+  await expect(page.locator('#debug-panel')).toContainText('Farmer: 2D sprite');
+
   await page.reload();
   await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
   expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getBlockStyle())).toBe('voxel');
+  expect(await page.evaluate(() => window.__ORCHID_DEBUG__.getPlayerVoxelEnabled())).toBe(false);
+});
+
+test('renderer strategy — defaults to canvas2d in debug runtime', async ({ page }) => {
+  const errors = collectRuntimeErrors(page);
+  await resetPersistedSettings(page);
+  await waitForDebugRuntime(page, '/dev.html?debug=1');
+
+  await expectRendererStrategy(page, 'canvas2d');
+  expect(errors).toEqual([]);
+});
+
+test('renderer strategy — ?renderer=three boots cleanly and renders a frame', async ({ page }) => {
+  const errors = collectRuntimeErrors(page);
+  await resetPersistedSettings(page);
+  await waitForDebugRuntime(page, '/dev.html?debug=1&renderer=three');
+
+  await expectRendererStrategy(page, 'three-scene');
+
+  const frame = await renderAtLeastOneFrame(page);
+  expect(frame.after).toBeGreaterThan(frame.before);
+  expect(frame.canvasDataUrl).not.toBe(frame.blankDataUrl);
+  expect(errors).toEqual([]);
+});
+
+test('renderer strategy — Three scene supports orthographic 2.5D mode', async ({ page }) => {
+  const errors = collectRuntimeErrors(page);
+  await resetPersistedSettings(page);
+  await waitForDebugRuntime(page, '/dev.html?debug=1&renderer=three&threeMode=2.5d');
+
+  await expectRendererStrategy(page, 'three-scene');
+  const state = await page.evaluate(() => window.__ORCHID_DEBUG__.getState());
+  expect(state.threeMode).toBe('2.5d');
+  expect(errors).toEqual([]);
+});
+
+test('3D player mode — farmer uses procedural renderer when enabled', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const { PlayerRenderer } = await import('/src/render/renderers/PlayerRenderer.js');
+    const canvas = document.createElement('canvas');
+    canvas.width = 360;
+    canvas.height = 260;
+    const ctx = canvas.getContext('2d');
+    const assetAccesses = [];
+    const renderer = new PlayerRenderer({
+      ctx,
+      projection: { width: 360, height: 260, groundY: 230, visualLaneWidth: 48 },
+      assets: {
+        get: (key) => {
+          assetAccesses.push(key);
+          throw new Error(`sprite asset used: ${key}`);
+        },
+      },
+      voxelBlocks: { enabled: true },
+      playerVoxelEnabled: true,
+    });
+    const world = {
+      state: 'playing',
+      timeAlive: 0,
+      playerTrail: [],
+      powerUpSystem: { isShieldActive: () => false },
+      getPlayerRenderLanes: () => [0],
+      config: {
+        player: { bottomMargin: 16, heroScale: 1 },
+        gameplay: { invulnerabilityFrames: 90 },
+        visual: { juice: { playerShadow: { enabled: false }, playerRimLight: { enabled: false } } },
+        debug: {},
+      },
+      player: {
+        components: {
+          Health: { invulnerabilityFrames: 0, hitFlash: 0 },
+          LaneState: { laneX: 0, targetLane: 0, laneTilt: 0 },
+          VerticalState: { y: 0, vy: 0, isJumping: false },
+          CrouchState: { isCrouching: false },
+          AnimState: { runFrame: 0, idleTime: 0 },
+        },
+      },
+    };
+    renderer.render(world);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let opaque = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 0) opaque += 1;
+    }
+    return { assetAccesses, opaque };
+  });
+
+  expect(result.assetAccesses).toEqual([]);
+  expect(result.opaque).toBeGreaterThan(1000);
+});
+
+test('3D player mode — farmer poses keep distinct silhouettes', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const { PlayerRenderer } = await import('/src/render/renderers/PlayerRenderer.js');
+    const { ThreeModelRenderer } = await import('/src/render/renderers/three/ThreeModelRenderer.js');
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const assetAccesses = [];
+    const renderer = new PlayerRenderer({
+      ctx,
+      projection: { width: 420, height: 320, groundY: 292, visualLaneWidth: 56 },
+      assets: {
+        get: (key) => {
+          assetAccesses.push(key);
+          throw new Error(`sprite asset used: ${key}`);
+        },
+      },
+      voxelBlocks: { enabled: true },
+      threeModels: new ThreeModelRenderer({ enabled: true }),
+      playerVoxelEnabled: true,
+    });
+    const world = {
+      state: 'playing',
+      timeAlive: 0,
+      playerTrail: [],
+      powerUpSystem: { isShieldActive: () => false },
+      getPlayerRenderLanes: () => [0],
+      config: {
+        player: { bottomMargin: 16, heroScale: 1 },
+        gameplay: { invulnerabilityFrames: 90 },
+        visual: { juice: { playerShadow: { enabled: false }, playerRimLight: { enabled: false } } },
+        debug: {},
+      },
+      player: {
+        components: {
+          Health: { invulnerabilityFrames: 0, hitFlash: 0 },
+          LaneState: { laneX: 0, targetLane: 0, laneTilt: 0 },
+          VerticalState: { y: 0, vy: 0, isJumping: false },
+          CrouchState: { isCrouching: false },
+          AnimState: { runFrame: 7, idleTime: 0 },
+        },
+      },
+    };
+    const bbox = () => {
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = -1;
+      let maxY = -1;
+      let hash = 0;
+      for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+          const i = (y * canvas.width + x) * 4;
+          if (data[i + 3] <= 12) continue;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+          hash = (hash + ((x + 1) * 17) + ((y + 1) * 31) + data[i] + data[i + 1] * 3 + data[i + 2] * 7) >>> 0;
+        }
+      }
+      return {
+        minX,
+        minY,
+        maxX,
+        maxY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        hash,
+      };
+    };
+    const drawPose = (pose) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      world.player.components.CrouchState.isCrouching = pose === 'crouch';
+      world.player.components.VerticalState.isJumping = pose === 'jump';
+      world.player.components.VerticalState.y = pose === 'jump' ? -46 : 0;
+      world.player.components.VerticalState.vy = pose === 'jump' ? -8 : 0;
+      world.player.components.AnimState.runFrame = pose === 'run' ? 7 : 0;
+      renderer.render(world);
+      return bbox();
+    };
+    return {
+      assetAccesses,
+      run: drawPose('run'),
+      crouch: drawPose('crouch'),
+      jump: drawPose('jump'),
+    };
+  });
+
+  expect(result.assetAccesses).toEqual([]);
+  expect(result.run.height).toBeGreaterThan(60);
+  expect(result.crouch.height).toBeLessThan(result.run.height * 0.92);
+  expect(result.jump.minY).toBeLessThan(result.run.minY - 20);
+  expect(result.crouch.hash).not.toBe(result.run.hash);
+  expect(result.jump.hash).not.toBe(result.run.hash);
+});
+
+test('Three renderer strategy — scene renderer lifecycle is isolated', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const { ThreeSceneRenderer } = await import('/src/render/renderers/three/ThreeSceneRenderer.js');
+    const { assertRendererStrategy, RENDERER_STRATEGY } = await import('/src/render/RendererContract.js');
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 360;
+    const renderer = assertRendererStrategy(new ThreeSceneRenderer(canvas, null, {
+      width: 640,
+      height: 360,
+    }, { pixelRatio: 1, mode: '3d' }));
+    renderer.init();
+    renderer.render({
+      playerTrail: [],
+      registry: { query: function* query() {} },
+      player: {
+        components: {
+          LaneState: { laneX: 0.5, laneTilt: 0.2 },
+          VerticalState: { y: -40 },
+        },
+      },
+    }, 1 / 60);
+    renderer.setMode('2.5d');
+    renderer.resize(320, 180, 1);
+    const beforeDestroy = {
+      kind: renderer.kind,
+      initialized: renderer.initialized,
+      mode: renderer.mode,
+      objectCount: renderer.objects.size,
+    };
+    renderer.destroy();
+    return {
+      strategyName: RENDERER_STRATEGY.threeScene,
+      beforeDestroy,
+      afterDestroy: {
+        initialized: renderer.initialized,
+        disposed: renderer.disposed,
+        renderer: renderer.renderer,
+        scene: renderer.scene,
+      },
+    };
+  });
+
+  expect(result.strategyName).toBe('three-scene');
+  expect(result.beforeDestroy.kind).toBe('three-scene');
+  expect(result.beforeDestroy.initialized).toBe(true);
+  expect(result.beforeDestroy.mode).toBe('2.5d');
+  expect(result.beforeDestroy.objectCount).toBeGreaterThan(0);
+  expect(result.afterDestroy.initialized).toBe(false);
+  expect(result.afterDestroy.disposed).toBe(true);
+  expect(result.afterDestroy.renderer).toBeNull();
+  expect(result.afterDestroy.scene).toBeNull();
+});
+
+test('Three instanced pool — keeps dense active range and disposes', async ({ page }) => {
+  await page.goto('/dev.html');
+  const result = await page.evaluate(async () => {
+    const THREE = await import('/node_modules/three/build/three.module.js');
+    const { ThreeInstancedPool } = await import('/src/render/renderers/three/ThreeInstancedPool.js');
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const scene = new THREE.Scene();
+    const pool = new ThreeInstancedPool({ geometry, material, capacity: 3, scene });
+    const m1 = new THREE.Matrix4().makeTranslation(1, 0, 0);
+    const m2 = new THREE.Matrix4().makeTranslation(2, 0, 0);
+    const m3 = new THREE.Matrix4().makeTranslation(3, 0, 0);
+    const a = pool.acquire(m1, 0xff0000);
+    const b = pool.acquire(m2, 0x00ff00);
+    const c = pool.acquire(m3, 0x0000ff);
+    const overflow = pool.acquire();
+    const activeAfterAcquire = [a.active, b.active, c.active];
+    const releaseMiddle = pool.release(b);
+    const movedIndex = c.index;
+    const d = pool.acquire(new THREE.Matrix4().makeTranslation(4, 0, 0), 0xffff00);
+    const dIndex = d.index;
+    const countBeforeReset = pool.count;
+    pool.reset();
+    const countAfterReset = pool.count;
+    pool.dispose({ disposeGeometry: true, disposeMaterial: true });
+    let throwsAfterDispose = false;
+    try {
+      pool.acquire();
+    } catch {
+      throwsAfterDispose = true;
+    }
+    return {
+      activeAfterAcquire,
+      overflow,
+      releaseMiddle,
+      movedIndex,
+      dIndex,
+      countBeforeReset,
+      countAfterReset,
+      sceneChildren: scene.children.length,
+      throwsAfterDispose,
+    };
+  });
+
+  expect(result.activeAfterAcquire).toEqual([true, true, true]);
+  expect(result.overflow).toBeNull();
+  expect(result.releaseMiddle).toBe(true);
+  expect(result.movedIndex).toBe(1);
+  expect(result.dIndex).toBe(2);
+  expect(result.countBeforeReset).toBe(3);
+  expect(result.countAfterReset).toBe(0);
+  expect(result.sceneChildren).toBe(0);
+  expect(result.throwsAfterDispose).toBe(true);
 });
 
 test('3D scenery mode — organic and fence props use voxel renderer branches', async ({ page }) => {
@@ -153,6 +558,109 @@ test('debug scenery QA sheet — opens PNG vs 3D comparison grid', async ({ page
   expect(state.rows).toBe(state.totalRows);
 });
 
+test('3D gameplay mode — obstacles and pickups use voxel renderer branches', async ({ page }) => {
+  await page.goto('/dev.html');
+  const calls = await page.evaluate(async () => {
+    const { GameplayRenderer } = await import('/src/render/renderers/GameplayRenderer.js');
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    const called = [];
+    const voxelBlocks = {
+      enabled: true,
+      drawVineBarrier: () => { called.push('vine'); return true; },
+      drawOverhang: (_x, _y, _w, _s, opts) => { called.push(`overhang:${opts?.variant}`); return true; },
+      drawBush: () => { called.push('bush'); return true; },
+      drawWheat: (_x, _y, _s, opts) => { called.push(`wheat:${opts?.dry ? 'dry' : 'green'}`); return true; },
+      drawCube: (_x, _y, _s, opts) => { called.push(`cube:${opts?.material}`); return true; },
+      drawMushroom: (_x, _y, _s, opts) => { called.push(`mushroom:${opts?.variant}`); return true; },
+      drawPickupFlower: (_x, _y, _s, opts) => { called.push(`pickupFlower:${opts?.rare ? 'rare' : opts?.rich ? 'rich' : 'normal'}`); return true; },
+      drawHeartPickup: () => { called.push('heart'); return true; },
+      drawPowerPickup: () => { called.push('power'); return true; },
+    };
+    const sprites = {
+      draw: () => { throw new Error('sprite path used in voxel gameplay mode'); },
+    };
+    const renderer = new GameplayRenderer({
+      ctx,
+      projection: {
+        width: 640,
+        height: 480,
+        visualLaneWidth: 48,
+        roadHalfLaneUnits: 2.3,
+        projectVisual: (lane, distance) => ({ sx: 320 + lane * 48, sy: 420 - distance, scale: 1 }),
+        project: (lane, distance) => ({ sx: 320 + lane * 48, sy: 420 - distance, scale: 1 }),
+      },
+      assets: { get: () => null },
+      sprites,
+      paint: {},
+      voxelBlocks,
+    });
+    const obstacle = (id, assetType, type, lane = 0, variant = 0) => ({
+      id,
+      components: {
+        Position: { lane, distance: 20 },
+        Sprite: { assetType, type: assetType, variant },
+        Hitbox: { type, warning: false },
+      },
+    });
+    const collectible = (id, type) => ({
+      id,
+      components: {
+        Position: { lane: 0, distance: 20 },
+        Sprite: { assetType: type, type },
+        CollectibleData: { type, collected: false, high: false, t: 1, laneJitter: 0 },
+      },
+    });
+    const obstacles = [
+      obstacle(1, 'vine_barrier', 'vine'),
+      obstacle(2, 'low_branch_overhang', 'overhang'),
+      obstacle(3, 'spider_web_overhang', 'overhang'),
+      obstacle(4, 'spiky_bush_obstacle', 'bush'),
+      obstacle(5, 'dry_grass_obstacle', 'wheat'),
+      obstacle(6, 'purple_brick_single', 'wall'),
+      obstacle(7, 'small_center_mushroom', 'mushroom', 0, 'red'),
+    ];
+    const collectibles = [
+      collectible(8, 'flower'),
+      collectible(9, 'flower-rich'),
+      collectible(10, 'rare-orchid'),
+      collectible(11, 'life'),
+      collectible(12, 'power-magnet'),
+    ];
+    renderer.render({
+      scrollOffset: 0,
+      config: {
+        visual: { enabled: false },
+        gameFeel: { ambientMotion: false },
+        powerUps: { magnet: { radius: 0 } },
+        debug: {},
+      },
+      powerUpSystem: { isMagnetActive: () => false },
+      registry: {
+        query: (...components) => components.includes('Hitbox') ? obstacles : collectibles,
+      },
+    });
+    return called;
+  });
+
+  expect(calls).toEqual([
+    'pickupFlower:normal',
+    'pickupFlower:rich',
+    'pickupFlower:rare',
+    'heart',
+    'power',
+    'vine',
+    'overhang:branch',
+    'overhang:web',
+    'bush',
+    'wheat:dry',
+    'cube:purple',
+    'mushroom:red',
+  ]);
+});
+
 test('side-aware scenery — accepted re-export pairs use direct side variants', async ({ page }) => {
   await page.goto('/dev.html');
   const result = await page.evaluate(async () => {
@@ -191,12 +699,12 @@ test('scenery QA sheet — dev-only PNG vs voxel comparer mounts and exposes cas
   await page.goto('/dev.html?sceneryQa=1');
   await page.waitForFunction(() => window.__ORCHID_SCENERY_QA__ !== undefined);
   await expect(page.locator('#scenery-qa-sheet')).toHaveClass(/is-open/);
-  await expect(page.locator('.scenery-qa-card')).toHaveCount(27);
 
   const state = await page.evaluate(() => window.__ORCHID_SCENERY_QA__.getState());
+  await expect(page.locator('.scenery-qa-card')).toHaveCount(state.caseCount);
   expect(state.open).toBe(true);
-  expect(state.caseCount).toBe(27);
-  expect(state.visibleCount).toBe(27);
+  expect(state.caseCount).toBeGreaterThan(27);
+  expect(state.visibleCount).toBe(state.caseCount);
 });
 
 test('touch controls — buttons exist and bind to actions', async ({ page }) => {

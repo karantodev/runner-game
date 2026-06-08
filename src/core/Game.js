@@ -18,6 +18,8 @@ import { Projection } from '../world/Projection.js';
 import { World } from '../world/World.js';
 import { RenderSystem } from '../systems/RenderSystem.js';
 import { HudSystem } from '../systems/HudSystem.js';
+import { RENDERER_STRATEGY } from '../render/RendererContract.js';
+import { ThreeSceneRenderer } from '../render/renderers/three/ThreeSceneRenderer.js';
 
 export class Game {
   constructor(canvas, options = {}) {
@@ -61,13 +63,23 @@ export class Game {
       adaptiveQuality: this.adaptiveQuality,
       share: this.share,
     });
-    this.renderer = new RenderSystem(canvas, this.assets, this.projection, {
+    const rendererOptions = {
       pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
       roadStyle: options.roadStyle,
       blockStyle: options.blockStyle,
+      playerVoxelEnabled: options.playerVoxelEnabled,
       // Debug-only render-cost counters (?perf=1). null in production.
       metrics: this.config.debug?.renderMetrics === true,
-    });
+    };
+    this.rendererStrategy = options.rendererStrategy === RENDERER_STRATEGY.threeScene
+      ? RENDERER_STRATEGY.threeScene
+      : RENDERER_STRATEGY.canvas2d;
+    this.renderer = this.rendererStrategy === RENDERER_STRATEGY.threeScene
+      ? new ThreeSceneRenderer(canvas, this.assets, this.projection, {
+        pixelRatio: rendererOptions.pixelRatio,
+        mode: options.threeMode ?? '3d',
+      })
+      : new RenderSystem(canvas, this.assets, this.projection, rendererOptions);
     this.settings = new SettingsMenu({
       storageKey: this.config.gameplay.settingsKey,
       world: this.world,
@@ -79,6 +91,7 @@ export class Game {
       achievements: this.achievements,
       sound: this.sound,
       defaultBlockStyle: this.renderer.blockStyle,
+      defaultPlayerVoxel: this.renderer.playerVoxelEnabled,
     });
     // Late-wire sound ↔ settings so the SFX toggle works immediately.
     this.sound.settings = this.settings;
@@ -88,14 +101,14 @@ export class Game {
     // when audio lands the same event can play the sting).
     this.eventBus.on('comboChanged', (snap) => {
       if (snap?.reason === 'bump' && snap.multiplier > 1) {
-        this.renderer.effectsRenderer.triggerComboPulse(snap.multiplier);
+        this.renderer.effectsRenderer?.triggerComboPulse?.(snap.multiplier);
       }
     });
     // v3.4 milestone flash — reuse the combo-pulse renderer slot. The
     // multiplier value is just label text; passing 0 makes the renderer
     // skip the ×N badge but still paint the gold vignette.
     this.eventBus.on('effects:milestoneFlash', () => {
-      this.renderer.effectsRenderer.triggerComboPulse(0);
+      this.renderer.effectsRenderer?.triggerComboPulse?.(0);
     });
     // v4.0 — collect bloom flash on flower / rare pickup.
     // Projects the player's current screen position as the bloom centre.
