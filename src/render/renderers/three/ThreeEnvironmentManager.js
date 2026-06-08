@@ -308,7 +308,7 @@ export class ThreeEnvironmentManager {
         // Move blocks to ±4.3-5.0 — right at the road edge (±2.7), was ±6.7-7.8
         const x = side * (4.3 + h2 * 0.7);
         if (h0 > 0.55) {
-          const stack = 1 + Math.round(h1);
+          const stack = 2 + Math.round(h1); // min 2 cubes — matches elevated wall in reference
           const base = CUBE * (0.8 + h2 * 0.8);
           for (let s = 0; s < stack && bi < 128; s += 1) {
             pos.set(x, base + s * CUBE + CUBE / 2, z);
@@ -317,7 +317,7 @@ export class ThreeEnvironmentManager {
             bi += 1;
           }
         } else {
-          const stack = 1 + Math.floor(h1 * 2.99);
+          const stack = 2 + Math.floor(h1 * 1.8); // min 2 cubes — always elevated like the reference
           for (let s = 0; s < stack && gi < 128; s += 1) {
             pos.set(x, s * CUBE + CUBE / 2, z);
             matrix.compose(pos, quat, one);
@@ -368,10 +368,10 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    add(ASSETS.forest, -12, 0.8, -51, 24, 4.5, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  15, 0.8, -52, 24, 4.5, { opacity: 0.96, renderOrder: -35 });
-    // Center panel fills the gap and thickens the mid-ground treeline
-    add(ASSETS.forest,   0, 0.6, -53, 20, 4.0, { opacity: 0.92, renderOrder: -35 });
+    // Wide overlapping panels form a near-solid treeline wall matching reference density
+    add(ASSETS.forest, -15, 1.0, -50, 32, 5.2, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 1.0, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,   0, 0.8, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
 
     const castle = add(ASSETS.castle, 0, 4.5, -44, 11.0, 11.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
