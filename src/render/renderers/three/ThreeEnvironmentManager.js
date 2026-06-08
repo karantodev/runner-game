@@ -438,6 +438,21 @@ export class ThreeEnvironmentManager {
       group.add(vine);
     }
 
+    // Outer meadow tuft carpet — wider x positions match reference's flower-covered shoulder
+    for (let i = 0; i < 22; i += 1) {
+      const r = prand(i * 7.3 + 41);
+      const r2 = prand(i * 4.9 + 53);
+      const z = 3 - i * 2.3;
+      const m = propMetrics(ASSETS.grassTuft);
+      const tw = m.width * 0.55;
+      const th = m.height * 0.55;
+      const tuft = this.makeProp(ASSETS.grassTuft, {
+        x: (r2 > 0.5 ? 1 : -1) * (5.5 + r * 2.5), y: th / 2, z, width: tw, height: th, seed: i * 23.7,
+      });
+      tuft.renderOrder = 2;
+      group.add(tuft);
+    }
+
     for (let i = 0; i < 26; i += 1) {
       const r = prand(i * 3.1 + 1);
       const r2 = prand(i * 5.7 + 2);
@@ -584,11 +599,21 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
-    // renderOrder -38/-37: behind backdrop forest (-35) so forest line shows in front of mountain shapes
+    // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
       [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0xbcee50, -38],
       [ASSETS.forest, -56, 2.5, 140, 12, 0x90cc3c, -37],
     ];
+    // Horizon bridge — solid green band that hides sky-gradient bleed between mountain bases and treeline
+    const bridge = new THREE.Mesh(
+      new THREE.PlaneGeometry(220, 6),
+      new THREE.MeshBasicMaterial({ color: 0x5cb83a, depthTest: false, depthWrite: false, fog: false }),
+    );
+    bridge.name = 'horizon-bridge';
+    bridge.position.set(0, 2.0, -49);
+    bridge.renderOrder = -36;
+    bridge.frustumCulled = false;
+    group.add(bridge);
     for (const [asset, z, y, w, h, tint, ro] of layers) {
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
