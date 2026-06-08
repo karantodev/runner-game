@@ -635,19 +635,32 @@ export class ThreeEnvironmentManager {
     this.cloudGroup = group;
 
     const CAP = 14;
-    const rBase = 80;
-    const yBase = 18;
+    const rBase = 55;
+    const yBase = 9;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      const theta = prand(i * 3.1 + 2) * Math.PI * 2;
-      const radius = rBase + r * 30;
+      // Distribute clouds in the front-facing sector only (±20° from forward/-Z axis)
+      // so they are always within the narrow horizontal FOV instead of orbiting off-screen
+      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 0.7;
+      const radius = rBase + r * 25;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
-      const h = yBase + prand(i * 7.7 + 3) * 12;
+      const h = yBase + prand(i * 7.7 + 3) * 5;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
-      const scale = 0.8 + prand(i * 11.1 + 4) * 0.7;
-      const sprite = this.makeSprite(asset, { x, y: h, z, width: 14 * scale, height: 8 * scale, opacity: 0.85 });
-      sprite.renderOrder = -45;
+      const scale = 0.9 + prand(i * 11.1 + 4) * 0.8;
+      // Billboard sprite always faces camera, visible from any orbit angle
+      const mat = new THREE.SpriteMaterial({
+        map: this.textureCache.get(asset),
+        transparent: true,
+        opacity: 1.0,
+        alphaTest: 0.1,
+        fog: false,
+        depthWrite: false,
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(16 * scale, 9 * scale, 1);
+      sprite.position.set(x, h, z);
+      sprite.renderOrder = -14;
       group.add(sprite);
     }
   }
