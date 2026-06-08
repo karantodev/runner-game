@@ -1,3 +1,5 @@
+import { LANE_BANDS } from '../config/sceneSchema.js';
+
 /**
  * Pseudo-3D perspective projection. Maps world-space (lane, distance) to
  * screen pixels via a horizon point + a focal-length divisor.
@@ -139,6 +141,42 @@ export class Projection {
   /** VISUAL: screen X for a lane at a known scale. */
   visualLaneToScreenX(lane, scale = 1) {
     return this.width / 2 + lane * this.visualLaneWidth * scale;
+  }
+
+  /**
+   * v4.28 — Centralized lane-remap logic. Pushes lanes outward into the wider
+   * decor / nature bands for the "fans out to bottom" reference feel.
+   *
+   * @param {number} lane
+   * @param {string} band
+   * @returns {number} remapped lane
+   */
+  remapLaneForBand(lane, band) {
+    const sign = Math.sign(lane) || 1;
+    const abs = Math.abs(lane);
+    if (band === LANE_BANDS.SHOULDER) {
+      // raw shoulder lanes ≈ [1.38, 1.85] → visual [2.32, 2.55] (just past edge)
+      const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
+      return sign * (2.32 + t * (2.55 - 2.32));
+    }
+    if (band === LANE_BANDS.MEADOW) {
+      // v4.9 — raw [1.38, 1.85] → visual [2.55, 3.70].
+      const t = Math.min(1, Math.max(0, (abs - 1.38) / (1.85 - 1.38)));
+      return sign * (2.55 + t * (3.70 - 2.55));
+    }
+    if (band === LANE_BANDS.STRUCTURE) {
+      // raw structure lanes ≈ [1.85, 2.25] → visual [2.55, 3.70] (full band)
+      if (abs < 1.85) return sign * 2.55;
+      const t = Math.min(1, (abs - 1.85) / 0.40);
+      return sign * (2.55 + t * (3.70 - 2.55));
+    }
+    if (band === LANE_BANDS.NATURE) {
+      // raw nature lanes ≈ [2.40, 3.25] → visual [3.70, 4.80] (beyond structures)
+      if (abs < 2.40) return sign * 3.70;
+      const t = Math.min(1, (abs - 2.40) / 0.85);
+      return sign * (3.70 + t * (4.80 - 3.70));
+    }
+    return lane;
   }
 
   /** GAMEPLAY road extent at base in pixels. */

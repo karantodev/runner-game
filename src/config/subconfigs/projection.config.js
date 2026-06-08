@@ -1,0 +1,15 @@
+export const PROJECTION_CONFIG = {
+  horizonRatio: 0.33,
+  roadVanishOffsetRatio: 0.068,
+  roadVanishXOffsetRatio: 0.018,
+  roadCurveStrengthRatio: 0.006,
+  groundRatio: 0.975,
+  focal: 58,
+  laneWidth: 214,
+  visualLaneScale: 0.94,
+  roadHalfLaneUnits: 2.30,
+  bufferOuterLaneUnits: 2.40,
+  decorOuterLaneUnits: 3.35,
+  natureOuterLaneUnits: 4.80,
+  maxDistance: 420,
+};

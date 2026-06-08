@@ -1,0 +1,17 @@
+export const DEBUG_CONFIG = {
+  allowLocalTools: true,
+  allowRemoteTools: false,
+  showAxis: false,
+  showSides: false,
+  showSideMatrix: false,
+  showPlayer: false,
+  showPlayerStates: false,
+  spriteLabMode: false,
+  disableFullScreenEffects: false,
+  enforcePlacementRules: false,
+  showComposition: false,
+  compositionFilter: 'all',
+  showCompositionGroups: false,
+  renderMetrics: false,
+  patternLog: false,
+};

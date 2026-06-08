@@ -51,7 +51,111 @@ const SOLID_SHADOW_BASE_PX = 60;
 // v4.14 — reference-match: structures that float have NO ground contact, so
 // they must never get a contact shadow (it would read as a detached blob).
 const NO_SOLID_SHADOW = new Set(['floating_platform', 'platform', 'hanging_platform_vines', 'hangingPlatform']);
+const GROUND_STACK_Y_OFFSET_CUTOFF = -18;
 const TWO_PI = Math.PI * 2;
+
+const SOLID_SHADOW_PROFILE_DEFAULT = Object.freeze({
+  minScale: SOLID_SHADOW_MIN_SCALE,
+  widthMul: 1.0,
+  heightMul: 0.30,
+  alphaMul: 1.0,
+  yOffsetPx: 0,
+  outwardBiasPx: 4,
+});
+const SOLID_SHADOW_PROFILE_BLOCK = Object.freeze({
+  minScale: 0.19,
+  widthMul: 1.12,
+  heightMul: 0.27,
+  alphaMul: 1.06,
+  yOffsetPx: 1,
+  outwardBiasPx: 6,
+});
+const SOLID_SHADOW_PROFILE_WALL = Object.freeze({
+  minScale: 0.18,
+  widthMul: 1.20,
+  heightMul: 0.25,
+  alphaMul: 1.08,
+  yOffsetPx: 1,
+  outwardBiasPx: 7,
+});
+const SOLID_SHADOW_PROFILE_PLATFORM = Object.freeze({
+  minScale: 0.18,
+  widthMul: 1.24,
+  heightMul: 0.23,
+  alphaMul: 1.04,
+  yOffsetPx: 1,
+  outwardBiasPx: 8,
+});
+const SOLID_SHADOW_PROFILE_PIPE = Object.freeze({
+  minScale: 0.18,
+  widthMul: 0.88,
+  heightMul: 0.33,
+  alphaMul: 1.14,
+  yOffsetPx: 1,
+  outwardBiasPx: 3,
+});
+const SOLID_SHADOW_PROFILE_BRICK = Object.freeze({
+  minScale: 0.19,
+  widthMul: 0.92,
+  heightMul: 0.29,
+  alphaMul: 0.96,
+  yOffsetPx: 0,
+  outwardBiasPx: 3,
+});
+const SOLID_SHADOW_PROFILE_MUSHROOM = Object.freeze({
+  minScale: 0.16,
+  widthMul: 0.84,
+  heightMul: 0.36,
+  alphaMul: 0.92,
+  yOffsetPx: 1,
+  outwardBiasPx: 2,
+});
+const SOLID_SHADOW_PROFILE_FENCE = Object.freeze({
+  minScale: 0.17,
+  widthMul: 1.18,
+  heightMul: 0.21,
+  alphaMul: 0.90,
+  yOffsetPx: 1,
+  outwardBiasPx: 10,
+});
+const SOLID_SHADOW_PROFILE_BUSH = Object.freeze({
+  minScale: 0.15,
+  widthMul: 1.14,
+  heightMul: 0.28,
+  alphaMul: 0.84,
+  yOffsetPx: 1,
+  outwardBiasPx: 6,
+});
+const SOLID_SHADOW_PROFILE_TREE = Object.freeze({
+  minScale: 0.17,
+  widthMul: 1.34,
+  heightMul: 0.24,
+  alphaMul: 0.72,
+  yOffsetPx: 2,
+  outwardBiasPx: 12,
+});
+const SOLID_SHADOW_PROFILE_BY_ASSET = Object.freeze({
+  grass_dirt_block: SOLID_SHADOW_PROFILE_BLOCK,
+  grass_dirt_wall: SOLID_SHADOW_PROFILE_WALL,
+  grass_dirt_step: SOLID_SHADOW_PROFILE_BLOCK,
+  grass_dirt_step_left: SOLID_SHADOW_PROFILE_BLOCK,
+  grass_dirt_platform_long: SOLID_SHADOW_PROFILE_PLATFORM,
+  pipe: SOLID_SHADOW_PROFILE_PIPE,
+  green_pipe: SOLID_SHADOW_PROFILE_PIPE,
+  planter_pot: SOLID_SHADOW_PROFILE_PIPE,
+  question_block: SOLID_SHADOW_PROFILE_BRICK,
+  purple_brick_single: SOLID_SHADOW_PROFILE_BRICK,
+  mushroom_red_big: SOLID_SHADOW_PROFILE_MUSHROOM,
+  mushroom_blue_big: SOLID_SHADOW_PROFILE_MUSHROOM,
+  fence_wood_short: SOLID_SHADOW_PROFILE_FENCE,
+  bush_large: SOLID_SHADOW_PROFILE_BUSH,
+  bush_large_with_purple_flowers: SOLID_SHADOW_PROFILE_BUSH,
+  bush_with_purple_flowers: SOLID_SHADOW_PROFILE_BUSH,
+  leaf_clump_round: SOLID_SHADOW_PROFILE_BUSH,
+  leaf_clump_small: SOLID_SHADOW_PROFILE_BUSH,
+  tree_round: SOLID_SHADOW_PROFILE_TREE,
+  tree: SOLID_SHADOW_PROFILE_TREE,
+});
 
 /**
  * v4.7 — the two low-flora bands share the same soft treatment: small
@@ -464,6 +568,7 @@ export class SceneryRenderer {
     const pos = entity.components.Position;
     const sprite = entity.components.Sprite;
     const scenic = entity.components.ScenicData;
+    const assetType = sprite.assetType ?? sprite.type;
     if (pos.distance < -5.5) { this.metrics?.countSceneryCulled(); return; }
     // v3.7: remap entity lane into the wider zones before projecting.
     const projLane = remapLaneForBand(pos.lane, scenic.laneBand);
@@ -518,7 +623,7 @@ export class SceneryRenderer {
     // v4.15 — reference-match: near trees still stacked into a foreground
     // wall; widen the recede window (10 → 16) and fade harder (0.82 → 0.68)
     // so the treeline drops back as background mass.
-    if (pos.distance < 16 && (sprite.assetType === 'tree_round' || sprite.assetType === 'purple_flower_single' || sprite.assetType === 'mushroom_red_big')) alpha *= 0.68;
+    if (pos.distance < 16 && (assetType === 'tree_round' || assetType === 'purple_flower_single' || assetType === 'mushroom_red_big')) alpha *= 0.68;
     if (alpha <= 0.03) { this.metrics?.countSceneryCulled(); return; }
 
     // v4.0 — scatterFlip applies to non-structural shoulder flora only.
@@ -532,25 +637,20 @@ export class SceneryRenderer {
     this._currentItemRole = sprite.role ?? null;
     this._currentItemLane = pos.lane;
     this._currentPrefabId = sprite.prefabId ?? null;
-    // v4.14 — reference-match: ground contact shadow for solid structures,
-    // drawn BEFORE the sprite so it sits underneath the planted block/mushroom.
-    // alpha is the entity's already-faded alpha → the shadow fades with the
-    // object (same discipline as the flora path). Floating items are excluded.
-    if (this._solidShadow && isStructural
-        && !NO_SOLID_SHADOW.has(sprite.assetType ?? sprite.type)) {
-      this.#drawSolidShadow(Math.round(p.sx), Math.round(y), scale, alpha);
-    }
+    const drewSolidShadow = this._solidShadow
+      && this.#shouldDrawSolidShadow(assetType, scenic.laneBand, sprite)
+      && this.#drawSolidShadow(Math.round(p.sx), Math.round(y), scale, alpha, assetType, pos.lane, pos.distance, sprite.role ?? null, sprite.prefabId != null);
     // v4.8 — contact shadow under near ground-flora, drawn BEFORE the
     // sprite so it sits underneath the planted flower/tuft. Gated on band
     // + near-size so only the readable foreground carpet pays the cost.
-    if (this._floraShadow && isLowFloraBand(scenic.laneBand)) {
+    if (!drewSolidShadow && this._floraShadow && isLowFloraBand(scenic.laneBand)) {
       this.#drawFloraShadow(Math.round(p.sx), Math.round(y), scale, alpha);
     }
     if (this.metrics) {
       const clusterKey = sprite.prefabId ? `${sprite.prefabId}#${Math.round(pos.distance / 20)}#${pos.lane > 0 ? 1 : -1}` : null;
-      this.metrics.countScenery(sceneryCategory(sprite.assetType ?? sprite.type), clusterKey);
+      this.metrics.countScenery(sceneryCategory(assetType), clusterKey);
     }
-    this.#drawSceneryType(sprite.assetType ?? sprite.type, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
+    this.#drawSceneryType(assetType, Math.round(p.sx), Math.round(y), scale, sprite.variant, alpha, mirrored);
     this._currentItemRole = null;
     this._currentItemLane = null;
     this._currentPrefabId = null;
@@ -633,6 +733,26 @@ export class SceneryRenderer {
     ctx.globalAlpha = 1;
   }
 
+  #solidShadowProfileFor(assetType) {
+    if (!assetType) return null;
+    return SOLID_SHADOW_PROFILE_BY_ASSET[assetType] ?? SOLID_SHADOW_PROFILE_DEFAULT;
+  }
+
+  #shouldDrawSolidShadow(assetType, laneBand, sprite) {
+    if (NO_SOLID_SHADOW.has(assetType)) return false;
+    if (sprite.yOffset < GROUND_STACK_Y_OFFSET_CUTOFF) return false;
+    const role = sprite.role ?? null;
+    if (role === 'topper' || role === 'child-decor' || role === 'foreground-accent' || role === 'background-accent') return false;
+    if (laneBand === LANE_BANDS.STRUCTURE) return true;
+    if (!SOLID_SHADOW_PROFILE_BY_ASSET[assetType]) return false;
+    return laneBand === LANE_BANDS.NATURE
+      || assetType === 'mushroom_red_big'
+      || assetType === 'mushroom_blue_big'
+      || assetType === 'bush_with_purple_flowers'
+      || assetType === 'leaf_clump_round'
+      || assetType === 'leaf_clump_small';
+  }
+
   /**
    * v4.14 — reference-match: ground contact shadow for solid side structures
    * (blocks, mushrooms, fences, bushes) so they read as planted, not floating.
@@ -648,20 +768,38 @@ export class SceneryRenderer {
    *  - Count is BOUNDED by SOLID_SHADOW_MIN_SCALE: only near/mid structures
    *    (final draw scale above the gate) get a shadow; far blocks are skipped.
    */
-  #drawSolidShadow(x, y, scale, alpha) {
-    if (scale < SOLID_SHADOW_MIN_SCALE) return;
+  #drawSolidShadow(x, y, scale, alpha, assetType, lane, distance, role = null, inCluster = false) {
+    const profile = this.#solidShadowProfileFor(assetType);
+    if (!profile || scale < (profile.minScale ?? SOLID_SHADOW_MIN_SCALE)) return false;
     const cfg = this._solidShadow;
-    const a = (cfg.alpha ?? 0.22) * alpha;
+    let a = (cfg.alpha ?? 0.22) * alpha * (profile.alphaMul ?? 1);
     if (a <= 0.01) return;
-    const radiusX = Math.max(3, (cfg.widthScale ?? 0.62) * SOLID_SHADOW_BASE_PX * scale);
-    const radiusY = Math.max(2, radiusX * 0.30);
+    let radiusX = Math.max(3, (cfg.widthScale ?? 0.62) * SOLID_SHADOW_BASE_PX * scale * (profile.widthMul ?? 1));
+    if (inCluster && (role === 'base' || role === 'support' || role == null)) radiusX *= 1.07;
+    let radiusY = Math.max(2, radiusX * (profile.heightMul ?? 0.30));
+    const side = lane >= 0 ? 1 : -1;
+    let shadowX = x + side * (profile.outwardBiasPx ?? 0) * scale;
+    const shadowY = y + (profile.yOffsetPx ?? 0) * scale;
+    const roadCenterX = this.projection.visualRoadCenterX(distance);
+    const roadSafeHalfWidth = roadBaseHalfWidth(this.projection) * 0.82;
+    const innerRoadEdgeX = roadCenterX + side * roadSafeHalfWidth;
+    const innerShadowEdgeX = shadowX - side * radiusX;
+    const overflow = side * (innerRoadEdgeX - innerShadowEdgeX);
+    if (overflow > 0) {
+      shadowX += side * Math.min(overflow, radiusX * 0.55);
+      radiusX = Math.max(3, radiusX - overflow * 0.35);
+      radiusY = Math.max(2, radiusX * (profile.heightMul ?? 0.30));
+      a *= Math.max(0.72, 1 - overflow / Math.max(12, radiusX * 3.8));
+      if (a <= 0.01) return false;
+    }
     const ctx = this.ctx;
     ctx.fillStyle = 'rgb(26, 16, 8)';   // own fillStyle — robust to sprite draws between entities
     ctx.globalAlpha = a;
     ctx.beginPath();
-    ctx.ellipse(x, y, radiusX, radiusY, 0, 0, TWO_PI);
+    ctx.ellipse(shadowX, shadowY, radiusX, radiusY, 0, 0, TWO_PI);
     ctx.fill();
     ctx.globalAlpha = 1;
+    return true;
   }
 
   /**

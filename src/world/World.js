@@ -364,6 +364,11 @@ export class World {
         sys._tickErrLogged = true;
         const name = sys.constructor?.name ?? 'system';
         console.error(`[World] ${name}.update() threw — subsequent failures suppressed:`, err);
+        this.eventBus.emit('system:failure', {
+          system: name,
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
       }
     }
   }
