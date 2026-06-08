@@ -415,8 +415,8 @@ export class ThreeEnvironmentManager {
       // Purple structures
       [ASSETS.purpleWall, -4.8, 0, -6.5], [ASSETS.purpleStairs, 4.8, 0, -22.5],
       [ASSETS.purpleBrick, -4.0, 0, -20.5], [ASSETS.purpleBrick, 4.0, 0, -11.5],
-      [ASSETS.questionBlock, -4.4, 0, -26],
-      [ASSETS.questionBlock, 4.7, 0, -32],
+      [ASSETS.questionBlock, -4.4, 2.5, -14],
+      [ASSETS.questionBlock, 4.7, 2.5, -22],
       // Flowers — near road edge
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
       [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
