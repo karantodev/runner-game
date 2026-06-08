@@ -125,9 +125,9 @@ export class ThreeEnvironmentManager {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 512, 0, 0);
-    grad.addColorStop(0, '#c8e8f7');
-    grad.addColorStop(0.35, '#4ab4e8');
-    grad.addColorStop(1, '#1a68d4');
+    grad.addColorStop(0, '#9ed8f0');
+    grad.addColorStop(0.30, '#28aaec');
+    grad.addColorStop(1, '#0b4ec0');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -509,9 +509,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.48],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.48],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.44],
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.56],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.56],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.50],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -635,20 +635,20 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.cloudGroup = group;
 
-    const CAP = 12;
-    const rBase = 50;
+    const CAP = 16;
+    const rBase = 48;
     const yBase = 5;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // Distribute clouds in the front-facing sector only (±22° from forward/-Z axis)
-      // so they are always within the narrow horizontal FOV instead of orbiting off-screen
-      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 0.8;
-      const radius = rBase + r * 22;
+      // Distribute clouds in ±40° sector so 7-8 are always in the narrow ±19° FOV
+      // even after the cloudGroup drifts slightly from its slow Y-rotation
+      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.4;
+      const radius = rBase + r * 24;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
       const h = yBase + prand(i * 7.7 + 3) * 4;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
-      const scale = 1.0 + prand(i * 11.1 + 4) * 0.8;
+      const scale = 1.2 + prand(i * 11.1 + 4) * 1.0;
       // Billboard sprite always faces camera, visible from any orbit angle
       const mat = new THREE.SpriteMaterial({
         map: this.textureCache.get(asset),
@@ -659,7 +659,7 @@ export class ThreeEnvironmentManager {
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      sprite.scale.set(20 * scale, 11 * scale, 1);
+      sprite.scale.set(24 * scale, 14 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
       group.add(sprite);

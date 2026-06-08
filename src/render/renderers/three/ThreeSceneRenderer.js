@@ -262,7 +262,8 @@ export class ThreeSceneRenderer {
 
     // 3. Clouds & Effects
     if (this.environment.cloudGroup) {
-      this.environment.cloudGroup.rotation.y += 0.0035 * delta;
+      // Very slow drift — clouds stay in FOV for 30+ minutes before drifting off-screen
+      this.environment.cloudGroup.rotation.y += 0.00025 * delta;
     }
     this.entities.updateEffects(delta);
     this.#animateTrail(delta);
