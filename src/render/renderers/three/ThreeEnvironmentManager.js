@@ -373,7 +373,7 @@ export class ThreeEnvironmentManager {
     add(ASSETS.forest,  17, 1.0, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
     add(ASSETS.forest,   0, 0.8, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
 
-    const castle = add(ASSETS.castle, 0, 4.5, -44, 11.0, 11.0, { opacity: 1.0, renderOrder: -10 });
+    const castle = add(ASSETS.castle, 0, 4.8, -44, 13.0, 13.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
@@ -581,8 +581,8 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      [ASSETS.mountainsFar, -65, 6.0, 170, 22, 0xbcee50, -38],
-      [ASSETS.forest, -56, 2.0, 140, 10, 0x90cc3c, -37],
+      [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0xbcee50, -38],
+      [ASSETS.forest, -56, 2.5, 140, 12, 0x90cc3c, -37],
     ];
     for (const [asset, z, y, w, h, tint, ro] of layers) {
       const mesh = new THREE.Mesh(
