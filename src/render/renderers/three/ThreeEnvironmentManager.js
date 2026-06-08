@@ -150,7 +150,7 @@ export class ThreeEnvironmentManager {
     const aspect = (this.projection?.width ?? 1536) / (this.projection?.height ?? 864);
     const perspective = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, aspect, 0.1, 900);
     perspective.position.set(0, 4.0, 15.5);
-    perspective.lookAt(0, 4.2, -26);
+    perspective.lookAt(0, 2.0, -26);
 
     // Orthographic position is set in buildOrthoBackdrop after group parenting.
     const orthographic = new THREE.OrthographicCamera(
