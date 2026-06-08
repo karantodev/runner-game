@@ -205,7 +205,7 @@ export class ThreeSceneRenderer {
   #updateCameraAspects(aspect) {
     if (!this.environment.cameras) return;
     const cam = this.environment.cameras.perspective;
-    const PERSPECTIVE_FOV = 18;
+    const PERSPECTIVE_FOV = 22;
     const ORTHO_HEIGHT = 28;
     const designAspect = (this.projection?.width ?? 1536) / (this.projection?.height ?? 864);
     const lockedHalfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(PERSPECTIVE_FOV) / 2) * designAspect);
