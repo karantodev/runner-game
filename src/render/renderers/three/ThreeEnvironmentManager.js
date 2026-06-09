@@ -376,10 +376,11 @@ export class ThreeEnvironmentManager {
     add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
     add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
 
-    // Raised y 5.0→7.0: top=10.5m → atan(6.5/59.5)=6.24° → screen 9.1% from top.
-    // Mountain peaks at 13% (after M68 silhouette raise), castle turrets at 9% → castle
-    // peeks 4% above mountain ridge matching reference's "castle in the valley" framing.
-    const castle = add(ASSETS.castle, 0, 7.0, -44, 8.0, 7.0, { opacity: 1.0, renderOrder: -10 });
+    // w 8.0→5.5, h 7.0→4.8 (ratio maintained ~1.14): compact castle matches reference.
+    // At D=59.5m: top=y=9.4m → screen 13.9%; bottom=y=4.6m → 34.8%; height=20.9%.
+    // Was 30% screen height (too dominant). Now 21%: castle is more compact, more mountains visible.
+    // Turrets at 13.9% still clearly above mountain peaks at 22%. Width 13.4% vs prior 20%.
+    const castle = add(ASSETS.castle, 0, 7.0, -44, 5.5, 4.8, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
