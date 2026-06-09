@@ -575,12 +575,12 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      // M96: mountainsFar scaleY 0.50→0.71. Top = 28/2*0.71=9.94m.
-      // elev=atan((9.94-4.0)/100)=3.40° → screen (8.24-3.40)/22=22.0% from top.
-      // Peaks visible in 22-29% zone above the mountain wash (top 29%).
-      // Transparent valleys between peaks show sky → triangular mountain silhouette effect.
-      // Cylinder radius=100m: peak width at v=0.874 = 5.5% screen width → 2-3 visible peaks.
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4ff38, true, 0.12, 0.71],
+      // M97: mountainsFar repeatX 4.5→4, scaleY 0.71→0.78.
+      // Top = 28/2*0.78=10.92m. elev=atan(6.92/100)=3.96° → screen 19.5% from top.
+      // repeatX=4 → 20 total peaks, spacing=18°, visible in 38.2° FOV ≈ 2 distinct peaks.
+      // Peak width at v=0.874 = (57/2172)×90°=2.36° → 6.2% screen; valley 40.9% → sky visible.
+      // Two flanking mountains with castle in the valley — matches reference triangular silhouette.
+      [ASSETS.mountainsFar, 100, 28, 4, 0xb4ff38, true, 0.12, 0.78],
       [ASSETS.mountainsMid,  80, 24, 4.0, 0x96e038, true, 0.44, 0.46],
       [ASSETS.mountainsNear, 62, 20, 3.5, 0x80d030, true, 0.72, 0.42],
     ];
