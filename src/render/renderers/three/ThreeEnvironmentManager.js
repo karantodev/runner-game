@@ -368,13 +368,13 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // y=1.0, h=8.0: plane top y=5.0m → screen 33.4% from top. Tree canopy tops (v≈0.85)
-    // at y≈3.8m → screen 38.3% from top. Mountain zone widens from 9% → 20% (was y=2.5).
-    // Horizon bridge (27.4%–) fills the gap between forest silhouette (25.8%) and forest tops
-    // with 0x88d840 lime-green, creating a natural mountain-body tone in the 26–38% zone.
-    add(ASSETS.forest, -15, 1.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 1.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
-    add(ASSETS.forest,   0, 1.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
+    // y 1.0→-2.0, h=8.0: plane top drops from 33.4% to 45.6% from screen top.
+    // Mountain silhouette peaks (18%) now show clearly above these panels.
+    // Visible mountain zone: 18%–36.7% (forest silhouette canopy) = 18.7% of screen.
+    // Canopy tops (v≈0.85) at y≈0.8m → screen 49.7%; forest fills the lower background.
+    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
 
     // Raised y 5.0→7.0: top=10.5m → atan(6.5/59.5)=6.24° → screen 9.1% from top.
     // Mountain peaks at 13% (after M68 silhouette raise), castle turrets at 9% → castle
@@ -641,21 +641,24 @@ export class ThreeEnvironmentManager {
       // Mountain plane z=-65→z=-58, y=6.0→5.5: keep peaks at 18% from screen top.
       // D=73.5m (was 80.5m): mountain texture 10% taller on screen, peak triangles more distinct.
       // Tint 0xb4f040→0xb4ff38: G channel maxed for richer lime-green matching reference vibrancy.
-      [ASSETS.mountainsFar, -58, 5.5, 170, 16, 0xb4ff38, -38],
-      // Forest silhouette y 1.2→0.0: canopy tops (v≈0.85) at y=4.2m → screen 36.7% from top.
-      // Clean mountain zone 18–36.7% (was 18–25.8%); matches reference's ~12% clean peak zone.
-      [ASSETS.forest, -56, 0.0, 140, 12, 0x78cc34, -37],
+      // z=-58→-46, y=5.5→3.1, h=16→22: peaks stay at 18%. D=61.5m (was 73.5m) makes mountain
+      // 1.6× bigger on screen — much more distinct triangular peaks matching reference.
+      // Peak at v=0.75: y_peak = 3.1+22*0.25 = 8.6m → screen (11-(4.28+2.76))/22 = 18% ✓
+      [ASSETS.mountainsFar, -46, 3.1, 170, 22, 0xb4ff38, -38],
+      // Forest silhouette y 0.0→-2.0: plane top drops from 30.2% to 37.5% from screen top.
+      // Mountain shows 18% (peaks) to 37.5% (forest top) = 19.5% clear mountain window.
+      // Top exactly aligns with bridge top (y=-3.0+7=4.0m = y=-2.0+6=4.0m). ✓
+      [ASSETS.forest, -56, -2.0, 140, 12, 0x78cc34, -37],
     ];
-    // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
-    // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
-    // rather than painting over the sparse-peak zone and creating a solid-green band artefact.
+    // Horizon bridge — fills below the mountain zone.
+    // y -0.5→-3.0: top drops from 27% to 37.5% screen, no longer blocking mountain peaks.
+    // Mountains show prominently 18–36.7% before the bridge takes over at 37.5%.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      // Horizon bridge tint updated to match the new vivid mountain greens (was 0x78cc34).
       new THREE.MeshBasicMaterial({ color: 0x90ee38, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, -0.5, -49);
+    bridge.position.set(0, -3.0, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
@@ -730,12 +733,12 @@ export class ThreeEnvironmentManager {
 
     const CAP = 10;
     // scale 0.72–1.2: base 7.5×4.5 → each cloud 10–18% screen width.
-    // Larger puffs match the reference's prominent fluffy clouds against deep cobalt sky.
-    // Cloud BOTTOMS: smallest (scale=0.72) at y=14−(4.5×0.72)/2=12.4m → screen 12.6%.
-    // Mountains at 18% → 5.4% clear gap below each cloud; no overlap.
-    // Height jitter ±2m stays within 14–16m.
+    // yBase 14→11: clouds were above the camera frame (y=14 at D=55m → -9% off-screen top).
+    // At yBase=11: center at D=55m → 4%, D=80m → 15% from top; bottom (y≈9.4m) → 12%.
+    // Mountains at 18% → 6% clear gap below cloud bottoms. Prominently visible in sky zone.
+    // Height jitter ±2m stays within 11–13m.
     const rBase = 55;
-    const yBase = 14;
+    const yBase = 11;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
       // ±0.5 rad (±28.6°) keeps all 10 clouds within the ±19° visible FOV with slight overhang.
