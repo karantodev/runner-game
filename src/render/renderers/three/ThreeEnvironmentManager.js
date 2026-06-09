@@ -189,9 +189,11 @@ export class ThreeEnvironmentManager {
   }
 
   buildStaticStage() {
+    // M140: Ground MeshBasicMaterial — removes lit white*texture = bright-green bands.
+    // Ground stays visible in shoulder gaps and far field; flat color blends naturally.
     const ground = new THREE.Mesh(
       new THREE.BoxGeometry(18, 0.08, 115),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, map: this.buildGrassTexture('ground', 6, 40), roughness: 0.9, metalness: 0 }),
+      new THREE.MeshBasicMaterial({ color: 0x5aaa30 }),
     );
     ground.name = 'reference-ground';
     ground.position.set(0, -0.16, -34);
@@ -205,15 +207,23 @@ export class ThreeEnvironmentManager {
     this.scene.add(roadGroup);
     this.roadGroup = roadGroup;
 
-    // M139: Road solid flat color — no texture, no vertex gradient, MeshBasicMaterial (unlit).
-    // Texture tiling (repeatY=55) created a visible grid; depth gradient + lighting added stripes.
-    // Reference road is a clean flat green with only lane lines.
+    // M140: Road with smooth depth-gradient vertex colors (200 z-segments).
+    // A flat solid MeshBasicMaterial creates horizontal bands from the Bayer-dither
+    // pixelation pass (ThreePostProcessingManager pixelHeight=270): each macro-pixel
+    // row samples the same solid color → visible banding.
+    // Per-vertex gradient (near→far) makes every z-row a slightly different shade
+    // so adjacent macro-pixel rows differ → bands disappear.
+    // Box is also taller (0.09→0.30) so its bottom (y=-0.335) sits below the
+    // ground-plane top (y=-0.12), eliminating z-fighting that leaked ground texture.
+    const roadGeo = new THREE.BoxGeometry(5.45, 0.30, 98, 1, 1, 200);
+    applyDepthGradientColors(roadGeo, 0x88c840, 0xa0d858);
     const road = new THREE.Mesh(
-      new THREE.BoxGeometry(5.45, 0.09, 98),
-      new THREE.MeshBasicMaterial({ color: 0x88c840 }),
+      roadGeo,
+      new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true }),
     );
     road.name = 'road';
-    road.position.set(0, -0.08, -31);
+    // y=-0.185 keeps top face at y=-0.035 (same as before); bottom at y=-0.335.
+    road.position.set(0, -0.185, -31);
     roadGroup.add(road);
 
     // M139: Shoulders also MeshBasicMaterial — avoids lighting tint on side surfaces.
@@ -431,7 +441,6 @@ export class ThreeEnvironmentManager {
       [ASSETS.flowersPurple, 3.35, 0, -10.0],
       [ASSETS.flowersPurple, -6.2, 0, -4.0],  [ASSETS.flowersPurple, 6.0, 0, -7.5],
       [ASSETS.flowersYellow, -5.8, 0, -15.0], [ASSETS.flowersYellow, 5.6, 0, -19.0],
-      [ASSETS.dryGrass, 3.4, 0, -6.5],
     ];
 
     for (const [asset, x, baseY, z] of sideProps) add(asset, x, baseY, z);
@@ -477,7 +486,9 @@ export class ThreeEnvironmentManager {
           new THREE.MeshBasicMaterial({ color: r > 0.22 ? 0x837a6c : 0x4f7a34, transparent: true, opacity: 0.5, depthWrite: false, fog: true }),
         );
         pebble.rotation.x = -Math.PI / 2;
-        pebble.position.set((r2 - 0.5) * 4.6, 0.03, z);
+        // M140: x clamped to shoulder area — old range (r2-0.5)*4.6 ≈ [-2.3,+2.3]
+        // placed pebbles ON the road (half-width 2.725); now always outside road.
+        pebble.position.set((r2 > 0.5 ? 1 : -1) * (3.2 + r * 1.5), 0.03, z);
         pebble.scale.setScalar(0.7 + r2 * 0.8);
         pebble.renderOrder = 1;
         pebble.name = 'debris-pebble';
