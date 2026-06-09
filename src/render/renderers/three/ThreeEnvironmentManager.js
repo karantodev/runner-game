@@ -575,11 +575,9 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      // M98: mountainsFar scaleY 0.78→0.84. Top = 28/2*0.84=11.76m.
-      // elev=atan(7.76/100)=4.44° → screen 17.3% from top. Peak zone 17.3-29% = 11.7% height.
-      // repeatX=4 → 20 peaks, spacing=18°, visible in 38.2° FOV ≈ 2 distinct flanking mountains.
-      // Castle top (~12-15%) above peaks (~17%) → spires visible against sky. Valley sky gap 41%.
-      [ASSETS.mountainsFar, 100, 28, 4, 0xb4ff38, true, 0.12, 0.84],
+      // M100: mountainsFar cylinder removed. Replaced by 5 flat triangle meshes in buildFarSilhouettes
+      // (renderOrder=-38) that match reference's distinct triangular peak silhouette exactly.
+      // mountainsMid/Near remain (tops at 31-37% are hidden behind mountain wash at 29%).
       [ASSETS.mountainsMid,  80, 24, 4.0, 0x96e038, true, 0.44, 0.46],
       [ASSETS.mountainsNear, 62, 20, 3.5, 0x80d030, true, 0.72, 0.42],
     ];
@@ -648,11 +646,38 @@ export class ThreeEnvironmentManager {
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
 
-    // M96: mountains_far flat plane removed — it created visible column artifacts (each peak only
-    // 5-6% screen-width at D=55.5m in the 22-29% zone). Mountain peaks now come from the
-    // horizon cylinder (buildHorizon, mountainsFar scaleY=0.71) which shows triangular peaks at
-    // 22-29% with correct angular width. Only forest silhouette retained as flat layer.
-    //
+    // M100: 5 flat triangle mountain peaks at renderOrder=-38 (between wash -39 and forest -37).
+    // PEAKS at x = -26, -13, 0, 13, 26 at z=-90 (D=105.5m from camera). R=5.5m half-base.
+    // Base y=4.0m (37.5% screen), apex y=13.0m → elev=atan(9/105.5)=4.88° → screen 15.3%.
+    // Peak screen widths: 2×atan(5.5/105.5)×57.3/38.2 = 15.6%. 5 peaks span 14% to 86% of screen.
+    // Sky gap between adjacent peaks ≈ 6% screen → distinct triangular silhouettes like reference.
+    // Replaces mountainsFar cylinder which showed only 2 broad flanking hills (repeatX=4).
+    {
+      const PEAKS_X = [-26, -13, 0, 13, 26];
+      const R = 5.5, APEX_Y = 13.0, BASE_Y = 4.0, Z = -90;
+      for (const px of PEAKS_X) {
+        const verts = new Float32Array([
+          px - R, BASE_Y, Z,
+          px + R, BASE_Y, Z,
+          px,     APEX_Y, Z,
+        ]);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xb4ff38,
+          side: THREE.DoubleSide,
+          depthTest: false,
+          depthWrite: false,
+          fog: false,
+        });
+        const tri = new THREE.Mesh(geo, mat);
+        tri.name = `mountain-peak:${px}`;
+        tri.renderOrder = -38;
+        tri.frustumCulled = false;
+        group.add(tri);
+      }
+    }
+
     // Forest: w 140→160, repeatX 4 for denser tree canopy fill.
     // visible = 2*71.5*tan(19.1°) = 49.5m → 49.5/160*4 = 1.24 cycles → dense canopy.
     const forTex = (() => {
