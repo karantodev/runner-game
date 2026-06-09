@@ -263,7 +263,7 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.shoulderTiersGroup = group;
 
-    const CUBE = 1.9;
+    const CUBE = 2.3;
     const grassGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
     const brickGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
     const rockGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
@@ -305,8 +305,8 @@ export class ThreeEnvironmentManager {
         const h0 = hash((side + 2) * 131 + ci * 7);
         const h1 = hash((side + 2) * 131 + ci * 7 + 3);
         const h2 = hash((side + 2) * 131 + ci * 7 + 11);
-        // Move blocks to ±4.3-5.0 — right at the road edge (±2.7), was ±6.7-7.8
-        const x = side * (4.3 + h2 * 0.7);
+        // Right at road edge: ±3.1–3.4 (road is ±2.7) — creates the sunken-corridor wall effect
+        const x = side * (3.1 + h2 * 0.3);
         if (h0 > 0.55) {
           const stack = 2 + Math.round(h1); // min 2 cubes — matches elevated wall in reference
           const base = CUBE * (0.8 + h2 * 0.8);
@@ -397,9 +397,10 @@ export class ThreeEnvironmentManager {
       // Trees — mid/far background, away from road
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
       [ASSETS.tree, -5.6, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      // Mushrooms — close foreground, tight to road edge
-      [ASSETS.mushroom, -3.9, 0, 0.2], [ASSETS.mushroom, 4.1, 0, -7.4],
-      [ASSETS.mushroom, -4.3, 0, -19.5], [ASSETS.mushroom, 4.0, 0, -26.5],
+      // Mushrooms — very close to road edge, reference shows them dominating the foreground
+      [ASSETS.mushroom, -2.6, 0, 1.0], [ASSETS.mushroom, 2.8, 0, 2.5],
+      [ASSETS.mushroom, 3.5, 0, -7.0],
+      [ASSETS.mushroom, -3.6, 0, -19.5], [ASSETS.mushroom, 3.5, 0, -26.5],
       // Pipe
       [ASSETS.pipe, 4.18, 0, -16],
       // Fences
@@ -407,16 +408,16 @@ export class ThreeEnvironmentManager {
       [ASSETS.fence, -5.1, 0, -28], [ASSETS.fence, 5.0, 0, -34],
       // Bushes
       [ASSETS.bush, -4.5, 0, -4.4], [ASSETS.bush, 4.6, 0, 1.8],
-      // Grass-dirt blocks — form a continuous side wall close to road
-      [ASSETS.grassBlockLeft, -4.0, 0, 1.5],   [ASSETS.grassBlockRight, 4.0, 0, -4.5],
-      [ASSETS.grassBlock, -4.2, 0, -9.5],       [ASSETS.grassBlock, 4.2, 0, -14.5],
-      [ASSETS.grassBlockLeft, -4.1, 0, -19.0],  [ASSETS.grassBlockRight, 4.1, 0, -23.5],
-      [ASSETS.grassBlock, -4.3, 0, -28.0],      [ASSETS.grassBlock, 4.3, 0, -33.0],
-      // Purple structures
-      [ASSETS.purpleWall, -4.8, 0, -6.5], [ASSETS.purpleStairs, 4.8, 0, -22.5],
-      [ASSETS.purpleBrick, -4.0, 0, -20.5], [ASSETS.purpleBrick, 4.0, 0, -11.5],
-      [ASSETS.questionBlock, -4.4, 2.5, -14],
-      [ASSETS.questionBlock, 4.7, 2.5, -22],
+      // Grass-dirt blocks — closer to road, taller platforms form elevated wall
+      [ASSETS.grassBlockLeft, -3.5, 0, 1.5],   [ASSETS.grassBlockRight, 3.5, 0, -4.5],
+      [ASSETS.grassBlock, -3.6, 0, -9.5],       [ASSETS.grassBlock, 3.6, 0, -14.5],
+      [ASSETS.grassBlockLeft, -3.5, 0, -19.0],  [ASSETS.grassBlockRight, 3.6, 0, -23.5],
+      [ASSETS.grassBlock, -3.7, 0, -28.0],      [ASSETS.grassBlock, 3.6, 0, -33.0],
+      // Purple structures — elevated to sit on top of voxel cube platforms
+      [ASSETS.purpleWall, -3.2, 1.8, -6.5], [ASSETS.purpleStairs, 3.3, 1.8, -22.5],
+      [ASSETS.purpleBrick, -3.1, 1.8, -20.5], [ASSETS.purpleBrick, 3.2, 1.8, -11.5],
+      [ASSETS.questionBlock, -3.9, 3.8, -14],
+      [ASSETS.questionBlock, 4.0, 3.8, -22],
       // Flowers — near road edge
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
       [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
@@ -433,7 +434,7 @@ export class ThreeEnvironmentManager {
     for (const [asset, x, baseY, z] of sideProps) add(asset, x, baseY, z);
 
     for (const vz of [-12, -27]) {
-      const vine = this.makeProp(ASSETS.vineBarrier, { x: 0, y: 0.7, z: vz, width: 5.8, height: 1.5 });
+      const vine = this.makeProp(ASSETS.vineBarrier, { x: 0, y: 0.7, z: vz, width: 6.4, height: 1.6 });
       vine.renderOrder = 2;
       group.add(vine);
     }
