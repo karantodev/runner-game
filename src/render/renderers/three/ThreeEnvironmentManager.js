@@ -129,9 +129,13 @@ export class ThreeEnvironmentManager {
     // CanvasTexture has flipY=true by default, so canvas-bottom (stop=0) maps to screen-top.
     // Putting vivid blue at stop=0 gives the bright sky band at the top of the viewport.
     const grad = ctx.createLinearGradient(0, 512, 0, 0);
-    grad.addColorStop(0, '#50b4e8');    // powder sky blue → screen top (lightened to match reference)
-    grad.addColorStop(0.55, '#6adcff'); // brighter mid-sky
-    grad.addColorStop(1, '#b4f0ff');    // pale horizon blue → screen bottom (hidden by ground)
+    // VERIFIED: stop=1 → screen TOP, stop=0 → screen BOTTOM (contrary to the old comment).
+    // Three.js background: UV v=1 → screen top, v=0 → screen bottom. flipY on CanvasTexture
+    // maps canvas-top(y=0) → v=0 → screen bottom, canvas-bottom(y=512) → v=1 → screen top.
+    // Deep cobalt MUST be at stop=1 to appear at the zenith; horizon at stop=0 is hidden by ground.
+    grad.addColorStop(0, '#98c8f4');    // pale horizon → screen BOTTOM (hidden below ground)
+    grad.addColorStop(0.50, '#4898e4'); // azure mid (mostly hidden by scene geometry)
+    grad.addColorStop(1, '#2870d0');    // deep cobalt → screen TOP (visible sky zone)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -574,10 +578,12 @@ export class ThreeEnvironmentManager {
       // Near: top at y=3.8m (below camera) → screen 26% — defines sky/mountain boundary.
       // Mid: top at y=5.0m → screen 12% — mid peaks visible in sky gap above near.
       // Far: top at y=6.3m → screen 9% — distant peaks just below sky top.
-      // Tints brightened toward reference's vivid lime-green: 0x70c838→0x98e840 (+35% R, +17% G)
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0x98e840, true, 0.12, 0.45],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0x78cc34, true, 0.44, 0.42],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x64b82c, true, 0.72, 0.38],
+      // Tints pushed to vivid saturated lime-green matching reference's bright mountain peaks.
+      // scaleY +0.04 across all layers: far top 6.3→7.0m (body fills down from 29% not 32%),
+      // giving each layer a slightly more prominent valley-fill against the deeper sky.
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4f040, true, 0.12, 0.50],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0x96e038, true, 0.44, 0.46],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x80d030, true, 0.72, 0.42],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -636,17 +642,18 @@ export class ThreeEnvironmentManager {
       // → 8.08° above cam forward → screen 13% from top.
       // 0–13% shows clean sky; mountain peaks emerge at 13%, matching reference proportions.
       // Transparent sky area of texture (v>0.75, y>11.5m) keeps 0–13% open.
-      [ASSETS.mountainsFar, -65, 7.5, 170, 16, 0x98e840, -38],
-      // Forest silhouette y 0.6→1.8: top at y=7.8m → atan(3.8/71.5)=3.04°+2.76°=5.80° → screen 24%.
-      // Stays 1% below backdrop forest (23%) for natural depth layering: backdrop in front.
-      [ASSETS.forest, -56, 1.8, 140, 12, 0x68b82e, -37],
+      // Match cylinder tint: 0x98e840→0xb4f040 for vivid lime peaks against the new deep sky.
+      [ASSETS.mountainsFar, -65, 7.5, 170, 16, 0xb4f040, -38],
+      // Forest silhouette tint brightened 0x68b82e→0x78cc34 to better contrast against deep sky.
+      [ASSETS.forest, -56, 1.8, 140, 12, 0x78cc34, -37],
     ];
     // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
     // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
     // rather than painting over the sparse-peak zone and creating a solid-green band artefact.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x78cc34, depthTest: false, depthWrite: false, fog: false }),
+      // Horizon bridge tint updated to match the new vivid mountain greens (was 0x78cc34).
+      new THREE.MeshBasicMaterial({ color: 0x88d840, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -0.5, -49);
