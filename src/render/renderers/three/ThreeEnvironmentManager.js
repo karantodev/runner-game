@@ -641,10 +641,11 @@ export class ThreeEnvironmentManager {
       // Mountain plane z=-65→z=-58, y=6.0→5.5: keep peaks at 18% from screen top.
       // D=73.5m (was 80.5m): mountain texture 10% taller on screen, peak triangles more distinct.
       // Tint 0xb4f040→0xb4ff38: G channel maxed for richer lime-green matching reference vibrancy.
-      // y 0.3→-0.6: y_peak = -0.6+22*(0.875-0.5) = -0.6+8.25 = 7.65m
-      // screen = (8.24 - atan(3.65/61.5)*57.3) / 22 = (8.24-3.40)/22 = 22% (was 18%).
-      // Expanding sky zone from 18% to 22% to better match reference's ~20% clear sky band.
-      [ASSETS.mountainsFar, -46, -0.6, 170, 22, 0xb4ff38, -38],
+      // h 22→28, y_center -0.6→-2.85 to keep peaks at 22%:
+      // y_peak = -2.85 + 28*(0.875-0.5) = -2.85+10.5 = 7.65m → screen 22% ✓
+      // Taller mountain profile: visible zone 22-43% shows UV 0.698-0.875 (was 0.65-0.875 with h=22).
+      // Steeper triangle slopes → more dramatic peak silhouette matching reference's tall mountains.
+      [ASSETS.mountainsFar, -46, -2.85, 170, 28, 0xb4ff38, -38],
       // y -2.0→-3.5: top drops from 37.5% to 43% from screen top.
       // Mountain window widens: 22–43% = 21% (was 18–37.5% = 19.5%).
       // Reference forest line starts at ~42–43%, matching this value.
