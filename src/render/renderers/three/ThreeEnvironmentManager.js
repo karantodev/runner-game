@@ -420,9 +420,12 @@ export class ThreeEnvironmentManager {
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
       // Left far tree: x=-5.5 → angle 13.7°=87% @ DIST=25m (was -7.0, just off-screen at 18°)
       [ASSETS.tree, -5.5, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      // Mushrooms — near ones visible at game start (z=0.5 extends left window to ~7m)
-      [ASSETS.mushroom, -2.0, 0, 0.5], [ASSETS.mushroom, 2.2, 0, 4.0],
-      [ASSETS.mushroom, -3.3, 0, -1.5],
+      // M134: Near mushrooms pushed to screen edges to match reference (lanes clear).
+      // x=-4.5 D=15m: center 6% from left, inner edge 21% — left shoulder only.
+      // x=+4.0 D=11.5m: center ~100% (screen edge), inner edge 81% — right shoulder only.
+      // x=-4.5 D=17m: inner edge 24% from left — stays in left shoulder zone.
+      [ASSETS.mushroom, -4.5, 0, 0.5], [ASSETS.mushroom, 4.0, 0, 4.0],
+      [ASSETS.mushroom, -4.5, 0, -1.5],
       [ASSETS.mushroom, 3.4, 0, -7.0],
       // Mid-distance mushroom pair
       // Left z=-23: 12.5m ahead @ DIST=26 — closer than purpleBrick at z=-25 (14.5m); x=-2.0
