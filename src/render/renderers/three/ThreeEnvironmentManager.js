@@ -396,7 +396,8 @@ export class ThreeEnvironmentManager {
     const sideProps = [
       // Trees — z=-13/-18 flanking near shoulder; z=-32/-35 visible at DIST≈25-30m edges
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
-      [ASSETS.tree, -7.0, 0, -32], [ASSETS.tree, 5.6, 0, -35],
+      // Left far tree: x=-5.5 → angle 13.7°=87% @ DIST=25m (was -7.0, just off-screen at 18°)
+      [ASSETS.tree, -5.5, 0, -32], [ASSETS.tree, 5.6, 0, -35],
       // Mushrooms — near ones visible at game start (z=0.5 extends left window to ~7m)
       [ASSETS.mushroom, -2.0, 0, 0.5], [ASSETS.mushroom, 2.2, 0, 4.0],
       [ASSETS.mushroom, -3.3, 0, -1.5],
