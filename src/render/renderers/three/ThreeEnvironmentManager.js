@@ -633,14 +633,15 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // M103: Mountain wash darkened to 0x64be20 — matches triangle base colour so the
     // gradient fade from bright apex → dark body → dark wash reads as one mountain mass.
-    // (Old 0xb4ff38 made wash identical to peaks, losing the "light-hits-the-summit" read.)
-    // Top at y=6m = 29% from screen top — leaves peak zone visible against sky.
+    // M105: height 18→22, center y -3.0→-4.5 → top moves from y=6 (29.1%) to y=6.5 (27.0%).
+    // D=62.5m (z=-47): atan((6.5-4)/62.5)=2.29° → screen=(8.24-2.29)/22=27.0%.
+    // Fills ~2% more of the mountain zone with solid dark-green body, closer to reference ~28%.
     const mountainWash = new THREE.Mesh(
-      new THREE.PlaneGeometry(300, 18),
+      new THREE.PlaneGeometry(300, 22),
       new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
-    mountainWash.position.set(0, -3.0, -47);
+    mountainWash.position.set(0, -4.5, -47);
     mountainWash.renderOrder = -39;
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
@@ -690,18 +691,17 @@ export class ThreeEnvironmentManager {
       };
 
       // Front row: 5 main peaks + 2 flanking edge peaks (M104).
-      // Flanking peaks at x=±38, R=9: center at atan(38/105.5)/19.1°≈101% from screen center
-      // → apex just off-screen; inner edge at x=29 (screen ~89%) visible as a diagonal slope
-      // going off the edge → matches reference "mountains extending beyond the frame".
-      // THREE.js front-to-back opaque sort at same renderOrder=-38 handles overlap correctly:
-      // flanking (D≈112m) renders BEFORE main (D≈109m) → main peaks cover overlap zone.
+      // M105: widened r on all non-flanking peaks + raised center apex 9.5→11.0 to close the
+      // sky gaps between peaks and create a more unified mountain silhouette.
+      // At BASE_Y level, adjacent peaks now overlap or nearly touch, merging the mountain base.
+      // At y=5m (screen ~33%), gap between adjacent peaks is <1m → <1.5% screen width.
       const FRONT = [
         { px: -38, apexY: 12.0, r: 9.0 },  // flanking left  → apex at screen edge
-        { px: -26, apexY: 10.5, r: 6.5 },  // left outer     → 21.5%
-        { px: -13, apexY: 11.5, r: 5.0 },  // left main      → 19.0% (tallest)
-        { px:   0, apexY:  9.5, r: 5.0 },  // center         → 23.7% (castle valley)
-        { px:  13, apexY: 11.0, r: 5.5 },  // right main     → 20.2%
-        { px:  26, apexY: 10.0, r: 6.0 },  // right outer    → 22.7%
+        { px: -26, apexY: 10.5, r: 8.0 },  // left outer     → 21.5% (r: 6.5→8.0)
+        { px: -13, apexY: 11.5, r: 7.0 },  // left main      → 19.0% (r: 5.0→7.0)
+        { px:   0, apexY: 11.0, r: 7.0 },  // center         → 20.2% (was 23.7%; apexY 9.5→11.0, r 5.0→7.0)
+        { px:  13, apexY: 11.0, r: 7.0 },  // right main     → 20.2% (r: 5.5→7.0)
+        { px:  26, apexY: 10.0, r: 8.0 },  // right outer    → 22.7% (r: 6.0→8.0)
         { px:  38, apexY: 11.5, r: 9.0 },  // flanking right → apex at screen edge
       ];
       for (const { px, apexY, r } of FRONT) {
@@ -711,11 +711,12 @@ export class ThreeEnvironmentManager {
       }
 
       // Back row: 4 smaller peaks between front peaks, darker palette.
+      // M105: widened for better depth layering behind the front row.
       const BACK = [
-        { px: -19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
-        { px:  -6.5, apexY: 10.0, r: 4.5 },  // → 25.5%
-        { px:   6.5, apexY: 10.0, r: 4.5 },  // → 25.5%
-        { px:  19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
+        { px: -19.5, apexY:  9.5, r: 6.5 },  // → 26.5% (r: 5.0→6.5)
+        { px:  -6.5, apexY: 10.0, r: 5.5 },  // → 25.5% (r: 4.5→5.5)
+        { px:   6.5, apexY: 10.0, r: 5.5 },  // → 25.5% (r: 4.5→5.5)
+        { px:  19.5, apexY:  9.5, r: 6.5 },  // → 26.5% (r: 5.0→6.5)
       ];
       for (const { px, apexY, r } of BACK) {
         const tri = makeTriangleGradient(px, apexY, r, -115, 0x8ad030, 0x4a9018, -38.5);
