@@ -1727,16 +1727,16 @@ export const THEMES = Object.freeze({
  */
 export const DEPTH_BANDS = Object.freeze({
   // v4.6 — reference-match (P3a): 1→2 so each bottom corner carries both a
-  // garden anchor cluster AND a low fence/bush framing prefab (the
-  // reference frames the foreground corners with fences + bushes).
-  // v4.21 — Phase 1: 2→3 to admit the curated `near-foreground-frame` layer
-  // planted in FRONT of the corner fences. This cap is a BUILD-TIME audit
-  // guard (validate-composition.mjs) on HERO_LAYOUT authoring only — the
-  // runtime never reads maxClustersPerSide, so this is a static-check
-  // allowance, not a gameplay/spawn change. Procedural fill floors at 200m,
-  // so FOREGROUND stays fully HERO_LAYOUT-curated.
-  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 3, targetScale: 1.00, roadClearanceMin: 1.7 },
-  NEAR:             { range: [ 30,  80], maxClustersPerSide: 2, targetScale: 1.00, roadClearanceMin: 1.5 },
+  // garden anchor cluster AND a low fence/bush framing prefab.
+  // v4.21 — Phase 1: 2→3 to admit the curated `near-foreground-frame` layer.
+  // M142 — 3→4 allows a fourth entry if needed without re-raising again.
+  // BUILD-TIME audit guard only; runtime never reads maxClustersPerSide.
+  FOREGROUND:       { range: [  0,  30], maxClustersPerSide: 4, targetScale: 1.00, roadClearanceMin: 1.7 },
+  // M142 — raised 2→5 to open NEAR band for continuous terraced wall rhythm
+  // (30–80m). maxClustersPerSide is a BUILD-TIME audit guard only; the
+  // runtime never reads it. Five slots per side lets us place a terrace beat
+  // roughly every 10m in the near-mid zone so the side bands read dense.
+  NEAR:             { range: [ 30,  80], maxClustersPerSide: 5, targetScale: 1.00, roadClearanceMin: 1.5 },
   // MID is the corridor band — spec calls for "smaller repeated corridor
   // beats" so 3 clusters per side fits the dense-but-readable target.
   // v4.6 — reference-match (P2): both sides were already at the cap of 3,
@@ -1879,17 +1879,26 @@ export const HERO_LAYOUT = Object.freeze([
   // FOREGROUND — left platform + mushroom + brick / right pipe + brick.
   { distance:  18, side: -1, prefabId: 'garden_foreground_left_platform_cluster', scaleMultiplier: 1.18 },
   { distance:  25, side:  1, prefabId: 'garden_foreground_right_pipe_cluster',    scaleMultiplier: 1.16 },
-  // NEAR — layered transition groups keep the corridor composed instead of
-  // falling back to two light rows of evenly distributed flora.
-  { distance:  46, side: -1, prefabId: 'garden-chain-platform-fence',              scaleMultiplier: 1.00 },
-  // v4.22 — M8 de-mirror: the 46(L)/58(R) garden-chain-platform-fence pair read
-  // as copy-paste. Swap the RIGHT echo to a softer organic flora beat (existing
-  // prefab, flora-mix) so the two sides differ in silhouette. NEAR cluster count
-  // per side is unchanged (2) → composition audit unaffected. Left opener kept.
-  { distance:  58, side:  1, prefabId: 'grass-wall-mushroom',                      scaleMultiplier: 0.96 },
-  // v4.16 — soften the early right-side wall beat into a lower bush/fence
-  // composition so the opening reads as a garden edge, not a corridor wall.
-  { distance:  68, side:  1, prefabId: 'fence-bush-corner',                        scaleMultiplier: 0.92 },
+  // NEAR — M142 dense terrace wall rhythm. Right side gap (25→58m) was the
+  // biggest bare-green zone at run start. Both sides now get a beat roughly
+  // every 10-12m across the 30-80m window for a continuous terraced look.
+  // Tall↔low rhythm: grand-tall → flower-terrace → pipe-bank → wall-mushroom.
+  // scaleMultipliers pushed toward 1.0-1.1 since the camera reframe (horizon
+  // 22%, ground 75% of frame) makes mid-near elements appear smaller than
+  // they did before — the scale bump compensates without extra drawImage calls.
+  { distance:  33, side:  1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 1.12 },
+  { distance:  36, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 1.10 },
+  { distance:  44, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 1.06 },
+  { distance:  46, side: -1, prefabId: 'garden-chain-platform-fence',             scaleMultiplier: 1.04 },
+  { distance:  54, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 1.02 },
+  // v4.22 — M8 de-mirror: left terrace-grand + right wall-mushroom so sides
+  // differ in silhouette (left=structural, right=flora-mix).
+  { distance:  58, side: -1, prefabId: 'garden-terrace-grand',                    scaleMultiplier: 1.00 },
+  { distance:  62, side:  1, prefabId: 'grass-wall-mushroom',                     scaleMultiplier: 0.98 },
+  // M142 — 68R fence-bush-corner dropped; right side already has 5 NEAR beats
+  // (33/44/54/62/78). Left side picks up a low filler at 72 to even the
+  // visual density between sides.
+  { distance:  72, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.96 },
   // v4.24 — M14A: 70–175m PREMIUM GARDEN CORRIDOR rebuild. Tall terrace beats
   // (garden-terrace-grand / garden-pipe-bank) alternate with low garden-flower-
   // terrace fillers in a tall↔low rhythm so the mid corridor reads as a dense
@@ -1902,8 +1911,8 @@ export const HERO_LAYOUT = Object.freeze([
   // one new MID-right beat at 132 (MID cap raised 4→6). CASTLE_APPROACH stays
   // LOW (160/175) so the 150–220m castle axis remains clean. Composition only —
   // SpawnSystem doesn't import HERO_LAYOUT, so spawn-log/RNG are unaffected.
-  { distance:  70, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.94 },
-  { distance:  80, side:  1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.90 },
+  { distance:  78, side:  1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.92 },
+  { distance:  80, side: -1, prefabId: 'garden-flower-terrace',                   scaleMultiplier: 0.90 },
   { distance:  88, side:  1, prefabId: 'garden-pipe-bank',                        scaleMultiplier: 0.90 },
   { distance:  97, side: -1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.84 },
   { distance: 105, side:  1, prefabId: 'garden-terrace-grand-tall',               scaleMultiplier: 0.82 },
