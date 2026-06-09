@@ -362,13 +362,13 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // Far mountain plane now shows peaks at 22% from screen top; backdrop forest sits BELOW
-    // at ~32% (y=2.0, top=y+h/2=5.0 → atan((5.0-4.0)/63.5)=0.90°+2.76°=3.66° → 33%).
-    // This matches the reference: sky 0-22%, mountain peaks 22-30%, treeline/forest 30-45%.
-    add(ASSETS.forest, -15, 2.0, -48, 36, 6.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 2.0, -48, 36, 6.0, { opacity: 0.96, renderOrder: -35 });
-    // Centre panel slightly behind for depth layering
-    add(ASSETS.forest,   0, 1.8, -52, 32, 5.5, { opacity: 0.94, renderOrder: -35 });
+    // Raised y=2.0→2.5, h=6.0→7.0: tops now at y=6.0 → atan(2.0/63.5)=1.80°+2.76°=4.56°
+    // → screen 29% from top. Mountain peaks at 22%; forest tops overlap mountain zone at 22-29%
+    // creating a natural mountain-meets-forest transition matching the reference backdrop.
+    add(ASSETS.forest, -15, 2.5, -48, 36, 7.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 2.5, -48, 36, 7.0, { opacity: 0.96, renderOrder: -35 });
+    // Centre panel tops at 29% too — continuous green backdrop behind castle from 29% down
+    add(ASSETS.forest,   0, 2.5, -52, 32, 7.0, { opacity: 0.94, renderOrder: -35 });
 
     // 11×12 @ y=6.5 put turrets at 0.5% from top (too dominant).
     // 8×7 @ y=5.0: top=y+3.5=8.5 → atan(4.5/59.5)=4.33° → screen 17.8% from top.
