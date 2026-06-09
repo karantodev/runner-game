@@ -39,7 +39,7 @@ export const FARMER_UNIT = 2.4;
 export const PROP_METRICS = new Map([
   [ASSETS.tree, [2.65, 0.78, 0.12]],
   [ASSETS.pipe, [1.25, 0.71, 0.06]],
-  [ASSETS.mushroom, [1.35, 0.82, 0.28]],
+  [ASSETS.mushroom, [1.6, 0.82, 0.28]],
   [ASSETS.fence, [0.60, 2.0, 0.18]],
   [ASSETS.bush, [0.55, 1.7, 0.14]],
   [ASSETS.grassBlock, [1.25, 1.15, 0.10]],

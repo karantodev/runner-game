@@ -397,10 +397,10 @@ export class ThreeEnvironmentManager {
       // Trees — mid/far background, away from road
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
       [ASSETS.tree, -5.6, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      // Mushrooms — very close to road edge, reference shows them dominating the foreground
-      [ASSETS.mushroom, -2.6, 0, 1.0], [ASSETS.mushroom, 2.8, 0, 2.5],
-      [ASSETS.mushroom, 3.5, 0, -7.0],
-      [ASSETS.mushroom, -3.6, 0, -19.5], [ASSETS.mushroom, 3.5, 0, -26.5],
+      // Mushrooms — at road edge, z=3-4 so cap is fully visible above HUD controls
+      [ASSETS.mushroom, -2.7, 0, 3.5], [ASSETS.mushroom, 2.9, 0, 4.0],
+      [ASSETS.mushroom, 3.4, 0, -7.0],
+      [ASSETS.mushroom, -3.5, 0, -19.5], [ASSETS.mushroom, 3.4, 0, -26.5],
       // Pipe
       [ASSETS.pipe, 4.18, 0, -16],
       // Fences
