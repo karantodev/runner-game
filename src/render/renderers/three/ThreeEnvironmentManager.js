@@ -205,18 +205,19 @@ export class ThreeEnvironmentManager {
     this.scene.add(roadGroup);
     this.roadGroup = roadGroup;
 
-    const roadGeo = new THREE.BoxGeometry(5.45, 0.09, 98);
-    // Gradient from vibrant near-green to light-green far (not white) to match reference's bright corridor
-    applyDepthGradientColors(roadGeo, 0x80b838, 0xc0e870);
+    // M139: Road solid flat color — no texture, no vertex gradient, MeshBasicMaterial (unlit).
+    // Texture tiling (repeatY=55) created a visible grid; depth gradient + lighting added stripes.
+    // Reference road is a clean flat green with only lane lines.
     const road = new THREE.Mesh(
-      roadGeo,
-      new THREE.MeshStandardMaterial({ color: 0x98cc48, map: this.buildGrassTexture('road', 3, 55), roughness: 0.92, metalness: 0, vertexColors: true }),
+      new THREE.BoxGeometry(5.45, 0.09, 98),
+      new THREE.MeshBasicMaterial({ color: 0x88c840 }),
     );
     road.name = 'road';
     road.position.set(0, -0.08, -31);
     roadGroup.add(road);
 
-    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x44cc34, roughness: 0.95 });
+    // M139: Shoulders also MeshBasicMaterial — avoids lighting tint on side surfaces.
+    const shoulderMat = new THREE.MeshBasicMaterial({ color: 0x5ab030 });
     for (const x of [-5.35, 5.35]) {
       const shoulder = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.07, 98), shoulderMat);
       shoulder.position.set(x, -0.1, -31);
