@@ -859,6 +859,28 @@ export class ThreeEnvironmentManager {
     midBodyMesh2.frustumCulled = false;
     group.add(midBodyMesh2);
 
+    // M131: third mid-body plane at offset=0.25 (quarter-phase). 2 planes cover ~64% of pixels
+    // (1−0.6²); adding a third offset at 0.25 raises coverage to ~78% (1−0.6³), pushing the
+    // 28-38% zone toward the reference's nearly-complete round canopy density.
+    const midBodyTex3 = (() => {
+      const base = this.textureCache.get(ASSETS.forest);
+      const t = base.clone();
+      t.wrapS = THREE.RepeatWrapping;
+      t.repeat.set(4, 1);
+      t.offset.set(0.25, 0);
+      t.needsUpdate = true;
+      return t;
+    })();
+    const midBodyMesh3 = new THREE.Mesh(
+      new THREE.PlaneGeometry(160, 10),
+      new THREE.MeshBasicMaterial({ map: midBodyTex3, color: 0x98cc40, transparent: true, alphaTest: 0.5, depthTest: false, depthWrite: false, fog: false }),
+    );
+    midBodyMesh3.name = 'mid-body-forest-3';
+    midBodyMesh3.position.set(0, 2.5, -62);
+    midBodyMesh3.renderOrder = -38.80;
+    midBodyMesh3.frustumCulled = false;
+    group.add(midBodyMesh3);
+
     const forestMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 12),
       // M113: tint 0x78cc34→0x3a8010. Far silhouette background pixels (transparent areas in
