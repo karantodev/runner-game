@@ -48,13 +48,19 @@ export class RenderSystem {
     this.blockStyle = options.blockStyle === 'voxel' ? 'voxel' : 'sprite';
     this.playerVoxelEnabled = options.playerVoxelEnabled !== false;
 
-    // Resize the backing store to logical * pixelRatio. The projection
-    // and renderers keep operating in logical units; setTransform() in
-    // render() handles the scale conversion.
-    if (this.pixelRatio !== 1) {
-      canvas.width = projection.width * this.pixelRatio;
-      canvas.height = projection.height * this.pixelRatio;
-    }
+    // Retro chunky-pixel: clamp to (0,1]. 1.0 = full-res (no change).
+    // Values below 1.0 shrink the backing buffer so CSS upscaling with
+    // image-rendering:pixelated produces fat nearest-neighbor pixels at
+    // zero extra per-frame cost (fewer pixels to fill, not more).
+    this.retroPixelScale = Math.min(1, Math.max(0.1, options.retroPixelScale ?? 1));
+
+    // Backing buffer = logical size × retroPixelScale × pixelRatio.
+    // The canvas transform in render() maps logical → backing so every
+    // downstream renderer keeps working in the 1536×864 design space.
+    const backingW = Math.round(projection.width  * this.retroPixelScale * this.pixelRatio);
+    const backingH = Math.round(projection.height * this.retroPixelScale * this.pixelRatio);
+    canvas.width  = backingW;
+    canvas.height = backingH;
 
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
@@ -139,11 +145,15 @@ export class RenderSystem {
   render(world) {
     const ctx = this.ctx;
     const dpr = this.pixelRatio;
+    // Combined backing-buffer scale: retroPixelScale (chunky-pixel
+    // downscale) × pixelRatio (HiDPI). All downstream renderers draw in
+    // logical 1536×864 space and never see this factor.
+    const backingScale = this.retroPixelScale * dpr;
     const shake = cameraShakeOffset(world);
-    // Bake DPR into the transform so every downstream renderer keeps
-    // working in logical (1536×864) coordinates. clearRect needs the
-    // logical size, since the transform applies to it too.
-    ctx.setTransform(dpr, 0, 0, dpr, shake.x * dpr, shake.y * dpr);
+    // Bake the combined scale into the transform so every downstream
+    // renderer keeps working in logical (1536×864) coordinates.
+    // clearRect needs the logical size, since the transform applies to it.
+    ctx.setTransform(backingScale, 0, 0, backingScale, shake.x * backingScale, shake.y * backingScale);
     ctx.clearRect(-shake.x, -shake.y, this.projection.width, this.projection.height);
     // Pixel-art aesthetic: bilinear filtering off for the whole frame.
     // Setting it once per frame replaces ~80 save/restore pairs that

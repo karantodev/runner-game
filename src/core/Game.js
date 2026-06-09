@@ -65,6 +65,9 @@ export class Game {
     });
     const rendererOptions = {
       pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
+      // retroPixelScale: URL-param override takes precedence, then config.
+      // 1.0 = off; <1.0 = chunky-pixel (smaller backing buffer + CSS upscale).
+      retroPixelScale: options.retroPixelScale ?? this.config.canvas.retroPixelScale ?? 1,
       roadStyle: options.roadStyle,
       blockStyle: options.blockStyle,
       playerVoxelEnabled: options.playerVoxelEnabled,
