@@ -242,7 +242,10 @@ export class ThreeSceneRenderer {
       this.postProcessing.setVignetteDarkness(is25d ? 0.15 : 0.35);
       this.postProcessing.setSSAOEnabled(!is25d);
     }
-    this._bloomBase = is25d ? 0.25 : 0.2;
+    // M143: 3D bloomBase 0.2→0.12 — collectible orchid sprites (MeshStandardMaterial +
+    // warm lights) were exceeding bloom threshold and washing out the road center.
+    // 0.12 keeps subtle glow on bright sky/mountain elements without road-centre bloom.
+    this._bloomBase = is25d ? 0.25 : 0.12;
     if (this.scene) {
       this.scene.background = is25d ? new THREE.Color(0x9fc8e8) : this.environment.skyGradientTex;
     }

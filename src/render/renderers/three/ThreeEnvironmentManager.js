@@ -278,13 +278,16 @@ export class ThreeEnvironmentManager {
     });
     const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b5234, roughness: 0.92, metalness: 0 });
     const grassMats = [dirtMat, dirtMat, grassTopMat, dirtMat, dirtMat, dirtMat];
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x7a7570, roughness: 0.95, metalness: 0 });
+    // M143: purpleBrickMat replaces rockMat — purple-brick accents at ~30% of cube instances.
+    // Reference terraces: brown dirt with grass tops (~70%) + purple brick accents (~30%).
+    // Old rockMat (grey 0x7a7570) made walls read as grey debris, not matching reference.
+    const purpleBrickMat = new THREE.MeshStandardMaterial({ color: 0x7044a0, roughness: 0.88, metalness: 0 });
 
     // No brickCubes in shoulder tiers — purple structures come from sideProps sprites only,
     // keeping the shoulder wall uniformly brown with green tops (matching reference).
     // 500 instances: inner + outer columns × 2 sides × ~24 z-slots × 1-2 stack height.
     const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 500);
-    const rockCubes = new THREE.InstancedMesh(rockGeo, rockMat, 48);
+    const rockCubes = new THREE.InstancedMesh(rockGeo, purpleBrickMat, 48);
     grassCubes.name = 'voxel-grass-cubes';
     rockCubes.name = 'voxel-rock-cubes';
     grassCubes.frustumCulled = false;
@@ -418,8 +421,9 @@ export class ThreeEnvironmentManager {
       [ASSETS.grassBlockLeft, -3.5, 0, -9.5],
       [ASSETS.tree, -5.5, 0, -13.0],
       // Purple wall elevated on platform (D=27.5m) + question block
+      // M143: questionBlock baseY 3.8→1.8 — was floating too high (UFO-like); now at jump height.
       [ASSETS.purpleWall, -3.2, 1.8, -12.0],
-      [ASSETS.questionBlock, -3.9, 3.8, -14.0],
+      [ASSETS.questionBlock, -3.9, 1.8, -14.0],
       // Far mushroom for depth (D=40m)
       [ASSETS.mushroom, -3.1, 0, -24.5],
       // Far purple pair (D=49m)
@@ -436,7 +440,8 @@ export class ThreeEnvironmentManager {
       [ASSETS.grassBlockRight, 3.5, 0, -14.5],
       [ASSETS.pipe, 4.18, 0, -16.0],
       [ASSETS.purpleBrick, 3.2, 1.8, -16.5],
-      [ASSETS.questionBlock, 4.0, 3.8, -21.5],
+      // M143: questionBlock baseY 3.8→1.8 — matches reference's mid-air jump height.
+      [ASSETS.questionBlock, 4.0, 1.8, -21.5],
       // Far mushroom for depth (D=42m)
       [ASSETS.mushroom, 3.1, 0, -26.5],
       // Far tree + purple (D=47-55m)
@@ -540,13 +545,15 @@ export class ThreeEnvironmentManager {
     const fov = this.cameras?.perspective?.fov ?? PERSPECTIVE_FOV;
     const zStep = 3.7 * (30 / fov);
     this.trailFlowers = [];
-    for (let i = 0; i < 9; i += 1) {
+    // M143: count 9→6, opacity 0.62→0.28 start, scale 0.72→0.48 — tame the gold glow
+    // so the green road reads clearly between player and castle (reference).
+    for (let i = 0; i < 6; i += 1) {
       const z = -10 - i * zStep;
       if (z < -44) break;
       const x = (i % 3 - 1) * 0.9;
-      const scale = Math.max(0.55, 1.05 - i * 0.025);
-      const opacity = Math.max(0.1, 0.62 - i * 0.07);
-      const w = 0.72 * scale;
+      const scale = Math.max(0.38, 0.72 - i * 0.025);
+      const opacity = Math.max(0.06, 0.28 - i * 0.04);
+      const w = 0.48 * scale;
       const flower = this.makeSprite(ASSETS.goldFlower, { x, y: 0.62, z, width: w, height: w, opacity });
       flower.renderOrder = 100 - i;
       group.add(flower);
@@ -1003,8 +1010,12 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.cloudGroup = group;
 
-    // CAP=6: 6 clouds spread ±22m → full sky width with 7.3m sector spacing > 8m cloud width.
-    const CAP = 6;
+    // M143: CAP 6→4 — fewer, well-separated puffs matching reference's sparse sky.
+    // x spread ±22→±16m so the 4 clouds don't overlap at their 1.7-2.3 scale width.
+    // Sector spacing with CAP=4, spread=32m: 8m between centres vs max cloud width
+    // 8*2.3=18.4m → ~1 cloud width gap between neighbours → distinct separate puffs.
+    // color 0xf2f6fa: visually white without triggering bloom (0.98 threshold).
+    const CAP = 4;
     // M116: yBase 13→15. Cloud BOTTOMS with yBase=13 sat at 20-22% (right at mountain peaks 18-19%);
     //   reference shows a clear sky gap above mountain tips. With yBase=15:
     //   bottom (scale=1.2, h=15, D=97m): atan(8.6/97)=5.07° → screen=14.4% — clear gap above peaks ✓
@@ -1017,7 +1028,7 @@ export class ThreeEnvironmentManager {
       const r = prand(i * 1.7 + 1);
       // Evenly-spaced sectors: 0.083→0.917 (symmetric), with small jitter.
       const sector = (i + 0.5) / CAP;
-      const x = (sector - 0.5) * 44 + (prand(i * 3.1 + 2) - 0.5) * 3;
+      const x = (sector - 0.5) * 32 + (prand(i * 3.1 + 2) - 0.5) * 3;
       const z = -82 - r * 16;  // z: -82 to -98, D: 97-113
       const h = yBase + prand(i * 7.7 + 3) * 2;  // y range 15-17m (M116: was 13-15m)
       // cloud_large.png: horizontal sprite sheet, binary pixel-art alpha → alphaTest:0.5 = clean edges.
@@ -1034,6 +1045,7 @@ export class ThreeEnvironmentManager {
       const scale = 1.7 + prand(i * 11.1 + 4) * 0.6;
       const mat = new THREE.SpriteMaterial({
         map: tex,
+        color: 0xf2f6fa,
         transparent: true,
         opacity: 1.0,
         alphaTest: 0.5,
