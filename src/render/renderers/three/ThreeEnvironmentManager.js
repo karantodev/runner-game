@@ -575,15 +575,12 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      // Reduced scaleY so cylinder tops are near/below camera y=4.0, pushing mountains into the
-      // mid-screen zone and opening a wider sky band (target ~20%) above them.
-      // Near: top at y=3.8m (below camera) → screen 26% — defines sky/mountain boundary.
-      // Mid: top at y=5.0m → screen 12% — mid peaks visible in sky gap above near.
-      // Far: top at y=6.3m → screen 9% — distant peaks just below sky top.
-      // Tints pushed to vivid saturated lime-green matching reference's bright mountain peaks.
-      // scaleY +0.04 across all layers: far top 6.3→7.0m (body fills down from 29% not 32%),
-      // giving each layer a slightly more prominent valley-fill against the deeper sky.
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4ff38, true, 0.12, 0.50],
+      // M96: mountainsFar scaleY 0.50→0.71. Top = 28/2*0.71=9.94m.
+      // elev=atan((9.94-4.0)/100)=3.40° → screen (8.24-3.40)/22=22.0% from top.
+      // Peaks visible in 22-29% zone above the mountain wash (top 29%).
+      // Transparent valleys between peaks show sky → triangular mountain silhouette effect.
+      // Cylinder radius=100m: peak width at v=0.874 = 5.5% screen width → 2-3 visible peaks.
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4ff38, true, 0.12, 0.71],
       [ASSETS.mountainsMid,  80, 24, 4.0, 0x96e038, true, 0.44, 0.46],
       [ASSETS.mountainsNear, 62, 20, 3.5, 0x80d030, true, 0.72, 0.42],
     ];
@@ -652,16 +649,31 @@ export class ThreeEnvironmentManager {
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
 
-    // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
-    const layers = [
-      // M92: w 130→160, repeatX 8→6: peak width = 160/(6*5)=5.33m = 13.9% screen width at D=55.5m.
-      // Reference has ~7 peaks at 13-15% each; this gives 38.4/160*6*5=7.2 peaks ≈ 7. ✓
-      // M91: z=-40 (D=55.5m). Peak at 22%: y_center=-6.20.
-      [ASSETS.mountainsFar, -40, -6.20, 160, 36, 0xb4ff38, -38],
-      // Forest: w 140→160, repeatX 3→4 for denser tree canopy fill.
-      // visible = 2*71.5*tan(19.1°) = 49.5m → 49.5/160*4 = 1.24 cycles → denser coverage.
-      [ASSETS.forest, -56, -3.5, 160, 12, 0x78cc34, -37],
-    ];
+    // M96: mountains_far flat plane removed — it created visible column artifacts (each peak only
+    // 5-6% screen-width at D=55.5m in the 22-29% zone). Mountain peaks now come from the
+    // horizon cylinder (buildHorizon, mountainsFar scaleY=0.71) which shows triangular peaks at
+    // 22-29% with correct angular width. Only forest silhouette retained as flat layer.
+    //
+    // Forest: w 140→160, repeatX 4 for denser tree canopy fill.
+    // visible = 2*71.5*tan(19.1°) = 49.5m → 49.5/160*4 = 1.24 cycles → dense canopy.
+    const forTex = (() => {
+      const base = this.textureCache.get(ASSETS.forest);
+      const t = base.clone();
+      t.wrapS = THREE.RepeatWrapping;
+      t.repeat.set(4, 1);
+      t.needsUpdate = true;
+      return t;
+    })();
+    const forestMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(160, 12),
+      new THREE.MeshBasicMaterial({ map: forTex, color: 0x78cc34, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
+    );
+    forestMesh.name = `far-silhouette:${ASSETS.forest}`;
+    forestMesh.position.set(0, -3.5, -56);
+    forestMesh.renderOrder = -37;
+    forestMesh.frustumCulled = false;
+    group.add(forestMesh);
+
     // Horizon bridge — fills below the mountain zone.
     // y -3.0→-4.4: top at y=-4.4+7=2.6m → screen (8.24-atan(-1.4/64.5)*57.3)/22 = 43.8%.
     // Matches forest silhouette top (43%) to avoid gap between bridge and forest layer.
@@ -674,28 +686,6 @@ export class ThreeEnvironmentManager {
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
-    for (const [asset, z, y, w, h, tint, ro] of layers) {
-      // Mountain (w=160, D=55.5m, visible 38.4m): repeatX=6 → 1.44 cycles → 7.2 peaks.
-      // Forest (w=160, D=71.5m, visible 49.5m): repeatX=4 → 1.24 cycles → dense canopy.
-      const baseTex = this.textureCache.get(asset);
-      const repeatX = (asset === ASSETS.mountainsFar) ? 6 : 4;
-      let tex = baseTex;
-      if (repeatX !== 1) {
-        tex = baseTex.clone();
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.repeat.set(repeatX, 1);
-        tex.needsUpdate = true;
-      }
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: tex, color: tint, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
-      );
-      mesh.name = `far-silhouette:${asset}`;
-      mesh.position.set(0, y, z);
-      mesh.renderOrder = ro;
-      mesh.frustumCulled = false;
-      group.add(mesh);
-    }
   }
 
   buildOrthoBackdrop() {
