@@ -889,9 +889,14 @@ export class ThreeEnvironmentManager {
     // M103: Bridge colour matches wash — continuous mountain body tone.
     // M108: 0x64be20→0x7ccc2c. M111: 0x7ccc2c→0x3a8010 to match darkened wash/body.
     // M125: 0x3a8010→0x4a9010. Matches lightened wash for continuous body tone. ✓
+    // M130: 0x4a9010→0x64bc1c (luma 0.619 = 1.32× wash). Matches body fill (M129): gaps
+    //   in backdrop canopy blobs (37-50%) now show same vivid-green as gaps in mid-body zone
+    //   (28-37%), creating one continuous bright mountain mass edge-to-edge. Forest silhouette
+    //   (0x3a8010, -35.5) gains contrast against brighter bridge (dark trees on bright green ✓).
+    //   Bridge top at 37.5% → well below peak/fill seam at 28%; no peak-seam impact. ✓
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x4a9010, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x64bc1c, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -3.0, -49);
