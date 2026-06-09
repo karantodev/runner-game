@@ -729,24 +729,24 @@ export class ThreeEnvironmentManager {
     this.cloudGroup = group;
 
     const CAP = 10;
-    // scale 0.6–1.05 keeps cloud BOTTOMS at 7–9% from screen top (was 1.2–2.2 → bottoms at 12–18%).
-    // Previous scale range caused 9+ overlapping clouds to form a solid white band 0–18%.
-    // With 10 clouds and ~5–6 visible at once, each 8–14% screen width → discrete puffs.
-    // yBase=14: centers at ~1% from screen top (partly clipped) → natural "floating above" look.
-    // Height jitter ±2m stays within 14–16m; at scale≤1.05 all bottoms remain on-screen.
+    // scale 0.72–1.2: base 7.5×4.5 → each cloud 10–18% screen width.
+    // Larger puffs match the reference's prominent fluffy clouds against deep cobalt sky.
+    // Cloud BOTTOMS: smallest (scale=0.72) at y=14−(4.5×0.72)/2=12.4m → screen 12.6%.
+    // Mountains at 18% → 5.4% clear gap below each cloud; no overlap.
+    // Height jitter ±2m stays within 14–16m.
     const rBase = 55;
     const yBase = 14;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // ±0.5 rad (±28.6°) keeps all 10 clouds within the ±19° visible FOV with slight overhang;
-      // was ±40° which pushed several clouds far off to the sides (wasted and bunched leftward).
+      // ±0.5 rad (±28.6°) keeps all 10 clouds within the ±19° visible FOV with slight overhang.
       const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.0;
       const radius = rBase + r * 25;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
       const h = yBase + prand(i * 7.7 + 3) * 2;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
-      const scale = 0.6 + prand(i * 11.1 + 4) * 0.45;
+      // 0.72–1.2 range: 25% larger than prior 0.6–1.05, matching reference's fluffy puff size.
+      const scale = 0.72 + prand(i * 11.1 + 4) * 0.48;
       // Billboard sprite always faces camera, visible from any orbit angle
       const mat = new THREE.SpriteMaterial({
         map: this.textureCache.get(asset),
@@ -757,8 +757,8 @@ export class ThreeEnvironmentManager {
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      // 6×3.5 world-unit base; at scale 0.6–1.05 each cloud is 8–14% of screen width
-      sprite.scale.set(6 * scale, 3.5 * scale, 1);
+      // 7.5×4.5 world-unit base; at scale 0.72–1.2 each cloud is 10–18% of screen width
+      sprite.scale.set(7.5 * scale, 4.5 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
       group.add(sprite);
