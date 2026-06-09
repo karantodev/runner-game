@@ -668,20 +668,22 @@ export class ThreeEnvironmentManager {
       new THREE.MeshBasicMaterial({ map: forTex, color: 0x78cc34, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
     );
     forestMesh.name = `far-silhouette:${ASSETS.forest}`;
-    forestMesh.position.set(0, -3.5, -56);
+    // M99: y_center -3.5→-2.0. Top = -2+6=4.0m → elev=atan(0/71.5)=0° → screen 37.5%.
+    // Tree canopy tops visible at 37.5% (was 42.9%) → reference "dense round-canopy forest" zone.
+    forestMesh.position.set(0, -2.0, -56);
     forestMesh.renderOrder = -37;
     forestMesh.frustumCulled = false;
     group.add(forestMesh);
 
-    // Horizon bridge — fills below the mountain zone.
-    // y -3.0→-4.4: top at y=-4.4+7=2.6m → screen (8.24-atan(-1.4/64.5)*57.3)/22 = 43.8%.
-    // Matches forest silhouette top (43%) to avoid gap between bridge and forest layer.
+    // Horizon bridge — fills behind the forest canopy.
+    // M99: y_center -4.4→-3.0. Top = -3+7=4.0m → elev=atan(0/64.5)=0° → screen 37.5%.
+    // Aligns with raised forest top so bridge fills behind tree canopy from 37.5% down.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
       new THREE.MeshBasicMaterial({ color: 0x90ee38, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, -4.4, -49);
+    bridge.position.set(0, -3.0, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
