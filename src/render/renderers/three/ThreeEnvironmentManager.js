@@ -750,16 +750,24 @@ export class ThreeEnvironmentManager {
         group.add(tri);
       }
 
-      // Back row: 4 smaller peaks between front peaks, darker palette.
+      // Back row: extended to 8 peaks for a continuous dark ridge (M128).
       // M105: widened for better depth layering.
       // M109: raised apexY so peaks peek above raised wash at y=7.0 (25% screen).
       //   D=130.5m: need apexY > 4+tan(2.75°)*130.5 = 10.26m to clear wash.
       //   ±6.5 apexY=11.5→22.5%, ±19.5 apexY=11.0→23.5%. Base 0x4a9018→0x5cb020 (brighter).
+      // M128: add ±33 (fills outer valley between front ±26 and ±38 flankers, screen ~23.5%)
+      //   and ±49 (extends ridge to screen edges; center off-screen but triangle edge visible
+      //   at ~95% from left). apexY=12.0 at ±49 → 21.5% screen. Keeps apex=base=0x3a8010
+      //   (dark distant ridge, per M121). Total: 4→8 back peaks → reference-matching ridge.
       const BACK = [
-        { px: -19.5, apexY: 11.0, r: 7.0 },  // → 23.5% (was 26.5%)
-        { px:  -6.5, apexY: 11.5, r: 6.0 },  // → 22.5% (was 25.5%)
-        { px:   6.5, apexY: 11.5, r: 6.0 },  // → 22.5%
-        { px:  19.5, apexY: 11.0, r: 7.0 },  // → 23.5%
+        { px: -49, apexY: 12.0, r: 9.0 },  // far-left edge   → 21.5%
+        { px: -33, apexY: 11.0, r: 7.5 },  // left-outer      → 23.5%
+        { px: -19.5, apexY: 11.0, r: 7.0 }, // left-inner      → 23.5% (unchanged)
+        { px:  -6.5, apexY: 11.5, r: 6.0 }, // centre-left     → 22.5% (unchanged)
+        { px:   6.5, apexY: 11.5, r: 6.0 }, // centre-right    → 22.5% (unchanged)
+        { px:  19.5, apexY: 11.0, r: 7.0 }, // right-inner     → 23.5% (unchanged)
+        { px:  33,   apexY: 11.0, r: 7.5 }, // right-outer     → 23.5%
+        { px:  49,   apexY: 12.0, r: 9.0 }, // far-right edge  → 21.5%
       ];
       for (const { px, apexY, r } of BACK) {
         // M111: apex 0x8ad030→0x5cb020 (proportionally darker than front 0x80d430),
