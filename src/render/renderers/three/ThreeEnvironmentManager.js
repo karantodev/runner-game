@@ -847,20 +847,21 @@ export class ThreeEnvironmentManager {
 
     // CAP=6: 6 clouds spread ±22m → full sky width with 7.3m sector spacing > 8m cloud width.
     const CAP = 6;
-    // M88: raised yBase 9→13 so clouds sit in the top 10-18% of the sky.
+    // M116: yBase 13→15. Cloud BOTTOMS with yBase=13 sat at 20-22% (right at mountain peaks 18-19%);
+    //   reference shows a clear sky gap above mountain tips. With yBase=15:
+    //   bottom (scale=1.2, h=15, D=97m): atan(8.6/97)=5.07° → screen=14.4% — clear gap above peaks ✓
+    //   bottom (scale=1.6, h=15, D=113m): atan(7.8/113)=3.95° → screen=19.5% worst case (barely)
+    //   top (scale=1.6, h=17, D=97m): atan(16.2/97)=9.49° → clips 1.25° above frame top; but sprite
+    //   alphaTest=0.5 — transparent top pixels don't reach bounding-rect top edge so no visible cut.
     // Screen formula: screen_from_top = (8.24° − elevation) / 22°.
-    // At y=13, D=95: elevation=atan(9/95)=5.41° → screen_from_top=12.9% ✓
-    // At y=15, D=95: elevation=atan(11/95)=6.60° → screen_from_top=7.5%  ✓
-    // Cloud top at y=15+2.2=17.2, D=95: elevation=atan(13.2/95)=7.90° → screen_from_top=1.5% safe.
-    // z=-82 to -98 (D: 97-113m): deeper placement keeps tops well within viewport.
-    const yBase = 13;
+    const yBase = 15;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
       // Evenly-spaced sectors: 0.083→0.917 (symmetric), with small jitter.
       const sector = (i + 0.5) / CAP;
       const x = (sector - 0.5) * 44 + (prand(i * 3.1 + 2) - 0.5) * 3;
       const z = -82 - r * 16;  // z: -82 to -98, D: 97-113
-      const h = yBase + prand(i * 7.7 + 3) * 2;  // y range 13-15m
+      const h = yBase + prand(i * 7.7 + 3) * 2;  // y range 15-17m (M116: was 13-15m)
       // cloud_large.png: horizontal sprite sheet, binary pixel-art alpha → alphaTest:0.5 = clean edges.
       // UV-crop to show one cloud per sprite (large=left half, medium=right half).
       const baseTex = this.textureCache.get(ASSETS.cloudLarge);
