@@ -134,8 +134,8 @@ export class ThreeEnvironmentManager {
     // maps canvas-top(y=0) → v=0 → screen bottom, canvas-bottom(y=512) → v=1 → screen top.
     // Deep cobalt MUST be at stop=1 to appear at the zenith; horizon at stop=0 is hidden by ground.
     grad.addColorStop(0, '#98c8f4');    // pale horizon → screen BOTTOM (hidden below ground)
-    grad.addColorStop(0.50, '#4898e4'); // azure mid (mostly hidden by scene geometry)
-    grad.addColorStop(1, '#2870d0');    // deep cobalt → screen TOP (visible sky zone)
+    grad.addColorStop(0.50, '#3888d8'); // azure mid – deepened for richer sky gradient
+    grad.addColorStop(1, '#1c60c8');    // deeper navy-cobalt → screen TOP (visible sky zone)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -368,13 +368,13 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // y=2.5, h=8.0: tops at y=6.5m → atan(2.5/63.5)=2.25°+2.76°=5.01° → screen 27.2% from top.
-    // Mountain peaks at 18% (M72). 18–27% = 9% mountain-slope zone above treeline, matching
-    // reference's visible mountain body between ridge and forest tops (~10% in reference).
-    // forest silhouette tops at 25.8% sit in this zone for natural layered depth transition.
-    add(ASSETS.forest, -15, 2.5, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 2.5, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
-    add(ASSETS.forest,   0, 2.5, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
+    // y=1.0, h=8.0: plane top y=5.0m → screen 33.4% from top. Tree canopy tops (v≈0.85)
+    // at y≈3.8m → screen 38.3% from top. Mountain zone widens from 9% → 20% (was y=2.5).
+    // Horizon bridge (27.4%–) fills the gap between forest silhouette (25.8%) and forest tops
+    // with 0x88d840 lime-green, creating a natural mountain-body tone in the 26–38% zone.
+    add(ASSETS.forest, -15, 1.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 1.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,   0, 1.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
 
     // Raised y 5.0→7.0: top=10.5m → atan(6.5/59.5)=6.24° → screen 9.1% from top.
     // Mountain peaks at 13% (after M68 silhouette raise), castle turrets at 9% → castle
