@@ -631,14 +631,13 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
-    // M93: Mountain wash colour = mountain silhouette tint (0xb4ff38) — zero seam in body zone.
-    // Transparent valleys in the mountain texture (below 29%) now render identically to opaque
-    // mountain pixels → uniformly vivid lime-green body matching the reference.
-    // Top at y=6m = 29% from screen top — leaves peak zone (22-29%) visible against sky.
-    // y_center = -3: top = -3+9 = 6.0m → elev atan(2/62.5)=1.83° → screen 29%.
+    // M103: Mountain wash darkened to 0x64be20 — matches triangle base colour so the
+    // gradient fade from bright apex → dark body → dark wash reads as one mountain mass.
+    // (Old 0xb4ff38 made wash identical to peaks, losing the "light-hits-the-summit" read.)
+    // Top at y=6m = 29% from screen top — leaves peak zone visible against sky.
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 18),
-      new THREE.MeshBasicMaterial({ color: 0xb4ff38, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -3.0, -47);
@@ -646,29 +645,39 @@ export class ThreeEnvironmentManager {
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
 
-    // M102: Varied peak heights + second mountain row for depth.
-    // Front row (z=−90, D=105.5m): asymmetric heights → natural mountain range profile.
+    // M103: Vertex-colour gradient on triangles (bright apex → darker base) + lower peaks 1m.
+    // Front row (z=−90, D=105.5m): apex 0xb4ff38 (bright lime), base 0x64be20 (dark body).
+    //   Gradient creates "light hits the summit" mountain read; base matches wash colour so no seam.
+    //   Peaks lowered 1m vs M102 → sky zone ~19-21% (was ~17-19%).
     //   Screen formula: screen_from_top = (8.24° − atan((apexY−4)/D)) / 22°
-    //   apexY=12.5 → atan(8.5/105.5)=4.61° → 17.0% (left-main, tallest)
-    //   apexY=12.0 → atan(8.0/105.5)=4.34° → 17.7% (right-main)
-    //   apexY=11.5 → atan(7.5/105.5)=4.07° → 19.0% (left-outer)
-    //   apexY=11.0 → atan(7.0/105.5)=3.80° → 20.2% (right-outer)
-    //   apexY=10.5 → atan(6.5/105.5)=3.52° → 21.5% (center, shorter for castle valley)
-    // Back row (z=−115, D=130.5m, color 0x8ad030, renderOrder=−38.5): 4 smaller peaks that
-    //   peek between front peaks. apexY 9.5-10.0 → screen 25.5-26.5% (just above wash at 29%).
+    //   apexY=11.5 → atan(7.5/105.5)=4.07° → 19.0% (left-main, tallest)
+    //   apexY=11.0 → atan(7.0/105.5)=3.80° → 20.2% (right-main)
+    //   apexY=10.5 → atan(6.5/105.5)=3.52° → 21.5% (left-outer)
+    //   apexY=9.5  → atan(5.5/105.5)=2.98° → 23.7% (center, shorter for castle valley)
+    //   apexY=10.0 → atan(6.0/105.5)=3.25° → 22.7% (right-outer)
+    // Back row (z=−115, D=130.5m): apex 0x8ad030, base 0x4a9018, renderOrder=−38.5.
+    //   Peek between front peaks at 25-26.5% (above wash 29%), creating mountain range depth.
     {
       const BASE_Y = 4.0;
 
-      const makeTriangle = (px, apexY, r, z, color, order) => {
+      const makeTriangleGradient = (px, apexY, r, z, apexHex, baseHex, order) => {
         const verts = new Float32Array([
           px - r, BASE_Y, z,
           px + r, BASE_Y, z,
           px,     apexY,  z,
         ]);
+        const base = new THREE.Color(baseHex);
+        const apex = new THREE.Color(apexHex);
+        const cols = new Float32Array([
+          base.r, base.g, base.b,  // v0 left-base
+          base.r, base.g, base.b,  // v1 right-base
+          apex.r, apex.g, apex.b,  // v2 apex
+        ]);
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+        geo.setAttribute('color',    new THREE.BufferAttribute(cols,  3));
         const mat = new THREE.MeshBasicMaterial({
-          color,
+          vertexColors: true,
           side: THREE.DoubleSide,
           depthTest: false,
           depthWrite: false,
@@ -680,23 +689,21 @@ export class ThreeEnvironmentManager {
         return tri;
       };
 
-      // Front row: 5 peaks with varied heights and widths.
+      // Front row: 5 peaks, peaks lowered 1m vs M102.
       const FRONT = [
-        { px: -26, apexY: 11.5, r: 6.5 },  // left outer  → 19.0%
-        { px: -13, apexY: 12.5, r: 5.0 },  // left main   → 17.0% (tallest)
-        { px:   0, apexY: 10.5, r: 5.0 },  // center      → 21.5% (shorter, keeps castle valley)
-        { px:  13, apexY: 12.0, r: 5.5 },  // right main  → 17.7%
-        { px:  26, apexY: 11.0, r: 6.0 },  // right outer → 20.2%
+        { px: -26, apexY: 10.5, r: 6.5 },  // left outer  → 21.5%
+        { px: -13, apexY: 11.5, r: 5.0 },  // left main   → 19.0% (tallest)
+        { px:   0, apexY:  9.5, r: 5.0 },  // center      → 23.7% (castle valley)
+        { px:  13, apexY: 11.0, r: 5.5 },  // right main  → 20.2%
+        { px:  26, apexY: 10.0, r: 6.0 },  // right outer → 22.7%
       ];
       for (const { px, apexY, r } of FRONT) {
-        const tri = makeTriangle(px, apexY, r, -90, 0xb4ff38, -38);
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0x64be20, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
 
-      // Back row: 4 smaller peaks between front peaks, darker green, behind front row.
-      // Centered in the sky gaps: x=−19.5 (between −26/−13), −6.5 (between −13/0),
-      // +6.5 (between 0/+13), +19.5 (between +13/+26).
+      // Back row: 4 smaller peaks between front peaks, darker palette.
       const BACK = [
         { px: -19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
         { px:  -6.5, apexY: 10.0, r: 4.5 },  // → 25.5%
@@ -704,7 +711,7 @@ export class ThreeEnvironmentManager {
         { px:  19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
       ];
       for (const { px, apexY, r } of BACK) {
-        const tri = makeTriangle(px, apexY, r, -115, 0x8ad030, -38.5);
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x8ad030, 0x4a9018, -38.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
@@ -735,9 +742,10 @@ export class ThreeEnvironmentManager {
     // Horizon bridge — fills behind the forest canopy.
     // M99: y_center -4.4→-3.0. Top = -3+7=4.0m → elev=atan(0/64.5)=0° → screen 37.5%.
     // Aligns with raised forest top so bridge fills behind tree canopy from 37.5% down.
+    // M103: Bridge colour matches wash (0x64be20) — continuous dark mountain body tone.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x90ee38, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -3.0, -49);
