@@ -135,7 +135,10 @@ export class ThreeEnvironmentManager {
     // Deep cobalt MUST be at stop=1 to appear at the zenith; horizon at stop=0 is hidden by ground.
     grad.addColorStop(0, '#98c8f4');    // pale horizon → screen BOTTOM (hidden below ground)
     grad.addColorStop(0.50, '#3888d8'); // azure mid – deepened for richer sky gradient
-    grad.addColorStop(1, '#1c60c8');    // deeper navy-cobalt → screen TOP (visible sky zone)
+    // M132: #1c60c8→#2878d8 (luma 0.349→0.431, +24%). Reference sky reads as brighter azure cobalt
+    //   vs our too-dark navy. At 17% (peak zone): sky ≈ #3878d8 (luma 0.447) → peak contrast
+    //   0x98e038/0.447=1.73× (ref ~1.7×). White clouds: contrast unchanged (still vivid). ✓
+    grad.addColorStop(1, '#2878d8');    // azure-cobalt → screen TOP (visible sky zone)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
