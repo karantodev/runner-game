@@ -582,7 +582,7 @@ export class ThreeEnvironmentManager {
       // Tints pushed to vivid saturated lime-green matching reference's bright mountain peaks.
       // scaleY +0.04 across all layers: far top 6.3→7.0m (body fills down from 29% not 32%),
       // giving each layer a slightly more prominent valley-fill against the deeper sky.
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4f040, true, 0.12, 0.50],
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0xb4ff38, true, 0.12, 0.50],
       [ASSETS.mountainsMid,  80, 24, 4.0, 0x96e038, true, 0.44, 0.46],
       [ASSETS.mountainsNear, 62, 20, 3.5, 0x80d030, true, 0.72, 0.42],
     ];
@@ -638,12 +638,10 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // Mountain plane y 7.5→6.0: plane spans y=−2.0..14.0m.
-      // v=0.75 (peak tips) maps to world y=−2.0+16×0.75=10.0m → elevation atan(6.0/80.5)=4.26°
-      // → 7.02° above cam forward → screen 18% from top.
-      // 0–18% shows clean cobalt sky; peaks emerge at 18%, matching reference ~20% sky zone.
-      // Castle turrets at 9% → 9% clear above mountain ridge = classic "castle over valley" read.
-      [ASSETS.mountainsFar, -65, 6.0, 170, 16, 0xb4f040, -38],
+      // Mountain plane z=-65→z=-58, y=6.0→5.5: keep peaks at 18% from screen top.
+      // D=73.5m (was 80.5m): mountain texture 10% taller on screen, peak triangles more distinct.
+      // Tint 0xb4f040→0xb4ff38: G channel maxed for richer lime-green matching reference vibrancy.
+      [ASSETS.mountainsFar, -58, 5.5, 170, 16, 0xb4ff38, -38],
       // Forest silhouette y 1.2→0.0: canopy tops (v≈0.85) at y=4.2m → screen 36.7% from top.
       // Clean mountain zone 18–36.7% (was 18–25.8%); matches reference's ~12% clean peak zone.
       [ASSETS.forest, -56, 0.0, 140, 12, 0x78cc34, -37],
@@ -654,7 +652,7 @@ export class ThreeEnvironmentManager {
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
       // Horizon bridge tint updated to match the new vivid mountain greens (was 0x78cc34).
-      new THREE.MeshBasicMaterial({ color: 0x88d840, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x90ee38, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -0.5, -49);
