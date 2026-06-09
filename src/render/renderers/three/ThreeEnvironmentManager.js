@@ -750,7 +750,10 @@ export class ThreeEnvironmentManager {
     })();
     const forestMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 12),
-      new THREE.MeshBasicMaterial({ map: forTex, color: 0x78cc34, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
+      // M113: tint 0x78cc34→0x3a8010. Far silhouette background pixels (transparent areas in
+      // backdrop panels) must match the dark mountain body so the forest zone reads as one
+      // continuous dark band rather than showing lime-green between the canopy trees.
+      new THREE.MeshBasicMaterial({ map: forTex, color: 0x3a8010, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
     );
     forestMesh.name = `far-silhouette:${ASSETS.forest}`;
     // M99: y_center -3.5→-2.0. Top = -2+6=4.0m → elev=0° → screen 37.5%.
