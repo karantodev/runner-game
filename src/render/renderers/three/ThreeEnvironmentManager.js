@@ -744,25 +744,24 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.cloudGroup = group;
 
+    // CAP=10 spread linearly across full sky width (x: -17 to +17m).
+    // Prior ring placement (theta=PI*1.5 ±0.5 rad) clustered clouds; some fell outside the
+    // ±19° horizontal half-FOV at their respective radii, leaving large gaps.
+    // Linear sector distribution guarantees even coverage: at D≈65m, ±17m ≈ ±14.6° < 19° FOV.
     const CAP = 10;
-    // scale 0.72–1.2: base 7.5×4.5 → each cloud 10–18% screen width.
-    // yBase 14→11: clouds were above the camera frame (y=14 at D=55m → -9% off-screen top).
-    // At yBase=11: center at D=55m → 4%, D=80m → 15% from top; bottom (y≈9.4m) → 12%.
-    // Mountains at 18% → 6% clear gap below cloud bottoms. Prominently visible in sky zone.
-    // Height jitter ±2m stays within 11–13m.
-    const rBase = 55;
+    // z=-55 to -65: at y=11–13m all clouds land 4–15% from screen top (sky zone 0–18%).
+    // Scale 0.80–1.30 on 9×5.5 base → each cloud ~20–35% screen width; naturally overlapping.
     const yBase = 11;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // ±0.5 rad (±28.6°) keeps all 10 clouds within the ±19° visible FOV with slight overhang.
-      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.0;
-      const radius = rBase + r * 25;
-      const x = Math.cos(theta) * radius;
-      const z = Math.sin(theta) * radius;
+      // Evenly-spaced sectors: 0.05 → 0.95 (symmetric), with small jitter so clouds don't look gridded.
+      const sector = (i + 0.5) / CAP;
+      const x = (sector - 0.5) * 34 + (prand(i * 3.1 + 2) - 0.5) * 4;
+      const z = -55 - r * 10;  // z: -55 to -65
       const h = yBase + prand(i * 7.7 + 3) * 2;
       const asset = r > 0.65 ? ASSETS.cloudLarge : r > 0.3 ? ASSETS.cloudMedium : ASSETS.cloudSmall;
-      // 0.72–1.2 range: 25% larger than prior 0.6–1.05, matching reference's fluffy puff size.
-      const scale = 0.72 + prand(i * 11.1 + 4) * 0.48;
+      // 0.80–1.30 range on 9×5.5 base: each cloud 20–35% of screen width, matching reference prominence.
+      const scale = 0.80 + prand(i * 11.1 + 4) * 0.50;
       // Billboard sprite always faces camera, visible from any orbit angle
       const mat = new THREE.SpriteMaterial({
         map: this.textureCache.get(asset),
@@ -773,8 +772,8 @@ export class ThreeEnvironmentManager {
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      // 7.5×4.5 world-unit base; at scale 0.72–1.2 each cloud is 10–18% of screen width
-      sprite.scale.set(7.5 * scale, 4.5 * scale, 1);
+      // 9×5.5 world-unit base (was 7.5×4.5); at scale 0.80–1.30 each cloud is 20–35% screen width
+      sprite.scale.set(9 * scale, 5.5 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
       group.add(sprite);
