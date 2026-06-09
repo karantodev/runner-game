@@ -362,14 +362,13 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // y raised 2.2→4.0, h 5.2→8.0: sprite tops reach y=8.0 at D=63.5m.
-    // atan((8.0-4.0)/63.5) = 3.60° above horiz; +2.76° cam tilt = 6.36° above cam forward.
-    // Screen = (11°-6.36°)/22° ≈ 21% from top — aligns tree tops with mountain peaks,
-    // creating a clean treeline horizon with sky band above it matching the reference.
-    add(ASSETS.forest, -15, 4.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 4.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
-    // Centre panel slightly lower for depth layering (tops at ~29% from screen top)
-    add(ASSETS.forest,   0, 3.0, -52, 32, 6.5, { opacity: 0.94, renderOrder: -35 });
+    // Far mountain plane now shows peaks at 22% from screen top; backdrop forest sits BELOW
+    // at ~32% (y=2.0, top=y+h/2=5.0 → atan((5.0-4.0)/63.5)=0.90°+2.76°=3.66° → 33%).
+    // This matches the reference: sky 0-22%, mountain peaks 22-30%, treeline/forest 30-45%.
+    add(ASSETS.forest, -15, 2.0, -48, 36, 6.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 2.0, -48, 36, 6.0, { opacity: 0.96, renderOrder: -35 });
+    // Centre panel slightly behind for depth layering
+    add(ASSETS.forest,   0, 1.8, -52, 32, 5.5, { opacity: 0.94, renderOrder: -35 });
 
     // y raised 4.8→6.5: castle center shifts from 34% to ~26% from screen top, placing the
     // turrets near the sky/mountain boundary and matching the reference vanishing-point position.
@@ -629,11 +628,14 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // y lowered 8.0→6.5→5.2: each step shifts mountain peaks ~4-6% lower on screen,
-      // opening the bright-sky zone at top toward reference's ~20%.
-      // At y=5.2, z=-65 (D=80.5m): peaks at v≈0.65 → world y≈9.1 → 19.5% from screen top.
-      [ASSETS.mountainsFar, -65, 5.2, 170, 30, 0x70c838, -38],
-      [ASSETS.forest, -56, 2.5, 140, 12, 0x60a828, -37],
+      // Mountain plane height 30→16, y 5.2→4.8:
+      // Plane spans y=−3.2..12.8. Camera top ray at y≈15.65 → plane top visible at ~9% from top.
+      // v=0.75 (mountain peak tips) maps to world y=−3.2+16×0.75=8.8m → elevation 3.40° above
+      // horiz → 6.16° above cam forward → screen 22% from top.
+      // So 0–22% shows open sky; mountain triangular peaks start at 22%.
+      [ASSETS.mountainsFar, -65, 4.8, 170, 16, 0x70c838, -38],
+      // Forest plane top moved from 21%→28% (y 2.5→0.6) so treeline sits BELOW mountain peaks.
+      [ASSETS.forest, -56, 0.6, 140, 12, 0x60a828, -37],
     ];
     // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
     const bridge = new THREE.Mesh(
