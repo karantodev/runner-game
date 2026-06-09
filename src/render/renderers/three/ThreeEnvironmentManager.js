@@ -370,10 +370,10 @@ export class ThreeEnvironmentManager {
     // Centre panel tops at 29% too — continuous green backdrop behind castle from 29% down
     add(ASSETS.forest,   0, 2.5, -52, 32, 7.0, { opacity: 0.94, renderOrder: -35 });
 
-    // 11×12 @ y=6.5 put turrets at 0.5% from top (too dominant).
-    // 8×7 @ y=5.0: top=y+3.5=8.5 → atan(4.5/59.5)=4.33° → screen 17.8% from top.
-    // Castle center at 33%, base at 48% — compact landmark at vanishing point matching reference.
-    const castle = add(ASSETS.castle, 0, 5.0, -44, 8.0, 7.0, { opacity: 1.0, renderOrder: -10 });
+    // Raised y 5.0→7.0: top=10.5m → atan(6.5/59.5)=6.24° → screen 9.1% from top.
+    // Mountain peaks at 13% (after M68 silhouette raise), castle turrets at 9% → castle
+    // peeks 4% above mountain ridge matching reference's "castle in the valley" framing.
+    const castle = add(ASSETS.castle, 0, 7.0, -44, 8.0, 7.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
@@ -630,12 +630,12 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // Mountain plane height 30→16, y 5.2→4.8:
-      // Plane spans y=−3.2..12.8. Camera top ray at y≈15.65 → plane top visible at ~9% from top.
-      // v=0.75 (mountain peak tips) maps to world y=−3.2+16×0.75=8.8m → elevation 3.40° above
-      // horiz → 6.16° above cam forward → screen 22% from top.
-      // So 0–22% shows open sky; mountain triangular peaks start at 22%.
-      [ASSETS.mountainsFar, -65, 4.8, 170, 16, 0x98e840, -38],
+      // Mountain plane y 4.8→7.5: plane now spans y=−0.5..15.5m.
+      // v=0.75 (peak tips) maps to world y=−0.5+16×0.75=11.5m → elevation 5.32° above horiz
+      // → 8.08° above cam forward → screen 13% from top.
+      // 0–13% shows clean sky; mountain peaks emerge at 13%, matching reference proportions.
+      // Transparent sky area of texture (v>0.75, y>11.5m) keeps 0–13% open.
+      [ASSETS.mountainsFar, -65, 7.5, 170, 16, 0x98e840, -38],
       // Forest plane top at y=0.6 → 28% from screen top, below mountain peaks.
       [ASSETS.forest, -56, 0.6, 140, 12, 0x68b82e, -37],
     ];
