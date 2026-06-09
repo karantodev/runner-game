@@ -79,7 +79,10 @@ export class ThreePostProcessingManager {
     this.ssaoPass.output = SSAOPass.OUTPUT.Default;
     composer.addPass(this.ssaoPass);
 
-    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), this.bloomBase, 0.3, 0.98);
+    // M143: threshold 0.98→1.2 — warm directional lights (2.8 intensity) brought
+    // bright gold collectible sprites into bloom range at 0.98, washing out the road.
+    // 1.2 only blooms near-pure-white HDR pixels (specular highlights, bright sky).
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), this.bloomBase, 0.3, 1.2);
     composer.addPass(this.bloomPass);
 
     this.vignettePass = new ShaderPass(VignetteShader);
