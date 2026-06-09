@@ -370,9 +370,10 @@ export class ThreeEnvironmentManager {
     // Centre panel slightly behind for depth layering
     add(ASSETS.forest,   0, 1.8, -52, 32, 5.5, { opacity: 0.94, renderOrder: -35 });
 
-    // y raised 4.8→6.5: castle center shifts from 34% to ~26% from screen top, placing the
-    // turrets near the sky/mountain boundary and matching the reference vanishing-point position.
-    const castle = add(ASSETS.castle, 0, 6.5, -44, 11.0, 12.0, { opacity: 1.0, renderOrder: -10 });
+    // 11×12 @ y=6.5 put turrets at 0.5% from top (too dominant).
+    // 8×7 @ y=5.0: top=y+3.5=8.5 → atan(4.5/59.5)=4.33° → screen 17.8% from top.
+    // Castle center at 33%, base at 48% — compact landmark at vanishing point matching reference.
+    const castle = add(ASSETS.castle, 0, 5.0, -44, 8.0, 7.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
