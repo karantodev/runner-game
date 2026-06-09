@@ -367,7 +367,9 @@ export class ThreeEnvironmentManager {
     add(ASSETS.forest,  17, 2.2, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
     add(ASSETS.forest,   0, 2.0, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
 
-    const castle = add(ASSETS.castle, 0, 4.8, -44, 13.0, 13.0, { opacity: 1.0, renderOrder: -10 });
+    // y raised 4.8→6.5: castle center shifts from 34% to ~26% from screen top, placing the
+    // turrets near the sky/mountain boundary and matching the reference vanishing-point position.
+    const castle = add(ASSETS.castle, 0, 6.5, -44, 11.0, 12.0, { opacity: 1.0, renderOrder: -10 });
     castle.material.fog = false;
   }
 
