@@ -572,9 +572,10 @@ export class ThreeEnvironmentManager {
       // Near: top at y=3.8m (below camera) → screen 26% — defines sky/mountain boundary.
       // Mid: top at y=5.0m → screen 12% — mid peaks visible in sky gap above near.
       // Far: top at y=6.3m → screen 9% — distant peaks just below sky top.
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0x70c838, true, 0.12, 0.45],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0x58b028, true, 0.44, 0.42],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x469820, true, 0.72, 0.38],
+      // Tints brightened toward reference's vivid lime-green: 0x70c838→0x98e840 (+35% R, +17% G)
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0x98e840, true, 0.12, 0.45],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0x78cc34, true, 0.44, 0.42],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x64b82c, true, 0.72, 0.38],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -633,17 +634,19 @@ export class ThreeEnvironmentManager {
       // v=0.75 (mountain peak tips) maps to world y=−3.2+16×0.75=8.8m → elevation 3.40° above
       // horiz → 6.16° above cam forward → screen 22% from top.
       // So 0–22% shows open sky; mountain triangular peaks start at 22%.
-      [ASSETS.mountainsFar, -65, 4.8, 170, 16, 0x70c838, -38],
-      // Forest plane top moved from 21%→28% (y 2.5→0.6) so treeline sits BELOW mountain peaks.
-      [ASSETS.forest, -56, 0.6, 140, 12, 0x60a828, -37],
+      [ASSETS.mountainsFar, -65, 4.8, 170, 16, 0x98e840, -38],
+      // Forest plane top at y=0.6 → 28% from screen top, below mountain peaks.
+      [ASSETS.forest, -56, 0.6, 140, 12, 0x68b82e, -37],
     ];
-    // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
+    // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
+    // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
+    // rather than painting over the sparse-peak zone and creating a solid-green band artefact.
     const bridge = new THREE.Mesh(
-      new THREE.PlaneGeometry(220, 12),
-      new THREE.MeshBasicMaterial({ color: 0x62b836, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.PlaneGeometry(220, 14),
+      new THREE.MeshBasicMaterial({ color: 0x78cc34, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, 1.5, -49);
+    bridge.position.set(0, -0.5, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
