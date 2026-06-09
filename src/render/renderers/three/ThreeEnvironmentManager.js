@@ -641,24 +641,24 @@ export class ThreeEnvironmentManager {
       // Mountain plane z=-65→z=-58, y=6.0→5.5: keep peaks at 18% from screen top.
       // D=73.5m (was 80.5m): mountain texture 10% taller on screen, peak triangles more distinct.
       // Tint 0xb4f040→0xb4ff38: G channel maxed for richer lime-green matching reference vibrancy.
-      // z=-46, y 3.1→0.3: texture analysis shows v_peak≈0.875 (peaks are near image-top).
-      // y_peak = 0.3+22*(0.875-0.5) = 0.3+8.25 = 8.55m → screen (11-(4.23+2.76))/22 = 18% ✓
-      // At y=3.1 peaks appeared at ~8% (almost no sky); 0.3 gives 18% sky zone matching reference.
-      [ASSETS.mountainsFar, -46, 0.3, 170, 22, 0xb4ff38, -38],
-      // Forest silhouette y 0.0→-2.0: plane top drops from 30.2% to 37.5% from screen top.
-      // Mountain shows 18% (peaks) to 37.5% (forest top) = 19.5% clear mountain window.
-      // Top exactly aligns with bridge top (y=-3.0+7=4.0m = y=-2.0+6=4.0m). ✓
-      [ASSETS.forest, -56, -2.0, 140, 12, 0x78cc34, -37],
+      // y 0.3→-0.6: y_peak = -0.6+22*(0.875-0.5) = -0.6+8.25 = 7.65m
+      // screen = (8.24 - atan(3.65/61.5)*57.3) / 22 = (8.24-3.40)/22 = 22% (was 18%).
+      // Expanding sky zone from 18% to 22% to better match reference's ~20% clear sky band.
+      [ASSETS.mountainsFar, -46, -0.6, 170, 22, 0xb4ff38, -38],
+      // y -2.0→-3.5: top drops from 37.5% to 43% from screen top.
+      // Mountain window widens: 22–43% = 21% (was 18–37.5% = 19.5%).
+      // Reference forest line starts at ~42–43%, matching this value.
+      [ASSETS.forest, -56, -3.5, 140, 12, 0x78cc34, -37],
     ];
     // Horizon bridge — fills below the mountain zone.
-    // y -0.5→-3.0: top drops from 27% to 37.5% screen, no longer blocking mountain peaks.
-    // Mountains show prominently 18–36.7% before the bridge takes over at 37.5%.
+    // y -3.0→-4.4: top at y=-4.4+7=2.6m → screen (8.24-atan(-1.4/64.5)*57.3)/22 = 43.8%.
+    // Matches forest silhouette top (43%) to avoid gap between bridge and forest layer.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
       new THREE.MeshBasicMaterial({ color: 0x90ee38, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, -3.0, -49);
+    bridge.position.set(0, -4.4, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
