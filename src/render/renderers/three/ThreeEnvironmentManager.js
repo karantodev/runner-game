@@ -204,10 +204,11 @@ export class ThreeEnvironmentManager {
     this.roadGroup = roadGroup;
 
     const roadGeo = new THREE.BoxGeometry(5.45, 0.09, 98);
-    applyDepthGradientColors(roadGeo, 0xc8d6ad, 0xffffff);
+    // Gradient from vibrant near-green to light-green far (not white) to match reference's bright corridor
+    applyDepthGradientColors(roadGeo, 0x80b838, 0xc0e870);
     const road = new THREE.Mesh(
       roadGeo,
-      new THREE.MeshStandardMaterial({ color: 0xd8edbe, map: this.buildGrassTexture('road', 3, 55), roughness: 0.92, metalness: 0, vertexColors: true }),
+      new THREE.MeshStandardMaterial({ color: 0x98cc48, map: this.buildGrassTexture('road', 3, 55), roughness: 0.92, metalness: 0, vertexColors: true }),
     );
     road.name = 'road';
     road.position.set(0, -0.08, -31);
@@ -240,8 +241,8 @@ export class ThreeEnvironmentManager {
     const tileInstMesh = new THREE.InstancedMesh(tileGeo, tileMat, tileCount);
     tileInstMesh.name = 'instanced-road-tiles';
     const tileMatrix = new THREE.Matrix4();
-    const colorA = new THREE.Color(0xeaf6d8);
-    const colorB = new THREE.Color(0xa9d189);
+    const colorA = new THREE.Color(0xc8f060);
+    const colorB = new THREE.Color(0x88c040);
     let tileIdx = 0;
     for (let z = 4; z > -78; z -= 1.2) {
       for (const x of tileXPositions) {
