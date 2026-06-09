@@ -104,7 +104,9 @@ export class ThreeEnvironmentManager {
   build() {
     this.skyGradientTex = this.buildSkyGradient();
     this.scene.background = this.skyGradientTex;
-    this.scene.fog = new THREE.FogExp2(HAZE_COLOR, 0.003);
+    // 0.003 → 0.002: backdrop forest at D=63m was 17% fog-blended toward haze (too muted);
+    // 0.002 reduces that to 12% while keeping near-field (<30m) fog under 6% (imperceptible).
+    this.scene.fog = new THREE.FogExp2(HAZE_COLOR, 0.002);
 
     this.buildEnvironment();
     this.buildCameras();
@@ -730,8 +732,9 @@ export class ThreeEnvironmentManager {
     const yBase = 14;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // Distribute clouds in ±40° sector so 5–6 are always in the narrow ±19° FOV
-      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.4;
+      // ±0.5 rad (±28.6°) keeps all 10 clouds within the ±19° visible FOV with slight overhang;
+      // was ±40° which pushed several clouds far off to the sides (wasted and bunched leftward).
+      const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.0;
       const radius = rBase + r * 25;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
