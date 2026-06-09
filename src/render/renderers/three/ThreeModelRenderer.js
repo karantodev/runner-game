@@ -412,6 +412,26 @@ export class ThreeModelRenderer {
   #getCanvas(kind, options) {
     const key = stableKey(kind, options);
     if (this.cache.has(key)) return this.cache.get(key);
+
+    // vineBarrier: use actual sprite rather than procedural geometry.
+    // The game preloads all assets before first render, so the PNG is already in
+    // the browser HTTP cache when this runs — new Image() + same URL → complete=true.
+    if (kind === 'vineBarrier') {
+      const img = new Image();
+      img.src = './assets/obstacles/vines/vine_barrier_full.png';
+      if (img.complete && img.naturalWidth > 0) {
+        const out = document.createElement('canvas');
+        out.width = img.naturalWidth;
+        out.height = img.naturalHeight;
+        out.getContext('2d').drawImage(img, 0, 0);
+        this.cache.set(key, out);
+        return out;
+      }
+      // Image not in cache yet — bust after load so next draw picks up the sprite
+      img.addEventListener('load', () => this.cache.delete(key), { once: true });
+      // fall through to procedural version for this frame
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = RENDER_SIZE;
     canvas.height = RENDER_SIZE;
