@@ -780,12 +780,13 @@ export class ThreeEnvironmentManager {
       return t;
     })();
     // M123: mid-body forest-texture plane at renderOrder=-38.9 (after wash -39, before peaks -38).
-    // Adds visible canopy detail to the upper mountain body zone (30-39% from screen top).
-    // Plane center y=2.0m, h=8.0m, z=-60 (D=75.5m from camera):
-    //   top y=6.0m → screen 30.6%; canopy bumps v=0.85 at y=4.8m → screen 34.7%.
+    // Adds visible canopy detail to the upper mountain body zone.
     // Tint 0x7cb430 = (124,180,48): canopy result luma=0.508 vs wash 0.412 → 1.23× (23%
     //   brighter). Distinct round tree shapes clearly read against body — matches reference's
     //   visible tree silhouettes throughout the upper mountain body.
+    // M124: y 2.0→2.5m, h 8→10m. Top y=6.5m (D=75.5m): screen 28.8% → closes flat-dark
+    //   strip between peak base (28%) and mid-body top (was 30.6%). h=10m adds coverage
+    //   without risk: backdrop panels (-35) cover the extra bottom portion.
     const midBodyTex = (() => {
       const base = this.textureCache.get(ASSETS.forest);
       const t = base.clone();
@@ -795,11 +796,11 @@ export class ThreeEnvironmentManager {
       return t;
     })();
     const midBodyMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(160, 8),
+      new THREE.PlaneGeometry(160, 10),
       new THREE.MeshBasicMaterial({ map: midBodyTex, color: 0x7cb430, transparent: true, alphaTest: 0.5, depthTest: false, depthWrite: false, fog: false }),
     );
     midBodyMesh.name = 'mid-body-forest';
-    midBodyMesh.position.set(0, 2.0, -60);
+    midBodyMesh.position.set(0, 2.5, -60);
     midBodyMesh.renderOrder = -38.9;
     midBodyMesh.frustumCulled = false;
     group.add(midBodyMesh);
