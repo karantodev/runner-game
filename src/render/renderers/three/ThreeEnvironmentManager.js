@@ -652,9 +652,13 @@ export class ThreeEnvironmentManager {
     // M112: height 24→22, center y -5.0→-4.7 → top moves 7.0m (25%) → 6.3m (28.0%).
     //   D=62.5m: atan((6.3-4)/62.5)=2.11° → screen=(8.24-2.11)/22=27.9%.
     //   Reference body starts at ~28%; full triangular peak shape (19-28%) now visible against sky.
+    // M125: 0x3a8010→0x4a9010 (luma 0.412→0.470, +14%). Reference mountain body reads as
+    //   medium-dark green vs our too-dark 0x3a8010. Back peaks stay 0x3a8010 (12% darker =
+    //   subtle shadowed distant ridges). Silhouette stays 0x3a8010 (27% darker = better
+    //   dark-fill contrast between backdrop canopy trees).
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 22),
-      new THREE.MeshBasicMaterial({ color: 0x3a8010, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x4a9010, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -4.7, -47);
@@ -739,7 +743,9 @@ export class ThreeEnvironmentManager {
         //   Luminance contrast: 0x80d430 luma≈174 / 0x3a8010 luma≈98 = 1.78× (matches ref ~1.7×).
         // M119: apex 0x80d430→0x98e038. Reference peaks are electric lime; 0x80d430 reads muted.
         //   (152,224,56) luma=0.772 → contrast 1.87× (up from 1.74×). Same lime hue, more vivid.
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0x98e038, 0x3a8010, -38);
+        // M125: base 0x3a8010→0x4a9010. Matches lightened wash → seamless peak→body transition.
+        //   apex/base contrast: 0.772/0.470=1.64× (was 1.87×; ref ~1.7×). Still vivid. ✓
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0x98e038, 0x4a9010, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
@@ -797,7 +803,9 @@ export class ThreeEnvironmentManager {
     })();
     const midBodyMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 10),
-      new THREE.MeshBasicMaterial({ map: midBodyTex, color: 0x7cb430, transparent: true, alphaTest: 0.5, depthTest: false, depthWrite: false, fog: false }),
+      // M125: tint 0x7cb430→0x98cc40. New wash luma=0.470; 0x98cc40 → canopy luma=0.583 = 1.24×
+      //   wash (maintains ~24% contrast; was 0.508/0.412=1.23×). Tree shapes stay equally vivid.
+      new THREE.MeshBasicMaterial({ map: midBodyTex, color: 0x98cc40, transparent: true, alphaTest: 0.5, depthTest: false, depthWrite: false, fog: false }),
     );
     midBodyMesh.name = 'mid-body-forest';
     midBodyMesh.position.set(0, 2.5, -60);
@@ -834,9 +842,10 @@ export class ThreeEnvironmentManager {
     // Aligns with raised forest top so bridge fills behind tree canopy from 37.5% down.
     // M103: Bridge colour matches wash — continuous mountain body tone.
     // M108: 0x64be20→0x7ccc2c. M111: 0x7ccc2c→0x3a8010 to match darkened wash/body.
+    // M125: 0x3a8010→0x4a9010. Matches lightened wash for continuous body tone. ✓
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x3a8010, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x4a9010, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -3.0, -49);
