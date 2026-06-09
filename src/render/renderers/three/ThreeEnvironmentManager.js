@@ -635,10 +635,11 @@ export class ThreeEnvironmentManager {
     // gradient fade from bright apex → dark body → dark wash reads as one mountain mass.
     // M107: height 22→24, center y -4.5→-5.0 → top moves from y=6.5 (27.0%) to y=7.0 (25.0%).
     // D=62.5m (z=-47): atan((7-4)/62.5)=2.75° → screen=(8.24-2.75)/22=24.95%.
-    // Sky-wedge gaps between peaks now only in 19-25% band; mountain body 25-44.7% = 19.7%.
+    // M108: colour 0x64be20→0x7ccc2c (brighter lime). Matches peak base so transition stays seamless.
+    // Reference mountain body is a vivid lime-green, not dark — brightened to match.
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 24),
-      new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x7ccc2c, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -5.0, -47);
@@ -705,7 +706,8 @@ export class ThreeEnvironmentManager {
         { px:  38, apexY: 11.5, r: 9.0 },  // flanking right → apex at screen edge
       ];
       for (const { px, apexY, r } of FRONT) {
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0x64be20, -38);
+        // M108: base 0x64be20→0x7ccc2c to match brightened wash (seamless gradient).
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0x7ccc2c, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
@@ -752,10 +754,11 @@ export class ThreeEnvironmentManager {
     // Horizon bridge — fills behind the forest canopy.
     // M99: y_center -4.4→-3.0. Top = -3+7=4.0m → elev=atan(0/64.5)=0° → screen 37.5%.
     // Aligns with raised forest top so bridge fills behind tree canopy from 37.5% down.
-    // M103: Bridge colour matches wash (0x64be20) — continuous dark mountain body tone.
+    // M103: Bridge colour matches wash — continuous mountain body tone.
+    // M108: 0x64be20→0x7ccc2c to match brightened wash.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x7ccc2c, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -3.0, -49);
