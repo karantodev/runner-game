@@ -76,15 +76,15 @@ export class BackgroundRenderer {
     // castle's center. Wider far (+130 → +220) means the visible portion
     // is offset by half a peak; mid widened too. This prevents a mountain
     // peak from sitting directly behind / under the castle silhouette.
-    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 32, width + 220, MOUNTAIN_SCROLL_FACTOR.far * parallaxScale, scroll, 0.42, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.far) : 'none');
-    this.#drawMountainLayer(['backgroundMountainsMid'], p.horizonY + 8, width + 180, MOUNTAIN_SCROLL_FACTOR.mid * parallaxScale, scroll, 0.68, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mid) : 'none');
+    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 32, width + 220, MOUNTAIN_SCROLL_FACTOR.far * parallaxScale, scroll, 0.78, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.far) : 'none');
+    this.#drawMountainLayer(['backgroundMountainsMid'], p.horizonY + 8, width + 180, MOUNTAIN_SCROLL_FACTOR.mid * parallaxScale, scroll, 0.88, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mid) : 'none');
 
     // The only atmospheric transition over the mountains. Its transparent
     // endpoints and low peak alpha make the horizon soft without a fog bar.
     this.ctx.fillStyle = this.gradients.gradients.horizonVeil;
     this.ctx.fillRect(0, p.horizonY - 54, width, p.roadVanishY - p.horizonY + 186);
 
-    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.90, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
+    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 28, width + 140, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.95, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
 
     // v4.18 — replace the spiky horizon treelines with a soft compressed
     // forest band. This restores vegetation behind the road without the

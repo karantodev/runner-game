@@ -624,6 +624,14 @@ export class SceneryRenderer {
     // wall; widen the recede window (10 → 16) and fade harder (0.82 → 0.68)
     // so the treeline drops back as background mass.
     if (pos.distance < 16 && (assetType === 'tree_round' || assetType === 'purple_flower_single' || assetType === 'mushroom_red_big')) alpha *= 0.68;
+    // M141 — render-only near-start fade for NATURE-band trees. At the very
+    // start of a run (world.distanceRun < 50m) the tree wall dominates the
+    // frame. Fade in over the first 50m so trees reveal from nothing at 0m
+    // and reach full alpha at 50m. Only NATURE band; does not touch any
+    // placement or spawn data, so composition tests are unaffected.
+    if (scenic.laneBand === LANE_BANDS.NATURE && world.distanceRun < 50) {
+      alpha *= Math.max(0, world.distanceRun / 50);
+    }
     if (alpha <= 0.03) { this.metrics?.countSceneryCulled(); return; }
 
     // v4.0 — scatterFlip applies to non-structural shoulder flora only.

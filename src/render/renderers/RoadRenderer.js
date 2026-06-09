@@ -195,6 +195,16 @@ export class RoadRenderer {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+
+    // Atmospheric depth: ground lightens toward the horizon (distance cue).
+    // The near-camera area stays dark/rich; only the top ~45% brightens.
+    const atmH = (height - startY) * 0.48;
+    const atm = ctx.createLinearGradient(0, startY, 0, startY + atmH);
+    atm.addColorStop(0,    'rgba(185, 235, 140, 0.72)');
+    atm.addColorStop(0.42, 'rgba(148, 210, 108, 0.36)');
+    atm.addColorStop(1,    'rgba(0,   0,   0,   0)');
+    ctx.fillStyle = atm;
+    ctx.fillRect(0, startY, width, atmH);
   }
 
   /**
@@ -218,10 +228,13 @@ export class RoadRenderer {
     // through and the road reads as a garden path, not a separate bright
     // carpet; road readability is carried by the cream edge lines, lane
     // dividers, rungs, and shoulder strips, so this low-contrast fill is safe.
+    // M141 — boost pathFill toward the reference's vivid saturated green lane.
+    // Brighter/more saturated stops + slightly higher alpha so the road reads
+    // clearly as a lighter, warmer green corridor vs the darker surrounding field.
     const pathFill = ctx.createLinearGradient(0, vpY, 0, p.groundY);
-    pathFill.addColorStop(0, 'rgba(132,186,84,0.15)');
-    pathFill.addColorStop(0.58, 'rgba(110,160,70,0.24)');
-    pathFill.addColorStop(1, 'rgba(88,128,58,0.34)');
+    pathFill.addColorStop(0, 'rgba(148,210,88,0.22)');
+    pathFill.addColorStop(0.58, 'rgba(126,184,78,0.34)');
+    pathFill.addColorStop(1, 'rgba(100,152,66,0.44)');
     ctx.fillStyle = pathFill;
     ctx.beginPath();
     const slices = 12;
@@ -268,6 +281,17 @@ export class RoadRenderer {
     nearShade.addColorStop(0.62, 'rgba(44,66,30,0.02)');
     nearShade.addColorStop(1, 'rgba(40,58,28,0.12)');
     ctx.fillStyle = nearShade;
+    ctx.fillRect((p.width * 0.5) - baseHalf - 8, vpY, baseHalf * 2 + 16, p.groundY - vpY);
+
+    // Warm yellow-green overlay — keeps the lane reading as a sunlit garden
+    // path vs the cooler surrounding grass. Hue shifted from amber→yellow-green
+    // (M141: was rgba(218,188,68/...) which neutralised the green base to grey).
+    // Alphas halved so green underneath stays dominant.
+    const warmPath = ctx.createLinearGradient(0, vpY, 0, p.groundY);
+    warmPath.addColorStop(0,    'rgba(214, 206, 84, 0.10)');
+    warmPath.addColorStop(0.55, 'rgba(208, 200, 76, 0.16)');
+    warmPath.addColorStop(1,    'rgba(196, 190, 68, 0.22)');
+    ctx.fillStyle = warmPath;
     ctx.fillRect((p.width * 0.5) - baseHalf - 8, vpY, baseHalf * 2 + 16, p.groundY - vpY);
     ctx.restore();
   }
@@ -1179,22 +1203,23 @@ export class RoadRenderer {
       this.metrics?.countMeadowPoint();
 
       if (pt.kind === 'violet') {
-        // Small purple flower: body + lighter cap + warm centre pixel.
-        // v4.14 — reference-match: stronger alpha + larger body so flowers
-        // hold their read at mid-distance in the denser carpet.
-        const a = (0.50 + s * 0.42) * (pt.outer ? 0.84 : 1.0);
-        const w = Math.max(1, Math.round((4.2 + pt.phase) * s));
-        const h = Math.max(1, Math.round((4.4 + pt.phase) * s));
-        // v4.15 — reference-match: brighter violet body + cap so the
-        // purple-dominant field reads a touch lighter at distance (alpha,
-        // width/height, and the warm-centre pixel are intentionally untouched).
+        // M141 — brightened body (#8a4fd0) + lighter highlight (~#b87ae8) so
+        // violet reads clearly against the dark-green ground. Body size uses
+        // the patch's outer flag to drive PATCH_SIZE-6 equivalent: outer patches
+        // get a 1.5× size multiplier so they read as larger clusters.
+        const a = (0.52 + s * 0.44) * (pt.outer ? 0.86 : 1.0);
+        const sizeBoost = pt.outer ? 1.5 : 1.0;
+        const w = Math.max(1, Math.round((4.2 + pt.phase) * s * sizeBoost));
+        const h = Math.max(1, Math.round((4.4 + pt.phase) * s * sizeBoost));
         if (s > 0.18) {
           ctx.fillStyle = `rgba(30,78,34,${a * 0.24})`;
           ctx.fillRect(x - Math.max(1, Math.round(w * 0.4)), y - 1, Math.max(2, Math.round(w * 0.8)), 1);
         }
-        ctx.fillStyle = `rgba(132,92,210,${a})`;
+        // Brighter body: was rgba(132,92,210) → rgba(138,79,208)
+        ctx.fillStyle = `rgba(138,79,208,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, h);
-        ctx.fillStyle = `rgba(186,150,236,${a})`;
+        // Lighter highlight cap: was rgba(186,150,236) → rgba(184,122,232)
+        ctx.fillStyle = `rgba(184,122,232,${a})`;
         ctx.fillRect(x - (w >> 1), y - h, w, Math.max(1, Math.round(h * 0.34)));
         if (s > 0.26) {
           ctx.fillStyle = `rgba(250,224,120,${a})`;
