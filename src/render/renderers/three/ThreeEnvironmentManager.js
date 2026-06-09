@@ -636,14 +636,16 @@ export class ThreeEnvironmentManager {
     // M107: height 22→24, center y -4.5→-5.0 → top moves from y=6.5 (27.0%) to y=7.0 (25.0%).
     // D=62.5m (z=-47): atan((7-4)/62.5)=2.75° → screen=(8.24-2.75)/22=24.95%.
     // M108: colour 0x64be20→0x7ccc2c (brighter lime).
-    // M111: colour 0x7ccc2c→0x3a8010. Reference mountain body is clearly DARKER than the
-    //   bright lime peak tips — ~1.7× peak/body luminance contrast. 0x3a8010 matches.
+    // M111: colour 0x7ccc2c→0x3a8010. Reference mountain body is clearly DARKER than peaks.
+    // M112: height 24→22, center y -5.0→-4.7 → top moves 7.0m (25%) → 6.3m (28.0%).
+    //   D=62.5m: atan((6.3-4)/62.5)=2.11° → screen=(8.24-2.11)/22=27.9%.
+    //   Reference body starts at ~28%; full triangular peak shape (19-28%) now visible against sky.
     const mountainWash = new THREE.Mesh(
-      new THREE.PlaneGeometry(300, 24),
+      new THREE.PlaneGeometry(300, 22),
       new THREE.MeshBasicMaterial({ color: 0x3a8010, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
-    mountainWash.position.set(0, -5.0, -47);
+    mountainWash.position.set(0, -4.7, -47);
     mountainWash.renderOrder = -39;
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
