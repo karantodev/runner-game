@@ -402,8 +402,11 @@ export class ThreeEnvironmentManager {
       [ASSETS.mushroom, -2.0, 0, 0.5], [ASSETS.mushroom, 2.2, 0, 4.0],
       [ASSETS.mushroom, -3.3, 0, -1.5],
       [ASSETS.mushroom, 3.4, 0, -7.0],
-      // Mid-distance mushrooms — x=-3.2 puts left at 92% from center (clearly visible) at DIST=28m
-      [ASSETS.mushroom, -3.2, 0, -25.0], [ASSETS.mushroom, 3.4, 0, -26.5],
+      // Mid-distance mushroom pair
+      // Left z=-23: 12.5m ahead @ DIST=26 — closer than purpleBrick at z=-25 (14.5m) so renders
+      //   in FRONT of it; x=-2.5 inner shoulder; cap appears at screen y≈627px (lower-left)
+      // Right z=-26.5: 16m ahead @ DIST=26 — closer than purpleStairs at z=-28 (17.5m) → in front
+      [ASSETS.mushroom, -2.5, 0, -23.0], [ASSETS.mushroom, 3.4, 0, -26.5],
       // Second mushroom pair at z=-30/-31 for "field of mushrooms" depth (DIST≈28-35m)
       [ASSETS.mushroom, -3.1, 0, -30.0], [ASSETS.mushroom, 3.1, 0, -31.0],
       // Pipe
