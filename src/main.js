@@ -28,6 +28,11 @@ const seed = seedParam === null
 
 const pixelRatioChoice = pickPixelRatio(params, GAME_CONFIG.canvas.pixelRatio);
 
+// retroPixel param: debug-only scale override for chunky-pixel bracketing.
+// e.g. ?debug=1&retroPixel=0.5 → 768×432 backing store.
+const retroPixelParam = debugAllowed ? params.get('retroPixel') : null;
+const retroPixelScale = retroPixelParam !== null ? Math.min(1, Math.max(0.1, Number(retroPixelParam) || 1)) : undefined;
+
 const requestedRoadStyle = params.get('roadStyle');
 const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
   ? requestedRoadStyle
@@ -113,6 +118,7 @@ const game = new Game(canvas, {
   captureSteps,
   seed,
   pixelRatio: pixelRatioChoice.value,
+  retroPixelScale,
   roadStyle,
   blockStyle,
   playerVoxelEnabled,
