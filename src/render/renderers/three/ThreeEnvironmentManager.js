@@ -794,8 +794,9 @@ export class ThreeEnvironmentManager {
       tex.repeat.set(0.5, 1);
       tex.offset.set(cloudHalf * 0.5, 0);
       tex.needsUpdate = true;
-      // 0.8–1.1 range on 8×4 base. At D=100m: cloud 9–13% screen width; fog:false keeps full opacity.
-      const scale = 0.8 + prand(i * 11.1 + 4) * 0.3;
+      // M101: scale 0.8-1.1→1.2-1.6 on 8×4 base. At D=100m: cloud 14-19% screen width.
+      // Larger clouds match reference's prominent fluffy white cloud shapes.
+      const scale = 1.2 + prand(i * 11.1 + 4) * 0.4;
       const mat = new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
