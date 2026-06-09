@@ -362,13 +362,12 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // Raised y=2.0→2.5, h=6.0→7.0: tops now at y=6.0 → atan(2.0/63.5)=1.80°+2.76°=4.56°
-    // → screen 29% from top. Mountain peaks at 22%; forest tops overlap mountain zone at 22-29%
-    // creating a natural mountain-meets-forest transition matching the reference backdrop.
-    add(ASSETS.forest, -15, 2.5, -48, 36, 7.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 2.5, -48, 36, 7.0, { opacity: 0.96, renderOrder: -35 });
-    // Centre panel tops at 29% too — continuous green backdrop behind castle from 29% down
-    add(ASSETS.forest,   0, 2.5, -52, 32, 7.0, { opacity: 0.94, renderOrder: -35 });
+    // y=3.5, h=8.0: tops at y=7.5m → atan(3.5/63.5)=3.16°+2.76°=5.92° → screen 23% from top.
+    // Mountain peaks now at 13% (M68). 13–23% = 10% clean mountain-peak zone above the treeline,
+    // then forest fills 23–56% — tighter than the old 16% gap, matching the reference composition.
+    add(ASSETS.forest, -15, 3.5, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 3.5, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
+    add(ASSETS.forest,   0, 3.5, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
 
     // Raised y 5.0→7.0: top=10.5m → atan(6.5/59.5)=6.24° → screen 9.1% from top.
     // Mountain peaks at 13% (after M68 silhouette raise), castle turrets at 9% → castle
@@ -636,8 +635,9 @@ export class ThreeEnvironmentManager {
       // 0–13% shows clean sky; mountain peaks emerge at 13%, matching reference proportions.
       // Transparent sky area of texture (v>0.75, y>11.5m) keeps 0–13% open.
       [ASSETS.mountainsFar, -65, 7.5, 170, 16, 0x98e840, -38],
-      // Forest plane top at y=0.6 → 28% from screen top, below mountain peaks.
-      [ASSETS.forest, -56, 0.6, 140, 12, 0x68b82e, -37],
+      // Forest silhouette y 0.6→1.8: top at y=7.8m → atan(3.8/71.5)=3.04°+2.76°=5.80° → screen 24%.
+      // Stays 1% below backdrop forest (23%) for natural depth layering: backdrop in front.
+      [ASSETS.forest, -56, 1.8, 140, 12, 0x68b82e, -37],
     ];
     // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
     // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
