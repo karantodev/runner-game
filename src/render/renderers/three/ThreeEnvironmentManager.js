@@ -197,18 +197,8 @@ export class ThreeEnvironmentManager {
     ground.position.set(0, -0.16, -34);
     this.scene.add(ground);
 
-    // M136: MeshBasicMaterial — unlit, no blue-sky tint. Pure green overlay stripe.
-    const stripeMat = new THREE.MeshBasicMaterial({
-      color: 0x5aaa24,
-      transparent: true,
-      opacity: 0.30,
-    });
-    for (let i = 0; i < 12; i += 1) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(18, 0.005, 2.2), stripeMat);
-      stripe.position.set(0, -0.12, 4 - i * 8);
-      stripe.name = `ground-stripe-${i}`;
-      this.scene.add(stripe);
-    }
+    // M138: ground-stripe removed — was appearing cyan despite M136 fix (too visible).
+    // Reference road is clean solid green with no cross-stripes.
 
     const roadGroup = new THREE.Group();
     roadGroup.name = 'road-scroll-group';
@@ -242,32 +232,11 @@ export class ThreeEnvironmentManager {
       roadGroup.add(line);
     }
 
+    // M138: road tile checkerboard removed — created visible diamond/oval grid on road.
+    // Reference road is clean grass surface with only lane lines.
     this.roadTileSpan = 82;
     this.roadTilePitch = 1.2;
-
-    const tileGeo = new THREE.BoxGeometry(0.55, 0.01, 0.42);
-    const tileMat = new THREE.MeshBasicMaterial({ color: 0xffffff, map: this.buildGrassTexture('tiles', 1, 1), transparent: true, opacity: 0.5 });
-    const tileXPositions = [-2.1, -0.7, 0.7, 2.1];
-    let tileCount = 0;
-    for (let z = 4; z > -78; z -= 1.2) tileCount += tileXPositions.length;
-    const tileInstMesh = new THREE.InstancedMesh(tileGeo, tileMat, tileCount);
-    tileInstMesh.name = 'instanced-road-tiles';
-    const tileMatrix = new THREE.Matrix4();
-    const colorA = new THREE.Color(0xc8f060);
-    const colorB = new THREE.Color(0x88c040);
-    let tileIdx = 0;
-    for (let z = 4; z > -78; z -= 1.2) {
-      for (const x of tileXPositions) {
-        tileMatrix.makeTranslation(x, 0.02, z);
-        tileInstMesh.setMatrixAt(tileIdx, tileMatrix);
-        tileInstMesh.setColorAt(tileIdx, ((Math.round(z * 10) + Math.round(x * 10)) % 2) ? colorA : colorB);
-        tileIdx += 1;
-      }
-    }
-    tileInstMesh.instanceMatrix.needsUpdate = true;
-    tileInstMesh.instanceColor.needsUpdate = true;
-    roadGroup.add(tileInstMesh);
-    this.roadTileInstMesh = tileInstMesh;
+    this.roadTileInstMesh = null;
   }
 
   buildShoulderTiers() {
@@ -437,8 +406,8 @@ export class ThreeEnvironmentManager {
       [ASSETS.purpleBrick, -3.1, 1.8, -33.5],
 
       // ── RIGHT SIDE ───────────────────────────────────────────────
-      // Dry grass accent on right shoulder — pushed to x=3.8 (outside right lane x=1.18)
-      [ASSETS.dryGrass, 3.8, 0, 5.0],
+      // Right shoulder near accent (D=22m, x=3.4 — well outside right lane x=1.18)
+      [ASSETS.dryGrass, 3.4, 0, -6.5],
       // Near mushroom at right screen edge (D=12m, inner edge 81%)
       [ASSETS.mushroom, 4.0, 0, 3.5],
       // Fence on right shoulder (D=18m)
