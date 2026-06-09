@@ -6,7 +6,7 @@ import {
 } from './threeAssetManifest.js';
 
 const ORTHO_HEIGHT = 28;
-const PERSPECTIVE_FOV = 18;
+const PERSPECTIVE_FOV = 22;
 const HAZE_COLOR = 0xb8e0f7;
 
 function applyVerticalGradientColors(geometry, bottomHex, midHex, topHex) {
@@ -422,14 +422,14 @@ export class ThreeEnvironmentManager {
       [ASSETS.grassBlockLeft, -3.5, 0, -19.0],  [ASSETS.grassBlockRight, 3.6, 0, -23.5],
       [ASSETS.grassBlock, -3.7, 0, -28.0],      [ASSETS.grassBlock, 3.6, 0, -33.0],
       // Purple structures — elevated to sit on top of voxel cube platforms
-      // Near pair: visible early (DIST=0-15m); left at z=-6.5, right at z=-11.5
-      [ASSETS.purpleWall, -3.2, 1.8, -6.5], [ASSETS.purpleBrick, 3.2, 1.8, -11.5],
-      // Mid pair: visible at DIST=20-35m — moved farther to appear at natural scale at DIST=28m
-      // Left at z=-25 (12.5m ahead @ DIST=28 → angle 14.4°, right edge shows as column at left edge)
-      // Right at z=-28 (15m ahead @ DIST=28 → angle 12.4°, right side shows properly sized)
-      [ASSETS.purpleBrick, -3.1, 1.8, -25], [ASSETS.purpleStairs, 3.3, 1.8, -28],
-      // Far pair: visible at DIST=30-40m for layered depth
-      [ASSETS.purpleWall, -3.3, 1.8, -34], [ASSETS.purpleBrick, 3.3, 1.8, -38],
+      // Near pair: visible early (DIST=0-22m). z=-12/-16 keeps them at 27-32m distance
+      // at DIST=0, closer approach over the first 20m without ever getting overwhelming.
+      [ASSETS.purpleWall, -3.2, 1.8, -12.0], [ASSETS.purpleBrick, 3.2, 1.8, -16.0],
+      // Mid pair: visible at DIST=22-38m. z=-30 → dist=17.5m @ DIST=28 (was 12.5m at z=-25);
+      // angular position 10°, screen width ~21% — matches reference's purple brick proportions.
+      [ASSETS.purpleBrick, -3.1, 1.8, -30], [ASSETS.purpleStairs, 3.3, 1.8, -34],
+      // Far pair: visible at DIST=35-50m for layered depth
+      [ASSETS.purpleWall, -3.3, 1.8, -40], [ASSETS.purpleBrick, 3.3, 1.8, -46],
       [ASSETS.questionBlock, -3.9, 3.8, -14],
       [ASSETS.questionBlock, 4.0, 3.8, -22],
       // Flowers — very near foreground (fills lower-quarter between player and wall)
@@ -709,15 +709,16 @@ export class ThreeEnvironmentManager {
     const CAP = 16;
     // Clouds sized to match reference: ~20-30% of screen width each.
     // rBase=55 keeps them far enough to appear at correct scale.
-    // yBase=7 places them in the sky zone above corridor with lookAt y=2.0.
+    // yBase=13: with FOV=22° and lookAt y=2.0, cloud y must be > (camY + radius*tan(5.99°))
+    // so they project above the mountain tops (~23% from top). y=13 at r=55-80 → 8-21% from top.
     const rBase = 55;
-    const yBase = 7;
+    const yBase = 13;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
       // Distribute clouds in ±40° sector so 7-8 are always in the narrow ±19° FOV
       // even after the cloudGroup drifts slightly from its slow Y-rotation
       const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.4;
-      const radius = rBase + r * 30;
+      const radius = rBase + r * 25;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
       const h = yBase + prand(i * 7.7 + 3) * 4;
