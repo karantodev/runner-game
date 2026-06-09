@@ -304,7 +304,9 @@ export class ThreeEnvironmentManager {
       // Inner column: x range 3.7–4.0, just outside road edge (±2.725m).
       // Outer column: x = inner + CUBE (1.6m further) = 5.3–5.6, creates wide terraced shoulder.
       // Both sit on the 18m-wide ground plane (±9m), so outer column has visible green beneath.
-      for (let z = 5; z >= -70; z -= 3.2, ci += 1) {
+      // Start at z=-3.2 (D=18.7m) — near cubes at z=5 (D=10.5m) and z=1.8 (D=13.7m) are off-FOV
+      // or too large at screen edges; sideProps sprites cover that near-field range.
+      for (let z = -3.2; z >= -70; z -= 3.2, ci += 1) {
         const h0 = hash((side + 2) * 131 + ci * 7);
         const h1 = hash((side + 2) * 131 + ci * 7 + 3);
         const h2 = hash((side + 2) * 131 + ci * 7 + 11);
