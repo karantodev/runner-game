@@ -378,9 +378,14 @@ export class ThreeEnvironmentManager {
     //   were DARKER than the wash (58,128,16), so no canopy relief was visible.
     //   0x6ab038=(106,176,56): bright canopy → (75,152,18) = 1.2× wash luma → canopy tops read
     //   as lighter bumps against the dark body, matching reference's visible round-tree shapes.
-    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x6ab038 });
-    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x6ab038 });
-    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x6ab038 });
+    // M120: y -2.0→0.0. Canopy tops (v≈0.85) at y≈2.8m → screen 42.4% (was 49.7%).
+    //   Panel top y=4.0m → screen 37.5%, below castle bottom (35.1%). Castle unaffected.
+    //   Bridge top (renderOrder=-36) also at 37.5%; panels (-35) overlay bridge with
+    //   canopy texture — transparent tree-top pixels let dark body show through. Net: canopy
+    //   bumps visible at 37-43% matching reference's mid-mountain-body tree texture.
+    add(ASSETS.forest, -15, 0.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x6ab038 });
+    add(ASSETS.forest,  17, 0.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x6ab038 });
+    add(ASSETS.forest,   0, 0.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x6ab038 });
 
     // w 8.0→5.5, h 7.0→4.8 (ratio maintained ~1.14): compact castle matches reference.
     // At D=59.5m: top=y=9.4m → screen 13.9%; bottom=y=4.6m → 34.8%; height=20.9%.
