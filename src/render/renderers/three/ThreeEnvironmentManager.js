@@ -373,12 +373,14 @@ export class ThreeEnvironmentManager {
     // Visible mountain zone: 18%–36.7% (forest silhouette canopy) = 18.7% of screen.
     // Canopy tops (v≈0.85) at y≈0.8m → screen 49.7%; forest fills the lower background.
     // M114: color 0xffffff→0x508828. Raw forest texture (bright lime) was overriding the dark
-    //   mountain wash, making the 45-55% zone vivid lime-green. Tint (80,136,40) multiplies
-    //   the texture: bright canopy (180,220,80) → (56,118,13) ≈ wash-tone; dark areas darker.
-    //   Result: forest reads as dark-green zone matching reference, with subtle canopy texture.
-    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x508828 });
-    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x508828 });
-    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x508828 });
+    //   mountain wash, making the 45-55% zone vivid lime-green.
+    // M117: 0x508828→0x6ab038. With 0x508828 the bright canopy pixels (180,220,80)→(56,118,13)
+    //   were DARKER than the wash (58,128,16), so no canopy relief was visible.
+    //   0x6ab038=(106,176,56): bright canopy → (75,152,18) = 1.2× wash luma → canopy tops read
+    //   as lighter bumps against the dark body, matching reference's visible round-tree shapes.
+    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x6ab038 });
+    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x6ab038 });
+    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x6ab038 });
 
     // w 8.0→5.5, h 7.0→4.8 (ratio maintained ~1.14): compact castle matches reference.
     // At D=59.5m: top=y=9.4m → screen 13.9%; bottom=y=4.6m → 34.8%; height=20.9%.
