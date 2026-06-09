@@ -90,6 +90,7 @@ export class ThreeEnvironmentManager {
     this.shoulderTiersGroup = null;
     this.backdropGroup = null;
     this.setpiecesGroup = null;
+    this.purpleAccentGroup = null;
     this.horizonGroup = null;
     this.farSilhouettesGroup = null;
     this.orthoScreenGroup = null;
@@ -178,8 +179,11 @@ export class ThreeEnvironmentManager {
   buildLights() {
     // M136: Sky hemisphere 0xdaf0ff→0xf0f8e8 (neutral warm-white, was blue → caused cyan tint
     // on all upward-facing surfaces). Rim 0x8fd8ff→0xd8f0d0 (warm green-white, was cyan).
-    this.scene.add(new THREE.HemisphereLight(0xf0f8e8, 0x90d860, 2.6));
-    const sun = new THREE.DirectionalLight(0xfff8e8, 2.8);
+    // M142: hemisphere sky 0xf0f8e8→0xfff0d8 (warm golden-hour tint, pushes ambient toward
+    // sunny afternoon). Sun 0xfff8e8→0xffe8b0 (warm golden yellow vs cool near-white). Rim
+    // color unchanged (green-white keeps the back edge from blowing warm-on-warm).
+    this.scene.add(new THREE.HemisphereLight(0xfff0d8, 0x90d860, 2.6));
+    const sun = new THREE.DirectionalLight(0xffe8b0, 2.8);
     sun.position.set(-5, 8, 5);
     sun.castShadow = false;
     this.scene.add(sun);
@@ -215,8 +219,13 @@ export class ThreeEnvironmentManager {
     // so adjacent macro-pixel rows differ → bands disappear.
     // Box is also taller (0.09→0.30) so its bottom (y=-0.335) sits below the
     // ground-plane top (y=-0.12), eliminating z-fighting that leaked ground texture.
+    // M142: road gradient brightened. Reference road is the most vivid saturated green in frame —
+    // noticeably lighter+brighter than surrounding meadow (0x5aaa30). Old near=0x88c840 was too
+    // close to meadow luma (1.26× vs target ~1.5×).
+    // Near 0x7acc28 = pure mid-green (less yellow-shift than 0x90d030), luma≈0.564 = 1.43× meadow.
+    // Far 0xa0e04c keeps the depth-gradient read without going overly lime.
     const roadGeo = new THREE.BoxGeometry(5.45, 0.30, 98, 1, 1, 200);
-    applyDepthGradientColors(roadGeo, 0x88c840, 0xa0d858);
+    applyDepthGradientColors(roadGeo, 0x7acc28, 0xa0e04c);
     const road = new THREE.Mesh(
       roadGeo,
       new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true }),
@@ -434,16 +443,48 @@ export class ThreeEnvironmentManager {
       [ASSETS.tree, 5.5, 0, -31.5],
       [ASSETS.purpleStairs, 3.3, 1.8, -39.5],
 
-      // ── FLOWERS — sparse shoulder accents only ───────────────────
-      [ASSETS.flowersYellow, -2.8, 0, 0.8],
-      [ASSETS.flowersPurple, -3.45, 0, -7.0],
-      [ASSETS.flowersYellow, 2.65, 0, -3.6],
-      [ASSETS.flowersPurple, 3.35, 0, -10.0],
-      [ASSETS.flowersPurple, -6.2, 0, -4.0],  [ASSETS.flowersPurple, 6.0, 0, -7.5],
-      [ASSETS.flowersYellow, -5.8, 0, -15.0], [ASSETS.flowersYellow, 5.6, 0, -19.0],
     ];
 
     for (const [asset, x, baseY, z] of sideProps) add(asset, x, baseY, z);
+
+    // ── PURPLE SHOULDER ACCENTS (M142) ────────────────────────────────────
+    // Kept in a dedicated group so 2.5D ortho mode can hide the whole group
+    // (upright billboard cards form a continuous wall under top-down camera).
+    // 3D rules: |x| ≥ 3.2 (off road edge ±2.725), z ≤ −4 (not too near camera),
+    // ~10–12 flowers total, bushes only at |x| ≥ 5.
+    const purpleAccents = [
+      // Left inner shoulder — near-biased, clear gaps for open corridor read
+      [ASSETS.flowersPurple, -3.45, 0, -7.0],
+      [ASSETS.flowersPurple, -3.5,  0, -12.5],
+      [ASSETS.flowersPurple, -3.2,  0, -19.0],
+      [ASSETS.flowersPurple, -3.4,  0, -26.0],
+      // Right inner shoulder
+      [ASSETS.flowersPurple,  3.35, 0, -10.0],
+      [ASSETS.flowersPurple,  3.6,  0, -16.5],
+      [ASSETS.flowersPurple,  3.2,  0, -22.5],
+      // Outer shoulder (yellow for colour variety)
+      [ASSETS.flowersYellow, -5.8, 0, -15.0],
+      [ASSETS.flowersYellow,  5.6, 0, -20.0],
+      [ASSETS.flowersPurple, -5.2, 0, -28.0],
+      [ASSETS.flowersPurple,  5.3, 0, -32.0],
+      // Bushes — |x| ≥ 5, well off road
+      [ASSETS.bush, -5.2, 0, -8.0],
+      [ASSETS.bush,  5.1, 0, -14.0],
+    ];
+
+    const accentGroup = new THREE.Group();
+    accentGroup.name = 'purple-accent-group';
+    this.scene.add(accentGroup);
+    this.purpleAccentGroup = accentGroup;
+
+    for (const [asset, x, baseY, z] of purpleAccents) {
+      const m = propMetrics(asset);
+      let y = baseY + m.height / 2;
+      if (asset === ASSETS.questionBlock) y += 1.3;
+      const prop = this.makeProp(asset, { x, y, z, width: m.width, height: m.height, seed: x * 13.1 + z * 7.7 });
+      prop.renderOrder = 2;
+      accentGroup.add(prop);
+    }
 
     for (const vz of [-12, -27]) {
       const vine = this.makeProp(ASSETS.vineBarrier, { x: 0, y: 0.7, z: vz, width: 6.4, height: 1.6 });
