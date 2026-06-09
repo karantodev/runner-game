@@ -764,7 +764,10 @@ export class ThreeEnvironmentManager {
         //   (152,224,56) luma=0.772 → contrast 1.87× (up from 1.74×). Same lime hue, more vivid.
         // M125: base 0x3a8010→0x4a9010. Matches lightened wash → seamless peak→body transition.
         //   apex/base contrast: 0.772/0.470=1.64× (was 1.87×; ref ~1.7×). Still vivid. ✓
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0x98e038, 0x4a9010, -38);
+        // M133: apex 0x98e038→0xa8e840 (luma 0.772→0.808, +5%). Restores contrast to 1.72× (ref~1.7×),
+        //   matching the reference's electric lime peak tips. RGB(168,232,64) = same hue, slightly
+        //   more vivid. base unchanged (0x4a9010) → seam unchanged ✓.
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0xa8e840, 0x4a9010, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
