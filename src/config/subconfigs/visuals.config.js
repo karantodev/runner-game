@@ -32,7 +32,7 @@ export const VISUALS_CONFIG = {
   density: { decorMultiplier: 1.62, scatterFlowers: true, groundScatter: true },
   detail: {
     meadowTexture: true,
-    vineGarlands: true,
+    vineGarlands: false,
     meadow: {
       count: 2400,
       outerPatchFraction: 0.50,

@@ -137,7 +137,9 @@ export class RoadRenderer {
    */
   #perspectiveGridOverlay(scrollOffset) {
     this.#shoulderStrips();
-    this.#roadRungs(scrollOffset);
+    // Reference road has no horizontal rungs — clean green surface with lane
+    // dividers only. Rungs created visible grid bands inconsistent with reference.
+    // this.#roadRungs(scrollOffset);
     this.#laneDividers(scrollOffset);
     this.#roadEdgeLines(scrollOffset);
   }
