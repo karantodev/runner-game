@@ -401,8 +401,10 @@ export class ThreeEnvironmentManager {
       [ASSETS.mushroom, -2.0, 0, 0.5], [ASSETS.mushroom, 2.2, 0, 4.0],
       [ASSETS.mushroom, -3.3, 0, -1.5],
       [ASSETS.mushroom, 3.4, 0, -7.0],
-      // Mid-distance: z=-25/-26.5 visible at DIST≈25m on left/right shoulders
-      [ASSETS.mushroom, -3.5, 0, -25.0], [ASSETS.mushroom, 3.4, 0, -26.5],
+      // Mid-distance mushrooms — x=-3.2 puts left at 92% from center (clearly visible) at DIST=28m
+      [ASSETS.mushroom, -3.2, 0, -25.0], [ASSETS.mushroom, 3.4, 0, -26.5],
+      // Second mushroom pair at z=-30/-31 for "field of mushrooms" depth (DIST≈28-35m)
+      [ASSETS.mushroom, -3.1, 0, -30.0], [ASSETS.mushroom, 3.1, 0, -31.0],
       // Pipe
       [ASSETS.pipe, 4.18, 0, -16],
       // Fences
@@ -416,8 +418,14 @@ export class ThreeEnvironmentManager {
       [ASSETS.grassBlockLeft, -3.5, 0, -19.0],  [ASSETS.grassBlockRight, 3.6, 0, -23.5],
       [ASSETS.grassBlock, -3.7, 0, -28.0],      [ASSETS.grassBlock, 3.6, 0, -33.0],
       // Purple structures — elevated to sit on top of voxel cube platforms
-      [ASSETS.purpleWall, -3.2, 1.8, -6.5], [ASSETS.purpleStairs, 3.3, 1.8, -22.5],
-      [ASSETS.purpleBrick, -3.1, 1.8, -20.5], [ASSETS.purpleBrick, 3.2, 1.8, -11.5],
+      // Near pair: visible early (DIST=0-15m); left at z=-6.5, right at z=-11.5
+      [ASSETS.purpleWall, -3.2, 1.8, -6.5], [ASSETS.purpleBrick, 3.2, 1.8, -11.5],
+      // Mid pair: visible at DIST=20-35m — moved farther to appear at natural scale at DIST=28m
+      // Left at z=-25 (12.5m ahead @ DIST=28 → angle 14.4°, right edge shows as column at left edge)
+      // Right at z=-28 (15m ahead @ DIST=28 → angle 12.4°, right side shows properly sized)
+      [ASSETS.purpleBrick, -3.1, 1.8, -25], [ASSETS.purpleStairs, 3.3, 1.8, -28],
+      // Far pair: visible at DIST=30-40m for layered depth
+      [ASSETS.purpleWall, -3.3, 1.8, -34], [ASSETS.purpleBrick, 3.3, 1.8, -38],
       [ASSETS.questionBlock, -3.9, 3.8, -14],
       [ASSETS.questionBlock, 4.0, 3.8, -22],
       // Flowers — very near foreground (fills lower-quarter between player and wall)
