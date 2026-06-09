@@ -666,6 +666,22 @@ export class ThreeEnvironmentManager {
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
 
+    // M129: Bright fill at renderOrder=−38.95 (after wash −39, before mid-body −38.9).
+    // The mid-body forest planes use alphaTest=0.5 — transparent gaps between canopy blobs
+    // fall back to the wash (0x4a9010, luma=0.470, dark). Fill replaces those gaps with
+    // 0x64bc1c (luma≈0.619 = 1.32× wash) → vivid medium-green matching reference's bright body.
+    // Same PlaneGeometry(300,22) / position as wash → identical screen footprint;
+    // top at y=6.3m → 28% so no fill bleeds into the sky zone above the mountain body. ✓
+    const bodyFill = new THREE.Mesh(
+      new THREE.PlaneGeometry(300, 22),
+      new THREE.MeshBasicMaterial({ color: 0x64bc1c, depthTest: false, depthWrite: false, fog: false }),
+    );
+    bodyFill.name = 'mountain-body-fill';
+    bodyFill.position.set(0, -4.7, -47);
+    bodyFill.renderOrder = -38.95;
+    bodyFill.frustumCulled = false;
+    group.add(bodyFill);
+
     // M103: Vertex-colour gradient on triangles (bright apex → darker base) + lower peaks 1m.
     // Front row (z=−90, D=105.5m): apex 0xb4ff38 (bright lime), base 0x64be20 (dark body).
     //   Gradient creates "light hits the summit" mountain read; base matches wash colour so no seam.
