@@ -24,10 +24,8 @@ export async function initDebugTools(game, canvas, params, options) {
   debugState.autostart = autostart;
   debugState.freezeFrame = freezeFrame;
 
-  const debugApi = createDebugApi(game, canvas);
-  window.__ORCHID_DEBUG__ = debugApi;
-
-  // Scenery QA Sheet integration
+  // Scenery QA Sheet integration — gated on debugAllowed only, so
+  // `?sceneryQa=1` works without the full debug toolchain.
   let sceneryQaController = null;
   const bootReady = options.bootReady;
 
@@ -62,37 +60,42 @@ export async function initDebugTools(game, canvas, params, options) {
     return controller?.toggle(force) ?? null;
   }
 
-  debugApi.openSceneryQaSheet = openSceneryQaSheet;
-  debugApi.toggleSceneryQaSheet = toggleSceneryQaSheet;
-  debugApi.getSceneryQaState = () => sceneryQaController?.getState() ?? null;
+  let debugApi = null;
+  if (debugEnabled) {
+    debugApi = createDebugApi(game, canvas);
+    window.__ORCHID_DEBUG__ = debugApi;
+    debugApi.openSceneryQaSheet = openSceneryQaSheet;
+    debugApi.toggleSceneryQaSheet = toggleSceneryQaSheet;
+    debugApi.getSceneryQaState = () => sceneryQaController?.getState() ?? null;
 
-  window.__ORCHID_GAME__ = game;
+    window.__ORCHID_GAME__ = game;
 
-  installErrorCollector(game);
-  installDebugPanel(game, debugApi);
-  new PerformanceHUD(game, { pixelRatioChoice });
+    installErrorCollector(game);
+    installDebugPanel(game, debugApi);
+    new PerformanceHUD(game, { pixelRatioChoice });
 
-  window.addEventListener('keydown', (event) => {
-    if (event.code !== 'F8') return;
-    event.preventDefault();
-    debugApi.captureCanvas().catch((error) => {
-      console.error('[Orchid Debug] capture failed', error);
+    window.addEventListener('keydown', (event) => {
+      if (event.code !== 'F8') return;
+      event.preventDefault();
+      debugApi.captureCanvas().catch((error) => {
+        console.error('[Orchid Debug] capture failed', error);
+      });
     });
-  });
 
-  if (GAME_CONFIG.debug.showPlayerStates) {
-    const { installPlayerStatesMode } = await import('./playerStates.js');
-    installPlayerStatesMode(game, debugApi);
+    if (GAME_CONFIG.debug.showPlayerStates) {
+      const { installPlayerStatesMode } = await import('./playerStates.js');
+      installPlayerStatesMode(game, debugApi);
+    }
+
+    if (params.get('gamepadDebug') === '1') {
+      new GamepadDebugOverlay();
+    }
+
+    setupModeSwitch(game);
+
+    window.addEventListener('orchid:blockStyleChanged', () => updateDebugPanel(game));
+    window.addEventListener('orchid:playerVoxelChanged', () => updateDebugPanel(game));
   }
-
-  if (params.get('gamepadDebug') === '1') {
-    new GamepadDebugOverlay();
-  }
-
-  setupModeSwitch(game);
-
-  window.addEventListener('orchid:blockStyleChanged', () => updateDebugPanel(game));
-  window.addEventListener('orchid:playerVoxelChanged', () => updateDebugPanel(game));
 
   if (sceneryQaEnabled) {
     await openSceneryQaSheet();

@@ -126,8 +126,9 @@ const bootReady = new Promise((resolve) => {
   resolveBootReady = resolve;
 });
 
-// Initialize debug tools if enabled
-if (debugEnabled) {
+// Initialize debug tools if enabled. The scenery QA sheet only needs
+// debugAllowed (not ?debug=1), so it loads the module too.
+if (debugEnabled || sceneryQaEnabled) {
   import('./debug/init.js').then(({ initDebugTools }) => {
     initDebugTools(game, canvas, params, {
       debugEnabled,

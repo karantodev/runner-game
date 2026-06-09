@@ -392,7 +392,7 @@ test('Three renderer strategy — scene renderer lifecycle is isolated', async (
       kind: renderer.kind,
       initialized: renderer.initialized,
       mode: renderer.mode,
-      objectCount: renderer.objects.size,
+      objectCount: renderer.entities.objects.size,
     };
     renderer.destroy();
     return {
