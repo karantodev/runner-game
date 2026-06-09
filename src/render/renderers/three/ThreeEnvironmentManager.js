@@ -150,7 +150,7 @@ export class ThreeEnvironmentManager {
     const aspect = (this.projection?.width ?? 1536) / (this.projection?.height ?? 864);
     const perspective = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, aspect, 0.1, 900);
     perspective.position.set(0, 4.0, 15.5);
-    perspective.lookAt(0, 0.5, -26);
+    perspective.lookAt(0, 2.0, -26);
 
     // Orthographic position is set in buildOrthoBackdrop after group parenting.
     const orthographic = new THREE.OrthographicCamera(
@@ -273,7 +273,7 @@ export class ThreeEnvironmentManager {
     const grassTopMat = new THREE.MeshStandardMaterial({
       map: this.textureCache.get(ASSETS.grassBlock), roughness: 0.9, metalness: 0,
     });
-    const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.95, metalness: 0 });
+    const dirtMat = new THREE.MeshStandardMaterial({ color: 0xa07822, roughness: 0.92, metalness: 0 });
     const grassMats = [dirtMat, dirtMat, grassTopMat, dirtMat, dirtMat, dirtMat];
 
     const brickMat = new THREE.MeshStandardMaterial({ color: 0xa060d4, roughness: 0.8, metalness: 0 });
@@ -598,7 +598,9 @@ export class ThreeEnvironmentManager {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `horizon:${assetPath}`;
-      mesh.position.y = 2.2;
+      // Lowered from 2.2 to 0 so mountain tops appear at ~17% from screen top,
+      // revealing ~17% sky gap above them (matches reference's ~20% sky band).
+      mesh.position.y = 0;
       mesh.scale.y = scaleY;
       mesh.frustumCulled = false;
       mesh.renderOrder = -40;
@@ -631,7 +633,7 @@ export class ThreeEnvironmentManager {
       new THREE.MeshBasicMaterial({ color: 0x62b836, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
-    bridge.position.set(0, 4.0, -49);
+    bridge.position.set(0, 1.5, -49);
     bridge.renderOrder = -36;
     bridge.frustumCulled = false;
     group.add(bridge);
@@ -705,14 +707,17 @@ export class ThreeEnvironmentManager {
     this.cloudGroup = group;
 
     const CAP = 16;
-    const rBase = 48;
-    const yBase = 5;
+    // Clouds sized to match reference: ~20-30% of screen width each.
+    // rBase=55 keeps them far enough to appear at correct scale.
+    // yBase=7 places them in the sky zone above corridor with lookAt y=2.0.
+    const rBase = 55;
+    const yBase = 7;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
       // Distribute clouds in ±40° sector so 7-8 are always in the narrow ±19° FOV
       // even after the cloudGroup drifts slightly from its slow Y-rotation
       const theta = Math.PI * 1.5 + (prand(i * 3.1 + 2) - 0.5) * 1.4;
-      const radius = rBase + r * 24;
+      const radius = rBase + r * 30;
       const x = Math.cos(theta) * radius;
       const z = Math.sin(theta) * radius;
       const h = yBase + prand(i * 7.7 + 3) * 4;
@@ -728,7 +733,8 @@ export class ThreeEnvironmentManager {
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      sprite.scale.set(24 * scale, 14 * scale, 1);
+      // 6×3.5 world-unit base matches reference cloud scale (~25% of screen width at 55m)
+      sprite.scale.set(6 * scale, 3.5 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
       group.add(sprite);
