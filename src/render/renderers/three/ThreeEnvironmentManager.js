@@ -372,9 +372,13 @@ export class ThreeEnvironmentManager {
     // Mountain silhouette peaks (18%) now show clearly above these panels.
     // Visible mountain zone: 18%–36.7% (forest silhouette canopy) = 18.7% of screen.
     // Canopy tops (v≈0.85) at y≈0.8m → screen 49.7%; forest fills the lower background.
-    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
-    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35 });
+    // M114: color 0xffffff→0x508828. Raw forest texture (bright lime) was overriding the dark
+    //   mountain wash, making the 45-55% zone vivid lime-green. Tint (80,136,40) multiplies
+    //   the texture: bright canopy (180,220,80) → (56,118,13) ≈ wash-tone; dark areas darker.
+    //   Result: forest reads as dark-green zone matching reference, with subtle canopy texture.
+    add(ASSETS.forest, -15, -2.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x508828 });
+    add(ASSETS.forest,  17, -2.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x508828 });
+    add(ASSETS.forest,   0, -2.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x508828 });
 
     // w 8.0→5.5, h 7.0→4.8 (ratio maintained ~1.14): compact castle matches reference.
     // At D=59.5m: top=y=9.4m → screen 13.9%; bottom=y=4.6m → 34.8%; height=20.9%.
@@ -892,9 +896,9 @@ export class ThreeEnvironmentManager {
     return tex;
   }
 
-  makeSprite(assetPath, { x, y, z, width, height, opacity = 1 }) {
+  makeSprite(assetPath, { x, y, z, width, height, opacity = 1, color = 0xffffff }) {
     const tex = this.textureCache.get(assetPath);
-    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, alphaTest: 0.15, depthWrite: false, fog: true });
+    const mat = new THREE.MeshBasicMaterial({ map: tex, color, transparent: true, opacity, alphaTest: 0.15, depthWrite: false, fog: true });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
     mesh.position.set(x, y, z);
     return mesh;
