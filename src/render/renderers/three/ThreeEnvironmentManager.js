@@ -383,6 +383,7 @@ export class ThreeEnvironmentManager {
     //   Bridge top (renderOrder=-36) also at 37.5%; panels (-35) overlay bridge with
     //   canopy texture — transparent tree-top pixels let dark body show through. Net: canopy
     //   bumps visible at 37-43% matching reference's mid-mountain-body tree texture.
+    // M121: y 1.5→0.0 (reverted). 0x6ab038 tint too vivid at 31-36% in mountain body.
     add(ASSETS.forest, -15, 0.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35, color: 0x6ab038 });
     add(ASSETS.forest,  17, 0.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35, color: 0x6ab038 });
     add(ASSETS.forest,   0, 0.0, -52, 32, 8.0, { opacity: 0.94, renderOrder: -35, color: 0x6ab038 });
@@ -758,9 +759,11 @@ export class ThreeEnvironmentManager {
         // M111: apex 0x8ad030→0x5cb020 (proportionally darker than front 0x80d430),
         //   base 0x5cb020→0x3a8010 (match new body colour).
         // M115: renderOrder −38.5→−39.5 (behind wash). See header comment above.
-        // M119: apex 0x5cb020→0x68b028. Keeps back peaks at ~77% of front 0x98e038 brightness
-        //   (0.592/0.772=77%) — same depth ratio as before, just proportionally brighter.
-        const tri = makeTriangleGradient(px, apexY, r, -115, 0x68b028, 0x3a8010, -39.5);
+        // M119: apex 0x5cb020→0x68b028. Keeps back peaks at ~77% of front 0x98e038 brightness.
+        // M121: apex 0x68b028→0x3a8010. Reference valleys at 22-28% show DARK distant ridges,
+        //   not medium-lime. Solid dark-green triangles (apex=base=0x3a8010) read as far
+        //   mountains against the cobalt sky — matching reference's shadowed back-row peaks.
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x3a8010, 0x3a8010, -39.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
