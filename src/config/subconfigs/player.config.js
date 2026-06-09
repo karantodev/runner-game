@@ -3,7 +3,7 @@ export const PLAYER_CONFIG = {
   maxLane: 1,
   laneLerp: 0.20,
   bottomMargin: 44,
-  heroScale: 1.18,
+  heroScale: 1.28,
   gravity: 0.95,
   jumpVelocity: -16.5,
   jumpHoldBoost: -0.8,
