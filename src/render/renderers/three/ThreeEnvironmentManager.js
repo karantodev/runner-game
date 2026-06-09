@@ -633,15 +633,15 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // M103: Mountain wash darkened to 0x64be20 — matches triangle base colour so the
     // gradient fade from bright apex → dark body → dark wash reads as one mountain mass.
-    // M105: height 18→22, center y -3.0→-4.5 → top moves from y=6 (29.1%) to y=6.5 (27.0%).
-    // D=62.5m (z=-47): atan((6.5-4)/62.5)=2.29° → screen=(8.24-2.29)/22=27.0%.
-    // Fills ~2% more of the mountain zone with solid dark-green body, closer to reference ~28%.
+    // M107: height 22→24, center y -4.5→-5.0 → top moves from y=6.5 (27.0%) to y=7.0 (25.0%).
+    // D=62.5m (z=-47): atan((7-4)/62.5)=2.75° → screen=(8.24-2.75)/22=24.95%.
+    // Sky-wedge gaps between peaks now only in 19-25% band; mountain body 25-44.7% = 19.7%.
     const mountainWash = new THREE.Mesh(
-      new THREE.PlaneGeometry(300, 22),
+      new THREE.PlaneGeometry(300, 24),
       new THREE.MeshBasicMaterial({ color: 0x64be20, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
-    mountainWash.position.set(0, -4.5, -47);
+    mountainWash.position.set(0, -5.0, -47);
     mountainWash.renderOrder = -39;
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
