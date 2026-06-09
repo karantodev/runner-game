@@ -637,15 +637,14 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // Mountain plane y 4.8→7.5: plane now spans y=−0.5..15.5m.
-      // v=0.75 (peak tips) maps to world y=−0.5+16×0.75=11.5m → elevation 5.32° above horiz
-      // → 8.08° above cam forward → screen 13% from top.
-      // 0–13% shows clean sky; mountain peaks emerge at 13%, matching reference proportions.
-      // Transparent sky area of texture (v>0.75, y>11.5m) keeps 0–13% open.
-      // Match cylinder tint: 0x98e840→0xb4f040 for vivid lime peaks against the new deep sky.
-      [ASSETS.mountainsFar, -65, 7.5, 170, 16, 0xb4f040, -38],
-      // Forest silhouette tint brightened 0x68b82e→0x78cc34 to better contrast against deep sky.
-      [ASSETS.forest, -56, 1.8, 140, 12, 0x78cc34, -37],
+      // Mountain plane y 7.5→6.0: plane spans y=−2.0..14.0m.
+      // v=0.75 (peak tips) maps to world y=−2.0+16×0.75=10.0m → elevation atan(6.0/80.5)=4.26°
+      // → 7.02° above cam forward → screen 18% from top.
+      // 0–18% shows clean cobalt sky; peaks emerge at 18%, matching reference ~20% sky zone.
+      // Castle turrets at 9% → 9% clear above mountain ridge = classic "castle over valley" read.
+      [ASSETS.mountainsFar, -65, 6.0, 170, 16, 0xb4f040, -38],
+      // Forest silhouette y 1.8→1.2: tops at 7.2m → screen 25.8% (was 24%). 7.8% gap below peaks.
+      [ASSETS.forest, -56, 1.2, 140, 12, 0x78cc34, -37],
     ];
     // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
     // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
