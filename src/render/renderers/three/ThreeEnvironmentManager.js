@@ -646,34 +646,66 @@ export class ThreeEnvironmentManager {
     mountainWash.frustumCulled = false;
     group.add(mountainWash);
 
-    // M100: 5 flat triangle mountain peaks at renderOrder=-38 (between wash -39 and forest -37).
-    // PEAKS at x = -26, -13, 0, 13, 26 at z=-90 (D=105.5m from camera). R=5.5m half-base.
-    // Base y=4.0m (37.5% screen), apex y=13.0m → elev=atan(9/105.5)=4.88° → screen 15.3%.
-    // Peak screen widths: 2×atan(5.5/105.5)×57.3/38.2 = 15.6%. 5 peaks span 14% to 86% of screen.
-    // Sky gap between adjacent peaks ≈ 6% screen → distinct triangular silhouettes like reference.
-    // Replaces mountainsFar cylinder which showed only 2 broad flanking hills (repeatX=4).
+    // M102: Varied peak heights + second mountain row for depth.
+    // Front row (z=−90, D=105.5m): asymmetric heights → natural mountain range profile.
+    //   Screen formula: screen_from_top = (8.24° − atan((apexY−4)/D)) / 22°
+    //   apexY=12.5 → atan(8.5/105.5)=4.61° → 17.0% (left-main, tallest)
+    //   apexY=12.0 → atan(8.0/105.5)=4.34° → 17.7% (right-main)
+    //   apexY=11.5 → atan(7.5/105.5)=4.07° → 19.0% (left-outer)
+    //   apexY=11.0 → atan(7.0/105.5)=3.80° → 20.2% (right-outer)
+    //   apexY=10.5 → atan(6.5/105.5)=3.52° → 21.5% (center, shorter for castle valley)
+    // Back row (z=−115, D=130.5m, color 0x8ad030, renderOrder=−38.5): 4 smaller peaks that
+    //   peek between front peaks. apexY 9.5-10.0 → screen 25.5-26.5% (just above wash at 29%).
     {
-      const PEAKS_X = [-26, -13, 0, 13, 26];
-      const R = 5.5, APEX_Y = 13.0, BASE_Y = 4.0, Z = -90;
-      for (const px of PEAKS_X) {
+      const BASE_Y = 4.0;
+
+      const makeTriangle = (px, apexY, r, z, color, order) => {
         const verts = new Float32Array([
-          px - R, BASE_Y, Z,
-          px + R, BASE_Y, Z,
-          px,     APEX_Y, Z,
+          px - r, BASE_Y, z,
+          px + r, BASE_Y, z,
+          px,     apexY,  z,
         ]);
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
         const mat = new THREE.MeshBasicMaterial({
-          color: 0xb4ff38,
+          color,
           side: THREE.DoubleSide,
           depthTest: false,
           depthWrite: false,
           fog: false,
         });
         const tri = new THREE.Mesh(geo, mat);
-        tri.name = `mountain-peak:${px}`;
-        tri.renderOrder = -38;
+        tri.renderOrder = order;
         tri.frustumCulled = false;
+        return tri;
+      };
+
+      // Front row: 5 peaks with varied heights and widths.
+      const FRONT = [
+        { px: -26, apexY: 11.5, r: 6.5 },  // left outer  → 19.0%
+        { px: -13, apexY: 12.5, r: 5.0 },  // left main   → 17.0% (tallest)
+        { px:   0, apexY: 10.5, r: 5.0 },  // center      → 21.5% (shorter, keeps castle valley)
+        { px:  13, apexY: 12.0, r: 5.5 },  // right main  → 17.7%
+        { px:  26, apexY: 11.0, r: 6.0 },  // right outer → 20.2%
+      ];
+      for (const { px, apexY, r } of FRONT) {
+        const tri = makeTriangle(px, apexY, r, -90, 0xb4ff38, -38);
+        tri.name = `mountain-peak:${px}`;
+        group.add(tri);
+      }
+
+      // Back row: 4 smaller peaks between front peaks, darker green, behind front row.
+      // Centered in the sky gaps: x=−19.5 (between −26/−13), −6.5 (between −13/0),
+      // +6.5 (between 0/+13), +19.5 (between +13/+26).
+      const BACK = [
+        { px: -19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
+        { px:  -6.5, apexY: 10.0, r: 4.5 },  // → 25.5%
+        { px:   6.5, apexY: 10.0, r: 4.5 },  // → 25.5%
+        { px:  19.5, apexY:  9.5, r: 5.0 },  // → 26.5%
+      ];
+      for (const { px, apexY, r } of BACK) {
+        const tri = makeTriangle(px, apexY, r, -115, 0x8ad030, -38.5);
+        tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
     }
