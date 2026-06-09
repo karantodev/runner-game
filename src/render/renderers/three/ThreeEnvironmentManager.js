@@ -283,7 +283,8 @@ export class ThreeEnvironmentManager {
 
     // No brickCubes in shoulder tiers — purple structures come from sideProps sprites only,
     // keeping the shoulder wall uniformly brown with green tops (matching reference).
-    const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 200);
+    // 500 instances: inner + outer columns × 2 sides × ~24 z-slots × 1-2 stack height.
+    const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 500);
     const rockCubes = new THREE.InstancedMesh(rockGeo, rockMat, 48);
     grassCubes.name = 'voxel-grass-cubes';
     rockCubes.name = 'voxel-rock-cubes';
@@ -300,25 +301,37 @@ export class ThreeEnvironmentManager {
     let ri = 0;
     for (let side = -1; side <= 1; side += 2) {
       let ci = 0;
-      // Denser z-step (3.2) compensates for smaller cube footprint.
-      // x range 3.7–4.0 places wall just outside the road edge (road is ±2.725m).
+      // Inner column: x range 3.7–4.0, just outside road edge (±2.725m).
+      // Outer column: x = inner + CUBE (1.6m further) = 5.3–5.6, creates wide terraced shoulder.
+      // Both sit on the 18m-wide ground plane (±9m), so outer column has visible green beneath.
       for (let z = 5; z >= -70; z -= 3.2, ci += 1) {
         const h0 = hash((side + 2) * 131 + ci * 7);
         const h1 = hash((side + 2) * 131 + ci * 7 + 3);
         const h2 = hash((side + 2) * 131 + ci * 7 + 11);
-        const x = side * (3.7 + h2 * 0.3);
+        const xInner = side * (3.7 + h2 * 0.3);
+        const xOuter = xInner + side * CUBE; // flush with inner cube's outer face
         const stack = 1 + Math.round(h1); // 1–2 cubes; tops stay below camera at y=4.0
-        for (let s = 0; s < stack && gi < 200; s += 1) {
-          pos.set(x, s * CUBE + CUBE / 2, z);
+
+        // Inner column — 1–2 cubes high
+        for (let s = 0; s < stack && gi < 500; s += 1) {
+          pos.set(xInner, s * CUBE + CUBE / 2, z);
           matrix.compose(pos, quat, one);
           grassCubes.setMatrixAt(gi, matrix);
           gi += 1;
         }
+        // Outer column — always 1 cube high (step-down terrace matching reference platforms)
+        if (gi < 500) {
+          pos.set(xOuter, CUBE / 2, z);
+          matrix.compose(pos, quat, one);
+          grassCubes.setMatrixAt(gi, matrix);
+          gi += 1;
+        }
+
         // No wall-top mushrooms: y-center = stackTop + cap_half ≈ 5.1m sits above the
         // camera (y=4.0) and renders as a huge cap at the screen edges. sideProps handles mushrooms.
         if (ri < 48 && hash((side + 2) * 131 + ci * 7 + 23) > 0.88) {
           const rs = 0.5 + h2 * 0.28;
-          pos.set(x - side * (1.0 + h1 * 0.8), rs * CUBE / 2, z + (h0 - 0.5) * 2.0);
+          pos.set(xInner - side * (1.0 + h1 * 0.8), rs * CUBE / 2, z + (h0 - 0.5) * 2.0);
           matrix.compose(pos, quat, rockScl.set(rs, rs, rs));
           rockCubes.setMatrixAt(ri, matrix);
           ri += 1;
@@ -608,7 +621,9 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0x70c838, -38],
+      // y lowered 8.0→6.5: mountain peaks shift ~6% lower on screen, widening sky band
+      // from ~15% to ~20-21% — matching reference's ~20% bright-sky zone at top.
+      [ASSETS.mountainsFar, -65, 6.5, 170, 30, 0x70c838, -38],
       [ASSETS.forest, -56, 2.5, 140, 12, 0x60a828, -37],
     ];
     // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
