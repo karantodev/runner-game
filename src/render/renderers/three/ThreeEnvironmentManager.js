@@ -7,7 +7,7 @@ import {
 
 const ORTHO_HEIGHT = 28;
 const PERSPECTIVE_FOV = 22;
-const HAZE_COLOR = 0xb8e0f7;
+const HAZE_COLOR = 0x98d8f8;
 
 function applyVerticalGradientColors(geometry, bottomHex, midHex, topHex) {
   const bottom = new THREE.Color(bottomHex);
@@ -124,10 +124,12 @@ export class ThreeEnvironmentManager {
     canvas.width = 2;
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
+    // CanvasTexture has flipY=true by default, so canvas-bottom (stop=0) maps to screen-top.
+    // Putting vivid blue at stop=0 gives the bright sky band at the top of the viewport.
     const grad = ctx.createLinearGradient(0, 512, 0, 0);
-    grad.addColorStop(0, '#9ed8f0');
-    grad.addColorStop(0.30, '#28aaec');
-    grad.addColorStop(1, '#0b4ec0');
+    grad.addColorStop(0, '#1878e8');    // vivid cornflower blue → screen top
+    grad.addColorStop(0.55, '#44ccff'); // bright sky blue
+    grad.addColorStop(1, '#a8e8ff');    // pale horizon blue → screen bottom (hidden by ground)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -141,7 +143,7 @@ export class ThreeEnvironmentManager {
     const envRenderTarget = pmrem.fromScene(roomEnv, 0.04);
     this.envTexture = envRenderTarget.texture;
     this.scene.environment = this.envTexture;
-    this.scene.environmentIntensity = 0.65;
+    this.scene.environmentIntensity = 0.8;
     disposeObject3D(roomEnv);
     pmrem.dispose();
   }
@@ -165,7 +167,7 @@ export class ThreeEnvironmentManager {
   }
 
   buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0xeef7ff, 0x8ac858, 2.2));
+    this.scene.add(new THREE.HemisphereLight(0xdaf0ff, 0x90d860, 2.6));
     const sun = new THREE.DirectionalLight(0xfff8e8, 2.8);
     sun.position.set(-5, 8, 5);
     sun.castShadow = false;
@@ -264,30 +266,28 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.shoulderTiersGroup = group;
 
-    const CUBE = 2.3;
+    // Smaller cubes (1.6 vs 2.3) keep wall tops below camera eye (y=4.0),
+    // matching reference proportions where blocks are ~0.65× farmer height.
+    const CUBE = 1.6;
     const grassGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
-    const brickGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
     const rockGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
 
     // BoxGeometry face group order: +X, -X, +Y (top), -Y (bottom), +Z, -Z.
-    // Grass cubes: top face gets grass sprite, sides get dirt color.
+    // Grass cubes: top face gets grass sprite, sides get earthy dirt colour.
     const grassTopMat = new THREE.MeshStandardMaterial({
       map: this.textureCache.get(ASSETS.grassBlock), roughness: 0.9, metalness: 0,
     });
-    const dirtMat = new THREE.MeshStandardMaterial({ color: 0xa07822, roughness: 0.92, metalness: 0 });
+    const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b5234, roughness: 0.92, metalness: 0 });
     const grassMats = [dirtMat, dirtMat, grassTopMat, dirtMat, dirtMat, dirtMat];
-
-    const brickMat = new THREE.MeshStandardMaterial({ color: 0xa060d4, roughness: 0.8, metalness: 0 });
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x7a7570, roughness: 0.95, metalness: 0 });
 
-    const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 128);
-    const brickCubes = new THREE.InstancedMesh(brickGeo, brickMat, 128);
+    // No brickCubes in shoulder tiers — purple structures come from sideProps sprites only,
+    // keeping the shoulder wall uniformly brown with green tops (matching reference).
+    const grassCubes = new THREE.InstancedMesh(grassGeo, grassMats, 200);
     const rockCubes = new THREE.InstancedMesh(rockGeo, rockMat, 48);
     grassCubes.name = 'voxel-grass-cubes';
-    brickCubes.name = 'voxel-brick-cubes';
     rockCubes.name = 'voxel-rock-cubes';
     grassCubes.frustumCulled = false;
-    brickCubes.frustumCulled = false;
     rockCubes.frustumCulled = false;
 
     const matrix = new THREE.Matrix4();
@@ -296,37 +296,26 @@ export class ThreeEnvironmentManager {
     const one = new THREE.Vector3(1, 1, 1);
     const rockScl = new THREE.Vector3();
     const hash = (n) => prand(n);
-    const tops = [];
     let gi = 0;
-    let bi = 0;
     let ri = 0;
     for (let side = -1; side <= 1; side += 2) {
       let ci = 0;
-      for (let z = 5; z >= -70; z -= 4.0, ci += 1) {
+      // Denser z-step (3.2) compensates for smaller cube footprint.
+      // x range 3.7–4.0 places wall just outside the road edge (road is ±2.725m).
+      for (let z = 5; z >= -70; z -= 3.2, ci += 1) {
         const h0 = hash((side + 2) * 131 + ci * 7);
         const h1 = hash((side + 2) * 131 + ci * 7 + 3);
         const h2 = hash((side + 2) * 131 + ci * 7 + 11);
-        // Right at road edge: ±3.1–3.4 (road is ±2.7) — creates the sunken-corridor wall effect
-        const x = side * (3.1 + h2 * 0.3);
-        if (h0 > 0.55) {
-          const stack = 2 + Math.round(h1); // min 2 cubes — matches elevated wall in reference
-          const base = CUBE * (0.8 + h2 * 0.8);
-          for (let s = 0; s < stack && bi < 128; s += 1) {
-            pos.set(x, base + s * CUBE + CUBE / 2, z);
-            matrix.compose(pos, quat, one);
-            brickCubes.setMatrixAt(bi, matrix);
-            bi += 1;
-          }
-        } else {
-          const stack = 2 + Math.floor(h1 * 1.8); // min 2 cubes — always elevated like the reference
-          for (let s = 0; s < stack && gi < 128; s += 1) {
-            pos.set(x, s * CUBE + CUBE / 2, z);
-            matrix.compose(pos, quat, one);
-            grassCubes.setMatrixAt(gi, matrix);
-            gi += 1;
-          }
-          if (stack >= 2) tops.push({ x, y: stack * CUBE, z, stack });
+        const x = side * (3.7 + h2 * 0.3);
+        const stack = 1 + Math.round(h1); // 1–2 cubes; tops stay below camera at y=4.0
+        for (let s = 0; s < stack && gi < 200; s += 1) {
+          pos.set(x, s * CUBE + CUBE / 2, z);
+          matrix.compose(pos, quat, one);
+          grassCubes.setMatrixAt(gi, matrix);
+          gi += 1;
         }
+        // No wall-top mushrooms: y-center = stackTop + cap_half ≈ 5.1m sits above the
+        // camera (y=4.0) and renders as a huge cap at the screen edges. sideProps handles mushrooms.
         if (ri < 48 && hash((side + 2) * 131 + ci * 7 + 23) > 0.88) {
           const rs = 0.5 + h2 * 0.28;
           pos.set(x - side * (1.0 + h1 * 0.8), rs * CUBE / 2, z + (h0 - 0.5) * 2.0);
@@ -337,22 +326,11 @@ export class ThreeEnvironmentManager {
       }
     }
     grassCubes.count = gi;
-    brickCubes.count = bi;
     rockCubes.count = ri;
     grassCubes.instanceMatrix.needsUpdate = true;
-    brickCubes.instanceMatrix.needsUpdate = true;
     rockCubes.instanceMatrix.needsUpdate = true;
     group.add(grassCubes);
-    group.add(brickCubes);
     group.add(rockCubes);
-
-    for (const t of tops) {
-      const asset = ASSETS.mushroom; // always mushroom on voxel walls, matching reference
-      const m = propMetrics(asset);
-      const prop = this.makeProp(asset, { x: t.x, y: t.y + m.height / 2, z: t.z, width: m.width, height: m.height, seed: t.x * 13.1 + t.z * 7.7 });
-      prop.renderOrder = 2;
-      group.add(prop);
-    }
   }
 
   buildReferenceBackdrop() {
@@ -569,11 +547,14 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      // Tints shifted from yellow-green (0xbcee50) to vibrant forest-green to match reference's
-      // bright triangular mountains. Each layer progressively darker/richer for depth.
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0x70c838, true, 0.12, 0.68],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0x58b028, true, 0.44, 0.65],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x469820, true, 0.72, 0.56],
+      // Reduced scaleY so cylinder tops are near/below camera y=4.0, pushing mountains into the
+      // mid-screen zone and opening a wider sky band (target ~20%) above them.
+      // Near: top at y=3.8m (below camera) → screen 26% — defines sky/mountain boundary.
+      // Mid: top at y=5.0m → screen 12% — mid peaks visible in sky gap above near.
+      // Far: top at y=6.3m → screen 9% — distant peaks just below sky top.
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0x70c838, true, 0.12, 0.45],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0x58b028, true, 0.44, 0.42],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x469820, true, 0.72, 0.38],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
