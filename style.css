@@ -78,7 +78,9 @@ canvas {
   height: 100%;
   border-radius: 0;
   image-rendering: pixelated;
-  background: #77bdf0;
+  /* M92: Match THREE.js sky gradient so postprocessing alpha gaps show correct sky colour.
+     Canvas2D always writes every pixel so this CSS fallback never shows in 2D mode. */
+  background: linear-gradient(to bottom, #1c60c8 0%, #3888d8 50%, #98c8f4 100%);
 }
 
 /* Primary in-run HUD panels: denser pixel-art slabs with a hard bevel and

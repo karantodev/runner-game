@@ -637,15 +637,13 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
-    // M90: Mountain wash — solid lime-green fill behind the mountain silhouette (renderOrder -39).
-    // Mountain wash: green fill for the mountain BODY zone (renderOrder -39, behind silhouette -38).
+    // M91: Mountain wash — brightened 0x90cc1a→0xa8d828 to reduce colour seam vs mountain tint.
     // Top at y=6m = 29% from screen top — leaves mountain peaks (22-29%) visible against sky.
-    // The silhouette plane's triangular peak shapes show against cobalt sky in the 22-29% band.
     // Below 29%: wash fills transparent valleys in the mountain texture with solid green.
     // y_center = -3: top = -3+9 = 6.0m → elev atan(2/62.5)=1.83° → screen 29%.
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 18),
-      new THREE.MeshBasicMaterial({ color: 0x90cc1a, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0xa8d828, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -3.0, -47);
@@ -655,13 +653,10 @@ export class ThreeEnvironmentManager {
 
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // M89: h 28→36, y_center -2.85→-5.85 keeps y_peak at 7.65m (22% screen).
-      // y_peak = -5.85 + 36*0.375 = -5.85+13.5 = 7.65m ✓
-      // Taller profile (36 vs 28): more of the mountain slope visible below peaks (down to ~43%),
-      // giving the dramatic full-triangle silhouette matching reference's tall mountain shapes.
-      // w 170→180, repeatX 6→8: visible area = 2*61.5*tan(19.1°) = 42.6m.
-      // 42.6/180*8 = 1.9 texture cycles → if texture has 3 peaks per cycle = ~6 peaks visible.
-      [ASSETS.mountainsFar, -46, -5.85, 180, 36, 0xb4ff38, -38],
+      // M92: w 130→160, repeatX 8→6: peak width = 160/(6*5)=5.33m = 13.9% screen width at D=55.5m.
+      // Reference has ~7 peaks at 13-15% each; this gives 38.4/160*6*5=7.2 peaks ≈ 7. ✓
+      // M91: z=-40 (D=55.5m). Peak at 22%: y_center=-6.20.
+      [ASSETS.mountainsFar, -40, -6.20, 160, 36, 0xb4ff38, -38],
       // Forest: w 140→160, repeatX 3→4 for denser tree canopy fill.
       // visible = 2*71.5*tan(19.1°) = 49.5m → 49.5/160*4 = 1.24 cycles → denser coverage.
       [ASSETS.forest, -56, -3.5, 160, 12, 0x78cc34, -37],
@@ -679,10 +674,10 @@ export class ThreeEnvironmentManager {
     bridge.frustumCulled = false;
     group.add(bridge);
     for (const [asset, z, y, w, h, tint, ro] of layers) {
-      // Mountain (w=180, D=61.5m, visible 42.6m): repeatX=8 → 1.9 texture cycles visible.
+      // Mountain (w=160, D=55.5m, visible 38.4m): repeatX=6 → 1.44 cycles → 7.2 peaks.
       // Forest (w=160, D=71.5m, visible 49.5m): repeatX=4 → 1.24 cycles → dense canopy.
       const baseTex = this.textureCache.get(asset);
-      const repeatX = (asset === ASSETS.mountainsFar) ? 8 : 4;
+      const repeatX = (asset === ASSETS.mountainsFar) ? 6 : 4;
       let tex = baseTex;
       if (repeatX !== 1) {
         tex = baseTex.clone();
