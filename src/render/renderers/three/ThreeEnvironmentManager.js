@@ -791,8 +791,15 @@ export class ThreeEnvironmentManager {
     // M106: y_center -2.0→-4.0. Top = -4+6=2.0m → D=71.5m → elev=atan(-2/71.5)=-1.60°
     // → screen 44.7%. Mountain body (wash+bridge, dark green) now fills 27-44.7% = 17.7%,
     // matching reference's ~17% mountain body zone. Backdrop forest top already at 45.6%.
-    forestMesh.position.set(0, -4.0, -56);
-    forestMesh.renderOrder = -37;
+    // M122: y -4.0→-2.0, renderOrder -37→-35.5.
+    //   At -37 the silhouette rendered BEFORE the bridge (-36), which covered it entirely —
+    //   making the silhouette dead code. Moving to -35.5 (after bridge, before panels -35)
+    //   exposes dark tree texture on top of the bridge fill in the 37.5-43% zone.
+    //   y=-2.0 → top y=4.0m → screen 37.5% (was 44.7%); canopy bumps v=0.85 at y=2.2m
+    //   → screen 43.4%. tint 0x3a8010 × canopy → luma 0.342 (0.83× wash) = subtle dark
+    //   tree shapes in upper mountain body, matching reference's shadowed distant forest.
+    forestMesh.position.set(0, -2.0, -56);
+    forestMesh.renderOrder = -35.5;
     forestMesh.frustumCulled = false;
     group.add(forestMesh);
 
