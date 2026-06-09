@@ -637,6 +637,22 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
+    // M90: Mountain wash — solid lime-green fill behind the mountain silhouette (renderOrder -39).
+    // Mountain wash: green fill for the mountain BODY zone (renderOrder -39, behind silhouette -38).
+    // Top at y=6m = 29% from screen top — leaves mountain peaks (22-29%) visible against sky.
+    // The silhouette plane's triangular peak shapes show against cobalt sky in the 22-29% band.
+    // Below 29%: wash fills transparent valleys in the mountain texture with solid green.
+    // y_center = -3: top = -3+9 = 6.0m → elev atan(2/62.5)=1.83° → screen 29%.
+    const mountainWash = new THREE.Mesh(
+      new THREE.PlaneGeometry(300, 18),
+      new THREE.MeshBasicMaterial({ color: 0x90cc1a, depthTest: false, depthWrite: false, fog: false }),
+    );
+    mountainWash.name = 'mountain-wash';
+    mountainWash.position.set(0, -3.0, -47);
+    mountainWash.renderOrder = -39;
+    mountainWash.frustumCulled = false;
+    group.add(mountainWash);
+
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
       // M89: h 28→36, y_center -2.85→-5.85 keeps y_peak at 7.65m (22% screen).
