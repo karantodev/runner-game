@@ -746,45 +746,41 @@ export class ThreeEnvironmentManager {
     this.scene.add(group);
     this.cloudGroup = group;
 
-    // CAP=5: 5 clouds spread ±20m → 10m center-spacing > 8m cloud width → distinct, non-overlapping.
-    const CAP = 5;
-    // z=-60 to -72: deep placement → larger D → top sprite edges stay below screen top.
-    // yBase=9, variation 0–1.5 → y_center 9–10.5m → clouds appear at 8–20% from screen top.
-    const yBase = 9;
+    // CAP=6: 6 clouds spread ±22m → full sky width with 7.3m sector spacing > 8m cloud width.
+    const CAP = 6;
+    // M88: raised yBase 9→13 so clouds sit in the top 10-18% of the sky.
+    // Screen formula: screen_from_top = (8.24° − elevation) / 22°.
+    // At y=13, D=95: elevation=atan(9/95)=5.41° → screen_from_top=12.9% ✓
+    // At y=15, D=95: elevation=atan(11/95)=6.60° → screen_from_top=7.5%  ✓
+    // Cloud top at y=15+2.2=17.2, D=95: elevation=atan(13.2/95)=7.90° → screen_from_top=1.5% safe.
+    // z=-82 to -98 (D: 97-113m): deeper placement keeps tops well within viewport.
+    const yBase = 13;
     for (let i = 0; i < CAP; i += 1) {
       const r = prand(i * 1.7 + 1);
-      // Evenly-spaced sectors: 0.1 → 0.9 (symmetric), with small jitter.
+      // Evenly-spaced sectors: 0.083→0.917 (symmetric), with small jitter.
       const sector = (i + 0.5) / CAP;
-      const x = (sector - 0.5) * 40 + (prand(i * 3.1 + 2) - 0.5) * 3;
-      const z = -60 - r * 12;  // z: -60 to -72
-      const h = yBase + prand(i * 7.7 + 3) * 1.5;  // y range 9–10.5m
-      // cloud_large.png is a horizontal sprite sheet: large | medium | small (3 pixel-art clouds).
-      // Previously used cloudMedium/cloudSmall: their alpha is soft/gradient (max ~0.4) which
-      // caused wide semi-transparent halos blending into the cobalt sky as a white fog band.
-      // cloud_large.png uses pixel-art binary alpha (opaque body, transparent bg) → alphaTest:0.5
-      // gives clean hard-edged clouds with zero halo. UV-crop to show one cloud per sprite.
-      // Alternate large (left half: offset=0) and medium (right half: offset=0.5) for variety.
+      const x = (sector - 0.5) * 44 + (prand(i * 3.1 + 2) - 0.5) * 3;
+      const z = -82 - r * 16;  // z: -82 to -98, D: 97-113
+      const h = yBase + prand(i * 7.7 + 3) * 2;  // y range 13-15m
+      // cloud_large.png: horizontal sprite sheet, binary pixel-art alpha → alphaTest:0.5 = clean edges.
+      // UV-crop to show one cloud per sprite (large=left half, medium=right half).
       const baseTex = this.textureCache.get(ASSETS.cloudLarge);
       const tex = baseTex.clone();
       const cloudHalf = i % 2;  // 0=large cloud, 1=medium cloud
       tex.repeat.set(0.5, 1);
       tex.offset.set(cloudHalf * 0.5, 0);
       tex.needsUpdate = true;
-      // 0.85–1.20 range on 8×4 base (2:1 matches sub-image aspect ratio of cloud_large.png).
-      // At D=70m: cloud 14–18% screen width; 5 clouds at ±20m → 10m spacing → well-separated.
-      const scale = 0.85 + prand(i * 11.1 + 4) * 0.35;
+      // 0.8–1.1 range on 8×4 base. At D=100m: cloud 9–13% screen width; fog:false keeps full opacity.
+      const scale = 0.8 + prand(i * 11.1 + 4) * 0.3;
       const mat = new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
         opacity: 1.0,
-        // pixel-art binary alpha: opaque cloud body (alpha≈1) vs transparent bg (alpha=0).
-        // alphaTest:0.5 cleanly discards background, keeps full cloud body without halos.
         alphaTest: 0.5,
         fog: false,
         depthWrite: false,
       });
       const sprite = new THREE.Sprite(mat);
-      // 8×4 world-unit base; aspect 2:1 matches each cloud_large sub-image.
       sprite.scale.set(8 * scale, 4 * scale, 1);
       sprite.position.set(x, h, z);
       sprite.renderOrder = -14;
