@@ -664,12 +664,12 @@ export class ThreeEnvironmentManager {
     bridge.frustumCulled = false;
     group.add(bridge);
     for (const [asset, z, y, w, h, tint, ro] of layers) {
-      // textureCache repeat=1 (no repeat set). Mountain plane w=170, visible screen width
-      // at D=61.5m ≈ 42.4m (25% of 170). With repeat=1 only 25% of one texture tile shows
-      // → ~1 partial peak. Need repeat=4 so visible 25% × 4 = 1 full tile = 5 peaks on screen.
+      // textureCache repeat=1. Mountain plane w=170, visible at D=61.5m ≈ 42.4m (25% of 170).
+      // repeat=4 → 25%×4=1 tile=5 peaks. repeat=6 → 25%×6=1.5 tiles=7-8 peaks,
+      // each peak ~14% screen width matching reference's dense 7-peak mountain range.
       // Forest silhouette (w=140, D=71.5m, visible 49m) gets repeat=3 for ~3 repeats visible.
       const baseTex = this.textureCache.get(asset);
-      const repeatX = (asset === ASSETS.mountainsFar) ? 4 : 3;
+      const repeatX = (asset === ASSETS.mountainsFar) ? 6 : 3;
       let tex = baseTex;
       if (repeatX !== 1) {
         tex = baseTex.clone();
