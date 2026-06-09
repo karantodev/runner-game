@@ -346,7 +346,7 @@ export class ThreeEnvironmentManager {
     group.add(rockCubes);
 
     for (const t of tops) {
-      const asset = t.stack >= 3 ? ASSETS.mushroom : ASSETS.tree;
+      const asset = ASSETS.mushroom; // always mushroom on voxel walls, matching reference
       const m = propMetrics(asset);
       const prop = this.makeProp(asset, { x: t.x, y: t.y + m.height / 2, z: t.z, width: m.width, height: m.height, seed: t.x * 13.1 + t.z * 7.7 });
       prop.renderOrder = 2;
@@ -394,13 +394,15 @@ export class ThreeEnvironmentManager {
     };
 
     const sideProps = [
-      // Trees — mid/far background, away from road
+      // Trees — z=-13/-18 flanking near shoulder; z=-32/-35 visible at DIST≈25-30m edges
       [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
-      [ASSETS.tree, -5.6, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      // Mushrooms — at road edge, z=3-4 so cap is fully visible above HUD controls
-      [ASSETS.mushroom, -2.7, 0, 3.5], [ASSETS.mushroom, 2.9, 0, 4.0],
+      [ASSETS.tree, -7.0, 0, -32], [ASSETS.tree, 5.6, 0, -35],
+      // Mushrooms — near ones visible at game start (z=0.5 extends left window to ~7m)
+      [ASSETS.mushroom, -2.0, 0, 0.5], [ASSETS.mushroom, 2.2, 0, 4.0],
+      [ASSETS.mushroom, -3.3, 0, -1.5],
       [ASSETS.mushroom, 3.4, 0, -7.0],
-      [ASSETS.mushroom, -3.5, 0, -19.5], [ASSETS.mushroom, 3.4, 0, -26.5],
+      // Mid-distance: z=-25/-26.5 visible at DIST≈25m on left/right shoulders
+      [ASSETS.mushroom, -3.5, 0, -25.0], [ASSETS.mushroom, 3.4, 0, -26.5],
       // Pipe
       [ASSETS.pipe, 4.18, 0, -16],
       // Fences
@@ -418,10 +420,16 @@ export class ThreeEnvironmentManager {
       [ASSETS.purpleBrick, -3.1, 1.8, -20.5], [ASSETS.purpleBrick, 3.2, 1.8, -11.5],
       [ASSETS.questionBlock, -3.9, 3.8, -14],
       [ASSETS.questionBlock, 4.0, 3.8, -22],
+      // Flowers — very near foreground (fills lower-quarter between player and wall)
+      [ASSETS.flowersYellow, -2.3, 0, 5.5], [ASSETS.flowersYellow, 2.2, 0, 6.0],
+      [ASSETS.flowersPurple, -3.0, 0, 4.5], [ASSETS.flowersPurple, 3.1, 0, 4.0],
+      [ASSETS.flowersYellow, -3.5, 0, 2.0], [ASSETS.flowersYellow, 3.4, 0, 1.5],
       // Flowers — near road edge
       [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
       [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
       [ASSETS.flowersYellow, -2.8, 0, 0.8], [ASSETS.flowersYellow, 2.65, 0, -3.6],
+      [ASSETS.flowersPurple, -2.9, 0, -6.0], [ASSETS.flowersPurple, 3.0, 0, -8.0],
+      [ASSETS.flowersYellow, -3.3, 0, -17.0], [ASSETS.flowersYellow, 3.3, 0, -36.0],
       // Flowers — outer shoulder fill (matches reference's flower-covered meadow)
       [ASSETS.flowersPurple, -6.2, 0, -4.0], [ASSETS.flowersPurple, 6.0, 0, -7.5],
       [ASSETS.flowersPurple, -6.5, 0, -16.0], [ASSETS.flowersPurple, 6.3, 0, -21.0],
@@ -454,7 +462,7 @@ export class ThreeEnvironmentManager {
       group.add(tuft);
     }
 
-    for (let i = 0; i < 26; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
       const r = prand(i * 3.1 + 1);
       const r2 = prand(i * 5.7 + 2);
       const z = 4 - i * 2.1;
