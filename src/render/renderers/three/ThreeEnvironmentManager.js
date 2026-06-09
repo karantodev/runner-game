@@ -436,8 +436,8 @@ export class ThreeEnvironmentManager {
       [ASSETS.purpleBrick, -3.1, 1.8, -33.5],
 
       // ── RIGHT SIDE ───────────────────────────────────────────────
-      // Spiky grass close to camera right of lane (D=8m, x=2.2 → 70% from left)
-      [ASSETS.spikyBush, 2.2, 0, 7.5],
+      // Dry grass accent on right shoulder — pushed to x=3.8 (outside right lane x=1.18)
+      [ASSETS.dryGrass, 3.8, 0, 5.0],
       // Near mushroom at right screen edge (D=12m, inner edge 81%)
       [ASSETS.mushroom, 4.0, 0, 3.5],
       // Fence on right shoulder (D=18m)
