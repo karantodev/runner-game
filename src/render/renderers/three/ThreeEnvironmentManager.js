@@ -635,11 +635,12 @@ export class ThreeEnvironmentManager {
     // gradient fade from bright apex → dark body → dark wash reads as one mountain mass.
     // M107: height 22→24, center y -4.5→-5.0 → top moves from y=6.5 (27.0%) to y=7.0 (25.0%).
     // D=62.5m (z=-47): atan((7-4)/62.5)=2.75° → screen=(8.24-2.75)/22=24.95%.
-    // M108: colour 0x64be20→0x7ccc2c (brighter lime). Matches peak base so transition stays seamless.
-    // Reference mountain body is a vivid lime-green, not dark — brightened to match.
+    // M108: colour 0x64be20→0x7ccc2c (brighter lime).
+    // M111: colour 0x7ccc2c→0x3a8010. Reference mountain body is clearly DARKER than the
+    //   bright lime peak tips — ~1.7× peak/body luminance contrast. 0x3a8010 matches.
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 24),
-      new THREE.MeshBasicMaterial({ color: 0x7ccc2c, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x3a8010, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -5.0, -47);
@@ -706,11 +707,11 @@ export class ThreeEnvironmentManager {
         { px:  38, apexY: 11.5, r: 9.0 },  // flanking right → apex at screen edge
       ];
       for (const { px, apexY, r } of FRONT) {
-        // M110: base 0x7ccc2c→0xb4ff38 (same as apex) → flat bright lime peaks.
-        // Reference mountains are uniformly vivid lime, not gradients fading to body colour.
-        // With base=apex=0xb4ff38, vertexColors produces flat bright lime → peaks appear as
-        // brighter islands (0xb4ff38) against the slightly darker wash body (0x7ccc2c).
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0xb4ff38, -38);
+        // M110: flat bright lime peaks (base=apex=0xb4ff38).
+        // M111: restore gradient + richer hue. apex 0xb4ff38→0x80d430 (greener, matches reference
+        //   peak hue), base 0x3a8010 (dark green = body colour) → seamless peak→body transition.
+        //   Luminance contrast: 0x80d430 luma≈174 / 0x3a8010 luma≈98 = 1.78× (matches ref ~1.7×).
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0x80d430, 0x3a8010, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
@@ -727,7 +728,9 @@ export class ThreeEnvironmentManager {
         { px:  19.5, apexY: 11.0, r: 7.0 },  // → 23.5%
       ];
       for (const { px, apexY, r } of BACK) {
-        const tri = makeTriangleGradient(px, apexY, r, -115, 0x8ad030, 0x5cb020, -38.5);
+        // M111: apex 0x8ad030→0x5cb020 (proportionally darker than front 0x80d430),
+        //   base 0x5cb020→0x3a8010 (match new body colour).
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x5cb020, 0x3a8010, -38.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
@@ -761,10 +764,10 @@ export class ThreeEnvironmentManager {
     // M99: y_center -4.4→-3.0. Top = -3+7=4.0m → elev=atan(0/64.5)=0° → screen 37.5%.
     // Aligns with raised forest top so bridge fills behind tree canopy from 37.5% down.
     // M103: Bridge colour matches wash — continuous mountain body tone.
-    // M108: 0x64be20→0x7ccc2c to match brightened wash.
+    // M108: 0x64be20→0x7ccc2c. M111: 0x7ccc2c→0x3a8010 to match darkened wash/body.
     const bridge = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 14),
-      new THREE.MeshBasicMaterial({ color: 0x7ccc2c, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0x3a8010, depthTest: false, depthWrite: false, fog: false }),
     );
     bridge.name = 'horizon-bridge';
     bridge.position.set(0, -3.0, -49);
