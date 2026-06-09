@@ -713,15 +713,18 @@ export class ThreeEnvironmentManager {
       }
 
       // Back row: 4 smaller peaks between front peaks, darker palette.
-      // M105: widened for better depth layering behind the front row.
+      // M105: widened for better depth layering.
+      // M109: raised apexY so peaks peek above raised wash at y=7.0 (25% screen).
+      //   D=130.5m: need apexY > 4+tan(2.75°)*130.5 = 10.26m to clear wash.
+      //   ±6.5 apexY=11.5→22.5%, ±19.5 apexY=11.0→23.5%. Base 0x4a9018→0x5cb020 (brighter).
       const BACK = [
-        { px: -19.5, apexY:  9.5, r: 6.5 },  // → 26.5% (r: 5.0→6.5)
-        { px:  -6.5, apexY: 10.0, r: 5.5 },  // → 25.5% (r: 4.5→5.5)
-        { px:   6.5, apexY: 10.0, r: 5.5 },  // → 25.5% (r: 4.5→5.5)
-        { px:  19.5, apexY:  9.5, r: 6.5 },  // → 26.5% (r: 5.0→6.5)
+        { px: -19.5, apexY: 11.0, r: 7.0 },  // → 23.5% (was 26.5%)
+        { px:  -6.5, apexY: 11.5, r: 6.0 },  // → 22.5% (was 25.5%)
+        { px:   6.5, apexY: 11.5, r: 6.0 },  // → 22.5%
+        { px:  19.5, apexY: 11.0, r: 7.0 },  // → 23.5%
       ];
       for (const { px, apexY, r } of BACK) {
-        const tri = makeTriangleGradient(px, apexY, r, -115, 0x8ad030, 0x4a9018, -38.5);
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x8ad030, 0x5cb020, -38.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
