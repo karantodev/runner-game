@@ -689,13 +689,20 @@ export class ThreeEnvironmentManager {
         return tri;
       };
 
-      // Front row: 5 peaks, peaks lowered 1m vs M102.
+      // Front row: 5 main peaks + 2 flanking edge peaks (M104).
+      // Flanking peaks at x=±38, R=9: center at atan(38/105.5)/19.1°≈101% from screen center
+      // → apex just off-screen; inner edge at x=29 (screen ~89%) visible as a diagonal slope
+      // going off the edge → matches reference "mountains extending beyond the frame".
+      // THREE.js front-to-back opaque sort at same renderOrder=-38 handles overlap correctly:
+      // flanking (D≈112m) renders BEFORE main (D≈109m) → main peaks cover overlap zone.
       const FRONT = [
-        { px: -26, apexY: 10.5, r: 6.5 },  // left outer  → 21.5%
-        { px: -13, apexY: 11.5, r: 5.0 },  // left main   → 19.0% (tallest)
-        { px:   0, apexY:  9.5, r: 5.0 },  // center      → 23.7% (castle valley)
-        { px:  13, apexY: 11.0, r: 5.5 },  // right main  → 20.2%
-        { px:  26, apexY: 10.0, r: 6.0 },  // right outer → 22.7%
+        { px: -38, apexY: 12.0, r: 9.0 },  // flanking left  → apex at screen edge
+        { px: -26, apexY: 10.5, r: 6.5 },  // left outer     → 21.5%
+        { px: -13, apexY: 11.5, r: 5.0 },  // left main      → 19.0% (tallest)
+        { px:   0, apexY:  9.5, r: 5.0 },  // center         → 23.7% (castle valley)
+        { px:  13, apexY: 11.0, r: 5.5 },  // right main     → 20.2%
+        { px:  26, apexY: 10.0, r: 6.0 },  // right outer    → 22.7%
+        { px:  38, apexY: 11.5, r: 9.0 },  // flanking right → apex at screen edge
       ];
       for (const { px, apexY, r } of FRONT) {
         const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0x64be20, -38);
