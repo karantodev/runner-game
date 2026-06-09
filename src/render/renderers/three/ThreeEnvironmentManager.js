@@ -663,9 +663,22 @@ export class ThreeEnvironmentManager {
     bridge.frustumCulled = false;
     group.add(bridge);
     for (const [asset, z, y, w, h, tint, ro] of layers) {
+      // textureCache repeat=1 (no repeat set). Mountain plane w=170, visible screen width
+      // at D=61.5m ≈ 42.4m (25% of 170). With repeat=1 only 25% of one texture tile shows
+      // → ~1 partial peak. Need repeat=4 so visible 25% × 4 = 1 full tile = 5 peaks on screen.
+      // Forest silhouette (w=140, D=71.5m, visible 49m) gets repeat=3 for ~3 repeats visible.
+      const baseTex = this.textureCache.get(asset);
+      const repeatX = (asset === ASSETS.mountainsFar) ? 4 : 3;
+      let tex = baseTex;
+      if (repeatX !== 1) {
+        tex = baseTex.clone();
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.repeat.set(repeatX, 1);
+        tex.needsUpdate = true;
+      }
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: this.textureCache.get(asset), color: tint, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
+        new THREE.MeshBasicMaterial({ map: tex, color: tint, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
       );
       mesh.name = `far-silhouette:${asset}`;
       mesh.position.set(0, y, z);
