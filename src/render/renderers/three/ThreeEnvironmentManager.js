@@ -127,9 +127,9 @@ export class ThreeEnvironmentManager {
     // CanvasTexture has flipY=true by default, so canvas-bottom (stop=0) maps to screen-top.
     // Putting vivid blue at stop=0 gives the bright sky band at the top of the viewport.
     const grad = ctx.createLinearGradient(0, 512, 0, 0);
-    grad.addColorStop(0, '#1878e8');    // vivid cornflower blue → screen top
-    grad.addColorStop(0.55, '#44ccff'); // bright sky blue
-    grad.addColorStop(1, '#a8e8ff');    // pale horizon blue → screen bottom (hidden by ground)
+    grad.addColorStop(0, '#50b4e8');    // powder sky blue → screen top (lightened to match reference)
+    grad.addColorStop(0.55, '#6adcff'); // brighter mid-sky
+    grad.addColorStop(1, '#b4f0ff');    // pale horizon blue → screen bottom (hidden by ground)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(canvas);
@@ -362,10 +362,14 @@ export class ThreeEnvironmentManager {
       return sprite;
     };
 
-    // Raised y closes the gap between mountain bases and tree tops at the horizon
-    add(ASSETS.forest, -15, 2.2, -50, 32, 5.2, { opacity: 0.98, renderOrder: -35 });
-    add(ASSETS.forest,  17, 2.2, -51, 32, 5.2, { opacity: 0.96, renderOrder: -35 });
-    add(ASSETS.forest,   0, 2.0, -52, 30, 5.0, { opacity: 0.94, renderOrder: -35 });
+    // y raised 2.2→4.0, h 5.2→8.0: sprite tops reach y=8.0 at D=63.5m.
+    // atan((8.0-4.0)/63.5) = 3.60° above horiz; +2.76° cam tilt = 6.36° above cam forward.
+    // Screen = (11°-6.36°)/22° ≈ 21% from top — aligns tree tops with mountain peaks,
+    // creating a clean treeline horizon with sky band above it matching the reference.
+    add(ASSETS.forest, -15, 4.0, -48, 36, 8.0, { opacity: 0.98, renderOrder: -35 });
+    add(ASSETS.forest,  17, 4.0, -48, 36, 8.0, { opacity: 0.96, renderOrder: -35 });
+    // Centre panel slightly lower for depth layering (tops at ~29% from screen top)
+    add(ASSETS.forest,   0, 3.0, -52, 32, 6.5, { opacity: 0.94, renderOrder: -35 });
 
     // y raised 4.8→6.5: castle center shifts from 34% to ~26% from screen top, placing the
     // turrets near the sky/mountain boundary and matching the reference vanishing-point position.
@@ -625,9 +629,10 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      // y lowered 8.0→6.5: mountain peaks shift ~6% lower on screen, widening sky band
-      // from ~15% to ~20-21% — matching reference's ~20% bright-sky zone at top.
-      [ASSETS.mountainsFar, -65, 6.5, 170, 30, 0x70c838, -38],
+      // y lowered 8.0→6.5→5.2: each step shifts mountain peaks ~4-6% lower on screen,
+      // opening the bright-sky zone at top toward reference's ~20%.
+      // At y=5.2, z=-65 (D=80.5m): peaks at v≈0.65 → world y≈9.1 → 19.5% from screen top.
+      [ASSETS.mountainsFar, -65, 5.2, 170, 30, 0x70c838, -38],
       [ASSETS.forest, -56, 2.5, 140, 12, 0x60a828, -37],
     ];
     // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
