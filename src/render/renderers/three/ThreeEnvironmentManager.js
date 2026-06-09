@@ -740,9 +740,11 @@ export class ThreeEnvironmentManager {
       new THREE.MeshBasicMaterial({ map: forTex, color: 0x78cc34, transparent: true, alphaTest: 0.5, depthWrite: false, fog: false }),
     );
     forestMesh.name = `far-silhouette:${ASSETS.forest}`;
-    // M99: y_center -3.5→-2.0. Top = -2+6=4.0m → elev=atan(0/71.5)=0° → screen 37.5%.
-    // Tree canopy tops visible at 37.5% (was 42.9%) → reference "dense round-canopy forest" zone.
-    forestMesh.position.set(0, -2.0, -56);
+    // M99: y_center -3.5→-2.0. Top = -2+6=4.0m → elev=0° → screen 37.5%.
+    // M106: y_center -2.0→-4.0. Top = -4+6=2.0m → D=71.5m → elev=atan(-2/71.5)=-1.60°
+    // → screen 44.7%. Mountain body (wash+bridge, dark green) now fills 27-44.7% = 17.7%,
+    // matching reference's ~17% mountain body zone. Backdrop forest top already at 45.6%.
+    forestMesh.position.set(0, -4.0, -56);
     forestMesh.renderOrder = -37;
     forestMesh.frustumCulled = false;
     group.add(forestMesh);
