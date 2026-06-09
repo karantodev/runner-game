@@ -568,9 +568,11 @@ export class ThreeEnvironmentManager {
     const notchLength = Math.PI * 2 - NOTCH_HALF * 2;
 
     const layers = [
-      [ASSETS.mountainsFar, 100, 28, 4.5, 0xbcee50, true, 0.12, 0.68],
-      [ASSETS.mountainsMid,  80, 24, 4.0, 0xa8dc44, true, 0.44, 0.65],
-      [ASSETS.mountainsNear, 62, 20, 3.5, 0x98d040, true, 0.72, 0.56],
+      // Tints shifted from yellow-green (0xbcee50) to vibrant forest-green to match reference's
+      // bright triangular mountains. Each layer progressively darker/richer for depth.
+      [ASSETS.mountainsFar, 100, 28, 4.5, 0x70c838, true, 0.12, 0.68],
+      [ASSETS.mountainsMid,  80, 24, 4.0, 0x58b028, true, 0.44, 0.65],
+      [ASSETS.mountainsNear, 62, 20, 3.5, 0x469820, true, 0.72, 0.56],
     ];
 
     for (const [assetPath, radius, height, repeatX, tint, notched, offsetX, scaleY] of layers) {
@@ -624,8 +626,8 @@ export class ThreeEnvironmentManager {
     this.farSilhouettesGroup = group;
     // renderOrder -38/-37/-36: behind backdrop forest (-35) so forest line shows in front of mountain shapes
     const layers = [
-      [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0xbcee50, -38],
-      [ASSETS.forest, -56, 2.5, 140, 12, 0x90cc3c, -37],
+      [ASSETS.mountainsFar, -65, 8.0, 170, 30, 0x70c838, -38],
+      [ASSETS.forest, -56, 2.5, 140, 12, 0x60a828, -37],
     ];
     // Horizon bridge — tall green band masking sky-gradient bleed through mountain transparent areas
     const bridge = new THREE.Mesh(
