@@ -664,8 +664,11 @@ export class ThreeEnvironmentManager {
     //   apexY=10.5 → atan(6.5/105.5)=3.52° → 21.5% (left-outer)
     //   apexY=9.5  → atan(5.5/105.5)=2.98° → 23.7% (center, shorter for castle valley)
     //   apexY=10.0 → atan(6.0/105.5)=3.25° → 22.7% (right-outer)
-    // Back row (z=−115, D=130.5m): apex 0x8ad030, base 0x4a9018, renderOrder=−38.5.
-    //   Peek between front peaks at 25-26.5% (above wash 29%), creating mountain range depth.
+    // Back row (z=−115, D=130.5m): apex 0x8ad030, base 0x4a9018, renderOrder=−39.5 (M115).
+    //   M115: −38.5→−39.5 so back peaks render BEFORE the wash (−39). Wash now covers
+    //   back peaks from 28% (y=6.3m) downward; only tips (22.5-23.5%) poke above the wash.
+    //   Previously at −38.5 (after wash), the gradient base showed medium-lime over the dark
+    //   wash in the 28-37.5% zone — creating a bright band in the mountain body. Now clean.
     {
       const BASE_Y = 4.0;
 
@@ -736,7 +739,8 @@ export class ThreeEnvironmentManager {
       for (const { px, apexY, r } of BACK) {
         // M111: apex 0x8ad030→0x5cb020 (proportionally darker than front 0x80d430),
         //   base 0x5cb020→0x3a8010 (match new body colour).
-        const tri = makeTriangleGradient(px, apexY, r, -115, 0x5cb020, 0x3a8010, -38.5);
+        // M115: renderOrder −38.5→−39.5 (behind wash). See header comment above.
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x5cb020, 0x3a8010, -39.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
