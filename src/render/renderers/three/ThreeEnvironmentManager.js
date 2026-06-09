@@ -637,13 +637,14 @@ export class ThreeEnvironmentManager {
     group.name = 'far-silhouettes';
     this.scene.add(group);
     this.farSilhouettesGroup = group;
-    // M91: Mountain wash — brightened 0x90cc1a→0xa8d828 to reduce colour seam vs mountain tint.
-    // Top at y=6m = 29% from screen top — leaves mountain peaks (22-29%) visible against sky.
-    // Below 29%: wash fills transparent valleys in the mountain texture with solid green.
+    // M93: Mountain wash colour = mountain silhouette tint (0xb4ff38) — zero seam in body zone.
+    // Transparent valleys in the mountain texture (below 29%) now render identically to opaque
+    // mountain pixels → uniformly vivid lime-green body matching the reference.
+    // Top at y=6m = 29% from screen top — leaves peak zone (22-29%) visible against sky.
     // y_center = -3: top = -3+9 = 6.0m → elev atan(2/62.5)=1.83° → screen 29%.
     const mountainWash = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 18),
-      new THREE.MeshBasicMaterial({ color: 0xa8d828, depthTest: false, depthWrite: false, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0xb4ff38, depthTest: false, depthWrite: false, fog: false }),
     );
     mountainWash.name = 'mountain-wash';
     mountainWash.position.set(0, -3.0, -47);
