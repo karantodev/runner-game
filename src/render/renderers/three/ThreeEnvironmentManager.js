@@ -672,7 +672,16 @@ export class ThreeEnvironmentManager {
     //   Previously at −38.5 (after wash), the gradient base showed medium-lime over the dark
     //   wash in the 28-37.5% zone — creating a bright band in the mountain body. Now clean.
     {
-      const BASE_Y = 4.0;
+      // M118: BASE_Y 4.0→7.9. At BASE_Y=4.0 the front peak gradient was visible in the
+      //   mountain body zone (screen 28-37.5%), since peaks (renderOrder=−38) render AFTER
+      //   the wash (−39) and their base-to-apex gradient showed medium-lime at 28-37%.
+      //   Fix: set BASE_Y so front-peak base vertices project to the WASH-TOP screen line.
+      //   Wash top: y=6.3m at z=−47 → elevation=atan(2.3/62.5)=2.11° → screen=27.9%.
+      //   Front peaks at z=−90, D=105.5m: y = 4+tan(2.10°)×105.5 = 7.87m ≈ 7.9.
+      //   At screen 27.9% the peak shows BASE COLOR (0x3a8010) = wash → seamless blend.
+      //   Back peaks (renderOrder=−39.5, behind wash): base at y=7.9m at D=130.5m projects
+      //   to 29.7% → below wash top (27.9%), covered by wash. Tips at 22.5-27.9% still show.
+      const BASE_Y = 7.9;
 
       const makeTriangleGradient = (px, apexY, r, z, apexHex, baseHex, order) => {
         const verts = new Float32Array([
