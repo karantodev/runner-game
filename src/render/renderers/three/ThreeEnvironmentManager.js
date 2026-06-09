@@ -706,8 +706,11 @@ export class ThreeEnvironmentManager {
         { px:  38, apexY: 11.5, r: 9.0 },  // flanking right → apex at screen edge
       ];
       for (const { px, apexY, r } of FRONT) {
-        // M108: base 0x64be20→0x7ccc2c to match brightened wash (seamless gradient).
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0x7ccc2c, -38);
+        // M110: base 0x7ccc2c→0xb4ff38 (same as apex) → flat bright lime peaks.
+        // Reference mountains are uniformly vivid lime, not gradients fading to body colour.
+        // With base=apex=0xb4ff38, vertexColors produces flat bright lime → peaks appear as
+        // brighter islands (0xb4ff38) against the slightly darker wash body (0x7ccc2c).
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0xb4ff38, 0xb4ff38, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
