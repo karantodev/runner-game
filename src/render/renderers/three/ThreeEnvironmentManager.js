@@ -644,8 +644,9 @@ export class ThreeEnvironmentManager {
       // 0–18% shows clean cobalt sky; peaks emerge at 18%, matching reference ~20% sky zone.
       // Castle turrets at 9% → 9% clear above mountain ridge = classic "castle over valley" read.
       [ASSETS.mountainsFar, -65, 6.0, 170, 16, 0xb4f040, -38],
-      // Forest silhouette y 1.8→1.2: tops at 7.2m → screen 25.8% (was 24%). 7.8% gap below peaks.
-      [ASSETS.forest, -56, 1.2, 140, 12, 0x78cc34, -37],
+      // Forest silhouette y 1.2→0.0: canopy tops (v≈0.85) at y=4.2m → screen 36.7% from top.
+      // Clean mountain zone 18–36.7% (was 18–25.8%); matches reference's ~12% clean peak zone.
+      [ASSETS.forest, -56, 0.0, 140, 12, 0x78cc34, -37],
     ];
     // Horizon bridge — backstop masking sky-gradient bleed through mountain transparent gaps.
     // y lowered 1.5→-0.5 (top moves from 23% to 37% screen) so it sits BELOW mountain peaks
