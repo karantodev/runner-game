@@ -5,9 +5,15 @@ import { ThreePostProcessingManager } from './ThreePostProcessingManager.js';
 import { ThreeEnvironmentManager } from './ThreeEnvironmentManager.js';
 import { ThreeSceneryManager } from './ThreeSceneryManager.js';
 import { ThreeEntityManager } from './ThreeEntityManager.js';
-import { FARMER_UNIT } from './threeAssetManifest.js';
+import { FARMER_UNIT, prand, propMetrics } from './threeAssetManifest.js';
 
 const WORLD_UNIT_PER_DISTANCE = 0.42;
+
+// 2.5D ortho shows every streamed prop at constant size (no distance shrink), so the
+// perspective-calibrated heights (trees 4.32m) stack along z into solid green walls
+// that bury the road. Cap prop height and thin density — render-only, 3D untouched.
+const ORTHO_SCENERY_MAX_HEIGHT = 2.0;
+const ORTHO_SCENERY_KEEP = 0.45;
 
 export class ThreeSceneRenderer {
   constructor(canvas, assets, projection, {
@@ -157,6 +163,7 @@ export class ThreeSceneRenderer {
     this.renderer?.dispose();
     this.renderer?.forceContextLoss?.();
     this.renderer = null;
+    this.scene = null;
     this.initialized = false;
     this.disposed = true;
   }
@@ -229,6 +236,7 @@ export class ThreeSceneRenderer {
     if (this.environment.backdropGroup) this.environment.backdropGroup.visible = !is25d;
     if (this.environment.cloudGroup) this.environment.cloudGroup.visible = !is25d;
     if (this.environment.shoulderTiersGroup) this.environment.shoulderTiersGroup.visible = !is25d;
+    if (this.environment.purpleAccentGroup) this.environment.purpleAccentGroup.visible = !is25d;
 
     if (this.postProcessing) {
       this.postProcessing.setVignetteDarkness(is25d ? 0.15 : 0.35);
@@ -356,6 +364,14 @@ export class ThreeSceneRenderer {
     return b;
   }
 
+  // Returns 0 to drop the prop entirely (deterministic per entity, stable across
+  // frames), otherwise a scale that caps the prop's world height for the ortho frame.
+  #orthoSceneryScale(assetPath, entityId) {
+    if (prand(entityId * 0.731 + 7.3) > ORTHO_SCENERY_KEEP) return 0;
+    const { height } = propMetrics(assetPath);
+    return Math.min(1, ORTHO_SCENERY_MAX_HEIGHT / height);
+  }
+
   #syncRegistryObjects(world) {
     const registry = world.registry;
     if (!registry?.query) return;
@@ -380,9 +396,12 @@ export class ThreeSceneRenderer {
       if (category === 'scenery') {
         const assetPath = this.environment.scenerySpriteAsset?.(sprite);
         if (assetPath) {
-          const x = this.environment.sceneryLaneX(pos.lane, entity.components.ScenicData.laneBand);
-          const z = -pos.distance * WORLD_UNIT_PER_DISTANCE;
-          this.scenery.addSceneryInstance(assetPath, x, 0, z, 1.0, 0, entity.id);
+          const scale = this.mode === '2.5d' ? this.#orthoSceneryScale(assetPath, entity.id) : 1.0;
+          if (scale > 0) {
+            const x = this.environment.sceneryLaneX(pos.lane, entity.components.ScenicData.laneBand);
+            const z = -pos.distance * WORLD_UNIT_PER_DISTANCE;
+            this.scenery.addSceneryInstance(assetPath, x, 0, z, scale, 0, entity.id);
+          }
         }
       } else {
         const assetPath = this.environment.entitySpriteAsset?.(sprite, category);
