@@ -731,7 +731,9 @@ export class ThreeEnvironmentManager {
         // M111: restore gradient + richer hue. apex 0xb4ff38→0x80d430 (greener, matches reference
         //   peak hue), base 0x3a8010 (dark green = body colour) → seamless peak→body transition.
         //   Luminance contrast: 0x80d430 luma≈174 / 0x3a8010 luma≈98 = 1.78× (matches ref ~1.7×).
-        const tri = makeTriangleGradient(px, apexY, r, -90, 0x80d430, 0x3a8010, -38);
+        // M119: apex 0x80d430→0x98e038. Reference peaks are electric lime; 0x80d430 reads muted.
+        //   (152,224,56) luma=0.772 → contrast 1.87× (up from 1.74×). Same lime hue, more vivid.
+        const tri = makeTriangleGradient(px, apexY, r, -90, 0x98e038, 0x3a8010, -38);
         tri.name = `mountain-peak:${px}`;
         group.add(tri);
       }
@@ -751,7 +753,9 @@ export class ThreeEnvironmentManager {
         // M111: apex 0x8ad030→0x5cb020 (proportionally darker than front 0x80d430),
         //   base 0x5cb020→0x3a8010 (match new body colour).
         // M115: renderOrder −38.5→−39.5 (behind wash). See header comment above.
-        const tri = makeTriangleGradient(px, apexY, r, -115, 0x5cb020, 0x3a8010, -39.5);
+        // M119: apex 0x5cb020→0x68b028. Keeps back peaks at ~77% of front 0x98e038 brightness
+        //   (0.592/0.772=77%) — same depth ratio as before, just proportionally brighter.
+        const tri = makeTriangleGradient(px, apexY, r, -115, 0x68b028, 0x3a8010, -39.5);
         tri.name = `mountain-peak-back:${px}`;
         group.add(tri);
       }
