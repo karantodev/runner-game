@@ -813,6 +813,28 @@ export class ThreeEnvironmentManager {
     midBodyMesh.frustumCulled = false;
     group.add(midBodyMesh);
 
+    // M126: second mid-body plane at renderOrder=-38.85, texture offset=0.5 (half-period shift).
+    // Fills horizontal gaps between the first plane's canopy blobs, doubling coverage density
+    // in the 28-38% zone. Both planes share same tint — the half-offset interleaves tree shapes.
+    const midBodyTex2 = (() => {
+      const base = this.textureCache.get(ASSETS.forest);
+      const t = base.clone();
+      t.wrapS = THREE.RepeatWrapping;
+      t.repeat.set(4, 1);
+      t.offset.set(0.5, 0);
+      t.needsUpdate = true;
+      return t;
+    })();
+    const midBodyMesh2 = new THREE.Mesh(
+      new THREE.PlaneGeometry(160, 10),
+      new THREE.MeshBasicMaterial({ map: midBodyTex2, color: 0x98cc40, transparent: true, alphaTest: 0.5, depthTest: false, depthWrite: false, fog: false }),
+    );
+    midBodyMesh2.name = 'mid-body-forest-2';
+    midBodyMesh2.position.set(0, 2.5, -61);
+    midBodyMesh2.renderOrder = -38.85;
+    midBodyMesh2.frustumCulled = false;
+    group.add(midBodyMesh2);
+
     const forestMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 12),
       // M113: tint 0x78cc34→0x3a8010. Far silhouette background pixels (transparent areas in
