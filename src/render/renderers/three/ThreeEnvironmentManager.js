@@ -176,12 +176,14 @@ export class ThreeEnvironmentManager {
   }
 
   buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0xdaf0ff, 0x90d860, 2.6));
+    // M136: Sky hemisphere 0xdaf0ff→0xf0f8e8 (neutral warm-white, was blue → caused cyan tint
+    // on all upward-facing surfaces). Rim 0x8fd8ff→0xd8f0d0 (warm green-white, was cyan).
+    this.scene.add(new THREE.HemisphereLight(0xf0f8e8, 0x90d860, 2.6));
     const sun = new THREE.DirectionalLight(0xfff8e8, 2.8);
     sun.position.set(-5, 8, 5);
     sun.castShadow = false;
     this.scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x8fd8ff, 0.9);
+    const rim = new THREE.DirectionalLight(0xd8f0d0, 0.7);
     rim.position.set(4, 3, -6);
     this.scene.add(rim);
   }
@@ -195,12 +197,11 @@ export class ThreeEnvironmentManager {
     ground.position.set(0, -0.16, -34);
     this.scene.add(ground);
 
-    const stripeMat = new THREE.MeshStandardMaterial({
-      color: 0x3d9428,
-      roughness: 0.92,
-      metalness: 0,
+    // M136: MeshBasicMaterial — unlit, no blue-sky tint. Pure green overlay stripe.
+    const stripeMat = new THREE.MeshBasicMaterial({
+      color: 0x5aaa24,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.30,
     });
     for (let i = 0; i < 12; i += 1) {
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(18, 0.005, 2.2), stripeMat);
