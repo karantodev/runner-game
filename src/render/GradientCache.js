@@ -118,14 +118,18 @@ export class GradientCache {
     // yellow-lime; pull them to a richer green and nudge the near a touch
     // deeper, WITHOUT collapsing the far→near value range (atmospheric depth
     // preserved). Deeper green also lifts gold-orchid contrast on the road.
-    ground.addColorStop(0, '#6cae34');     // richer, less-yellow far field
-    ground.addColorStop(0.38, '#46892c');  // deeper saturated mid
-    ground.addColorStop(1, '#1d5621');     // deep near field (still readable)
+    ground.addColorStop(0,    '#84cc44');  // bright sunlit far field (horizon)
+    ground.addColorStop(0.30, '#5aaa32');  // rich mid-field
+    ground.addColorStop(0.68, '#3d8825');  // near-mid, still vivid
+    ground.addColorStop(1,    '#2a6a1a');  // near field — darker but not murky
 
+    // M141 — push road toward saturated yellow-green so it stays distinctly
+    // greener and slightly brighter than the surrounding field. Was '#7ec64c'
+    // family which blended into field under the warm overlay.
     const road = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    road.addColorStop(0, '#7ec64c');
-    road.addColorStop(0.42, '#5dae3e');
-    road.addColorStop(1, '#347d2b');
+    road.addColorStop(0, '#8ed455');
+    road.addColorStop(0.42, '#68b842');
+    road.addColorStop(1, '#3e8a30');
 
     const roadEdge = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
     roadEdge.addColorStop(0, 'rgba(220,248,120,0.14)');
