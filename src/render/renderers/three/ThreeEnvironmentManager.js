@@ -957,9 +957,10 @@ export class ThreeEnvironmentManager {
       tex.repeat.set(0.5, 1);
       tex.offset.set(cloudHalf * 0.5, 0);
       tex.needsUpdate = true;
-      // M101: scale 0.8-1.1→1.2-1.6 on 8×4 base. At D=100m: cloud 14-19% screen width.
-      // Larger clouds match reference's prominent fluffy white cloud shapes.
-      const scale = 1.2 + prand(i * 11.1 + 4) * 0.4;
+      // M127: scale 1.2-1.6 → 1.7-2.3 (+42%). At D=100m: cloud 20-27% screen width.
+      // Reference clouds are large bold formations; bigger scale shows more of the puffy underside.
+      // Bottom constraint at max scale=2.3, D=113m (farthest): bottom y=10.4m → screen=22.7% (above 28% body ✓).
+      const scale = 1.7 + prand(i * 11.1 + 4) * 0.6;
       const mat = new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
