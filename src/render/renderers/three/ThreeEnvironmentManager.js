@@ -415,65 +415,52 @@ export class ThreeEnvironmentManager {
       return prop;
     };
 
+    // M135: Radical prop reduction to match reference's open, sparse layout.
+    // Reference shows per side: 1 mushroom + 1 fence + 1 platform + 1 tree/pipe
+    //   + 1 purple structure + 1 qblock. ~6-7 elements/side, not 20+.
     const sideProps = [
-      // Trees — z=-13/-18 flanking near shoulder; z=-32/-35 visible at DIST≈25-30m edges
-      [ASSETS.tree, -5.7, 0, -13], [ASSETS.tree, 5.5, 0, -18],
-      // Left far tree: x=-5.5 → angle 13.7°=87% @ DIST=25m (was -7.0, just off-screen at 18°)
-      [ASSETS.tree, -5.5, 0, -32], [ASSETS.tree, 5.6, 0, -35],
-      // M134: Near mushrooms pushed to screen edges to match reference (lanes clear).
-      // x=-4.5 D=15m: center 6% from left, inner edge 21% — left shoulder only.
-      // x=+4.0 D=11.5m: center ~100% (screen edge), inner edge 81% — right shoulder only.
-      // x=-4.5 D=17m: inner edge 24% from left — stays in left shoulder zone.
-      [ASSETS.mushroom, -4.5, 0, 0.5], [ASSETS.mushroom, 4.0, 0, 4.0],
-      [ASSETS.mushroom, -4.5, 0, -1.5],
-      [ASSETS.mushroom, 3.4, 0, -7.0],
-      // Mid-distance mushroom pair
-      // Left z=-23: 12.5m ahead @ DIST=26 — closer than purpleBrick at z=-25 (14.5m); x=-2.0
-      //   inner corridor edge: 21.1% from left (324px) @ DIST=26 — clearly open corridor area
-      // Right z=-26.5: 16m ahead @ DIST=26 — closer than purpleStairs at z=-28 → renders in front
-      [ASSETS.mushroom, -2.0, 0, -23.0], [ASSETS.mushroom, 3.4, 0, -26.5],
-      // Second mushroom pair at z=-30/-31 for "field of mushrooms" depth (DIST≈28-35m)
-      [ASSETS.mushroom, -3.1, 0, -30.0], [ASSETS.mushroom, 3.1, 0, -31.0],
-      // Pipe
-      [ASSETS.pipe, 4.18, 0, -16],
-      // Fences
-      [ASSETS.fence, -4.8, 0, 3.1], [ASSETS.fence, 4.85, 0, -2.1],
-      [ASSETS.fence, -5.1, 0, -28], [ASSETS.fence, 5.0, 0, -34],
-      // Bushes
-      [ASSETS.bush, -4.5, 0, -4.4], [ASSETS.bush, 4.6, 0, 1.8],
-      // Grass-dirt blocks — closer to road, taller platforms form elevated wall
-      [ASSETS.grassBlockLeft, -3.5, 0, 1.5],   [ASSETS.grassBlockRight, 3.5, 0, -4.5],
-      [ASSETS.grassBlock, -3.6, 0, -9.5],       [ASSETS.grassBlock, 3.6, 0, -14.5],
-      [ASSETS.grassBlockLeft, -3.5, 0, -19.0],  [ASSETS.grassBlockRight, 3.6, 0, -23.5],
-      [ASSETS.grassBlock, -3.7, 0, -28.0],      [ASSETS.grassBlock, 3.6, 0, -33.0],
-      // Purple structures — elevated to sit on top of voxel cube platforms
-      // Near pair: visible early (DIST=0-22m). z=-12/-16 keeps them at 27-32m distance
-      // at DIST=0, closer approach over the first 20m without ever getting overwhelming.
-      [ASSETS.purpleWall, -3.2, 1.8, -12.0], [ASSETS.purpleBrick, 3.2, 1.8, -16.0],
-      // Mid pair: visible at DIST=22-38m. z=-30 → dist=17.5m @ DIST=28 (was 12.5m at z=-25);
-      // angular position 10°, screen width ~21% — matches reference's purple brick proportions.
-      [ASSETS.purpleBrick, -3.1, 1.8, -30], [ASSETS.purpleStairs, 3.3, 1.8, -34],
-      // Far pair: visible at DIST=35-50m for layered depth
-      [ASSETS.purpleWall, -3.3, 1.8, -40], [ASSETS.purpleBrick, 3.3, 1.8, -46],
-      [ASSETS.questionBlock, -3.9, 3.8, -14],
-      [ASSETS.questionBlock, 4.0, 3.8, -22],
-      // Flowers — very near foreground (fills lower-quarter between player and wall)
-      [ASSETS.flowersYellow, -2.3, 0, 5.5], [ASSETS.flowersYellow, 2.2, 0, 6.0],
-      [ASSETS.flowersPurple, -3.0, 0, 4.5], [ASSETS.flowersPurple, 3.1, 0, 4.0],
-      [ASSETS.flowersYellow, -3.5, 0, 2.0], [ASSETS.flowersYellow, 3.4, 0, 1.5],
-      // Flowers — near road edge
-      [ASSETS.flowersPurple, -3.45, 0, -11], [ASSETS.flowersPurple, 3.35, 0, -12.8],
-      [ASSETS.flowersPurple, -3.2, 0, -24], [ASSETS.flowersPurple, 3.2, 0, -30],
-      [ASSETS.flowersYellow, -2.8, 0, 0.8], [ASSETS.flowersYellow, 2.65, 0, -3.6],
-      [ASSETS.flowersPurple, -2.9, 0, -6.0], [ASSETS.flowersPurple, 3.0, 0, -8.0],
-      [ASSETS.flowersYellow, -3.3, 0, -17.0], [ASSETS.flowersYellow, 3.3, 0, -36.0],
-      // Flowers — outer shoulder fill (matches reference's flower-covered meadow)
-      [ASSETS.flowersPurple, -6.2, 0, -4.0], [ASSETS.flowersPurple, 6.0, 0, -7.5],
-      [ASSETS.flowersPurple, -6.5, 0, -16.0], [ASSETS.flowersPurple, 6.3, 0, -21.0],
-      [ASSETS.flowersYellow, -5.8, 0, -1.5], [ASSETS.flowersYellow, 5.6, 0, -9.0],
-      [ASSETS.flowersYellow, -6.0, 0, -22.0], [ASSETS.flowersYellow, 6.1, 0, -29.5],
-      // Spiky/dry accents just behind the player — match reference right-side spiky plant
-      [ASSETS.dryGrass, 3.4, 0, -6.5], [ASSETS.spikyBush, -3.2, 0, -5.0],
+      // ── LEFT SIDE ────────────────────────────────────────────────
+      // Near mushroom at left screen edge (D=15m, center 6% from left)
+      [ASSETS.mushroom, -4.5, 0, 0.5],
+      // Fence on left shoulder (D=17m)
+      [ASSETS.fence, -4.8, 0, -1.5],
+      // Single mid platform (D=25m) + tree behind it
+      [ASSETS.grassBlockLeft, -3.5, 0, -9.5],
+      [ASSETS.tree, -5.5, 0, -13.0],
+      // Purple wall elevated on platform (D=27.5m) + question block
+      [ASSETS.purpleWall, -3.2, 1.8, -12.0],
+      [ASSETS.questionBlock, -3.9, 3.8, -14.0],
+      // Far mushroom for depth (D=40m)
+      [ASSETS.mushroom, -3.1, 0, -24.5],
+      // Far purple pair (D=49m)
+      [ASSETS.purpleBrick, -3.1, 1.8, -33.5],
+
+      // ── RIGHT SIDE ───────────────────────────────────────────────
+      // Spiky grass close to camera right of lane (D=8m, x=2.2 → 70% from left)
+      [ASSETS.spikyBush, 2.2, 0, 7.5],
+      // Near mushroom at right screen edge (D=12m, inner edge 81%)
+      [ASSETS.mushroom, 4.0, 0, 3.5],
+      // Fence on right shoulder (D=18m)
+      [ASSETS.fence, 4.85, 0, -2.5],
+      // Single mid platform (D=30m) + pipe + purple
+      [ASSETS.grassBlockRight, 3.5, 0, -14.5],
+      [ASSETS.pipe, 4.18, 0, -16.0],
+      [ASSETS.purpleBrick, 3.2, 1.8, -16.5],
+      [ASSETS.questionBlock, 4.0, 3.8, -21.5],
+      // Far mushroom for depth (D=42m)
+      [ASSETS.mushroom, 3.1, 0, -26.5],
+      // Far tree + purple (D=47-55m)
+      [ASSETS.tree, 5.5, 0, -31.5],
+      [ASSETS.purpleStairs, 3.3, 1.8, -39.5],
+
+      // ── FLOWERS — sparse shoulder accents only ───────────────────
+      [ASSETS.flowersYellow, -2.8, 0, 0.8],
+      [ASSETS.flowersPurple, -3.45, 0, -7.0],
+      [ASSETS.flowersYellow, 2.65, 0, -3.6],
+      [ASSETS.flowersPurple, 3.35, 0, -10.0],
+      [ASSETS.flowersPurple, -6.2, 0, -4.0],  [ASSETS.flowersPurple, 6.0, 0, -7.5],
+      [ASSETS.flowersYellow, -5.8, 0, -15.0], [ASSETS.flowersYellow, 5.6, 0, -19.0],
+      [ASSETS.dryGrass, 3.4, 0, -6.5],
     ];
 
     for (const [asset, x, baseY, z] of sideProps) add(asset, x, baseY, z);
@@ -484,11 +471,11 @@ export class ThreeEnvironmentManager {
       group.add(vine);
     }
 
-    // Outer meadow tuft carpet — wider x positions match reference's flower-covered shoulder
-    for (let i = 0; i < 22; i += 1) {
+    // Outer meadow tuft carpet — reduced to 10 (was 22) for open reference feel
+    for (let i = 0; i < 10; i += 1) {
       const r = prand(i * 7.3 + 41);
       const r2 = prand(i * 4.9 + 53);
-      const z = 3 - i * 2.3;
+      const z = 3 - i * 5.0;
       const m = propMetrics(ASSETS.grassTuft);
       const tw = m.width * 0.55;
       const th = m.height * 0.55;
@@ -499,10 +486,11 @@ export class ThreeEnvironmentManager {
       group.add(tuft);
     }
 
-    for (let i = 0; i < 40; i += 1) {
+    // Inner shoulder tufts — reduced to 16 (was 40) for open reference feel
+    for (let i = 0; i < 16; i += 1) {
       const r = prand(i * 3.1 + 1);
       const r2 = prand(i * 5.7 + 2);
-      const z = 4 - i * 2.1;
+      const z = 4 - i * 5.2;
       if (r > 0.45) {
         const m = propMetrics(ASSETS.grassTuft);
         const tw = m.width * 0.5;
