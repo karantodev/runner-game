@@ -37,7 +37,9 @@ export const ASSETS = {
 export const FARMER_UNIT = 2.4;
 
 export const PROP_METRICS = new Map([
-  [ASSETS.tree, [2.65, 0.78, 0.12]],
+  // M94: 2.65→1.8. top = 1.8*2.4=4.32m. At D=28.5m (z=-13): elev=atan(0.32/28.5)=0.64°
+  // → screen 34.5% from top. Clears mountain zone (22-28%) which was blocked at 2.65× (top=16%).
+  [ASSETS.tree, [1.8, 0.78, 0.12]],
   [ASSETS.pipe, [1.25, 0.71, 0.06]],
   [ASSETS.mushroom, [1.6, 0.82, 0.28]],
   [ASSETS.fence, [0.60, 2.0, 0.18]],
