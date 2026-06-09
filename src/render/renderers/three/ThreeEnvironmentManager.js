@@ -641,10 +641,10 @@ export class ThreeEnvironmentManager {
       // Mountain plane z=-65→z=-58, y=6.0→5.5: keep peaks at 18% from screen top.
       // D=73.5m (was 80.5m): mountain texture 10% taller on screen, peak triangles more distinct.
       // Tint 0xb4f040→0xb4ff38: G channel maxed for richer lime-green matching reference vibrancy.
-      // z=-58→-46, y=5.5→3.1, h=16→22: peaks stay at 18%. D=61.5m (was 73.5m) makes mountain
-      // 1.6× bigger on screen — much more distinct triangular peaks matching reference.
-      // Peak at v=0.75: y_peak = 3.1+22*0.25 = 8.6m → screen (11-(4.28+2.76))/22 = 18% ✓
-      [ASSETS.mountainsFar, -46, 3.1, 170, 22, 0xb4ff38, -38],
+      // z=-46, y 3.1→0.3: texture analysis shows v_peak≈0.875 (peaks are near image-top).
+      // y_peak = 0.3+22*(0.875-0.5) = 0.3+8.25 = 8.55m → screen (11-(4.23+2.76))/22 = 18% ✓
+      // At y=3.1 peaks appeared at ~8% (almost no sky); 0.3 gives 18% sky zone matching reference.
+      [ASSETS.mountainsFar, -46, 0.3, 170, 22, 0xb4ff38, -38],
       // Forest silhouette y 0.0→-2.0: plane top drops from 30.2% to 37.5% from screen top.
       // Mountain shows 18% (peaks) to 37.5% (forest top) = 19.5% clear mountain window.
       // Top exactly aligns with bridge top (y=-3.0+7=4.0m = y=-2.0+6=4.0m). ✓
