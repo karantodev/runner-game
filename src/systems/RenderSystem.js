@@ -12,7 +12,6 @@ import { GameplayRenderer } from '../render/renderers/GameplayRenderer.js';
 import { PlayerRenderer } from '../render/renderers/PlayerRenderer.js';
 import { EffectsRenderer } from '../render/renderers/EffectsRenderer.js';
 import { VoxelBlockRenderer } from '../render/renderers/scenery/VoxelBlockRenderer.js';
-import { ThreeModelRenderer } from '../render/renderers/three/ThreeModelRenderer.js';
 import { RenderMetrics } from '../render/RenderMetrics.js';
 
 /**
@@ -29,6 +28,9 @@ import { RenderMetrics } from '../render/RenderMetrics.js';
  * Layer composition lives in the constructor — change order there.
  */
 export class RenderSystem {
+  // In-flight dynamic import of ThreeModelRenderer (see #ensureThreeModels).
+  #threeModelsPromise = null;
+
   /**
    * @param {HTMLCanvasElement} canvas
    * @param {import('../core/AssetManager.js').AssetManager} assets
@@ -65,10 +67,15 @@ export class RenderSystem {
     this.sprites = new SpriteRenderer(this.ctx, assets);
     this.paint = new PixelPainter(this.ctx, this.sprites);
     this.gradients = new GradientCache(this.ctx, projection);
-    this.threeModels = new ThreeModelRenderer({ enabled: true });
+    // Voxel models (3D farmer / voxel blocks) ride on three.js, which is a
+    // ~0.6MB module graph the pure-sprite profile never needs. Start with
+    // null — every consumer already falls back to sprites behind a
+    // `threeModels?.enabled` guard — and lazy-import below only when a
+    // voxel feature is actually on.
+    this.threeModels = null;
     this.voxelBlocks = new VoxelBlockRenderer(this.ctx, {
       style: this.blockStyle,
-      threeModels: this.threeModels,
+      threeModels: null,
     });
     // Debug-only render-cost collector (?perf=1). null otherwise → every
     // `this.metrics?.…` increment site in the renderers is a zero-cost no-op.
@@ -88,6 +95,10 @@ export class RenderSystem {
       roadStyle: this.roadStyle,
       metrics: this.metrics,
     };
+
+    // Kick the lazy import in parallel with asset preload when a voxel
+    // feature starts enabled; the models pop in within the loading screen.
+    if (this.playerVoxelEnabled || this.blockStyle === 'voxel') this.#ensureThreeModels();
 
     this.roadRenderer = new RoadRenderer(deps);
     this.effectsRenderer = new EffectsRenderer(deps);
@@ -127,6 +138,7 @@ export class RenderSystem {
    */
   setBlockStyle(style) {
     this.blockStyle = this.voxelBlocks.setStyle(style);
+    if (this.blockStyle === 'voxel') this.#ensureThreeModels();
     console.info(`[RenderSystem] blockStyle → ${this.blockStyle}`);
     return this.blockStyle;
   }
@@ -137,9 +149,36 @@ export class RenderSystem {
 
   setPlayerVoxelEnabled(enabled) {
     this.playerVoxelEnabled = enabled !== false;
+    if (this.playerVoxelEnabled) this.#ensureThreeModels();
     this.playerRenderer?.setVoxelEnabled(this.playerVoxelEnabled);
     console.info(`[RenderSystem] playerVoxelEnabled -> ${this.playerVoxelEnabled}`);
     return this.playerVoxelEnabled;
+  }
+
+  /**
+   * Lazily import the three.js-backed model renderer and attach it to
+   * every holder (voxelBlocks, playerRenderer). Consumers keep drawing
+   * sprite fallbacks behind their `threeModels?.enabled` guards until the
+   * import lands, so nothing blocks and a failed import (no WebGL, blocked
+   * module) degrades to the pure-sprite look with a single warning.
+   *
+   * @returns {Promise<object | null>}
+   */
+  #ensureThreeModels() {
+    if (this.#threeModelsPromise) return this.#threeModelsPromise;
+    this.#threeModelsPromise = import('../render/renderers/three/ThreeModelRenderer.js')
+      .then(({ ThreeModelRenderer }) => {
+        const models = new ThreeModelRenderer({ enabled: true });
+        this.threeModels = models;
+        this.voxelBlocks.threeModels = models;
+        if (this.playerRenderer) this.playerRenderer.threeModels = models;
+        return models;
+      })
+      .catch((err) => {
+        console.warn('[RenderSystem] voxel models unavailable, keeping sprite fallback:', err);
+        return null;
+      });
+    return this.#threeModelsPromise;
   }
 
   render(world) {
@@ -368,6 +407,40 @@ export class RenderSystem {
     ctx.fillText('SPRITE LAB · baseline · 64u grid', 12, 20);
     // Player only.
     this.playerRenderer.render(world);
+  }
+
+  /**
+   * Contract alias — delegates to resizeToViewport(0).
+   * The canvas2d renderer has no separate width/height/pixelRatio concept
+   * at resize time (it drives layout from the #app bounding rect), so
+   * the contract parameters are accepted but ignored.
+   */
+  resize() {
+    this.resizeToViewport(0);
+  }
+
+  /**
+   * Release cached off-screen surfaces so a swapped-out renderer drops
+   * its backing buffers for GC.
+   *
+   * Canvas2D holds no GPU handles — nothing to force-lose — but the
+   * lazily-allocated offscreen grade canvas and the cached gradient
+   * objects both pin memory that becomes dead weight once the renderer
+   * is retired.
+   */
+  destroy() {
+    // Drop the offscreen color-grade canvas so its backing store is GC'd.
+    this._gradeCanvas = null;
+    this._gradeCtx    = null;
+    // Drop cached gradient objects (hold references to the 2D context).
+    this._wcGradient  = null;
+    this._vigGradient = null;
+    // Drop the lazily-imported voxel model renderer (owns an offscreen
+    // WebGL canvas) so its GPU resources can be reclaimed.
+    this.threeModels = null;
+    this.#threeModelsPromise = null;
+    // Prevent further renders from accidentally using stale state.
+    this.pipeline = null;
   }
 
   resizeToViewport(padding = 0) {
