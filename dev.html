@@ -107,6 +107,14 @@
                   <button type="button" data-block-style="voxel" aria-pressed="false">3D</button>
                 </div>
               </div>
+              <div class="settings-row">
+                <span>Renderer</span>
+                <div id="settings-renderer" class="settings-segmented" role="group" aria-label="Renderer">
+                  <button type="button" data-renderer="canvas2d" aria-pressed="true">2D Classic</button>
+                  <button type="button" data-renderer="three-scene" aria-pressed="false">3D WebGL</button>
+                </div>
+                <span class="muted">Reloads the game</span>
+              </div>
               <label>Quality
                 <select id="settings-quality">
                   <option value="auto">Auto</option>

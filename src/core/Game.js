@@ -18,8 +18,7 @@ import { Projection } from '../world/Projection.js';
 import { World } from '../world/World.js';
 import { RenderSystem } from '../systems/RenderSystem.js';
 import { HudSystem } from '../systems/HudSystem.js';
-import { RENDERER_STRATEGY } from '../render/RendererContract.js';
-import { ThreeSceneRenderer } from '../render/renderers/three/ThreeSceneRenderer.js';
+import { RENDERER_STRATEGY, assertRendererStrategy } from '../render/RendererContract.js';
 
 export class Game {
   constructor(canvas, options = {}) {
@@ -63,7 +62,7 @@ export class Game {
       adaptiveQuality: this.adaptiveQuality,
       share: this.share,
     });
-    const rendererOptions = {
+    this.rendererOptions = {
       pixelRatio: options.pixelRatio ?? this.config.canvas.pixelRatio,
       // retroPixelScale: URL-param override takes precedence, then config.
       // 1.0 = off; <1.0 = chunky-pixel (smaller backing buffer + CSS upscale).
@@ -73,28 +72,28 @@ export class Game {
       playerVoxelEnabled: options.playerVoxelEnabled,
       // Debug-only render-cost counters (?perf=1). null in production.
       metrics: this.config.debug?.renderMetrics === true,
+      threeMode: options.threeMode,
     };
     this.rendererStrategy = options.rendererStrategy === RENDERER_STRATEGY.threeScene
       ? RENDERER_STRATEGY.threeScene
       : RENDERER_STRATEGY.canvas2d;
-    this.renderer = this.rendererStrategy === RENDERER_STRATEGY.threeScene
-      ? new ThreeSceneRenderer(canvas, this.assets, this.projection, {
-        pixelRatio: rendererOptions.pixelRatio,
-        mode: options.threeMode ?? '3d',
-      })
-      : new RenderSystem(canvas, this.assets, this.projection, rendererOptions);
+    // Renderer is created lazily at the top of boot() so the three.js module
+    // graph is never loaded on the default canvas2d path.
+    this.renderer = null;
+    // SettingsMenu receives the raw option values for blockStyle/playerVoxel
+    // defaults because the renderer doesn't exist yet at construction time.
+    // SettingsMenu.#applyToWorld guards `if (this.renderer)` so null is safe.
     this.settings = new SettingsMenu({
       storageKey: this.config.gameplay.settingsKey,
       world: this.world,
-      renderer: this.renderer,
       adaptiveQuality: this.adaptiveQuality,
       playerStats: this.playerStats,
       leaderboard: this.leaderboard,
       tutorial: this.tutorial,
       achievements: this.achievements,
       sound: this.sound,
-      defaultBlockStyle: this.renderer.blockStyle,
-      defaultPlayerVoxel: this.renderer.playerVoxelEnabled,
+      defaultBlockStyle: this.rendererOptions.blockStyle,
+      defaultPlayerVoxel: this.rendererOptions.playerVoxelEnabled,
     });
     // Late-wire sound ↔ settings so the SFX toggle works immediately.
     this.sound.settings = this.settings;
@@ -104,19 +103,19 @@ export class Game {
     // when audio lands the same event can play the sting).
     this.eventBus.on('comboChanged', (snap) => {
       if (snap?.reason === 'bump' && snap.multiplier > 1) {
-        this.renderer.effectsRenderer?.triggerComboPulse?.(snap.multiplier);
+        this.renderer?.effectsRenderer?.triggerComboPulse?.(snap.multiplier);
       }
     });
     // v3.4 milestone flash — reuse the combo-pulse renderer slot. The
     // multiplier value is just label text; passing 0 makes the renderer
     // skip the ×N badge but still paint the gold vignette.
     this.eventBus.on('effects:milestoneFlash', () => {
-      this.renderer.effectsRenderer?.triggerComboPulse?.(0);
+      this.renderer?.effectsRenderer?.triggerComboPulse?.(0);
     });
     // v4.0 — collect bloom flash on flower / rare pickup.
     // Projects the player's current screen position as the bloom centre.
     const _triggerCollectBloom = (force = false) => () => {
-      const eff = this.renderer.effectsRenderer;
+      const eff = this.renderer?.effectsRenderer;
       if (!eff) return;
       const proj = this.projection;
       const player = this.world.player;
@@ -147,6 +146,32 @@ export class Game {
   }
 
   async boot() {
+    // Create the renderer lazily so three.js is never loaded on the canvas2d
+    // path. Falls back to canvas2d if WebGL/three is unavailable.
+    if (this.rendererStrategy === RENDERER_STRATEGY.threeScene) {
+      try {
+        const mod = await import('../render/renderers/three/ThreeSceneRenderer.js');
+        this.renderer = new mod.ThreeSceneRenderer(this.canvas, this.assets, this.projection, {
+          pixelRatio: this.rendererOptions.pixelRatio,
+          mode: this.rendererOptions.threeMode ?? '3d',
+        });
+      } catch (err) {
+        console.warn('[Game] three-scene renderer unavailable, falling back to canvas2d:', err);
+        this.rendererStrategy = RENDERER_STRATEGY.canvas2d;
+        this.renderer = new RenderSystem(this.canvas, this.assets, this.projection, this.rendererOptions);
+      }
+    } else {
+      this.renderer = new RenderSystem(this.canvas, this.assets, this.projection, this.rendererOptions);
+    }
+    assertRendererStrategy(this.renderer);
+
+    // Wire the renderer into settings and sync renderer-dependent defaults
+    // (blockStyle, playerVoxel) before bind() reads the live values.
+    this.settings.attachRenderer(this.renderer, this.rendererStrategy);
+    // Debug tools may initialise before this point (their module import races
+    // the async renderer creation above) — let them late-bind renderer UI.
+    this.eventBus.emit('rendererReady', this.renderer);
+
     this.renderer.resizeToViewport(this.config.canvas.viewportPadding);
     // rAF-throttle the resize handler — `resize` fires per-pixel during
     // orientationchange / window drag (≥20 events on iOS rotation, hundreds
@@ -243,6 +268,9 @@ export class Game {
   }
 
   #render() {
+    // Renderer is created in boot(); the loop starts at the end of boot(),
+    // but guard defensively in case a future refactor changes that ordering.
+    if (!this.renderer) return;
     this.renderer.render(this.world);
   }
 

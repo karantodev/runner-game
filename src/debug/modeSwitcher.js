@@ -16,13 +16,15 @@ export function setupModeSwitch(game) {
   // Called on load and after every live blockStyle change so the
   // highlight stays in sync without a reload.
   function syncActiveButton() {
-    const isThree = game.renderer.kind === 'three-scene';
+    // game.renderer is created asynchronously in boot() (lazy three.js
+    // import) — fall back to the declared strategy until it exists.
+    const isThree = (game.renderer?.kind ?? game.rendererStrategy) === 'three-scene';
     let activeMode;
     if (isThree) {
-      activeMode = game.renderer.mode === '2.5d' ? '25d' : '3d';
+      activeMode = game.renderer?.mode === '2.5d' ? '25d' : '3d';
     } else {
       // blockStyle defaults to 'sprite' when the property is absent.
-      activeMode = (game.renderer.blockStyle ?? 'sprite') === 'voxel' ? 'voxel' : '2d';
+      activeMode = (game.renderer?.blockStyle ?? 'sprite') === 'voxel' ? 'voxel' : '2d';
     }
     for (const btn of container.querySelectorAll('button[data-mode]')) {
       btn.classList.toggle('active', btn.dataset.mode === activeMode);
@@ -46,7 +48,7 @@ export function setupModeSwitch(game) {
         // the WebGL context must be torn down and rebuilt as canvas2d.
         const style = mode === 'voxel' ? 'voxel' : 'sprite';
         game.settings.setBlockStyle(style);
-        if (game.renderer.kind === 'three-scene') {
+        if (game.renderer?.kind === 'three-scene') {
           // Drop renderer + threeMode params to land on canvas2d.
           const next = new URLSearchParams(window.location.search);
           next.delete('renderer');
@@ -74,13 +76,21 @@ export function setupModeSwitch(game) {
 
   // Live retro-pixel resolution toggle (270p ⇄ 360p) for on-the-fly comparison — three
   // renderer only (canvas2d has no pixelation pass). Dev-only; removed with the switcher.
-  if (game.renderer.kind === 'three-scene' && typeof game.renderer.togglePixelHeight === 'function') {
+  // The renderer is created asynchronously in boot() (lazy three.js import) and this
+  // module's import races it, so late-bind the button once the renderer exists.
+  const attachPixelToggle = (renderer) => {
+    if (renderer?.kind !== 'three-scene' || typeof renderer.togglePixelHeight !== 'function') return;
     const pxBtn = document.createElement('button');
     pxBtn.dataset.px = '1';
-    pxBtn.textContent = `PX ${game.renderer.pixelHeight ?? 270}`;
+    pxBtn.textContent = `PX ${renderer.pixelHeight ?? 270}`;
     pxBtn.addEventListener('click', () => {
-      pxBtn.textContent = `PX ${game.renderer.togglePixelHeight()}`;
+      pxBtn.textContent = `PX ${renderer.togglePixelHeight()}`;
     });
     container.appendChild(pxBtn);
-  }
+  };
+  if (game.renderer) attachPixelToggle(game.renderer);
+  else game.eventBus.on('rendererReady', attachPixelToggle);
+  // Re-sync the highlight once the real renderer exists — the boot fallback
+  // path (three unavailable → canvas2d) can change the effective mode.
+  game.eventBus.on('rendererReady', () => syncActiveButton());
 }

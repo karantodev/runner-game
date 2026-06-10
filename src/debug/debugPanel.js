@@ -22,11 +22,13 @@ export function updateDebugPanel(game) {
       ? `Last capture: ${debugState.lastCapture.path.split('/').pop()}`
       : 'Last capture: none';
   }
+  // game.renderer is created asynchronously in boot() (lazy three.js
+  // import) — this refresh can fire before it exists, so read defensively.
   if (debugState.blockStyleNode) {
-    debugState.blockStyleNode.textContent = `Blocks: ${game.renderer.blockStyle === 'voxel' ? '3D cubes' : '2D sprites'}`;
+    debugState.blockStyleNode.textContent = `Blocks: ${game.renderer?.blockStyle === 'voxel' ? '3D cubes' : '2D sprites'}`;
   }
   if (debugState.playerStyleNode) {
-    const active = game.renderer.blockStyle === 'voxel' && game.renderer.playerVoxelEnabled;
+    const active = game.renderer?.blockStyle === 'voxel' && game.renderer?.playerVoxelEnabled;
     debugState.playerStyleNode.textContent = `Farmer: ${active ? '3D voxel' : '2D sprite'}`;
   }
   if (debugState.rendererNode) {
@@ -217,10 +219,10 @@ export function createDebugApi(game, canvas) {
         scenery,
         pooledEntities: r.freeCount,
         rendererStrategy: game.rendererStrategy,
-        rendererKind: game.renderer.kind ?? game.rendererStrategy,
-        threeMode: game.renderer.mode ?? null,
-        blockStyle: game.renderer.blockStyle,
-        playerVoxelEnabled: game.renderer.playerVoxelEnabled,
+        rendererKind: game.renderer?.kind ?? game.rendererStrategy,
+        threeMode: game.renderer?.mode ?? null,
+        blockStyle: game.renderer?.blockStyle,
+        playerVoxelEnabled: game.renderer?.playerVoxelEnabled,
         placementViolations: game.world.placement?.violations ?? 0,
         compositionViolations: game.world.placement?.compositionViolations ?? 0,
         lastCapture: debugState.lastCapture,
@@ -231,13 +233,13 @@ export function createDebugApi(game, canvas) {
       return [...game.world.spawnSystem.spawnLog];
     },
     getBlockStyle() {
-      return game.renderer.blockStyle;
+      return game.renderer?.blockStyle;
     },
     getPlayerVoxelEnabled() {
-      return game.renderer.playerVoxelEnabled;
+      return game.renderer?.playerVoxelEnabled;
     },
     setPlayerVoxelEnabled(enabled) {
-      const next = game.renderer.setPlayerVoxelEnabled(enabled);
+      const next = game.renderer?.setPlayerVoxelEnabled(enabled);
       updateDebugPanel(game);
       return next;
     },

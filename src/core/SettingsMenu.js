@@ -30,13 +30,13 @@ const DEFAULT_SETTINGS = Object.freeze({
   qualityLock: null,
   blockStyle: 'sprite',
   playerVoxel: true,
+  renderer: 'canvas2d',
 });
 
 export class SettingsMenu {
   constructor({
     storageKey,
     world,
-    renderer,
     adaptiveQuality,
     playerStats,
     leaderboard,
@@ -48,7 +48,12 @@ export class SettingsMenu {
   }) {
     this.storageKey = storageKey;
     this.world = world;
-    this.renderer = renderer ?? null;
+    // Renderer is wired later via attachRenderer() once boot() creates it.
+    this.renderer = null;
+    // Active strategy (may differ from persisted setting when a URL param
+    // overrides it) — recorded by attachRenderer() so the UI reflects the
+    // live choice, not just what is stored.
+    this._activeRendererStrategy = null;
     this.adaptiveQuality = adaptiveQuality;
     this.playerStats = playerStats;
     this.leaderboard = leaderboard;
@@ -58,9 +63,33 @@ export class SettingsMenu {
     this.defaultBlockStyle = normalizeBlockStyle(defaultBlockStyle, DEFAULT_SETTINGS.blockStyle);
     this.defaultPlayerVoxel = defaultPlayerVoxel !== false;
     this.blockStyleButtons = [];
+    this.rendererButtons = [];
     this.settings = this.#load();
     this.modalEl = null;
     this.#applyToWorld();
+  }
+
+  /**
+   * Wire the live renderer after boot() creates it.
+   *
+   * Also records the active strategy (which may differ from the persisted
+   * setting when a URL param forced a specific renderer) so the UI
+   * can show the actually-running renderer highlighted, not just the
+   * stored preference.
+   *
+   * @param {object} renderer — the constructed renderer instance
+   * @param {string} activeStrategy — RENDERER_STRATEGY value currently in use
+   */
+  attachRenderer(renderer, activeStrategy) {
+    this.renderer = renderer;
+    this._activeRendererStrategy = activeStrategy;
+    // Push renderer-dependent settings now that the renderer exists.
+    if (this.renderer && this.renderer.blockStyle !== this.settings.blockStyle) {
+      this.settings.blockStyle = this.renderer.setBlockStyle(this.settings.blockStyle);
+    }
+    if (this.renderer) {
+      this.settings.playerVoxel = this.renderer.setPlayerVoxelEnabled(this.settings.playerVoxel);
+    }
   }
 
   getSettings() { return { ...this.settings }; }
@@ -91,6 +120,20 @@ export class SettingsMenu {
     bindSegmentedButtons('settings-block-style', this.settings.blockStyle, (v) => this.setBlockStyle(v));
     this.blockStyleButtons = Array.from(document.querySelectorAll('#settings-block-style [data-block-style]'));
     this.#syncBlockStyleControls();
+
+    // Renderer picker — reflect the ACTIVE strategy (URL-param may differ
+    // from persisted setting). On change: persist + reload without the
+    // ?renderer= param so the URL override can't trump the user choice forever.
+    const activeStrategy = this._activeRendererStrategy ?? this.settings.renderer;
+    bindRendererButtons('settings-renderer', activeStrategy, (chosen) => {
+      this.#update('renderer', chosen);
+      if (chosen === this._activeRendererStrategy) return; // no reload needed
+      const url = new URL(window.location.href);
+      url.searchParams.delete('renderer');
+      window.location.assign(url.toString());
+    });
+    this.rendererButtons = Array.from(document.querySelectorAll('#settings-renderer [data-renderer]'));
+    this.#syncRendererControls();
 
     // v3.5 language dropdown. Populated dynamically so adding a language
     // in i18n.js doesn't require touching index.html.
@@ -198,6 +241,7 @@ export class SettingsMenu {
         qualityLock: validQualityLock(parsed?.qualityLock),
         blockStyle: normalizeBlockStyle(parsed?.blockStyle, this.defaultBlockStyle),
         playerVoxel: parsed?.playerVoxel === undefined ? this.defaultPlayerVoxel : !!parsed.playerVoxel,
+        renderer: normalizeRendererStrategy(parsed?.renderer),
       };
     } catch { return { ...DEFAULT_SETTINGS, blockStyle: this.defaultBlockStyle, playerVoxel: this.defaultPlayerVoxel }; }
   }
@@ -210,6 +254,17 @@ export class SettingsMenu {
   #syncBlockStyleControls() {
     for (const button of this.blockStyleButtons) {
       const active = normalizeBlockStyle(button.dataset.blockStyle, DEFAULT_SETTINGS.blockStyle) === this.settings.blockStyle;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  }
+
+  #syncRendererControls() {
+    // Highlight the actively-running renderer, not just the stored preference,
+    // so a URL-param override is visible to the user.
+    const current = this._activeRendererStrategy ?? this.settings.renderer;
+    for (const button of this.rendererButtons) {
+      const active = button.dataset.renderer === current;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
@@ -259,4 +314,26 @@ function normalizeBlockStyle(value, fallback = DEFAULT_SETTINGS.blockStyle) {
   if (value === 'voxel' || value === '3d') return 'voxel';
   if (value === 'sprite' || value === '2d') return 'sprite';
   return fallback === 'voxel' ? 'voxel' : 'sprite';
+}
+
+function normalizeRendererStrategy(value) {
+  if (value === 'three-scene') return 'three-scene';
+  return 'canvas2d';
+}
+
+/**
+ * Wire the renderer picker segmented button group.
+ *
+ * Uses data-renderer attributes rather than data-block-style, so this is
+ * kept separate from bindSegmentedButtons to avoid coupling.
+ */
+function bindRendererButtons(id, active, onChange) {
+  const root = document.getElementById(id);
+  if (!root) return;
+  for (const button of root.querySelectorAll('[data-renderer]')) {
+    const isCurrent = button.dataset.renderer === active;
+    button.classList.toggle('is-active', isCurrent);
+    button.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
+    button.addEventListener('click', () => onChange(button.dataset.renderer));
+  }
 }
