@@ -33,10 +33,9 @@ const HAZARD_I18N = Object.freeze({
   stone: 'hazard.stone',
 });
 
-const HEART_ICON_FULL = './assets/ui/icons/heart_full.png';
-const HEART_ICON_EMPTY = './assets/ui/icons/heart_empty.png';
-const ENERGY_ICON_FULL = './assets/ui/icons/energy_segment_full.png';
-const ENERGY_ICON_EMPTY = './assets/ui/icons/energy_segment_empty.png';
+// Icon paths are read from world.config.assets (ASSETS_CONFIG) at render
+// time so they flow through the single registered manifest, not a second
+// parallel list of literal strings.
 const JUMP_BAR_SEGMENTS = 5;
 
 export class HudSystem {
@@ -252,9 +251,11 @@ export class HudSystem {
     const prevLives = this._last.hearts;
     this._last.hearts = lives;
     this._last.heartsCapacity = capacity;
+    const heartFull = this.world.config.assets.uiHeartFull;
+    const heartEmpty = this.world.config.assets.uiHeartEmpty;
     let html = '';
     for (let i = 0; i < capacity; i += 1) {
-      const src = i < lives ? HEART_ICON_FULL : HEART_ICON_EMPTY;
+      const src = i < lives ? heartFull : heartEmpty;
       html += `<img src="${src}" class="hud-heart" alt="">`;
     }
     this.hearts.innerHTML = html;
@@ -284,9 +285,11 @@ export class HudSystem {
       : JUMP_BAR_SEGMENTS;
     if (filled === this._last.jumpbarFilled) return;
     this._last.jumpbarFilled = filled;
+    const energyFull = this.world.config.assets.uiEnergyFull;
+    const energyEmpty = this.world.config.assets.uiEnergyEmpty;
     let html = '';
     for (let i = 0; i < JUMP_BAR_SEGMENTS; i += 1) {
-      const src = i < filled ? ENERGY_ICON_FULL : ENERGY_ICON_EMPTY;
+      const src = i < filled ? energyFull : energyEmpty;
       html += `<img src="${src}" class="hud-energy" alt="">`;
     }
     this.jumpbar.innerHTML = html;

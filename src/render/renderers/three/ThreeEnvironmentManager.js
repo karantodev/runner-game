@@ -1,7 +1,7 @@
 import * as THREE from '../../../../node_modules/three/build/three.module.js';
 import { RoomEnvironment } from '../../../../node_modules/three/examples/jsm/environments/RoomEnvironment.js';
 import {
-  ASSETS, FARMER_UNIT, BLOB_SKIP, WINDY_ASSETS, ORGANIC_ASSETS,
+  ASSET_ROOT, ASSETS, FARMER_UNIT, BLOB_SKIP, WINDY_ASSETS, ORGANIC_ASSETS,
   prand, propMetrics,
 } from './threeAssetManifest.js';
 
@@ -622,7 +622,10 @@ export class ThreeEnvironmentManager {
       const geo = notched
         ? new THREE.CylinderGeometry(radius, radius, height, 64, 1, true, notchStart, notchLength)
         : new THREE.CylinderGeometry(radius, radius, height, 64, 1, true);
-      const tex = this.textureLoader.load(`./assets/${assetPath}`);
+      // Use ASSET_ROOT so the path origin is defined in one place (threeAssetManifest).
+      // Can't go through ThreeTextureCache here because repeat/offset are per-instance
+      // and the same image URL appears in sibling loops with different repeat values.
+      const tex = this.textureLoader.load(`${ASSET_ROOT}${assetPath}`);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
@@ -1061,7 +1064,10 @@ export class ThreeEnvironmentManager {
   }
 
   loadRepeatTexture(assetPath, repeatX) {
-    const tex = this.textureLoader.load(`./assets/${assetPath}`);
+    // Use ASSET_ROOT so the path origin is defined in one place (threeAssetManifest).
+    // Can't go through ThreeTextureCache here because repeat/offset are per-instance
+    // and the same image URL appears in sibling loops with different repeat values.
+    const tex = this.textureLoader.load(`${ASSET_ROOT}${assetPath}`);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.magFilter = THREE.NearestFilter;
     tex.minFilter = THREE.NearestFilter;

@@ -5,7 +5,7 @@ import { ThreePostProcessingManager } from './ThreePostProcessingManager.js';
 import { ThreeEnvironmentManager } from './ThreeEnvironmentManager.js';
 import { ThreeSceneryManager } from './ThreeSceneryManager.js';
 import { ThreeEntityManager } from './ThreeEntityManager.js';
-import { FARMER_UNIT, prand, propMetrics } from './threeAssetManifest.js';
+import { FARMER_UNIT, prand, propMetrics, PLAYER_RUN_PATH, PLAYER_JUMP_FRAME, PLAYER_CROUCH_FRAME } from './threeAssetManifest.js';
 
 const WORLD_UNIT_PER_DISTANCE = 0.42;
 
@@ -309,11 +309,11 @@ export class ThreeSceneRenderer {
     const crouching = !!crouch?.isCrouching;
 
     let path;
-    if (jump > 0.6) path = 'player/farmer_jump/player_farmer_jump_08.png';
-    else if (crouching) path = 'player/farmer_crouch/player_farmer_crouch_02.png';
+    if (jump > 0.6) path = PLAYER_JUMP_FRAME;
+    else if (crouching) path = PLAYER_CROUCH_FRAME;
     else {
       const frameIndex = Math.floor(Math.abs(anim?.runFrame ?? 0) / 3.15) % 12;
-      path = `player/farmer_run/player_farmer_run_${String(frameIndex + 1).padStart(2, '0')}.png`;
+      path = `${PLAYER_RUN_PATH}${String(frameIndex + 1).padStart(2, '0')}.png`;
     }
 
     const map = this._textureCache.get(path);
@@ -337,7 +337,7 @@ export class ThreeSceneRenderer {
 
   #createPlayerSprite() {
     const mat = new THREE.SpriteMaterial({
-      map: this._textureCache.get('player/farmer_run/player_farmer_run_01.png'),
+      map: this._textureCache.get(`${PLAYER_RUN_PATH}01.png`),
       alphaTest: 0.5,
       transparent: true,
       depthWrite: true,
