@@ -1,5 +1,6 @@
 import { getCollectibleSpec } from '../ecs/collectibleTypes.js';
 import { getObstacleRule } from '../ecs/obstacleRules.js';
+import { PLAYER_STATES } from '../ecs/playerFsm.js';
 
 /**
  * Detects player <-> obstacle and player <-> collectible interactions.
@@ -106,20 +107,49 @@ export class CollisionSystem {
     const isCrouching = player.components.CrouchState.isCrouching;
     const invulnerable = player.components.Health.invulnerabilityFrames > 0;
 
+    const collisionCfg = this.config.gameplay.collision;
+    const baseThreshold = collisionCfg.laneOverlap;
+    // Widen the player's effective lane boundary mid-swap so the hazard must
+    // be ~3/4 into the player's lane before it registers — the forgiveness
+    // window.  Clones (occupiedLanes index ≥ 1) always use the base threshold
+    // because they teleport one full lane over and feel jarring otherwise.
+    const isChangingLane =
+      player.components.PlayerState?.current === PLAYER_STATES.laneChanging;
+    const playerThreshold = isChangingLane
+      ? collisionCfg.laneOverlapWhileChanging
+      : baseThreshold;
+
     for (const e of world.registry.query('Position', 'Hitbox')) {
       const pos = e.components.Position;
       const box = e.components.Hitbox;
       box.warning = false;
       if (box.hit || passedDepthWindow(pos, -3)) continue;
 
-      const inLane = box.allLanes
+      // Warning band uses the BASE threshold so telegraphing stays conservative
+      // regardless of the player's lane-change state.
+      const inLaneBase = box.allLanes
         ? true
-        : occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < 0.56);
+        : occupiedLanes.some((lane) => Math.abs(lane - pos.lane) < baseThreshold);
+
+      // Hit detection: player entry (index 0) gets the forgiveness threshold
+      // during a lane change; clone entries always use the base threshold.
+      // Index-based loop avoids a per-frame slice allocation in this hot path.
+      let inLane = false;
+      if (box.allLanes) {
+        inLane = true;
+      } else {
+        inLane = Math.abs(occupiedLanes[0] - pos.lane) < playerThreshold;
+        for (let _i = 1; !inLane && _i < occupiedLanes.length; _i += 1) {
+          inLane = Math.abs(occupiedLanes[_i] - pos.lane) < baseThreshold;
+        }
+      }
 
       // Widened from 18 → 32 so a striped warning band has time to read.
       // At base speed 0.9 that's ~36 frames (~0.6 sec) of advance notice;
       // at full burst (×1.58) about 22 frames (~0.37 sec) — still readable.
-      if (inLane && pos.distance > 3 && pos.distance < 32) box.warning = true;
+      // Uses the base threshold so the warning stays visible even when the
+      // forgiveness window is active — conservative telegraphing is better.
+      if (inLaneBase && pos.distance > 3 && pos.distance < 32) box.warning = true;
       if (!crossedDepthWindow(pos, -3, 3)) continue;
       if (!inLane) continue;
 

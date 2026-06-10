@@ -4,7 +4,9 @@ export const GAMEPLAY_CONFIG = {
   speedRampFrames: 2200,
   distanceScale: 0.20,
   startLives: 3,
-  maxLives: 5,
+  // Reference HUD spec shows a 4-heart panel — maxLives must match that
+  // visual capacity or the fifth slot overflows the designed layout.
+  maxLives: 4,
   invulnerabilityFrames: 82,
   collect: { laneWindow: 0.55 },
   difficulty: {
@@ -35,6 +37,22 @@ export const GAMEPLAY_CONFIG = {
     verticalWindow: 36,
     bonusScore: 3,
     shakeAmount: 4.0,
+  },
+  // Lane-overlap thresholds for hazard hit detection.
+  // laneOverlap (0.56): the original threshold — a hazard counts as "in the
+  //   player's lane" when their lane centres are within 0.56 units.  Adjacent
+  //   lanes are 1 unit apart, so this creates a 0.12-unit overlap region on
+  //   each side — intentional; clones always use this value.
+  // laneOverlapWhileChanging (0.28): a SMALLER threshold applied to the PLAYER
+  //   only while their FSM state is `laneChanging`, providing a genuine grace
+  //   period mid-swap.  Because hit detection is `|playerLaneX - hazardLane| <
+  //   threshold`, a smaller value means the player must be further into the
+  //   hazard's lane before a hit registers (threshold ≈ 1 − 0.72 = 0.28 maps
+  //   to "must be ~3/4 into the hazard's lane"), which is the intended behaviour.
+  //   Clones always use the base threshold.
+  collision: {
+    laneOverlap: 0.56,
+    laneOverlapWhileChanging: 0.28,
   },
   localStorageBestKey: 'orchidQuest.bestScore.v1',
   leaderboardKey: 'orchidQuest.leaderboard.v1',
