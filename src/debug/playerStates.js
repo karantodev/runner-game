@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig.js';
+import { PLAYER_STATES } from '../ecs/playerFsm.js';
 
 /**
  * v3.8.29 — Player Debug State Registry.
@@ -123,6 +124,18 @@ export function installPlayerStatesMode(game, debugApi) {
     p.components.Health.invulnerabilityFrames = state.invuln;
     p.components.Health.hitFlash = state.hitFlash;
     if (state.runFrame !== undefined) p.components.AnimState.runFrame = state.runFrame;
+    // Sync the FSM label to match the directly-written legacy flags.
+    // Debug presets bypass transitionTo intentionally — they pin arbitrary
+    // combinations for visual QA, not for live gameplay flow.
+    if (p.components.PlayerState) {
+      const fsmState =
+        state.worldState === 'dying' || state.worldState === 'dead' ? PLAYER_STATES.dead
+        : state.isJumping  ? PLAYER_STATES.jumping
+        : state.crouching  ? PLAYER_STATES.crouching
+        : state.invuln > 0 ? PLAYER_STATES.hit
+        : PLAYER_STATES.running;
+      p.components.PlayerState.current = fsmState;
+    }
     console.info(`[debugPlayerStates] state = ${stateId}${modes.poseBaselineLock ? ' (baseline-locked)' : ''}`);
   };
 

@@ -1,3 +1,5 @@
+import { transitionTo, PLAYER_STATES } from '../ecs/playerFsm.js';
+
 /**
  * Owns score, lives, distance, tier, hit-flash, camera shake decay.
  * Listens to the EventBus and mutates `world.*` fields that the HUD
@@ -205,6 +207,14 @@ export class GameStateSystem {
     this.eventBus.emit('camera:shake', 7.5);
     this.eventBus.emit('livesChanged', w.lives);
 
+    // Enter hit-stun state so renderers can show hit animation; the
+    // countdown is driven by PlayerPhysicsSystem.
+    if (player.components.PlayerState) {
+      const ps = player.components.PlayerState;
+      transitionTo(player, PLAYER_STATES.hit);
+      ps.hitFramesLeft = this.config.player.fsm.hitStateFrames;
+    }
+
     if (w.lives <= 0) {
       // v3.5: enter the 'dying' slow-mo state instead of jumping straight
       // to 'dead'. World.update drains dyingFrames; after the timer fires
@@ -212,6 +222,8 @@ export class GameStateSystem {
       w.state = 'dying';
       w.dyingFrames = this.config.gameplay.dyingFrames;
       this.eventBus.emit('stateChanged', w.state);
+      // Mark the player FSM as dead so no further motion transitions fire.
+      transitionTo(player, PLAYER_STATES.dead);
     }
   }
 

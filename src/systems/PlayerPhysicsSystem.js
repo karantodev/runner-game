@@ -1,5 +1,6 @@
 import { damp } from '../utils/math.js';
 import * as PlayerActions from '../ecs/playerActions.js';
+import { transitionTo, PLAYER_STATES } from '../ecs/playerFsm.js';
 
 /**
  * Per-frame player physics: lane interpolation, jump physics with hold-
@@ -24,12 +25,30 @@ export class PlayerPhysicsSystem {
     const vert = player.components.VerticalState;
     const crouch = player.components.CrouchState;
     const anim = player.components.AnimState;
+    const ps = player.components.PlayerState;
     const input = world.input;
 
     const previousLaneX = lane.laneX;
-    lane.laneX = damp(lane.laneX, lane.targetLane, 10.5 * cfg.laneLerp, delta);
+    lane.laneX = damp(lane.laneX, lane.targetLane, cfg.feel.laneDamp * cfg.laneLerp, delta);
     const laneVelocity = lane.laneX - previousLaneX;
-    lane.laneTilt = damp(lane.laneTilt, laneVelocity * 12, 10, delta);
+    lane.laneTilt = damp(lane.laneTilt, laneVelocity * cfg.feel.laneTiltGain, cfg.feel.laneTiltDamp, delta);
+    lane.laneChangeFramesLeft = Math.max(0, lane.laneChangeFramesLeft - delta);
+
+    // ── Hit-stun countdown ────────────────────────────────────────────────
+    // Decrement before physics so the recovery transition happens at the
+    // right frame boundary.  Uses a dedicated counter so the hit window is
+    // independent of invulnerabilityFrames (which drives sprite flicker).
+    if (ps && ps.current === PLAYER_STATES.hit) {
+      ps.hitFramesLeft = Math.max(0, ps.hitFramesLeft - delta);
+      if (ps.hitFramesLeft <= 0) {
+        // Recover to the physical state that matches current component values.
+        const recovered = vert.isJumping ? PLAYER_STATES.jumping
+          : crouch.isCrouching          ? PLAYER_STATES.crouching
+          : this.#laneChanging(lane) ? PLAYER_STATES.laneChanging
+          : PLAYER_STATES.running;
+        transitionTo(player, recovered);
+      }
+    }
 
     if (vert.isJumping) {
       const jumpHeld = input.isHeld('jumpHeld');
@@ -43,8 +62,20 @@ export class PlayerPhysicsSystem {
       if (vert.y >= 0) {
         vert.y = 0;
         vert.vy = 0;
-        vert.isJumping = false;
         vert.landSquash = 1;
+        // Do not exit 'hit' on landing while the hit-stun countdown is still
+        // active — the existing countdown recovery in the block above picks the
+        // post-hit state once hitFramesLeft reaches 0.  Physics still runs so
+        // the player lands correctly; only the FSM label is held.
+        if (!(ps && ps.current === PLAYER_STATES.hit && ps.hitFramesLeft > 0)) {
+          // Landing: choose between laneChanging and running based on whether
+          // the player is still interpolating toward the target lane.
+          const landedState = this.#laneChanging(lane)
+            ? PLAYER_STATES.laneChanging
+            : PLAYER_STATES.running;
+          // transitionTo also clears isJumping via derived-flag sync.
+          transitionTo(player, landedState);
+        }
         this.eventBus.emit('player:landed', { laneX: lane.laneX });
       }
     }
@@ -52,8 +83,27 @@ export class PlayerPhysicsSystem {
     if (crouch.isCrouching) {
       crouch.crouchHoldFrames += delta;
       const crouchHeld = input.isHeld('crouchHeld');
-      if (!crouchHeld && crouch.crouchHoldFrames >= cfg.crouch.minHoldFrames) {
+      // Do not auto-stand while hit-stun countdown is active — the countdown
+      // recovery block above selects the post-hit pose once hitFramesLeft hits 0.
+      const inHitStun = ps && ps.current === PLAYER_STATES.hit && ps.hitFramesLeft > 0;
+      if (!crouchHeld && crouch.crouchHoldFrames >= cfg.crouch.minHoldFrames && !inHitStun) {
+        // standUp routes through transitionTo → running; laneTilt decides
+        // whether we briefly become laneChanging on the same frame — the
+        // laneChanging check in the block below handles that.
         PlayerActions.standUp(player);
+      }
+    }
+
+    // ── Lane-change FSM transitions ───────────────────────────────────────
+    // Only reachable from / back-to running; hit/jump/crouch take priority.
+    // Skip while hit-stun is counting down — the countdown recovery block
+    // above already selects the correct post-hit motion state.
+    if (ps && !(ps.current === PLAYER_STATES.hit && ps.hitFramesLeft > 0)) {
+      const state = ps.current;
+      if (state === PLAYER_STATES.running && this.#laneChanging(lane)) {
+        transitionTo(player, PLAYER_STATES.laneChanging);
+      } else if (state === PLAYER_STATES.laneChanging && !this.#laneChanging(lane)) {
+        transitionTo(player, PLAYER_STATES.running);
       }
     }
 
@@ -65,7 +115,7 @@ export class PlayerPhysicsSystem {
       intent.jumpBuffer -= delta;
       if (intent.jumpBuffer > 0 && PlayerActions.jump(player, cfg)) {
         intent.jumpBuffer = 0;
-        this.eventBus.emit('camera:shake', 1.8);
+        this.eventBus.emit('camera:shake', cfg.feel.jumpShake);
         this.eventBus.emit('player:jumped', null);
       } else if (intent.jumpBuffer <= 0) {
         intent.jumpBuffer = 0;
@@ -75,7 +125,7 @@ export class PlayerPhysicsSystem {
       intent.crouchBuffer -= delta;
       if (intent.crouchBuffer > 0 && PlayerActions.crouch(player)) {
         intent.crouchBuffer = 0;
-        this.eventBus.emit('camera:shake', 0.9);
+        this.eventBus.emit('camera:shake', cfg.feel.crouchShake);
       } else if (intent.crouchBuffer <= 0) {
         intent.crouchBuffer = 0;
       }
@@ -86,17 +136,28 @@ export class PlayerPhysicsSystem {
     // the run cycle never exceeds ~16 fps of animation regardless of
     // gameplay speed. Trail ghosts read the same field so this also
     // tames the burst-trail tempo.
-    const animRate = Math.min(world.speed, 1.15) * 0.7;
+    const animRate = Math.min(world.speed, cfg.feel.animRateCap) * cfg.feel.animRateScale;
     anim.runFrame += animRate * delta;
     anim.idleTime += delta;
-    vert.jumpStretch = Math.max(0, vert.jumpStretch - 0.11 * delta);
-    vert.landSquash = Math.max(0, vert.landSquash - 0.12 * delta);
+    vert.jumpStretch = Math.max(0, vert.jumpStretch - cfg.feel.jumpStretchDecay * delta);
+    vert.landSquash = Math.max(0, vert.landSquash - cfg.feel.landSquashDecay * delta);
 
     const health = player.components.Health;
     health.invulnerabilityFrames = Math.max(0, health.invulnerabilityFrames - delta);
-    health.hitFlash = Math.max(0, health.hitFlash - 0.09 * delta);
+    health.hitFlash = Math.max(0, health.hitFlash - cfg.feel.hitFlashDecay * delta);
 
     this.#updateTrail(world, lane, vert, crouch, anim);
+  }
+
+  /**
+   * Returns true while the laneChanging window opened by moveLane is
+   * still counting down (see LaneState.laneChangeFramesLeft).
+   *
+   * @param {object} lane — LaneState component
+   * @returns {boolean}
+   */
+  #laneChanging(lane) {
+    return lane.laneChangeFramesLeft > 0;
   }
 
   /**
