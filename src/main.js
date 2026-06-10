@@ -41,10 +41,28 @@ const roadStyle = ['procedural', 'tiles', 'kit'].includes(requestedRoadStyle)
 const requestedBlockStyle = params.get('blockStyle');
 const blockStyle = ['3d', 'voxel'].includes(requestedBlockStyle) ? 'voxel' : 'sprite';
 const playerVoxelEnabled = params.get('player3d') !== '0';
+// Renderer strategy precedence:
+//   1. Explicit URL param (for dev overrides)
+//      ?renderer=three|webgl|three-scene  → 'three-scene'
+//      ?renderer=2d|canvas|canvas2d       → 'canvas2d' (force 2D over a saved 3D setting)
+//   2. Persisted setting in localStorage (key: GAME_CONFIG.gameplay.settingsKey)
+//   3. Default: 'canvas2d'
 const requestedRenderer = params.get('renderer');
-const rendererStrategy = ['three', 'webgl', 'three-scene'].includes(requestedRenderer)
-  ? 'three-scene'
-  : 'canvas2d';
+let rendererStrategy;
+if (['three', 'webgl', 'three-scene'].includes(requestedRenderer)) {
+  rendererStrategy = 'three-scene';
+} else if (['2d', 'canvas', 'canvas2d'].includes(requestedRenderer)) {
+  rendererStrategy = 'canvas2d';
+} else {
+  // No URL param — consult persisted settings.
+  try {
+    const raw = window.localStorage.getItem(GAME_CONFIG.gameplay.settingsKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    rendererStrategy = parsed?.renderer === 'three-scene' ? 'three-scene' : 'canvas2d';
+  } catch {
+    rendererStrategy = 'canvas2d';
+  }
+}
 const threeMode = ['2.5d', 'orthographic', 'ortho'].includes(params.get('threeMode'))
   ? '2.5d'
   : '3d';
@@ -155,7 +173,7 @@ window.addEventListener('keydown', (event) => {
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
 
   if (event.code === 'KeyT') {
-    game.renderer.toggleRoadStyle();
+    game.renderer?.toggleRoadStyle();
   } else if (event.code === 'KeyY') {
     game.settings.toggleBlockStyle();
   }
@@ -169,7 +187,7 @@ if (params.get('touch') === '1') {
 }
 
 window.addEventListener('orientationchange', () => {
-  requestAnimationFrame(() => game.renderer.resizeToViewport(game.config.canvas.viewportPadding));
+  requestAnimationFrame(() => game.renderer?.resizeToViewport(game.config.canvas.viewportPadding));
 });
 
 game.boot()
