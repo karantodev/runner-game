@@ -7,6 +7,8 @@
  * is the *string* matching the factory name (e.g. 'Position', 'Sprite').
  */
 
+import { PLAYER_STATES } from './playerFsm.js';
+
 // ── Spatial ──────────────────────────────────────────────────────────────────
 
 /** World-space lane + depth used by everything that scrolls toward the player. */
@@ -24,10 +26,27 @@ export const Scrollable = (factor = 1) => ({ factor });
 /** Pure marker. */
 export const PlayerTag = () => ({});
 
+/**
+ * FSM label for the player's current high-level state.
+ * `hitFramesLeft` is set by GameStateSystem on a hazard hit and counted
+ * down by PlayerPhysicsSystem; the 'hit' state ends when it reaches 0.
+ *
+ * See src/ecs/playerFsm.js — transitionTo() is the only mutation authority.
+ */
+export const PlayerState = () => ({
+  current: PLAYER_STATES.running,
+  hitFramesLeft: 0,
+});
+
 export const LaneState = () => ({
   targetLane: 0,
   laneX: 0,
   laneTilt: 0,
+  // Frame countdown stamped by moveLane on an actual lane step; while > 0
+  // the FSM reports laneChanging. A countdown (not a laneX-vs-target
+  // epsilon) because the damp converges ~88% per fixed tick — no epsilon
+  // yields a stable multi-frame window (see player.config.js fsm notes).
+  laneChangeFramesLeft: 0,
 });
 
 export const VerticalState = () => ({

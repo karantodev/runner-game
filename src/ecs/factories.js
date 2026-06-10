@@ -6,6 +6,7 @@ import {
   Hitbox,
   LaneState,
   PlayerIntent,
+  PlayerState,
   PlayerTag,
   Position,
   ScenicData,
@@ -45,6 +46,7 @@ const COLLECTIBLE_DEFAULT_ASSET = {
 export function createPlayer(registry, config) {
   return registry.create()
     .add('PlayerTag', PlayerTag())
+    .add('PlayerState', PlayerState())
     .add('LaneState', LaneState())
     .add('VerticalState', VerticalState())
     .add('CrouchState', CrouchState())
