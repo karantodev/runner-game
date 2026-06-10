@@ -118,17 +118,18 @@ export class SpawnSystem {
      * seeded RNG state and break deterministic-replay tests.
      */
     this.lastDifficulty = null;
-    this.nextPattern = 44;
-    this.nextOrchid = 22;
+    const tuning = this.config.spawn.tuning;
+    this.nextPattern = tuning.resetNextPattern;
+    this.nextOrchid = tuning.resetNextOrchid;
     this.nextLife = this.rng.range(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
     this.nextPowerUp = this.rng.range(
-      this.config.spawn.powerUpMinDistance * 0.55,
-      this.config.spawn.powerUpMaxDistance * 0.75,
+      this.config.spawn.powerUpMinDistance * tuning.powerUpEarlyLo,
+      this.config.spawn.powerUpMaxDistance * tuning.powerUpEarlyHi,
     );
     // v3.1: rare blue orchid spawns rarely as a "hunt" target.
     this.nextRare = this.rng.range(
-      this.config.spawn.rareOrchidMinDistance * 0.6,
-      this.config.spawn.rareOrchidMaxDistance * 0.6,
+      this.config.spawn.rareOrchidMinDistance * tuning.rareOrchidEarlyFactor,
+      this.config.spawn.rareOrchidMaxDistance * tuning.rareOrchidEarlyFactor,
     );
     // v3.8.23 — origin of the NEXT hero-road cycle to stamp. Bumped by
     // CYCLE_LENGTH every time a cycle goes off-camera so the rhythm is
@@ -173,8 +174,9 @@ export class SpawnSystem {
     // Procedural patterns kept on the legacy cadence (fires ~60 travel
     // units in) so they add ambient extras between hero beats. Hero
     // cycle is the BASELINE; procedural is variation.
-    this.nextPattern = 60;
-    this.nextOrchid  = 200;  // orchid duty carried by hero cycles
+    const tuning = this.config.spawn.tuning;
+    this.nextPattern = tuning.prepopulateNextPattern;
+    this.nextOrchid  = tuning.prepopulateNextOrchid;  // orchid duty carried by hero cycles
 
     // v4.0 — fill the visible corridor with the center breadcrumb trail
     // on startup so the player immediately sees the leading line of orchids.
@@ -283,21 +285,23 @@ export class SpawnSystem {
         const count = entry.count ?? 4;
         const from = entry.fromLane;
         const to = entry.toLane;
+        const arcSpacing = this.config.spawn.tuning.heroFlowerArcSpacing;
         for (let i = 0; i < count; i += 1) {
           const t = i / (count - 1);
           const lane = from + t * (to - from);
           this.#spawnCollectible(world, {
             type: 'flower', lane,
-            distance: dist + i * 7, high: false, sourceId,
+            distance: dist + i * arcSpacing, high: false, sourceId,
           });
         }
         return;
       }
       case 'flower-zigzag': {
+        const zigzagSpacing = this.config.spawn.tuning.heroFlowerZigzagSpacing;
         entry.lanes.forEach((lane, i) => {
           this.#spawnCollectible(world, {
             type: 'flower', lane,
-            distance: dist + i * 8, high: false, sourceId,
+            distance: dist + i * zigzagSpacing, high: false, sourceId,
           });
         });
         return;
@@ -309,11 +313,13 @@ export class SpawnSystem {
         // doesn't read as a perfect column.
         const count = entry.count ?? 4;
         const lane = entry.lane ?? 0;
+        const clusterSpacing = this.config.spawn.tuning.heroRewardClusterSpacing;
+        const clusterJitter = this.config.spawn.tuning.heroRewardClusterJitter;
         for (let i = 0; i < count; i += 1) {
-          const laneJitter = (i % 2 === 0) ? 0 : 0.12;
+          const laneJitter = (i % 2 === 0) ? 0 : clusterJitter;
           this.#spawnCollectible(world, {
             type: 'flower', lane: lane + laneJitter,
-            distance: dist + i * 4, high: false, sourceId,
+            distance: dist + i * clusterSpacing, high: false, sourceId,
           });
         }
         return;
@@ -326,11 +332,11 @@ export class SpawnSystem {
         // react. Keeps solvability: flowers mark the jump path, not a wall.
         this.#spawnCollectible(world, {
           type: 'flower', lane: hazardLane,
-          distance: dist - 16, high: false, sourceId,
+          distance: dist + this.config.spawn.tuning.jumpObstacleTelegraphFar, high: false, sourceId,
         });
         this.#spawnCollectible(world, {
           type: 'flower', lane: hazardLane,
-          distance: dist - 9, high: false, sourceId,
+          distance: dist + this.config.spawn.tuning.jumpObstacleTelegraphNear, high: false, sourceId,
         });
         this.#spawnObstacle(world, {
           type: 'wheat', lane: hazardLane,
@@ -350,7 +356,7 @@ export class SpawnSystem {
           sourceId,
         });
         // Approach: 3 flowers before the overhang (same offsets as vine).
-        [26, 18, 10].forEach((offset) => {
+        this.config.spawn.tuning.rewardApproachOffsets.forEach((offset) => {
           this.#spawnCollectible(world, {
             type: 'flower', lane: 0,
             distance: dist - offset, high: false, sourceId,
@@ -359,7 +365,7 @@ export class SpawnSystem {
         // Exit: one flower after the player clears the duck window.
         this.#spawnCollectible(world, {
           type: 'flower', lane: 0,
-          distance: dist + 8, high: false, sourceId,
+          distance: dist + this.config.spawn.tuning.rewardExitOffset, high: false, sourceId,
         });
         return;
       }
@@ -503,6 +509,12 @@ export class SpawnSystem {
       if (!isolatedOk || !this.#isSolvableWithNeighbors(world, pattern, absoluteBaseDistance)) {
         if (isolatedOk) this._crossSeamRejects += 1; // seam-specific rejection (debug metric)
         pattern = this.library.pickFallback();
+      } else if (diff.bucket >= 2 && !this.validator.survivesOneHit(pattern, { speed: world.speed })) {
+        // One-hit-recovery gate for difficulty bucket 2+. Tutorial bucket (1)
+        // passes trivially — its patterns are designed to be learned by dying.
+        // Bucket 2+ patterns that fail this gate are caught by the safe-fallback;
+        // their authored ids are listed in the task risks for human review.
+        pattern = this.library.pickFallback();
       }
     }
 
@@ -524,12 +536,13 @@ export class SpawnSystem {
       this.#spawnRewardApproach(world, baseDistance, vineLane, sourceId);
       this.#spawnRewardExit(world, baseDistance, vineLane, sourceId);
     }
-    this.nextOrchid = Math.max(this.nextOrchid, hasVine ? 68 : 30);
+    const tuning = this.config.spawn.tuning;
+    this.nextOrchid = Math.max(this.nextOrchid, hasVine ? tuning.orchidAfterVine : tuning.orchidAfterNoVine);
     // v3.8.8 Tier-3 — post-vine spacing 96 → 140 so the next obstacle
     // doesn't enter the visible field until the player is well past
     // the vine landing. User reported two vines still reading as a
     // "double barrier" at 96 distance-units of separation.
-    const minSpacing = hasVine ? 140 : diff.patternSpacing;
+    const minSpacing = hasVine ? tuning.postVinePatternSpacing : diff.patternSpacing;
     this.nextPattern = Math.max(diff.patternSpacing, minSpacing);
   }
 
@@ -551,7 +564,7 @@ export class SpawnSystem {
 
     // Window scales with speed: at higher speed a jump / lane-switch reaches
     // further, so obstacles further out can still interact across the seam.
-    const margin = 60 * Math.max(1, world.speed / this.config.gameplay.startSpeed);
+    const margin = this.config.spawn.tuning.crossSeamMargin * Math.max(1, world.speed / this.config.gameplay.startSpeed);
     const from = absoluteBaseDistance + Math.min(...obstacleOffsets) - margin;
     const to = absoluteBaseDistance + Math.max(...obstacleOffsets) + margin;
 
@@ -579,10 +592,10 @@ export class SpawnSystem {
   /**
    * "Approach trail" — 3 orchids in the lane the vine will land in,
    * at increasing height so the visual path slopes up to a jump cue.
-   * Distances: 26, 18, 10 BEFORE the vine.
+   * Distances: rewardApproachOffsets BEFORE the vine.
    */
   #spawnRewardApproach(world, vineDist, lane, sourceId = 'reward') {
-    [26, 18, 10].forEach((offset) => {
+    this.config.spawn.tuning.rewardApproachOffsets.forEach((offset) => {
       this.#spawnCollectible(world, {
         type: 'flower',
         lane,
@@ -601,7 +614,7 @@ export class SpawnSystem {
     this.#spawnCollectible(world, {
       type: 'flower',
       lane,
-      distance: vineDist + 8,
+      distance: vineDist + this.config.spawn.tuning.rewardExitOffset,
       sourceId,
       high: false,
     });
@@ -620,43 +633,183 @@ export class SpawnSystem {
     this.nextOrchid = diff.orchidSpacing;
   }
 
+  /**
+   * Life-pickup tick — difficulty-driven, pattern-validated.
+   *
+   * Flow:
+   *   1. Ask DifficultyDirector for lifePickupChance; draw from seeded RNG.
+   *      On miss, reschedule with the short retry distance and return.
+   *   2. Roll a lane via the existing lane-mirroring draw.
+   *   3. Build a shifted view of LIFE_PICKUP_SPECIAL at that lane.
+   *   4. Merge neighbor obstacles (same helper as #tickPattern) and require:
+   *        a) isSolvable  — the shifted pattern must be clearable, AND
+   *        b) isCollectible — the life item must be reachable.
+   *   5. If validation fails, try the mirrored lane (flip sign).
+   *      If that also fails, defer with the retry distance.
+   *   6. On success, spawn via #spawnPattern with the validated laneShift.
+   */
   #tickLife(world) {
-    const lane = this.rng.choice(LANE_TRIPLET);
-    this.#spawnCollectible(world, {
-      type: 'life',
-      lane,
-      distance: this.projection.maxDistance + 8,
-      high: this.rng.chance(0.20),
-    });
-    this.nextPattern = Math.max(this.nextPattern, 32);
-    this.nextLife = this.rng.range(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance);
+    const diff = this.director.get(world);
+    const retryDist = this.config.spawn.lifePickupRetryDistance ?? 180;
+
+    // Chance gate — draw from seeded RNG. Failing here is intentional; it
+    // avoids over-spawning hearts when the player is at full health.
+    if (!this.rng.chance(diff.lifePickupChance)) {
+      this.nextLife = retryDist;
+      return;
+    }
+
+    const baseDistance = this.projection.maxDistance;
+    const absoluteBaseDistance = (world.worldDistanceTotal ?? 0) + baseDistance;
+
+    // Lane roll — mirrors the existing lane-mirroring pattern used by #tickRare.
+    const laneRoll = this.rng.choice(LANE_TRIPLET); // -1, 0, or +1
+
+    // High-pickup: apply only when validated reachability confirms it.
+    // The rng draw happens here unconditionally so the seeded stream is stable
+    // regardless of the validation outcome.
+    const wantsHigh = this.rng.chance(this.config.spawn.lifePickupHighChance ?? 0.20);
+
+    const pattern = this.library.pickLifePickup();
+
+    // Find the life item in the pattern to validate its exact position.
+    const lifeItem = pattern.items.find(i => i.kind === 'flower' && i.collectible === 'life');
+
+    const tryLane = (laneShift) => {
+      // Build the shifted view.  Items whose shifted lane falls outside [-1,+1]
+      // are NOT clamped here — #spawnPattern will skip them at spawn time.
+      // The validator treats an out-of-range lane as trivially dodgeable (no
+      // reachable lane equals the obstacle lane), so the shifted pattern is
+      // still a valid input; isSolvable reflects the actual playable geometry.
+      const shiftedPattern = {
+        ...pattern,
+        items: pattern.items.map(i => ({ ...i, lane: (i.lane ?? 0) + laneShift })),
+      };
+      if (!this.validator.isSolvable(shiftedPattern, { speed: world.speed })) return false;
+      if (!this.#isSolvableWithNeighbors(world, shiftedPattern, absoluteBaseDistance)) return false;
+
+      // Validate that the life pickup itself is reachable.
+      if (lifeItem) {
+        const pickupLane  = (lifeItem.lane ?? 0) + laneShift;
+        const pickupOffset = lifeItem.offset;
+        // Only attempt high placement when the validator confirms reachability.
+        const useHigh = wantsHigh && this.validator.isCollectible(
+          shiftedPattern,
+          { lane: pickupLane, offset: pickupOffset, high: true },
+          { speed: world.speed },
+        );
+        if (!this.validator.isCollectible(
+          shiftedPattern,
+          { lane: pickupLane, offset: pickupOffset, high: false },
+          { speed: world.speed },
+        )) return false;
+
+        // Spawn with confirmed laneShift and resolved high flag.
+        const sourceId = `life:${this._patternSerial++}`;
+        this.#spawnPattern(world, {
+          ...pattern,
+          items: pattern.items.map(i =>
+            (i.kind === 'flower' && i.collectible === 'life')
+              ? { ...i, high: useHigh }
+              : i,
+          ),
+        }, baseDistance, sourceId, laneShift);
+        return true;
+      }
+
+      // No explicit life item found (shouldn't happen with the authored pattern,
+      // but handle gracefully by spawning without extra high logic).
+      const sourceId = `life:${this._patternSerial++}`;
+      this.#spawnPattern(world, pattern, baseDistance, sourceId, laneShift);
+      return true;
+    };
+
+    const spawned = tryLane(laneRoll) || tryLane(-laneRoll);
+
+    if (spawned) {
+      // Keep the next obstacle pattern from colliding with the heart window.
+      this.nextPattern = Math.max(this.nextPattern, this.config.spawn.tuning.lifePatternGuard);
+    }
+    this.nextLife = spawned
+      ? this.rng.range(this.config.spawn.lifePickupMinDistance, this.config.spawn.lifePickupMaxDistance)
+      : retryDist;
   }
 
+  /**
+   * Power-up tick — difficulty-driven, pattern-validated.
+   *
+   * The weighted type-roll is now inside #resolveCollectibleToken (called by
+   * #spawnPattern when it encounters the 'powerup-roll' token), so the RNG
+   * draw happens exactly once in the proven spawn path rather than ad-hoc here.
+   *
+   * Flow mirrors #tickLife:
+   *   1. Chance gate — draw from seeded RNG; on miss defer with retry distance.
+   *   2. Lane roll via seeded rng.choice.
+   *   3. Validate POWERUP_INTRO_SPECIAL shifted to the chosen lane:
+   *        isSolvable + neighbor-merge check.
+   *   4. Retry mirrored lane on failure; defer on double-failure.
+   *   5. Spawn via #spawnPattern — the 'powerup-roll' token is resolved inside.
+   */
   #tickPowerUp(world) {
-    // v3.1: roll across 5 power-ups by weight (legacy two still common,
-    // new three a bit rarer so they feel special when they appear).
-    //   power-tree (speed)     w=4   total 16
-    //   power-mushroom (split) w=3
-    //   power-magnet           w=3
-    //   power-shield           w=3
-    //   power-double (x2)      w=3
-    const weights = [4, 3, 3, 3, 3];
-    const types = ['power-tree', 'power-mushroom', 'power-magnet', 'power-shield', 'power-double'];
-    const total = weights.reduce((a, b) => a + b, 0);
-    let roll = this.rng.range(0, total);
-    let picked = types[0];
-    for (let i = 0; i < types.length; i += 1) {
-      roll -= weights[i];
-      if (roll <= 0) { picked = types[i]; break; }
+    const diff = this.director.get(world);
+    const retryDist = this.config.spawn.powerUpRetryDistance ?? 200;
+
+    if (!this.rng.chance(diff.powerUpChance)) {
+      this.nextPowerUp = retryDist;
+      return;
     }
-    const lane = this.rng.choice(LANE_TRIPLET);
-    this.#spawnCollectible(world, {
-      type: picked,
-      lane,
-      distance: this.projection.maxDistance + 12,
-    });
-    this.nextPattern = Math.max(this.nextPattern, 40);
-    this.nextPowerUp = this.rng.range(this.config.spawn.powerUpMinDistance, this.config.spawn.powerUpMaxDistance);
+
+    const baseDistance = this.projection.maxDistance;
+    const absoluteBaseDistance = (world.worldDistanceTotal ?? 0) + baseDistance;
+    const laneRoll = this.rng.choice(LANE_TRIPLET);
+
+    const pattern = this.library.pickPowerUpIntro();
+
+    // Locate the power-up token item so we can validate its reachability.
+    // The token's collectible field is 'powerup-roll'; the type is resolved
+    // at spawn time and does not affect the path-validator lane/height check.
+    const powerUpItem = pattern.items.find(
+      i => i.kind === 'flower' && i.collectible === 'powerup-roll',
+    );
+
+    const tryLane = (laneShift) => {
+      const shiftedPattern = {
+        ...pattern,
+        items: pattern.items.map(i => ({ ...i, lane: (i.lane ?? 0) + laneShift })),
+      };
+      if (!this.validator.isSolvable(shiftedPattern, { speed: world.speed })) return false;
+      if (!this.#isSolvableWithNeighbors(world, shiftedPattern, absoluteBaseDistance)) return false;
+      // Validate that the power-up token itself is reachable given any
+      // neighbor obstacles already reserved on the road.  Without this,
+      // a hero/procedural obstacle near the pickup lane can make it
+      // unreachable — the isSolvable check above only covers the pattern's
+      // own items (POWERUP_INTRO_SPECIAL has zero obstacles, so isSolvable
+      // is trivially true for every call).
+      if (powerUpItem) {
+        const pickupLane   = (powerUpItem.lane ?? 0) + laneShift;
+        const pickupOffset = powerUpItem.offset;
+        if (!this.validator.isCollectible(
+          shiftedPattern,
+          { lane: pickupLane, offset: pickupOffset, high: powerUpItem.high ?? false },
+          { speed: world.speed },
+        )) return false;
+      }
+      const sourceId = `powerup:${this._patternSerial++}`;
+      // #spawnPattern will call #resolveCollectibleToken which draws the power-up
+      // type from the config weighted table using the seeded RNG.
+      this.#spawnPattern(world, pattern, baseDistance, sourceId, laneShift);
+      return true;
+    };
+
+    const spawned = tryLane(laneRoll) || tryLane(-laneRoll);
+
+    if (spawned) {
+      // Keep the next obstacle pattern from colliding with the power-up window.
+      this.nextPattern = Math.max(this.nextPattern, this.config.spawn.tuning.powerUpPatternGuard);
+    }
+    this.nextPowerUp = spawned
+      ? this.rng.range(this.config.spawn.powerUpMinDistance, this.config.spawn.powerUpMaxDistance)
+      : retryDist;
   }
 
   /**
@@ -665,38 +818,92 @@ export class SpawnSystem {
    * demands a jump even from a clear path).
    */
   #tickRare(world) {
+    const cfg = this.config.spawn;
     const lane = this.rng.choice(LANE_TRIPLET);
     this.#spawnCollectible(world, {
       type: 'rare-orchid',
       lane,
-      distance: this.projection.maxDistance + 10,
-      high: this.rng.chance(0.5),
+      distance: this.projection.maxDistance + cfg.rareOrchidDistanceOffset,
+      high: this.rng.chance(cfg.rareOrchidHighChance),
     });
-    this.nextPattern = Math.max(this.nextPattern, 28);
+    this.nextPattern = Math.max(this.nextPattern, cfg.rareOrchidPatternGuard);
     this.nextRare = this.rng.range(
-      this.config.spawn.rareOrchidMinDistance,
-      this.config.spawn.rareOrchidMaxDistance,
+      cfg.rareOrchidMinDistance,
+      cfg.rareOrchidMaxDistance,
     );
   }
 
-  #spawnPattern(world, pattern, baseDistance, sourceId) {
+  /**
+   * Resolves the `collectible` token on a pattern flower item.
+   *
+   * Known tokens beyond normal type strings:
+   *   'life'         → 'life' (heart pickup) — passed through directly.
+   *   'powerup-roll' → one of the weighted power-up types drawn from the
+   *                    config table via the seeded RNG. This moves the
+   *                    weighted-roll logic out of #tickPowerUp and into the
+   *                    single resolution point so all callers share one path.
+   *
+   * Any other string is passed through unchanged (covers 'flower', 'flower-rich',
+   * and future variants without special-casing every one here).
+   *
+   * @param {string} token
+   * @returns {string}
+   */
+  #resolveCollectibleToken(token) {
+    if (token !== 'powerup-roll') return token;
+    // Draw a power-up type from the config weighted table using the seeded RNG.
+    const types   = this.config.spawn.powerUpTypes   ?? ['power-tree', 'power-mushroom', 'power-magnet', 'power-shield', 'power-double'];
+    const weights = this.config.spawn.powerUpWeights ?? [4, 3, 3, 3, 3];
+    const total = weights.reduce((a, b) => a + b, 0);
+    let roll = this.rng.range(0, total);
+    for (let i = 0; i < types.length; i += 1) {
+      roll -= weights[i];
+      if (roll <= 0) return types[i];
+    }
+    return types[types.length - 1]; // guard against floating-point edge
+  }
+
+  /**
+   * Spawns all items in `pattern` at `baseDistance`, applying an optional
+   * `laneShift` so pickup specials can be mirrored to any validated lane.
+   *
+   * @param {object} world
+   * @param {object} pattern
+   * @param {number} baseDistance
+   * @param {string} sourceId
+   * @param {number} [laneShift=0] — added to every item's lane (integer: -1, 0, +1)
+   */
+  #spawnPattern(world, pattern, baseDistance, sourceId, laneShift = 0) {
+    const minLane = this.config.player.minLane;
+    const maxLane = this.config.player.maxLane;
     for (const item of pattern.items) {
       const distance = baseDistance + item.offset;
+      const lane = (item.lane ?? 0) + laneShift;
+      // Skip items whose shifted lane falls outside the playable road boundary.
+      // A lane shift of ±1 applied to an edge-lane item (e.g. mushroom at +1
+      // in LIFE_PICKUP_SPECIAL with laneShift=+1 → lane 2) would otherwise
+      // produce an off-road entity that renders past the road edge, can never
+      // be collided, and makes the validator's prior solvability check vacuous.
+      // allLanes obstacles span the full road regardless of their lane value
+      // so they are never skipped.
+      if (!item.allLanes && (lane < minLane || lane > maxLane)) continue;
       if (item.kind === 'obstacle') {
         this.#spawnObstacle(world, {
           type: item.type,
           assetType: item.assetType,
-          lane: item.lane ?? 0,
+          lane,
           allLanes: item.allLanes ?? false,
           distance,
           sourceId,
           variant: item.variant ?? null,
         });
       } else if (item.kind === 'flower') {
+        // Resolve the collectible token: 'powerup-roll' draws from the weighted
+        // table; 'life' and regular flower types pass through unchanged.
+        const collectibleType = this.#resolveCollectibleToken(item.collectible ?? 'flower');
         this.#spawnCollectible(world, {
-          // Patterns may opt a single flower into a jackpot variant.
-          type: item.collectible ?? 'flower',
-          lane: item.lane,
+          type: collectibleType,
+          lane,
           distance,
           sourceId,
           high: item.high ?? false,
@@ -717,12 +924,13 @@ export class SpawnSystem {
    * All four play out over similar lengths so spawn pacing is unchanged.
    */
   #spawnOrchidPattern(world, baseDistance) {
+    const cfg = this.config.spawn;
     const roll = this.rng.next();
-    if (roll < 0.40) {
+    if (roll < cfg.orchidLineThreshold) {
       this.#spawnOrchidLine(world, baseDistance, this.rng.choice(LANE_TRIPLET));
-    } else if (roll < 0.60) {
+    } else if (roll < cfg.orchidZigzagThreshold) {
       this.#spawnOrchidZigZag(world, baseDistance);
-    } else if (roll < 0.80) {
+    } else if (roll < cfg.orchidArcThreshold) {
       this.#spawnOrchidArc(world, baseDistance);
     } else {
       this.#spawnOrchidStep(world, baseDistance);
@@ -757,8 +965,9 @@ export class SpawnSystem {
    * smoothly across two adjacent lanes (e.g. -1 → 0 or 0 → 1).
    */
   #spawnOrchidArc(world, baseDistance) {
+    const cfg = this.config.spawn;
     const fromIdx = this.rng.integer(0, 2);
-    let toIdx = fromIdx + (this.rng.chance(0.5) ? 1 : -1);
+    let toIdx = fromIdx + (this.rng.chance(cfg.orchidArcRightChance) ? 1 : -1);
     if (toIdx < 0 || toIdx > 2) toIdx = fromIdx - (toIdx - fromIdx);
     const fromLane = LANE_TRIPLET[fromIdx];
     const toLane = LANE_TRIPLET[toIdx];
@@ -769,7 +978,7 @@ export class SpawnSystem {
       this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
-        distance: baseDistance + i * 12,
+        distance: baseDistance + i * cfg.orchidArcSpacing,
       });
     }
   }
@@ -780,8 +989,9 @@ export class SpawnSystem {
    * good for low-difficulty rotations.
    */
   #spawnOrchidStep(world, baseDistance) {
+    const cfg = this.config.spawn;
     const fromIdx = this.rng.integer(0, 2);
-    let toIdx = fromIdx + (this.rng.chance(0.5) ? 1 : -1);
+    let toIdx = fromIdx + (this.rng.chance(cfg.orchidStepRightChance) ? 1 : -1);
     if (toIdx < 0 || toIdx > 2) toIdx = fromIdx - (toIdx - fromIdx);
     const fromLane = LANE_TRIPLET[fromIdx];
     const toLane = LANE_TRIPLET[toIdx];
@@ -789,7 +999,7 @@ export class SpawnSystem {
       this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
-        distance: baseDistance + i * 13,
+        distance: baseDistance + i * cfg.orchidStepSpacing,
       });
     });
   }
@@ -799,13 +1009,14 @@ export class SpawnSystem {
     // distance grown 9 → 14. New orchidGoldMain sprite is bigger; tight
     // 9-unit spacing made each column read as a "wall of gold". 14
     // breathing units = single readable trail.
-    const count = this.rng.integer(2, 3);
-    const high = this.rng.chance(0.26);
+    const cfg = this.config.spawn;
+    const count = this.rng.integer(cfg.tuning.orchidLineCountLo, cfg.tuning.orchidLineCountHi);
+    const high = this.rng.chance(cfg.orchidLineHighChance);
     for (let i = 0; i < count; i++) {
       this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
-        distance: baseDistance + i * 14,
+        distance: baseDistance + i * cfg.orchidLineSpacing,
         high,
       });
     }
@@ -813,12 +1024,13 @@ export class SpawnSystem {
 
   #spawnOrchidZigZag(world, baseDistance) {
     // v3.8.1 — shorter zigzag (5 → 3 nodes) so it doesn't span half a screen.
-    const lanes = this.rng.chance(0.5) ? [-1, 0, 1] : [1, 0, -1];
+    const cfg = this.config.spawn;
+    const lanes = this.rng.chance(cfg.orchidZigzagRightChance) ? [-1, 0, 1] : [1, 0, -1];
     lanes.forEach((lane, i) => {
       this.#spawnFillerFlower(world, {
         type: 'flower',
         lane,
-        distance: baseDistance + i * 10,
+        distance: baseDistance + i * cfg.orchidZigzagSpacing,
       });
     });
   }

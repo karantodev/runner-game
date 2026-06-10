@@ -12,16 +12,28 @@
  *     be jumped over and the duck lock-out runs for ~24 world units, so any
  *     vine that follows an overhang must sit at least 25 units later.
  *
+ * difficulty: 0 is reserved for four named specials that are never drawn
+ * from the random pool — they are fetched by name via PatternLibrary:
+ *   split-bonus-flowers     — wide flower bonus during split-clones power-up
+ *   safe-fallback           — fallback when the validator rejects all candidates
+ *   special-life-pickup-safe — telegraphed life (heart) pickup sequence
+ *   special-powerup-intro   — telegraphed power-up intro sequence
+ *
  * Schema:
  *   {
  *     id: string,               // unique, kebab-case
- *     difficulty: 1|2|3|4|5|0,  // 0 = special (split-bonus / safe-fallback)
+ *     difficulty: 1|2|3|4|5|0,  // 0 = special (see above)
  *     weight?: number,          // pick weight inside its difficulty pool (default 1)
  *     items: [
  *       { kind: 'obstacle', type: string, lane?: number,
  *         assetType?: string, variant?: any, allLanes?: boolean, offset: number }
  *       | { kind: 'flower', lane: number, high?: boolean, offset: number,
- *           collectible?: string } // opt a single flower into a variant (e.g. jackpot)
+ *           collectible?: string }
+ *         // collectible reserved tokens (handled specially by SpawnSystem):
+ *         //   'life'         → spawns the heart_full collectible
+ *         //   'powerup-roll' → SpawnSystem draws a weighted power-up type at
+ *         //                    spawn time via the seeded RNG (config table)
+ *         //   anything else  → passed through as the collectible type directly
  *     ],
  *   }
  */
@@ -575,5 +587,84 @@ export const SAFE_FALLBACK = Object.freeze({
     { kind: 'flower', lane: 0,  offset: 0 },
     { kind: 'flower', lane: -1, offset: 0 },
     { kind: 'flower', lane: 1,  offset: 0 },
+  ],
+});
+
+// ── Pickup specials (difficulty 0 — routed through #tickLife / #tickPowerUp) ──
+//
+// These follow the SPLIT_BONUS / SAFE_FALLBACK precedent: hand-authored,
+// exported by name, fetched via PatternLibrary.pickLifePickup() /
+// PatternLibrary.pickPowerUpIntro(), never mixed into the random pool.
+//
+// 'collectible' field on flower items:
+//   'life'         → resolves to the heart_full collectible via #spawnPattern.
+//   'powerup-roll' → #spawnPattern draws from the config weighted table and
+//                    spawns the winning power-up type.
+
+/**
+ * Telegraphed life pickup approach.
+ *
+ * Two leading flowers guide the player toward the pickup lane, one easy
+ * obstacle BEFORE the heart so the reward feels earned (not free), then
+ * the heart itself on lane 0. The obstacle at offset 0 is a single-lane
+ * block only, ensuring the opposite two lanes are always clear — this is
+ * intentionally trivial (difficulty 0) so it passes isSolvable and
+ * isCollectible unconditionally.
+ *
+ * The obstacle is placed on lane +1 and the heart on lane 0 so the
+ * approach telegraph reads "step left to earn the heart".
+ *
+ * High-heart placement: a stone obstacle in lane 0 at offset 10 makes the
+ * player airborne in lane 0 when they jump it. At base speed the jump arc
+ * lasts ~31 world-units (ceil(2×16.5/0.95) × 0.90), so the player is still
+ * airborne at offset 30 (10 + 31 > 30) — isCollectible(high:true) can now
+ * confirm reachability.  Without this in-lane obstacle the validator only
+ * modelled airborne states in lane +1 (from the mushroom jump), never in
+ * the pickup lane, making lifePickupHighChance a dead knob.
+ *
+ * Items are expressed at lane 0 (the pickup lane). #tickLife mirrors the
+ * whole pattern to the validated lane via a lane-offset applied at spawn time
+ * (the pattern is cloned with lane shifted before being passed to #spawnPattern).
+ */
+export const LIFE_PICKUP_SPECIAL = Object.freeze({
+  id: 'special-life-pickup-safe',
+  difficulty: 0,
+  items: [
+    // Telegraph: two flowers leading into the safe lane.
+    { kind: 'flower', lane: 0, offset: 0  },
+    { kind: 'flower', lane: 0, offset: 8  },
+    // In-lane stone at offset 10: provides an airborne state in lane 0 so
+    // isCollectible(high:true) can confirm the heart at offset 30 is reachable
+    // via a jump.  This is the enabling obstacle for high-heart placement.
+    { kind: 'obstacle', lane: 0, type: 'stone', offset: 10 },
+    // Mushroom on adjacent lane (lane +1 relative to pickup lane).
+    // Still present as a lane-pressure cue; the stone at lane 0 is now
+    // the canonical jump gate for the high-heart path.
+    { kind: 'obstacle', lane: 1, type: 'mushroom', variant: 'red', offset: 18 },
+    // The life pickup itself — collectible field triggers 'life' resolution.
+    { kind: 'flower', lane: 0, collectible: 'life', offset: 30 },
+  ],
+});
+
+/**
+ * Telegraphed power-up intro.
+ *
+ * Clean line of three flowers converging to the center, then the power-up.
+ * No obstacles — power-ups are presented as pure positive events, so they
+ * don't need an "earned" gate. The leading flowers create a visual funnel
+ * that draws the player's eye to the pickup lane.
+ *
+ * 'collectible': 'powerup-roll' is resolved at spawn time by #spawnPattern
+ * via a seeded draw from the config weighted table (same logic that was
+ * previously inline in #tickPowerUp).
+ */
+export const POWERUP_INTRO_SPECIAL = Object.freeze({
+  id: 'special-powerup-intro',
+  difficulty: 0,
+  items: [
+    { kind: 'flower', lane: -1, offset: 0  },
+    { kind: 'flower', lane: 0,  offset: 0  },
+    { kind: 'flower', lane: 1,  offset: 0  },
+    { kind: 'flower', lane: 0,  offset: 10, collectible: 'powerup-roll' },
   ],
 });

@@ -33,6 +33,8 @@ export class DifficultyDirector {
       intensity,
       patternSpacing: this.#patternSpacing(intensity, world.speed),
       orchidSpacing: this.#orchidSpacing(intensity),
+      lifePickupChance: this.#lifePickupChance(world),
+      powerUpChance: this.#powerUpChance(),
     };
   }
 
@@ -116,5 +118,38 @@ export class DifficultyDirector {
     const jitter = 18 - 10 * intensity;   // 18 → 8
     const r = this.rng ? this.rng.next() : Math.random();
     return base + r * jitter;
+  }
+
+  /**
+   * Probability (0..1) that a life pickup spawns when the cadence fires.
+   *
+   * Base chance + a per-missing-life bonus so hurt players see hearts sooner
+   * (fairness). Pure function of world state and config — no RNG draws, so
+   * calling this inside get() never perturbs the seeded RNG stream.
+   *
+   * @param {object} world
+   * @returns {number}
+   */
+  #lifePickupChance(world) {
+    const cfg = this.config.spawn;
+    const base = cfg.lifePickupBaseChance ?? 0.55;
+    const bonus = cfg.lifePickupMissingLifeBonus ?? 0.20;
+    const ceiling = cfg.lifePickupMaxChance ?? 0.95;
+    const startLives = this.config.gameplay.startLives ?? 3;
+    const currentLives = world.lives ?? startLives;
+    const missing = Math.max(0, startLives - currentLives);
+    return Math.min(ceiling, base + missing * bonus);
+  }
+
+  /**
+   * Probability (0..1) that a power-up spawns when the cadence fires.
+   *
+   * Roughly flat — power-ups are desirable but not compensatory, so no
+   * difficulty-scaling is applied here. Config-driven so designers can tune.
+   *
+   * @returns {number}
+   */
+  #powerUpChance() {
+    return this.config.spawn.powerUpBaseChance ?? 0.85;
   }
 }

@@ -1,4 +1,4 @@
-import { PATTERNS, SPLIT_BONUS, SAFE_FALLBACK } from './patterns.data.js';
+import { PATTERNS, SPLIT_BONUS, SAFE_FALLBACK, LIFE_PICKUP_SPECIAL, POWERUP_INTRO_SPECIAL } from './patterns.data.js';
 
 /**
  * Picks pattern entries from the data table by difficulty level, expanded
@@ -39,8 +39,10 @@ export class PatternLibrary {
     return pattern;
   }
 
-  pickSplitBonus() { return SPLIT_BONUS; }
-  pickFallback()   { return SAFE_FALLBACK; }
+  pickSplitBonus()   { return SPLIT_BONUS; }
+  pickFallback()     { return SAFE_FALLBACK; }
+  pickLifePickup()   { return LIFE_PICKUP_SPECIAL; }
+  pickPowerUpIntro() { return POWERUP_INTRO_SPECIAL; }
 
   /** Returns every named pattern exactly once — used by the test harness. */
   allPatterns() {
@@ -49,7 +51,7 @@ export class PatternLibrary {
     for (const p of PATTERNS) {
       if (!seen.has(p.id)) { seen.add(p.id); result.push(p); }
     }
-    result.push(SPLIT_BONUS, SAFE_FALLBACK);
+    result.push(SPLIT_BONUS, SAFE_FALLBACK, LIFE_PICKUP_SPECIAL, POWERUP_INTRO_SPECIAL);
     return result;
   }
 }
