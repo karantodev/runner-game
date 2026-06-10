@@ -734,6 +734,10 @@ test('touch controls — buttons exist and bind to actions', async ({ page }) =>
 test('jump buffer — tap mid-air still fires on landing', async ({ page }) => {
   await page.goto('/dev.html?debug=1&autostart=1');
   await page.waitForFunction(() => window.__ORCHID_DEBUG__ !== undefined);
+  // The debug API appears before boot finishes (its module import races
+  // asset preload), so wait for autostart to actually reach 'playing'
+  // before pressing jump — otherwise the tap lands in the menu state.
+  await page.waitForFunction(() => window.__ORCHID_DEBUG__.getState().worldState === 'playing');
   // First jump from the ground.
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' })));
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' })));
