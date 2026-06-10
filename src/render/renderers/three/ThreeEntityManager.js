@@ -1,4 +1,5 @@
 import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import { ASSETS } from './threeAssetManifest.js';
 
 export class ThreeEntityManager {
   constructor(scene, textureCache, windUniform) {
@@ -51,7 +52,7 @@ export class ThreeEntityManager {
 
   buildSparkles() {
     const CAP = 128;
-    const tex = this.textureCache.get('collectibles/orchid_gold/orchid_gold_main.png');
+    const tex = this.textureCache.get(ASSETS.orchidGold);
     const mat = new THREE.MeshBasicMaterial({
       map: tex, color: 0xfff0aa, transparent: true, opacity: 0, depthWrite: false, fog: false, blending: THREE.AdditiveBlending,
     });

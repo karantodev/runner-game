@@ -1,4 +1,5 @@
 import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import { ASSET_ROOT, ASSETS } from './threeAssetManifest.js';
 
 const RENDER_SIZE = 320;
 
@@ -418,7 +419,7 @@ export class ThreeModelRenderer {
     // the browser HTTP cache when this runs — new Image() + same URL → complete=true.
     if (kind === 'vineBarrier') {
       const img = new Image();
-      img.src = './assets/obstacles/vines/vine_barrier_full.png';
+      img.src = `${ASSET_ROOT}${ASSETS.vineBarrier}`;
       if (img.complete && img.naturalWidth > 0) {
         const out = document.createElement('canvas');
         out.width = img.naturalWidth;

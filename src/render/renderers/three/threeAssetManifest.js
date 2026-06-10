@@ -34,6 +34,13 @@ export const ASSETS = {
   grassTuft: 'decor_small/grass/grass_tuft_large.png',
 };
 
+// Player animation path fragments — centralised here so renderer code
+// never embeds raw asset strings. Dynamic frame index is appended by the
+// caller (e.g. `${PLAYER_RUN_PATH}01.png`).
+export const PLAYER_RUN_PATH = 'player/farmer_run/player_farmer_run_';
+export const PLAYER_JUMP_FRAME = 'player/farmer_jump/player_farmer_jump_08.png';
+export const PLAYER_CROUCH_FRAME = 'player/farmer_crouch/player_farmer_crouch_02.png';
+
 export const FARMER_UNIT = 2.4;
 
 export const PROP_METRICS = new Map([
