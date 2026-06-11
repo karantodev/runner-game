@@ -34,15 +34,16 @@ export const VISUALS_CONFIG = {
     hueRotate: -20,
   },
   depth: {
-    // M157 final: mountains — farHueRotate -55deg achieves H165 (target
-    // H150-165) when sky is at round-4 level. With sky at -20deg (slightly
-    // lighter), mountain band H may read ~H170. Accept as the best balanced
-    // state given ~49% of that band is sky background pixels.
-    // farDarken 0.78 pushes far-layer brightness to its 0.38 floor limit,
-    // targeting mountain sprite V in the .35-.45 range before sky averaging.
+    // M158: farHueRotate pushed to -80 (from -55) — band average moves from
+    // H171 toward H163-165. ~49% of the mountain band is sky pixels (not
+    // affected by the filter), so the band average is sky-diluted; the actual
+    // mountain sprite pixels are already well past H151 at this rotation.
+    // farDarken raised to 0.90: far layer stays at the 0.38 brightness floor;
+    // mid layer now at brightness = 1 - 0.90×0.55 = 0.505 (≈V.51, matching
+    // reference). DEPTH_LAYER.mid darkScale updated to 0.55 accordingly.
     farDesaturate: 0.20,
-    farDarken: 0.78,
-    farHueRotate: -55,
+    farDarken: 0.90,
+    farHueRotate: -80,
     sceneryHaze: { enabled: true, alpha: 0.10 },
     sceneryTint: { enabled: true, thresholdScale: 0.13, desaturate: 0.20, lighten: 0.10, maxCacheEntries: 12 },
   },
@@ -71,17 +72,15 @@ export const VISUALS_CONFIG = {
     // far it vanishes. Reduced slightly vs full 1.0 to integrate into scene depth.
     opacity: 0.80,
     // Visual scale multiplier applied on top of the projected scale. 1.0 = the
-    // 540-px draw width fills the corridor at 50-80m depth.
+    // 420-px draw width fills the corridor at 50-80m depth.
     scale: 1.0,
-    // Logical pixel width (at scale 1.0) used when projecting a garland sprite.
-    // SceneryRenderer multiplies this by projectedScale to get the on-screen width.
-    // Single source of truth — sceneryDispatch.js dead entry was removed so this
-    // is the only place the constant lives.
-    drawWidth: 540,
-    // Screen-space lift (logical px at scale 1.0) above the projected ground
-    // contact Y. Lifts the arch into the mid-air "doorway" read rather than
-    // lying flat on the road like the disabled vineGarlands road decoration.
-    yLiftPx: 54,
+    // M158: reduced from 540 → 420 — arch was filling most of the screen at
+    // ~30m, competing with gameplay. 420 keeps it well-framed at mid-distance
+    // (50-80m) while shrinking to a tasteful accent at 30-40m.
+    drawWidth: 420,
+    // M158: reduced from 54 → 44 to match the narrower draw width so the arch
+    // proportions stay consistent.
+    yLiftPx: 44,
     // Minimum world-unit clearance between a garland depth and any reserved
     // road obstacle. Garlands that land within this window are deferred by
     // garlandRetryDistance to prevent visual stacking of decor + obstacle
@@ -105,11 +104,18 @@ export const VISUALS_CONFIG = {
     },
   },
   background: {
+    // M158: add cloud01/02 (368×248 px) so the main cloud positions use
+    // the larger sprites — matches the reference's prominent puffy clouds.
+    // Keys cycle across 7 cloud instances; positions 0/1/3 (the biggest
+    // widthPx values in World.js) now pick the large sprite first.
     cloudKeys: [
+      'backgroundCloud01',
+      'backgroundCloud02',
+      'backgroundCloud01',
+      'backgroundCloud02',
       'backgroundCloud03',
       'backgroundCloud04',
       'backgroundCloud05',
-      'backgroundCloud06',
     ],
   },
   // B1 — far horizon tree-line. Sits between the mountain silhouettes and the

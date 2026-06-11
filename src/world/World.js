@@ -471,10 +471,14 @@ export class World {
     const keys   = this.config.visual?.background?.cloudKeys ?? ['backgroundCloud03'];
     const pick   = (i) => keys[i % keys.length];
     return [
-      { x: width * 0.18, y: height * 0.118, widthPx: 190, speed: 0.24 },
-      { x: width * 0.38, y: height * 0.088, widthPx: 162, speed: 0.21 },
+      // M158: clouds 0/1/3 are the main prominent positions; widthPx raised
+      // to match the larger cloud01/02 sprites (368×248 px) and closer to
+      // the reference's puffy prominent clouds. BackgroundRenderer applies
+      // a 0.86× factor to these indices to avoid upstaging the castle axis.
+      { x: width * 0.18, y: height * 0.118, widthPx: 270, speed: 0.24 },
+      { x: width * 0.38, y: height * 0.088, widthPx: 235, speed: 0.21 },
       { x: width * 0.56, y: height * 0.150, widthPx: 118, speed: 0.18 },
-      { x: width * 0.82, y: height * 0.118, widthPx: 184, speed: 0.23 },
+      { x: width * 0.82, y: height * 0.118, widthPx: 258, speed: 0.23 },
       { x: width * 0.24, y: height * 0.218, widthPx: 112, speed: 0.16 },
       { x: width * 0.71, y: height * 0.224, widthPx: 98,  speed: 0.14 },
       { x: width * 0.88, y: height * 0.200, widthPx: 86,  speed: 0.18 },

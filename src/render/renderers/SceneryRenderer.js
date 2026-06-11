@@ -575,9 +575,10 @@ export class SceneryRenderer {
       // screen center + the vertical ground-contact Y at that depth.
       const p = this.projection.projectVisual(0, pos.distance);
       // Only render at mid-field depth: too far = invisible; too close = obtrusive.
-      // The player-facing constraint: at distance < 20m a garland is so large
-      // it overwhelms the gameplay corridor. Hard-cull below 18m.
-      if (pos.distance < 18) continue;
+      // M158: hard-cull raised from 18→22m so a garland at 30m is already well
+      // into the fade window rather than at full opacity — prevents the arch
+      // from filling the full corridor width when the player is very close.
+      if (pos.distance < 22) continue;
       if (p.scale < 0.09) continue;        // too far to read cleanly
 
       // Lift the sprite above the ground contact line so it reads as a
@@ -585,9 +586,9 @@ export class SceneryRenderer {
       const liftedY = Math.round(p.sy - yLift * p.scale);
       const drawWidth = Math.round(baseDrawWidth * p.scale * (e.components.Sprite.visualScale ?? 1));
 
-      // Near-fade: ease in as the garland scrolls into the 18-30m window so
+      // Near-fade: ease in as the garland scrolls into the 22-36m window so
       // it doesn't hard-pop from invisible to full opacity.
-      const nearFade = Math.min(1, (pos.distance - 18) / 12);
+      const nearFade = Math.min(1, (pos.distance - 22) / 14);
       const alpha = baseAlpha * nearFade;
       if (alpha < 0.04) continue;
 
