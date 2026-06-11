@@ -6,6 +6,7 @@ import { cameraShakeOffset } from '../render/helpers.js';
 import { SkyRenderer } from '../render/renderers/SkyRenderer.js';
 import { BackgroundRenderer } from '../render/renderers/BackgroundRenderer.js';
 import { LandmarksRenderer } from '../render/renderers/LandmarksRenderer.js';
+import { HorizonTreelineRenderer } from '../render/renderers/HorizonTreelineRenderer.js';
 import { RoadRenderer } from '../render/renderers/RoadRenderer.js';
 import { SceneryRenderer } from '../render/renderers/SceneryRenderer.js';
 import { GameplayRenderer } from '../render/renderers/GameplayRenderer.js';
@@ -109,6 +110,9 @@ export class RenderSystem {
     this.pipeline = new RenderPipeline([
       new SkyRenderer(deps),
       new BackgroundRenderer(deps),
+      // B1 — horizon tree-line: sits between mountain silhouettes and the
+      // corridor vanishing point. Cached offscreen strip — O(1) per frame.
+      new HorizonTreelineRenderer(deps),
       new LandmarksRenderer(deps),
       this.roadRenderer,
       new SceneryRenderer(deps),

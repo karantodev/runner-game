@@ -53,7 +53,7 @@ export function roadTopHalfWidth(projection) {
  * stretched to `width × height` per tile.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {HTMLImageElement | HTMLCanvasElement} image
+ * @param {HTMLImageElement | HTMLCanvasElement | OffscreenCanvas} image
  * @param {number} x0
  * @param {number} y
  * @param {number} width
@@ -62,7 +62,11 @@ export function roadTopHalfWidth(projection) {
  * @param {number} [alpha]
  */
 export function drawScrollingTile(ctx, image, x0, y, width, height, scroll, alpha = 1) {
-  if (!image || !image.naturalWidth) return false;
+  // HTMLImageElement exposes naturalWidth; OffscreenCanvas / HTMLCanvasElement
+  // expose width instead — accept either so canvas-backed strips (e.g.
+  // HorizonTreelineRenderer) are not silently rejected.
+  const intrinsicW = image?.naturalWidth ?? image?.width;
+  if (!image || !intrinsicW) return false;
   if (width <= 0 || height <= 0) return false;
   // Normalize scroll into [0, width) so the leftmost tile is at x0 - off.
   const off = ((scroll % width) + width) % width;

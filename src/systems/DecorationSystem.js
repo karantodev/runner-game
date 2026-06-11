@@ -1,5 +1,5 @@
 import { createScenery } from '../ecs/factories.js';
-import { LANE_BANDS, zoneForSide } from '../config/sceneSchema.js';
+import { LANE_BANDS, SCENE_ZONES, zoneForSide } from '../config/sceneSchema.js';
 import { HERO_LAYOUT, SIDE_DECORATION_PREFABS, PREFAB_INTENT_BY_ID, THEMES } from '../config/sceneSchema.data.js';
 
 const HERO_GAP_FILL_PREFABS = Object.freeze([
@@ -82,6 +82,10 @@ export class DecorationSystem {
     // Debug-only selection stats (rerolls / least-bad fallbacks) for the
     // seed-sweep report; read off world.decorationSystem._pickStats.
     this._pickStats = { picks: 0, rerolls: 0, fallbacks: 0 };
+    // B2 — garland cadence cursor (world units until the next garland spawns).
+    // Seeded RNG drives the initial offset so garlands appear at varied depths
+    // each run without touching the gameplay world.rng.
+    this.nextGarland = 0;
   }
 
   /**
@@ -142,6 +146,27 @@ export class DecorationSystem {
     for (let distance = procStartRight; distance < maxDist; distance += spacing) {
       this.#spawnSideChunk(world, 1, distance + 3.4 + this.rng.range(-0.7, 0.7));
     }
+
+    // B2 — prepopulate garlands across the visible mid-field horizon.
+    // Only fires when the garland feature is enabled; uses the same decorRng
+    // so the pattern is deterministic for any given seed.
+    if (this.#garlandEnabled(world)) {
+      const cfg = world?.config?.visual?.garland ?? {};
+      const cadenceLo = cfg.cadenceLo ?? 80;
+      const cadenceHi = cfg.cadenceHi ?? 130;
+      // First garland starts at mid-field depth minimum (35m) so it never
+      // overwhelms the near foreground at run start. rng offset stays within
+      // the cadence window for variety.
+      const garlandStartMin = 35;
+      let garlandDist = Math.max(garlandStartMin, start + this.rng.range(cadenceLo * 0.35, cadenceHi * 0.55));
+      while (garlandDist < maxDist) {
+        this.#spawnGarland(world, garlandDist);
+        garlandDist += this.rng.range(cadenceLo, cadenceHi);
+      }
+      // Seed the runtime cursor so the first post-prepopulate garland continues
+      // the rhythm from where the last prepopulated one left off.
+      this.nextGarland = this.rng.range(cadenceLo * 0.5, cadenceHi * 0.8);
+    }
   }
 
   /**
@@ -184,6 +209,15 @@ export class DecorationSystem {
     if (this.nextRight <= 0) {
       this.#spawnSideChunk(world, 1, this.projection.maxDistance + this.rng.range(0, 8));
       this.nextRight = this.#nextSpacing(world);
+    }
+
+    // B2 — garland cadence: tick and spawn when the cursor reaches zero.
+    if (this.#garlandEnabled(world)) {
+      this.nextGarland -= world.speed * delta;
+      if (this.nextGarland <= 0) {
+        this.#spawnGarland(world, this.projection.maxDistance + this.rng.range(0, 10));
+        this.nextGarland = this.#nextGarlandSpacing(world);
+      }
     }
   }
 
@@ -365,6 +399,106 @@ export class DecorationSystem {
     this._pickStats.rerolls += rolls - 1;
     if (bestV > 0) this._pickStats.fallbacks += 1;
     return chunk;
+  }
+
+  // ── B2 Garland helpers ────────────────────────────────────────────────────
+
+  /**
+   * Returns true when the garland feature is enabled in config.
+   * Requires the config key to be present AND enabled !== false.
+   * An absent key (cfg === undefined/null) is treated as disabled —
+   * safe default that mirrors the gameFeel missing-subconfig lesson
+   * (a missing subconfig should never silently activate a feature).
+   *
+   * @param {object} world
+   * @returns {boolean}
+   */
+  #garlandEnabled(world) {
+    const cfg = world?.config?.visual?.garland;
+    if (!cfg) return false;                // absent cfg → disabled
+    return cfg.enabled !== false;
+  }
+
+  /**
+   * Compute the next garland cadence distance (world units).
+   * Uses decorRng only — never touches gameplay world.rng.
+   *
+   * @param {object} world
+   * @returns {number}
+   */
+  #nextGarlandSpacing(world) {
+    const cfg = world?.config?.visual?.garland ?? {};
+    const lo = cfg.cadenceLo ?? 80;
+    const hi = cfg.cadenceHi ?? 130;
+    return this.rng.range(lo, hi);
+  }
+
+  /**
+   * Spawn a single decorative garland entity at `distance`.
+   * The entity has lane=0 (center), LANE_BANDS.PLAY band and a special
+   * assetType that SceneryRenderer renders via a dedicated garland pass
+   * (bypassing lane-remap so it stays at screen center).
+   * No Hitbox — pure scenery.
+   *
+   * Founding-spec rule: decor must never blend visually with an obstacle.
+   * A garland at nearly the same depth as a vine_barrier (or any road
+   * obstacle) creates an unreadable tangle — the player can't tell which
+   * is the dangerous element. The clearance check below queries the
+   * RoadSpawnLedger for any reserved obstacle within ±obstacleClearance
+   * world units and pushes the garland depth forward by garlandRetryDistance
+   * when one is found (one retry only — keeps the cadence rhythm intact).
+   *
+   * @param {object} world
+   * @param {number} distance  — world units from the player
+   */
+  #spawnGarland(world, distance) {
+    const cfg = world?.config?.visual?.garland ?? {};
+    const scale = cfg.scale ?? 1.0;
+    const clearance = cfg.obstacleClearance ?? 26;
+    const retryDist = cfg.garlandRetryDistance ?? 18;
+
+    // Check the road ledger for obstacles within clearance of the target depth.
+    // Uses decorRng stream only; the ledger query is read-only (no world.rng).
+    const ledger = world.spawnSystem?.roadLedger;
+    let spawnDepth = distance;
+    if (ledger) {
+      const obstacles = ledger.obstaclesInSpan(spawnDepth - clearance, spawnDepth + clearance);
+      if (obstacles.length > 0) {
+        // Push the garland past the obstacle cluster. One nudge is enough —
+        // the cadence window is wide (80–130 m) so a single retry keeps rhythm.
+        spawnDepth += retryDist;
+        // Verify the retried depth is also clear; if not, skip this beat
+        // rather than place a garland that still stacks on an obstacle.
+        const retryObstacles = ledger.obstaclesInSpan(spawnDepth - clearance, spawnDepth + clearance);
+        if (retryObstacles.length > 0) return;
+      }
+    }
+
+    // No shouldSpawn call: the garland cadence (cadenceLo/cadenceHi) already
+    // enforces inter-garland spacing. The PlacementValidator's minSpacing check
+    // is designed for side-decor that competes for side-shoulder zones — it
+    // would incorrectly fire when the update cursor's first tick lands close to
+    // the last prepopulate garland's projection distance. The cadence is the
+    // sole spacing authority for this decorative-only element.
+    createScenery(world.registry, {
+      type: 'decorative_branch_garland',
+      assetType: 'decorative_branch_garland',
+      lane: 0,
+      distance: spawnDepth,
+      variant: 0,
+      scale,
+      yOffset: 0,
+      // STRUCTURE band puts the entity in the structural render bucket, which
+      // skips the gameplay-corridor intrusion fade (structural items are
+      // expected to be in the side bands — that fade only affects non-structural
+      // items). We override lane remap in SceneryRenderer's garland pass so
+      // the STRUCTURE band remap to 2.55 never fires for this type.
+      laneBand: LANE_BANDS.STRUCTURE,
+      zone: SCENE_ZONES.BACKGROUND_MID,
+      chunkId: 'garland',
+      prefabId: 'garland',
+      role: 'background-accent',
+    });
   }
 
   #buildWeightedChunks() {

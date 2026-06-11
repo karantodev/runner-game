@@ -647,6 +647,39 @@ export const ASSET_SEMANTICS = Object.freeze({
     collectible: false,
     notes: 'Player avatar — rendered by PlayerRenderer; placement is the player input, not the placement system.',
   }),
+
+  // B2 — mid-field decorative garland (brown arched branches + flowers).
+  // Pure scenery: no collision, no gameplay interaction. Sits at mid-distance
+  // and renders spanning the full road+shoulder width, lifted above the ground
+  // line to read as an arch strung between the side structures. The brown/wood
+  // palette and arch silhouette are unmistakably distinct from vine_barrier
+  // (bright green horizontal thorny strip). Registered with both-sides placement
+  // zone so DecorationSystem's side-keyed shouldSpawn calls pass through cleanly.
+  decorative_branch_garland: Object.freeze({
+    key: 'decorative_branch_garland',
+    category: 'decor',
+    gameplayRole: 'none',
+    placementZones: ['side-left', 'side-right', 'background'],
+    orientationType: 'neutral',
+    canMirror: false,
+    requiresCanonicalSideArt: false,
+    supportType: 'free-decor',
+    canSupportOthers: false,
+    canStackOnTop: false,
+    allowedParents: ['air'],
+    allowedChildren: [],
+    // Cadence (cadenceLo/cadenceHi in VISUALS_CONFIG.garland) enforces the
+    // between-garland spacing at the spawn level. minSpacing is left at 0 here
+    // so the PlacementValidator's adjacency check doesn't double-count against
+    // the cadence and produce spurious violations in the composition report.
+    adjacencyRules: { minSpacing: 0, preferredSpacing: 90 },
+    laneUsage: 'multi-lane',
+    collision: false,
+    collectible: false,
+    notes: 'Mid-field decorative arch garland. B2 round. Pure scenery, no hitbox. '
+         + 'Placed at center lane at depth 30-80m; SceneryRenderer projects and draws '
+         + 'it full-width so it reads as strung between the side bands.',
+  }),
 });
 
 /**
@@ -747,6 +780,9 @@ export const ASSET_CLASS_BY_TYPE = Object.freeze({
   castle_far:                    'LANDMARK',
   greenhouse_far:                'LANDMARK',
   player_farmer:                 'LANDMARK',
+
+  // Mid-field decorative garland (B2)
+  decorative_branch_garland:     'SIDE_DECOR_LARGE',
 
   // Background-only
   sky_gradient:                  'BACKGROUND_ONLY',
@@ -884,6 +920,13 @@ const CANONICAL_OVERRIDES = Object.freeze({
   castle_far:     { blocksRoadReadability: false },
   greenhouse_far: { blocksRoadReadability: false },
   player_farmer:  { blocksRoadReadability: false },
+
+  // ── Mid-field garland (B2) ─────────────────────────────────────────────
+  // Arched, full-width, spans mid-field. Lifted above the road surface so
+  // it never sits at player-collision height. No blocking of road readability
+  // because it draws at depth (small scale) and its arch shape shows the road
+  // passing under it.
+  decorative_branch_garland: { blocksRoadReadability: false, maxPerScreen: 2 },
 });
 
 /** Map legacy `placementZones` strings → canonical zone names. */

@@ -385,6 +385,11 @@ export class SceneryRenderer {
     this._nature = [];
     this._flora = [];
     this._structural = [];
+    // B2 — garlands collected during the main entity loop (cleared per frame,
+    // no fresh allocation). Avoids a second full registry.query scan in
+    // #drawGarlands; also enables the correct far→near sort that the doc
+    // describes but the old re-scan path was missing.
+    this._garlands = [];
   }
 
   render(world) {
@@ -455,11 +460,22 @@ export class SceneryRenderer {
     const nature = this._nature;
     const flora = this._flora;
     const structural = this._structural;
+    const garlands = this._garlands;
     nature.length = 0;
     flora.length = 0;
     structural.length = 0;
+    garlands.length = 0;
     for (const e of world.registry.query('ScenicData', 'Position', 'Sprite')) {
       const band = e.components.ScenicData.laneBand;
+      // B2 — garland entities use STRUCTURE band but must bypass the normal
+      // lane-remap (they sit at lane=0, not remapped to side 2.55). They draw
+      // via #drawGarlands() before the structural pass so they read as mid-
+      // distance arches BEHIND the side props. Collect them here so
+      // #drawGarlands can reuse this set instead of running a second scan.
+      if ((e.components.Sprite.assetType ?? e.components.Sprite.type) === 'decorative_branch_garland') {
+        garlands.push(e);
+        continue;
+      }
       if (band === LANE_BANDS.NATURE) nature.push(e);
       else if (isLowFloraBand(band)) flora.push(e);
       else structural.push(e);
@@ -470,6 +486,10 @@ export class SceneryRenderer {
     // Pass (b): flora carpet — the ground bed, behind solid props.
     flora.sort(byDistanceComponent);
     for (const e of flora) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
+    // B2 — garland pass: mid-field decorative arches drawn before STRUCTURE
+    // props so they read as background accents behind the side blocks.
+    // garlands was populated during the entity loop above — no second scan.
+    this.#drawGarlands(world, garlands);
     // Pass (c): STRUCTURE blocks / mushrooms / fences — solid props on the bed.
     structural.sort(byDistanceComponent);
     for (const e of structural) this.#sceneryEntity(e, world, LAYERS.FOREGROUND_DECOR);
@@ -504,6 +524,79 @@ export class SceneryRenderer {
     ctx.fillStyle = g.sceneryHaze;
     ctx.fillRect(0, g.sceneryHazeY0, this.projection.width, g.sceneryHazeY1 - g.sceneryHazeY0);
     ctx.globalAlpha = 1;
+  }
+
+  // ── B2 Mid-field garland pass ────────────────────────────────────────────────
+
+  /**
+   * B2 — Draw all decorative garland entities in world order (far → near).
+   *
+   * Garland entities have lane=0 and assetType='decorative_branch_garland'.
+   * They are filtered out of the normal entity buckets (structural / flora /
+   * nature) and rendered here instead so the lane-remap logic is bypassed —
+   * a garland must always project from screen center, not from a remapped
+   * side-band position.
+   *
+   * Visual design:
+   *  - Projects at lane 0 (road center) at the entity's stored distance.
+   *  - The sprite is drawn at 640 × projectedScale logical pixels wide so it
+   *    fills roughly the full visible corridor at mid-distance (50-80m).
+   *  - A negative yOffset lifts the arch above the ground plane so it hangs
+   *    at window-header height rather than lying flat on the road surface.
+   *  - Alpha attenuated by distance (fades in as it approaches) and by the
+   *    configured garland opacity so the arch never competes with the player
+   *    or obstacles.
+   *
+   * Perf contract: no ctx.save/restore, no per-frame allocation (garland
+   * entities are pooled/cleaned by CleanupSystem; the input array is the
+   * pre-collected this._garlands set — no second registry scan). One
+   * drawImage per garland in view (typically 1-2 per frame). globalAlpha
+   * touched and reset inline.
+   *
+   * @param {object} world
+   * @param {Array} garlandEntities — pre-collected garland entities from the
+   *   main entity loop; sorted far→near in-place before drawing.
+   */
+  #drawGarlands(world, garlandEntities) {
+    const cfg = world.config?.visual?.garland;
+    if (!cfg || cfg.enabled === false) return;
+    const baseAlpha = cfg.opacity ?? 0.82;
+    const yLift = cfg.yLiftPx ?? 48;           // px above the projected ground line
+    const baseDrawWidth = cfg.drawWidth ?? 540; // logical px at scale 1.0 (config-driven)
+
+    // Sort far→near like sibling passes so z-order is depth-correct.
+    garlandEntities.sort(byDistanceComponent);
+
+    for (const e of garlandEntities) {
+      const pos = e.components.Position;
+      if (pos.distance < -5.5) continue;   // cull (CleanupSystem handles negative)
+
+      // Project from center lane (no remap). projectVisual(0, d) gives the
+      // screen center + the vertical ground-contact Y at that depth.
+      const p = this.projection.projectVisual(0, pos.distance);
+      // Only render at mid-field depth: too far = invisible; too close = obtrusive.
+      // The player-facing constraint: at distance < 20m a garland is so large
+      // it overwhelms the gameplay corridor. Hard-cull below 18m.
+      if (pos.distance < 18) continue;
+      if (p.scale < 0.09) continue;        // too far to read cleanly
+
+      // Lift the sprite above the ground contact line so it reads as a
+      // hanging arch rather than a flat road element.
+      const liftedY = Math.round(p.sy - yLift * p.scale);
+      const drawWidth = Math.round(baseDrawWidth * p.scale * (e.components.Sprite.visualScale ?? 1));
+
+      // Near-fade: ease in as the garland scrolls into the 18-30m window so
+      // it doesn't hard-pop from invisible to full opacity.
+      const nearFade = Math.min(1, (pos.distance - 18) / 12);
+      const alpha = baseAlpha * nearFade;
+      if (alpha < 0.04) continue;
+
+      const ctx = this.ctx;
+      ctx.globalAlpha = alpha;
+      this.sprites.draw('decorativeBranchGarland', p.sx, liftedY, drawWidth);
+      ctx.globalAlpha = 1;
+      this.metrics?.countScenery('garland', null);
+    }
   }
 
   // ── Static prefab layers ────────────────────────────────────────────────────

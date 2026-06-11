@@ -13,6 +13,22 @@ export class SkyRenderer {
     this.assets = assets;
     this.sprites = sprites;
     this.gradients = gradients;
+
+    // Cached offscreen canvas that holds the hue-rotated sky blit.
+    // Rebuilt only when viewport size or hueRotate value changes —
+    // never per-frame, following the GradientCache caching pattern.
+    // The sky asset and hueRotate are static at runtime, so one bake
+    // suffices; per-frame ctx.filter on a full-viewport draw forces a
+    // large intermediate filtered surface every frame (the costliest
+    // filtered draw in the pipeline).
+    /** @type {HTMLCanvasElement | OffscreenCanvas | null} */
+    this._skyCanvas = null;
+    /** @type {number} — viewport width when _skyCanvas was built */
+    this._skyCanvasW = 0;
+    /** @type {number} — viewport height (skyH) when _skyCanvas was built */
+    this._skyCanvasH = 0;
+    /** @type {number} — hueRotate value when _skyCanvas was built */
+    this._skyCanvasHue = null;
   }
 
   render(world) {
@@ -39,12 +55,29 @@ export class SkyRenderer {
       this._skyFallbackH = skyH;
     }
 
+    // M157: skyHueRotate shifts the sky asset hue so the measured band
+    // moves from the current teal-cyan (H213) toward the reference (H192-200).
+    // Baked into an offscreen canvas once (rebuilt on resize or hue change)
+    // so the per-frame path is a plain drawImage with no ctx.filter — the
+    // full-viewport filtered draw was the costliest filtered surface in
+    // the pipeline.
+    const skyHueRot = world.config?.visual?.sky?.hueRotate ?? 0;
+
     const skyImg = this.assets.get('backgroundSkyGradient');
     if (skyImg?.naturalWidth) {
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(skyImg, 0, 0, width, skyH);
-      ctx.restore();
+      // Rebuild the baked sky canvas whenever viewport or hue value changes.
+      if (
+        !this._skyCanvas
+        || this._skyCanvasW !== width
+        || this._skyCanvasH !== skyH
+        || this._skyCanvasHue !== skyHueRot
+      ) {
+        this._skyCanvas = this.#bakeSky(skyImg, width, skyH, skyHueRot);
+        this._skyCanvasW = width;
+        this._skyCanvasH = skyH;
+        this._skyCanvasHue = skyHueRot;
+      }
+      ctx.drawImage(this._skyCanvas, 0, 0);
       // v4.0: overlay a subtle blue-tint to punch saturation even on the
       // asset version — keeps color-grade consistent with the fallback.
       ctx.save();
@@ -54,8 +87,19 @@ export class SkyRenderer {
       ctx.fillRect(0, 0, width, skyH);
       ctx.restore();
     } else {
-      ctx.fillStyle = this._skyFallback;
-      ctx.fillRect(0, 0, width, skyH);
+      // Procedural fallback: bake hue-rotated gradient into offscreen canvas.
+      if (
+        !this._skyCanvas
+        || this._skyCanvasW !== width
+        || this._skyCanvasH !== skyH
+        || this._skyCanvasHue !== skyHueRot
+      ) {
+        this._skyCanvas = this.#bakeSkyFallback(this._skyFallback, width, skyH, skyHueRot);
+        this._skyCanvasW = width;
+        this._skyCanvasH = skyH;
+        this._skyCanvasHue = skyHueRot;
+      }
+      ctx.drawImage(this._skyCanvas, 0, 0);
     }
 
     // Depth vignette on crown (was skyDepth from cache — preserve it).
@@ -96,5 +140,52 @@ export class SkyRenderer {
     // The ambientMotion gate is kept here as a comment so other systems
     // can still reference world.config.gameFeel.ambientMotion freely.
     // if (world.config.gameFeel.ambientMotion) { /* rays removed */ }
+  }
+
+  // ── Sky bake helpers ────────────────────────────────────────────────
+
+  /**
+   * Bake the sky asset + hue-rotate filter into a new offscreen canvas.
+   * Called once per distinct (width, skyH, hueRotate) triple — never
+   * every frame.
+   *
+   * @param {HTMLImageElement} skyImg
+   * @param {number} width
+   * @param {number} skyH
+   * @param {number} hueRot  degrees; 0 = identity (no filter overhead)
+   * @returns {HTMLCanvasElement | OffscreenCanvas}
+   */
+  #bakeSky(skyImg, width, skyH, hueRot) {
+    const canvas = (typeof OffscreenCanvas !== 'undefined')
+      ? new OffscreenCanvas(width, skyH)
+      : Object.assign(document.createElement('canvas'), { width, height: skyH });
+    const t = canvas.getContext('2d');
+    t.imageSmoothingEnabled = true;
+    if (hueRot !== 0) t.filter = `hue-rotate(${hueRot}deg)`;
+    t.drawImage(skyImg, 0, 0, width, skyH);
+    if (hueRot !== 0) t.filter = 'none';
+    return canvas;
+  }
+
+  /**
+   * Bake the procedural fallback gradient (+ optional hue-rotate) into a
+   * new offscreen canvas. Same single-build contract as #bakeSky.
+   *
+   * @param {CanvasGradient} gradient
+   * @param {number} width
+   * @param {number} skyH
+   * @param {number} hueRot
+   * @returns {HTMLCanvasElement | OffscreenCanvas}
+   */
+  #bakeSkyFallback(gradient, width, skyH, hueRot) {
+    const canvas = (typeof OffscreenCanvas !== 'undefined')
+      ? new OffscreenCanvas(width, skyH)
+      : Object.assign(document.createElement('canvas'), { width, height: skyH });
+    const t = canvas.getContext('2d');
+    if (hueRot !== 0) t.filter = `hue-rotate(${hueRot}deg)`;
+    t.fillStyle = gradient;
+    t.fillRect(0, 0, width, skyH);
+    if (hueRot !== 0) t.filter = 'none';
+    return canvas;
   }
 }
