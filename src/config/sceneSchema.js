@@ -55,9 +55,12 @@ export const ASSET_TYPES = Object.freeze({
   stone_wall_low: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
   stone_wall_stairs: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1-2 lanes' },
   question_block: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
-  // green_pipe retired — kept as a no-op redirect to planter_pot so any
-  // legacy spawn data that still references it draws the new sprite.
-  green_pipe: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile', deprecated: true, redirectTo: 'planter_pot' },
+  // green_pipe and pipe are the same element — the sceneryDispatch handler
+  // registers both keys and draws pipeGreenSprite for either. Both entries
+  // exist so the composition analysis can detect pipe entities regardless
+  // of which assetType key the prefab uses.
+  green_pipe: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
+  pipe:        { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
   planter_pot: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 tile' },
   floating_platform: { group: 'structures', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '2-3 tiles' },
   grass_dirt_block: { group: 'terrain', zone: SCENE_ZONES.STRUCTURE_LEFT, gameplay: false, footprint: '1 lane' },

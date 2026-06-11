@@ -30,7 +30,7 @@ const MOUNTAIN_SCROLL_FACTOR = {
 const DEPTH_LAYER = {
   // [desaturateStrength, darkenStrength] relative to base config values
   far:      [1.00, 1.00],  // full farDesaturate + farDarken
-  mid:      [0.60, 0.40],  // 60% desaturate, 40% darken
+  mid:      [0.60, 0.55],  // 60% desaturate, 55% darken (M158: V~.51 target)
   near:     [0.25, 0.00],  // slight desaturate only
   forest:   [0.34, 0.10],  // soft silhouette bridge before the hills
   mground:  [0.10, 0.00],  // barely touched (closer to player)
