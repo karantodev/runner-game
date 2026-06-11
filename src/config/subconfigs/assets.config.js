@@ -149,6 +149,9 @@ export const ASSETS_CONFIG = {
   roadKitEdgeGrassPatch01: './assets/terrain/road/kit/road_edge_grass_patch_01.png',
   roadKitEdgeDarkPatch01: './assets/terrain/road/kit/road_edge_dark_patch_01.png',
 
+  // Mid-field garland (B2 — decorative arch, distinct from vine-barrier obstacle)
+  decorativeBranchGarland: './assets/decor/branches/decorative_branch_flowers_01.png',
+
   // Extra Player States
   playerFarmerJump01: './assets/player/farmer_jump/player_farmer_jump_01.png',
   playerFarmerJump02: './assets/player/farmer_jump/player_farmer_jump_02.png',

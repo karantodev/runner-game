@@ -481,6 +481,14 @@ register(['dry_grass_obstacle', 'dryGrass'], (deps, x, y, scale, variant) => {
   tryDraw(deps, ['dryGrass'], x, y, 150 * scale);
 });
 
+// B2 — decorative_branch_garland is NOT dispatched through this table.
+// SceneryRenderer filters garland entities out of the normal entity loop and
+// renders them via a dedicated #drawGarlands() pass (lane-remap bypassed,
+// draw width driven by visual.garland.drawWidth in visuals.config.js).
+// A registration here would be unreachable dead code — and its former width
+// (640) conflicted with the live draw path (540, now config-driven).
+// Do not re-register this type here.
+
 /**
  * @param {string} assetType
  * @returns {SceneryDrawFn | undefined}

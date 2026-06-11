@@ -30,16 +30,20 @@ export class GradientCache {
     // crown / mid / horizon zones. With 9 stops the transitions are
     // smooth enough that even the warm-horizon shift (#e0ddc8) reads as
     // genuine atmospheric perspective rather than an overlay.
+    // M156 sky tune: shift hue from teal-blue (H213) toward violet-blue
+    // (~H195) by warming the crown stops and pulling the mid-sky away from
+    // cyan. Horizon kept warm-cream. This brings measured sky H closer to
+    // the reference H192-200 target without touching the asset sky path.
     const sky = ctx.createLinearGradient(0, 0, 0, skyH);
-    sky.addColorStop(0.00, '#082684');
-    sky.addColorStop(0.12, '#0c3fa2');
-    sky.addColorStop(0.24, '#1259c4');
-    sky.addColorStop(0.40, '#2179d9');   // v4.27 — M15B: slightly deeper premium blue
-    sky.addColorStop(0.55, '#43a0ed');   // v4.27 — M15B: richer mid-sky (horizon haze below kept)
-    sky.addColorStop(0.70, '#7ec3f4');
-    sky.addColorStop(0.84, '#b2dbf6');
-    sky.addColorStop(0.94, '#d6e4ec');
-    sky.addColorStop(1.00, '#e0ddc8');
+    sky.addColorStop(0.00, '#0a1e7a');   // M156: warmer indigo crown (was #082684)
+    sky.addColorStop(0.12, '#0e32a8');   // M156: violet-blue (was #0c3fa2)
+    sky.addColorStop(0.24, '#1448c0');   // M156: slightly warmer (was #1259c4)
+    sky.addColorStop(0.40, '#2268cc');   // M156: pull cyan out, warmer blue
+    sky.addColorStop(0.55, '#4090dc');   // M156: less cyan mid-sky
+    sky.addColorStop(0.70, '#72b4e8');   // M156: warmer near-horizon
+    sky.addColorStop(0.84, '#a8cee0');   // M156: slightly warmer haze
+    sky.addColorStop(0.94, '#d0d8d8');   // M156: neutral horizon blend
+    sky.addColorStop(1.00, '#ddd8b8');   // M156: warm amber horizon kept
 
     const skyDepth = ctx.createLinearGradient(0, 0, 0, skyH);
     skyDepth.addColorStop(0,    'rgba(12,4,64,0.26)');
@@ -54,17 +58,15 @@ export class GradientCache {
     // and use this single veil between the distant and near landscape.
     // v4.20 — M7A horizon-haze pass: lift the veil alpha so more atmospheric
     // air sits over the far-scenery / mid-background band, pushing the distant
-    // treeline + structures back toward the reference. Peak (~horizon) raised
-    // 0.085→0.13, faint-start 0.035→0.055, road-side stop 0.045→0.06. Hues and
-    // extent are UNCHANGED so the road tip stays readable and the scene reads
-    // airy rather than foggy. Render-only; one already-drawn fillRect — no new
-    // draw ops, no per-sprite work.
+    // treeline + structures back toward the reference.
+    // M156: shift haze stops from teal-cyan toward a warmer pale tone so the
+    // atmospheric veil does not drag the mid-band hue toward H180+ teal.
     const horizonVeil = ctx.createLinearGradient(0, p.horizonY - 54, 0, p.roadVanishY + 132);
-    horizonVeil.addColorStop(0.00, 'rgba(206,236,236,0)');
-    horizonVeil.addColorStop(0.34, 'rgba(206,236,236,0.055)');
-    horizonVeil.addColorStop(0.58, 'rgba(196,230,220,0.13)');
-    horizonVeil.addColorStop(0.80, 'rgba(170,218,184,0.06)');
-    horizonVeil.addColorStop(1.00, 'rgba(150,206,164,0)');
+    horizonVeil.addColorStop(0.00, 'rgba(220,230,210,0)');
+    horizonVeil.addColorStop(0.34, 'rgba(218,228,200,0.055)');
+    horizonVeil.addColorStop(0.58, 'rgba(200,220,180,0.12)');
+    horizonVeil.addColorStop(0.80, 'rgba(180,210,160,0.05)');
+    horizonVeil.addColorStop(1.00, 'rgba(160,200,140,0)');
 
     // v4.21 — M7B dynamic-scenery depth haze. SceneryRenderer draws this band
     // AFTER the scenery sprites (before gameplay/player), so far/mid scenery
@@ -73,32 +75,36 @@ export class GradientCache {
     // shape (0→peak→0); SceneryRenderer scales the whole band by
     // visual.depth.sceneryHaze.alpha via globalAlpha. Geometry-only → cached
     // here, rebuilt on resize with the other gradients.
+    // M156: shift stop colors from teal (rgba(214,230,226)) toward a warmer
+    // yellow-green atmosphere so this haze doesn't bias mid-band toward H188+.
     const sceneryHazeY0 = p.roadVanishY - 90;
     const sceneryHazeY1 = p.roadVanishY + (p.groundY - p.roadVanishY) * 0.5;
     const sceneryHaze = ctx.createLinearGradient(0, sceneryHazeY0, 0, sceneryHazeY1);
-    sceneryHaze.addColorStop(0.00, 'rgba(214,230,226,0)');
-    sceneryHaze.addColorStop(0.32, 'rgba(214,230,226,1)');
-    sceneryHaze.addColorStop(0.66, 'rgba(206,226,220,0.45)');
-    sceneryHaze.addColorStop(1.00, 'rgba(198,222,212,0)');
+    sceneryHaze.addColorStop(0.00, 'rgba(210,228,190,0)');
+    sceneryHaze.addColorStop(0.32, 'rgba(210,228,190,1)');
+    sceneryHaze.addColorStop(0.66, 'rgba(200,220,175,0.45)');
+    sceneryHaze.addColorStop(1.00, 'rgba(190,215,160,0)');
 
     // A very small ground join keeps the road tip from looking pasted on.
     // It is intentionally separate from atmospheric haze and stays below
     // the mountain silhouettes.
+    // M156: warmer yellow-green stops (was teal-leaning rgba(156,214,166))
     const depthHaze = ctx.createLinearGradient(0, p.roadVanishY + 42, 0, p.roadVanishY + 126);
-    depthHaze.addColorStop(0.00, 'rgba(156,214,166,0)');
-    depthHaze.addColorStop(0.52, 'rgba(142,204,150,0.055)');
-    depthHaze.addColorStop(1.00, 'rgba(112,184,126,0)');
+    depthHaze.addColorStop(0.00, 'rgba(168,210,120,0)');
+    depthHaze.addColorStop(0.52, 'rgba(154,200,108,0.055)');
+    depthHaze.addColorStop(1.00, 'rgba(126,180,90,0)');
 
     // v4.9 — local atmospheric focus around the road-to-castle join. A
     // radial veil is less likely to read as a horizontal fog band than
     // another full-width gradient, while still softening the landmark edge.
+    // M156: shift stops toward warm yellow-green (was teal-leaning greens)
     const landmarkHaze = ctx.createRadialGradient(
       p.roadVanishX, p.roadVanishY + 22, 8,
       p.roadVanishX, p.roadVanishY + 22, 190,
     );
-    landmarkHaze.addColorStop(0.00, 'rgba(218,242,202,0.18)');
-    landmarkHaze.addColorStop(0.46, 'rgba(184,224,184,0.075)');
-    landmarkHaze.addColorStop(1.00, 'rgba(150,206,164,0)');
+    landmarkHaze.addColorStop(0.00, 'rgba(224,242,180,0.16)');
+    landmarkHaze.addColorStop(0.46, 'rgba(192,224,148,0.070)');
+    landmarkHaze.addColorStop(1.00, 'rgba(160,200,100,0)');
 
     const roadJoin = ctx.createLinearGradient(0, p.roadVanishY - 4, 0, p.roadVanishY + 78);
     roadJoin.addColorStop(0, 'rgba(198,236,146,0.12)');
@@ -118,18 +124,26 @@ export class GradientCache {
     // yellow-lime; pull them to a richer green and nudge the near a touch
     // deeper, WITHOUT collapsing the far→near value range (atmospheric depth
     // preserved). Deeper green also lifts gold-orchid contrast on the road.
-    ground.addColorStop(0,    '#84cc44');  // bright sunlit far field (horizon)
-    ground.addColorStop(0.30, '#5aaa32');  // rich mid-field
-    ground.addColorStop(0.68, '#3d8825');  // near-mid, still vivid
-    ground.addColorStop(1,    '#2a6a1a');  // near field — darker but not murky
+    // M156: shift all ground stops toward warmer yellow-green (H85-100
+    // range) by adding more red channel and reducing blue.
+    // M157: darken far/mid stops (V.80/.67 → V.62/.52) so the measured
+    // mid-band value drops toward the reference target V.41-.52. The near
+    // stops already sit in range (V.42/.29) so they are left unchanged.
+    ground.addColorStop(0,    '#759f2f');  // M157: darker far field H82 V.62 (was V.80)
+    ground.addColorStop(0.30, '#53851f');  // M157: darker mid-field H90 V.52 (was V.67)
+    ground.addColorStop(0.68, '#4a8818');  // M157: keep near-mid H93 V.53
+    ground.addColorStop(1,    '#326014');  // M157: keep near H96 V.38
 
     // M141 — push road toward saturated yellow-green so it stays distinctly
     // greener and slightly brighter than the surrounding field. Was '#7ec64c'
     // family which blended into field under the warm overlay.
+    // M156: warm road stops toward H85-95 (reference road H93).
+    // M157: darken road far/mid (V.83/.72 → V.68/.59) so road band value
+    // stays in target V.42-.55 range after the global brightness grade.
     const road = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
-    road.addColorStop(0, '#8ed455');
-    road.addColorStop(0.42, '#68b842');
-    road.addColorStop(1, '#3e8a30');
+    road.addColorStop(0, '#82ae3d');    // M157: darker far road H83 V.68 (was V.83)
+    road.addColorStop(0.42, '#62972c'); // M157: darker mid H90 V.59 (was V.72)
+    road.addColorStop(1, '#3d711e');    // M157: darker near H98 V.44 (was V.54)
 
     const roadEdge = ctx.createLinearGradient(0, p.roadVanishY, 0, p.groundY);
     roadEdge.addColorStop(0, 'rgba(220,248,120,0.14)');

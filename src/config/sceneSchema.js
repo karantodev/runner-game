@@ -94,6 +94,12 @@ export const ASSET_TYPES = Object.freeze({
   // v3 focal landmark: Victorian botanical greenhouse — replaces castle.
   // LandmarksRenderer tries greenhouse* first and falls back to castle*.
   greenhouse_far: { group: 'background', zone: SCENE_ZONES.BACKGROUND_FAR, gameplay: false, footprint: 'focal point' },
+  // B2 — mid-field decorative garland (brown arch branches + flowers). Pure scenery:
+  // no collision, no gameplay interaction. Placed at center (lane 0) at mid distance
+  // and rendered spanning the full road+shoulder width so it reads as strung between
+  // the side structures like a decorative arch. Visually distinct from vine_barrier
+  // (brown arch vs green thorny vines, arch vs straight strip, flowers vs none).
+  decorative_branch_garland: { group: 'decor_midfield', zone: SCENE_ZONES.BACKGROUND_MID, gameplay: false, footprint: 'full-width arch' },
 });
 
 export function zoneForMainLane(lane) {

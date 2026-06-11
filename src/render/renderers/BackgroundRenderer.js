@@ -53,8 +53,13 @@ export class BackgroundRenderer {
 
     // Read depth config (safe fallback to gameConfig defaults).
     const depthCfg = world.config?.visual?.depth ?? {};
-    const farDesat  = depthCfg.farDesaturate ?? 0.16;
-    const farDarken = depthCfg.farDarken     ?? 0.12;
+    const farDesat    = depthCfg.farDesaturate ?? 0.16;
+    const farDarken   = depthCfg.farDarken     ?? 0.12;
+    // M157: hue-rotate far/mid mountain layers so their measured teal hue
+    // (H186) shifts toward the reference's green-grey (H150-165). Applied
+    // only to the far and mid mountain layers; near mountains and forest
+    // layers stay unrotated so the scene transition reads naturally.
+    const farHueRot   = depthCfg.farHueRotate  ?? 0;
     const visualOn  = world.config?.visual?.enabled !== false;
     const allowParallax = world.adaptiveQuality?.tier?.parallax !== false;
     const parallaxScale = allowParallax ? 1 : 0;
@@ -76,15 +81,15 @@ export class BackgroundRenderer {
     // castle's center. Wider far (+130 → +220) means the visible portion
     // is offset by half a peak; mid widened too. This prevents a mountain
     // peak from sitting directly behind / under the castle silhouette.
-    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 12, width + 30, MOUNTAIN_SCROLL_FACTOR.far * parallaxScale, scroll, 0.78, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.far) : 'none');
-    this.#drawMountainLayer(['backgroundMountainsMid'], p.horizonY, width + 20, MOUNTAIN_SCROLL_FACTOR.mid * parallaxScale, scroll, 0.88, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.mid) : 'none');
+    this.#drawMountainLayer(['mountainsFarAlt', 'backgroundMountainsFar'], p.horizonY - 12, width + 30, MOUNTAIN_SCROLL_FACTOR.far * parallaxScale, scroll, 0.78, visualOn ? this.#depthFilter(farDesat, farDarken, farHueRot, DEPTH_LAYER.far) : 'none');
+    this.#drawMountainLayer(['backgroundMountainsMid'], p.horizonY, width + 20, MOUNTAIN_SCROLL_FACTOR.mid * parallaxScale, scroll, 0.88, visualOn ? this.#depthFilter(farDesat, farDarken, farHueRot, DEPTH_LAYER.mid) : 'none');
 
     // The only atmospheric transition over the mountains. Its transparent
     // endpoints and low peak alpha make the horizon soft without a fog bar.
     this.ctx.fillStyle = this.gradients.gradients.horizonVeil;
     this.ctx.fillRect(0, p.horizonY - 24, width, p.roadVanishY - p.horizonY + 100);
 
-    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 8, width + 10, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.95, visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.near) : 'none');
+    this.#drawMountainLayer(['backgroundMountainsNear'], p.horizonY + 8, width + 10, MOUNTAIN_SCROLL_FACTOR.near * parallaxScale, scroll, 0.95, visualOn ? this.#depthFilter(farDesat, farDarken, 0, DEPTH_LAYER.near) : 'none');
 
     // v4.18 — replace the spiky horizon treelines with a soft compressed
     // forest band. This restores vegetation behind the road without the
@@ -92,7 +97,7 @@ export class BackgroundRenderer {
     const distantForest = this.assets.get('backgroundForestFar');
     if (distantForest?.naturalWidth) {
       this.ctx.save();
-      this.ctx.filter = visualOn ? this.#depthFilter(farDesat, farDarken, DEPTH_LAYER.forest) : 'none';
+      this.ctx.filter = visualOn ? this.#depthFilter(farDesat, farDarken, 0, DEPTH_LAYER.forest) : 'none';
       drawScrollingTile(
         this.ctx,
         distantForest,
@@ -107,10 +112,17 @@ export class BackgroundRenderer {
     }
   }
 
-  #depthFilter(farDesat, farDark, [desatScale, darkScale]) {
+  #depthFilter(farDesat, farDark, hueRotateDeg, [desatScale, darkScale]) {
     const saturation = Math.max(0.4, 1 - farDesat * desatScale);
-    const brightness = Math.max(0.55, 1 - farDark * darkScale);
-    return `saturate(${saturation}) brightness(${brightness})`;
+    // M157: lower the brightness floor from 0.55 → 0.38 so that far mountain
+    // layers can reach the reference's darker value (V~0.50-0.58) without
+    // hitting an artificial ceiling. Minimum 0.38 keeps silhouettes visible.
+    const brightness = Math.max(0.38, 1 - farDark * darkScale);
+    // M157: optional hue-rotate shifts mountain teal (H186) toward the
+    // reference's green-grey (H150-165). Zero means no rotation so the
+    // near/forest layers are unaffected.
+    const hueRotate = hueRotateDeg !== 0 ? ` hue-rotate(${hueRotateDeg}deg)` : '';
+    return `saturate(${saturation}) brightness(${brightness})${hueRotate}`;
   }
 
   /**
